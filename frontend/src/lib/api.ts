@@ -46,6 +46,11 @@ export interface ModelInfo {
   install: "installed" | "partial" | "missing";
   installed_gb: number;
   download: DownloadProgress | null;
+  /** Prêt à générer : modèle installé, moteur disponible et compatible avec la machine. */
+  ready: boolean;
+  /** Le moteur de ce modèle n'est pas installé mais l'application sait l'installer. */
+  needs_engine_install: boolean;
+  engine_install_size_mb: number | null;
 }
 
 export interface DownloadProgress {
@@ -66,6 +71,26 @@ export interface Accelerator {
   unified: boolean;
 }
 
+export interface EngineInstallState {
+  state: "idle" | "running" | "done" | "error" | "cancelled";
+  variant?: string;
+  done?: number;
+  total?: number;
+  message?: string;
+  error?: string | null;
+}
+
+export interface EngineInfo {
+  available: boolean;
+  reason?: string;
+  device?: string;
+  variant?: string;
+  installable?: boolean;
+  install_variant?: string;
+  install_size_mb?: number;
+  install?: EngineInstallState;
+}
+
 export interface SystemInfo {
   os: string;
   arch: string;
@@ -73,7 +98,7 @@ export interface SystemInfo {
   ram_free_gb: number;
   accelerators: Accelerator[];
   unusable_gpus: { vendor: string; name: string; memory_gb: number | null; reason: string }[];
-  engines: Record<string, { available: boolean; reason?: string; device?: string }>;
+  engines: Record<string, EngineInfo>;
   disk: { free_gb: number; total_gb: number };
   paths: { data: string; models: string };
 }
@@ -209,7 +234,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 const json = (body: unknown) => JSON.stringify(body);
 
 export const api = {
-  models: () => request<{ models: ModelInfo[]; default_model_id: string | null }>("/api/models"),
+  models: () =>
+    request<{ models: ModelInfo[]; default_model_id: string | null; recommended_model_id: string | null; ready: boolean }>(
+      "/api/models",
+    ),
+  installEngine: () => request<EngineInstallState>("/api/engines/sdcpp/install", { method: "POST" }),
+  cancelEngineInstall: () => request<{ ok: true }>("/api/engines/sdcpp/install", { method: "DELETE" }),
   system: () => request<SystemInfo>("/api/system"),
   downloadModel: (id: string) => request<DownloadProgress>(`/api/models/${id}/download`, { method: "POST" }),
   cancelDownload: (id: string) => request<{ ok: true }>(`/api/models/${id}/download`, { method: "DELETE" }),

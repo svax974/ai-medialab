@@ -14,6 +14,7 @@ import { Home } from "./components/Home";
 import { Lightbox } from "./components/Lightbox";
 import { ModelsDialog } from "./components/ModelsDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
+import { SetupController } from "./components/Setup";
 import { Sidebar } from "./components/Sidebar";
 import { IconButton } from "./components/ui";
 
@@ -75,6 +76,7 @@ export default function App() {
 
       <Lightbox />
       <SettingsDialog />
+      <SetupController />
       <ModelsDialog />
       <ConfirmHost />
       <Toaster

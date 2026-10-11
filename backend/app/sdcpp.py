@@ -17,7 +17,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from .config import ROOT_DIR
+from .config import ENGINES_DIR, ROOT_DIR
 
 VARIANTS = ("metal", "cuda", "rocm", "vulkan", "cpu")
 # Ordre de préférence selon le fournisseur du GPU.
@@ -31,11 +31,10 @@ NON_GPU = {"CPU", "BLAS"}
 
 
 def engines_roots() -> list[Path]:
-    roots = []
-    if env := os.environ.get("IMAGEGEN_ENGINES_DIR"):
-        roots.append(Path(env))
-    roots.append(ROOT_DIR / "engines")  # développement : <projet>/engines ; application : <ressources>/engines
-    return roots
+    """Dossiers où chercher les builds : l'application (ou le dépôt), puis les moteurs installés par l'utilisateur.
+
+    `IMAGEGEN_ENGINES_DIR` remplace le premier (builds embarquées) : tests, installations personnalisées."""
+    return [Path(os.environ.get("IMAGEGEN_ENGINES_DIR") or ROOT_DIR / "engines"), ENGINES_DIR]
 
 
 def binary_name(tool: str = "sd-cli") -> str:
@@ -80,8 +79,7 @@ def pick(vendors: list[str]) -> dict[str, Any]:
     """Choisit la build à utiliser. Retourne {available, variant, binary, devices, reason}."""
     variants = find_variants()
     if not variants:
-        return {"available": False, "reason": "Le moteur GGUF (stable-diffusion.cpp) n'est pas installé : "
-                "lancez scripts/fetch_sdcpp.py ou utilisez une version de l'application qui l'embarque."}
+        return {"available": False, "reason": "Le moteur GGUF (stable-diffusion.cpp) n'est pas installé."}
     forced = os.environ.get("IMAGEGEN_SDCPP_VARIANT")
     order: list[str] = [forced] if forced else []
     for vendor in (vendors or ["other"]):

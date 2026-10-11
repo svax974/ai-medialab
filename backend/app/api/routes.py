@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from .. import db, repo
 from ..catalog import describe_models
 from ..downloads import downloads
+from ..engine_install import installer
 from ..engines import MODELS, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings, new_seed
@@ -34,7 +35,25 @@ def list_models() -> dict[str, Any]:
 
 @router.get("/system")
 def system_info(refresh: bool = False) -> dict[str, Any]:
-    return get_system(refresh=refresh)
+    info = get_system(refresh=refresh)
+    engines = {k: dict(v) for k, v in info["engines"].items()}
+    engines["sdcpp"]["install"] = installer.public()  # état en direct, hors du cache de détection
+    return {**info, "engines": engines}
+
+
+@router.post("/engines/sdcpp/install")
+async def install_engine() -> dict[str, Any]:
+    try:
+        return await installer.start()
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
+@router.delete("/engines/sdcpp/install")
+async def cancel_engine_install() -> dict[str, Any]:
+    if not installer.cancel():
+        raise HTTPException(409, "Aucune installation en cours.")
+    return {"ok": True}
 
 
 @router.post("/models/{model_id}/download")
@@ -450,6 +469,7 @@ async def events(request: Request) -> StreamingResponse:
                 yield f"event: job.progress\ndata: {json.dumps(prog)}\n\n"
             for dl in downloads.active():
                 yield f"event: download.progress\ndata: {json.dumps(dl)}\n\n"
+            yield f"event: engine.install\ndata: {json.dumps(installer.public())}\n\n"
             while True:
                 if await request.is_disconnected():
                     break

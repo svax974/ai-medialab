@@ -1,7 +1,10 @@
 // Requêtes react-query, mutations et synchronisation temps réel (SSE).
 import { useEffect } from "react";
 import { QueryClient, useQuery, type InfiniteData } from "@tanstack/react-query";
-import { api, type Asset, type Conversation, type ConversationSummary, type DownloadProgress, type Message, type ModelInfo } from "./api";
+import {
+  api, type Asset, type Conversation, type ConversationSummary, type DownloadProgress, type EngineInstallState, type Message,
+  type ModelInfo,
+} from "./api";
 import { useStore } from "./store";
 
 export const queryClient = new QueryClient({
@@ -108,7 +111,17 @@ export function useServerEvents() {
         store().setDownload(d);
         if (d.state !== "running") queryClient.invalidateQueries({ queryKey: keys.models });
       });
-      on("models.changed", () => queryClient.invalidateQueries({ queryKey: keys.models }));
+      on("models.changed", () => {
+        queryClient.invalidateQueries({ queryKey: keys.models });
+        queryClient.invalidateQueries({ queryKey: ["system"] });
+      });
+      on<EngineInstallState>("engine.install", (s) => {
+        store().setEngineInstall(s);
+        if (s.state !== "running") {
+          queryClient.invalidateQueries({ queryKey: keys.models });
+          queryClient.invalidateQueries({ queryKey: ["system"] });
+        }
+      });
       on("job.progress", store().setProgress);
       on<Message>("message.updated", (msg) => {
         upsertMessage(msg);

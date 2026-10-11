@@ -6,14 +6,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, type ModelInfo, type SystemInfo } from "../lib/api";
-import { cx, formatDuration } from "../lib/format";
+import { cx } from "../lib/format";
 import { keys, queryClient, useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
+import { ProgressBar, startSetup } from "./Setup";
 import { Button, IconButton, Spinner } from "./ui";
 
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
-const bytesToGb = (b: number) => b / 1024 ** 3;
 
 const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "Démo" };
 const SDCPP_DEVICE: Record<string, string> = { metal: "Metal", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan", cpu: "CPU" };
@@ -50,6 +50,7 @@ export function ModelsDialog() {
 
           <div className="space-y-5 overflow-y-auto px-6 pb-6 pt-2">
             {system && <MachineCard system={system} />}
+            {system && <EnginesCard system={system} />}
             <div className="space-y-3">
               {data?.models.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
               {!data && <div className="grid h-24 place-items-center text-muted"><Spinner /></div>}
@@ -181,6 +182,14 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {dl ? (
           <Button variant="secondary" onClick={() => cancel.mutate()} disabled={cancel.isPending}>Annuler</Button>
+        ) : m.needs_engine_install ? (
+          <Button variant="primary" disabled={!m.compatible} onClick={() => startSetup(m)}>
+            <CloudDownload className="size-4" />
+            {installed ? "Installer le moteur" : "Installer le moteur et le modèle"}
+            <span className="font-mono text-[11px] opacity-80">
+              ≈ {m.engine_install_size_mb} Mo{!installed && need > 0 ? ` + ${gb(need)} Go` : ""}
+            </span>
+          </Button>
         ) : installed ? (
           <>
             <Button variant="primary" disabled={!m.compatible} onClick={() => { setModel(m.id); setOpen(false); }}>Utiliser</Button>
@@ -214,21 +223,6 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   );
 }
 
-function ProgressBar({ done, total, rate, eta }: { done: number; total: number; rate: number; eta: number | null }) {
-  const pct = total > 0 ? Math.min(100, (done / total) * 100) : 0;
-  return (
-    <div className="mt-3">
-      <div className="h-1.5 overflow-hidden rounded-full bg-surface-3">
-        <div className="h-full rounded-full bg-safe shadow-[0_0_10px_var(--safe)] transition-[width] duration-500" style={{ width: `${Math.max(1.5, pct)}%` }} />
-      </div>
-      <div className="mt-1.5 flex justify-between font-mono text-[11px] text-muted">
-        <span>{total > 0 ? `${gb(bytesToGb(done))} / ${gb(bytesToGb(total))} Go · ${pct.toFixed(0)} %` : "Préparation…"}</span>
-        <span>{rate > 0 ? `${(rate / 1024 ** 2).toFixed(0)} Mo/s` : ""}{eta != null ? ` · ${formatDuration(eta)} restantes` : ""}</span>
-      </div>
-    </div>
-  );
-}
-
 function TokenField() {
   const { data } = useQuery({ queryKey: keys.settings, queryFn: api.settings });
   const [value, setValue] = useState("");
@@ -256,6 +250,66 @@ function TokenField() {
         <Button variant="secondary" disabled={!value.trim() || save.isPending} onClick={() => save.mutate(value)}>Enregistrer</Button>
         {data?.has_hf_token && <Button variant="ghost" onClick={() => save.mutate("")}>Retirer</Button>}
       </div>
+    </section>
+  );
+}
+
+const ENGINE_NAMES: Record<string, { name: string; hint: string }> = {
+  sdcpp: { name: "GGUF (stable-diffusion.cpp)", hint: "Léger, quantifié ; NVIDIA, AMD, Intel et Apple" },
+  mlx: { name: "MLX", hint: "Metal natif, Apple Silicon" },
+  torch: { name: "PyTorch", hint: "CUDA, ROCm ou Metal (pleine précision)" },
+};
+const VARIANT_LABEL: Record<string, string> = { metal: "Metal", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan", cpu: "CPU" };
+
+function EnginesCard({ system }: { system: SystemInfo }) {
+  const live = useStore((s) => s.engineInstall);
+  const sd = system.engines.sdcpp;
+  const install = live.state !== "idle" ? live : sd?.install;
+  const running = install?.state === "running";
+  return (
+    <section className="rounded-2xl border border-line bg-surface-2/50 p-4">
+      <div className="eyebrow mb-3">Moteurs</div>
+      <div className="space-y-2.5">
+        {Object.entries(ENGINE_NAMES).map(([id, info]) => {
+          const e = system.engines[id];
+          if (!e) return null;
+          const installable = id === "sdcpp" && !e.available && e.installable;
+          if (!e.available && !installable && id !== "sdcpp" && (e.reason ?? "").includes("Mac")) return null;
+          return (
+            <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className={cx("size-2 shrink-0 rounded-full", e.available ? "bg-ok" : installable ? "bg-warn" : "bg-faint")} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] text-ink">
+                  {info.name}
+                  {e.available && e.variant && <span className="ml-2 font-mono text-[11px] text-muted">{VARIANT_LABEL[e.variant] ?? e.variant}</span>}
+                </div>
+                <div className="text-[11.5px] leading-snug text-faint">
+                  {e.available ? info.hint : installable ? `Non installé — ${info.hint}` : e.reason ?? "Indisponible"}
+                </div>
+              </div>
+              {installable && !running && (
+                <Button variant="primary" onClick={() => api.installEngine().then(useStore.getState().setEngineInstall).catch((er) => toast.error(er.message))}>
+                  <CloudDownload className="size-4" /> Installer ≈ {e.install_size_mb} Mo
+                </Button>
+              )}
+              {id === "sdcpp" && running && (
+                <Button variant="secondary" onClick={() => api.cancelEngineInstall().catch(() => {})}>Annuler</Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {install?.state === "running" && (
+        <>
+          <ProgressBar done={install.done ?? 0} total={install.total ?? 0} unit="mb" />
+          <p className="mt-1 font-mono text-[11px] text-faint">{install.message}</p>
+        </>
+      )}
+      {install?.state === "error" && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] leading-snug text-ink-2">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" /> {install.error}
+        </div>
+      )}
     </section>
   );
 }

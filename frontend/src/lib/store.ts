@@ -1,7 +1,7 @@
 // État client (zustand) : brouillon du composer, préférences, progression temps réel, visionneuse.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Asset, DownloadProgress, EngineStatus, GenParams, JobProgress } from "./api";
+import type { Asset, DownloadProgress, EngineInstallState, EngineStatus, GenParams, JobProgress } from "./api";
 
 export interface PendingUpload {
   tempId: string;
@@ -45,6 +45,11 @@ interface State {
   setEngine: (e: EngineStatus) => void;
   downloads: Record<string, DownloadProgress>;
   setDownload: (d: DownloadProgress) => void;
+  engineInstall: EngineInstallState;
+  setEngineInstall: (s: EngineInstallState) => void;
+  /** Modèle à télécharger dès que le moteur sera installé (installation en deux temps, en un clic). */
+  pendingModelId: string | null;
+  setPendingModel: (id: string | null) => void;
 
   // Interface
   theme: Theme;
@@ -112,6 +117,10 @@ export const useStore = create<State>()(
       setEngine: (engine) => set({ engine }),
       downloads: {},
       setDownload: (d) => set((s) => ({ downloads: { ...s.downloads, [d.model_id]: d } })),
+      engineInstall: { state: "idle" },
+      setEngineInstall: (engineInstall) => set({ engineInstall }),
+      pendingModelId: null,
+      setPendingModel: (pendingModelId) => set({ pendingModelId }),
 
       theme: (document.documentElement.dataset.theme as Theme) ?? "dark",
       sidebarOpen: true,
@@ -142,7 +151,6 @@ export const useStore = create<State>()(
         count: s.count,
         sidebarOpen: s.sidebarOpen,
         prompt: s.prompt,
-        references: s.references,
       }),
     },
   ),

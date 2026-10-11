@@ -203,10 +203,20 @@ def _engine_torch(info: dict[str, Any], accelerators: list[dict[str, Any]]) -> d
 def _engine_sdcpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
     from . import sdcpp
 
+    from . import engine_install
+
     vendors = [a["vendor"] for a in accelerators]
     res = sdcpp.pick(vendors)
     if res["available"]:
         res["device"] = res["variant"]
+        return res
+    # Pas utilisable : l'application peut-elle l'installer elle-même ?
+    present = set(sdcpp.find_variants())
+    candidates = [v for v in engine_install.candidate_variants(vendors) if v not in present]
+    if candidates:
+        res["installable"] = True
+        res["install_variant"] = candidates[0]
+        res["install_size_mb"] = engine_install.install_size_mb(candidates[0])
     return res
 
 

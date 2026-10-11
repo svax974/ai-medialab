@@ -37,6 +37,24 @@ Variables utiles :
 
 Développement (rechargement à chaud) : `./dev.sh` puis http://localhost:5173.
 
+## Premier lancement : rien à chercher ni à compiler
+
+L'application vérifie elle-même ce qu'il faut pour générer, et propose d'installer tout ce qui manque, en un clic,
+avec progression, annulation et messages d'erreur lisibles :
+
+- **Moteur GGUF** : si la build de stable-diffusion.cpp adaptée à votre GPU n'est pas présente, l'application la
+  télécharge depuis la version officielle (CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon ; ≈ 30 Mo à
+  0,9 Go), vérifie sa somme SHA-256, l'installe dans `<données>/engines/` (sans droits administrateur) et contrôle
+  qu'elle voit bien un GPU — sinon elle essaie la suivante (repli sur Vulkan).
+- **Modèle** : l'écran d'accueil recommande le modèle le plus adapté à la machine et l'installe avec le moteur
+  (« Tout installer ») ; le sélecteur de modèle et la fenêtre « Modèles » proposent le téléchargement partout où un
+  modèle manque.
+- **Espace disque et mémoire** : vérifiés avant tout téléchargement ; les modèles qui ne tiennent pas sont signalés
+  avec la raison.
+
+Les versions packagées de l'application embarquent déjà les moteurs de leur profil ; l'installation à la demande
+sert aux versions de développement et en secours.
+
 ## Moteurs et modèles
 
 Trois moteurs d'inférence, choisis selon la machine et le modèle :

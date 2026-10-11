@@ -210,6 +210,14 @@ class JobManager:
             return
 
         spec = get_spec(plan["model_id"])
+        if spec.backend == "sdcpp":
+            from .system import get_system
+
+            engine = get_system()["engines"]["sdcpp"]
+            if not engine["available"]:
+                self._finish(message_id, "error", (engine.get("reason") or "Moteur GGUF indisponible.")
+                             + " Ouvrez Modèles pour l'installer.")
+                return
         if spec.all_sources():
             from .downloads import downloads
 

@@ -4,6 +4,7 @@ import { api } from "../lib/api";
 import { focusComposer } from "../lib/composer";
 import { useStore } from "../lib/store";
 import { Composer } from "./Composer";
+import { WelcomeSetup } from "./Setup";
 
 const SUGGESTIONS = [
   {
@@ -45,6 +46,7 @@ export function Home() {
         </div>
 
         <div className="animate-rise [animation-delay:180ms]">
+          <WelcomeSetup />
           <Composer conversationId={null} hero />
         </div>
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { ArrowUp, CloudDownload, Info, Paperclip, TriangleAlert, X } from "lucide-react";
+import { ArrowUp, Info, Paperclip, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 import { api, type Asset, type ModelInfo } from "../lib/api";
 import { effectiveParams, registerComposer, uploadFiles } from "../lib/composer";
@@ -9,6 +9,7 @@ import { navigate, paths } from "../lib/router";
 import { useStore } from "../lib/store";
 import { AspectPicker } from "./AspectPicker";
 import { ModelPicker } from "./ModelPicker";
+import { SetupPrompt, useWelcomeModel } from "./Setup";
 import { ParamsPopover } from "./ParamsPopover";
 import { Spinner, Tip } from "./ui";
 
@@ -41,6 +42,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const welcomeShown = !!useWelcomeModel(); // l'accueil affiche déjà la carte d'installation de ce modèle
   const hasRefs = references.length > 0;
   const params = effectiveParams(model, stored, hasRefs);
 
@@ -67,13 +69,13 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     notices.push({ tone: "info", text: `${model.name} part d'une seule image (img2img) : seule la 1re sera utilisée. Pour combiner plusieurs images, choisissez un modèle d'édition.` });
   if (model.reference_mode === "multi" && references.length > model.max_references)
     notices.push({ tone: "info", text: `${model.name} accepte ${model.max_references} images au plus : les suivantes seront ignorées.` });
-  const missing = model.install !== "installed";
+  const notReady = !model.ready;
   if (!model.compatible)
     notices.push({ tone: "warn", text: model.engine_reason || model.plan.note || `${model.name} ne peut pas tourner sur cette machine.` });
   else if (model.plan.note && model.plan.strategy !== "full")
     notices.push({ tone: "info", text: model.plan.note });
 
-  const blocked = (model.requires_references && !hasRefs) || missing || !model.compatible;
+  const blocked = (model.requires_references && !hasRefs) || notReady || !model.compatible;
   const canSend = prompt.trim().length > 0 && !blocked && uploading.length === 0 && !sending;
 
   const send = async () => {
@@ -156,21 +158,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
         className="block w-full resize-none bg-transparent px-4.5 pb-2 pt-4 text-[15.5px] leading-relaxed text-ink placeholder:text-faint focus:outline-none"
       />
 
-      {missing && model.compatible && (
-        <div className="mx-4 mb-1 flex flex-wrap items-center gap-2 rounded-xl bg-warn/10 px-3 py-2 text-[12.5px] text-ink-2">
-          <CloudDownload className="size-4 shrink-0 text-warn" />
-          <span className="min-w-0 flex-1">
-            {model.install === "partial" ? "Ce modèle n'est pas complet" : "Ce modèle n'est pas encore téléchargé"}
-            {model.download_size_gb ? ` (≈ ${Math.round(model.download_size_gb - model.installed_gb)} Go)` : ""}.
-          </span>
-          <button
-            onClick={() => useStore.getState().setModelsOpen(true)}
-            className="rounded-lg bg-safe px-2.5 py-1 text-[12px] font-medium text-safe-ink hover:brightness-110"
-          >
-            Télécharger…
-          </button>
-        </div>
-      )}
+      {model.compatible && !model.ready && !(hero && welcomeShown) && <SetupPrompt model={model} />}
 
       {notices.length > 0 && (
         <div className="space-y-1 px-4.5 pb-1">
@@ -215,7 +203,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
 
         <div className="flex-1" />
         <span className="hidden pr-1 text-[11px] text-faint lg:inline">⇧↵ nouvelle ligne</span>
-        <Tip label={missing ? "Modèle à télécharger" : !model.compatible ? "Modèle incompatible avec cette machine" : blocked ? "Ajoutez une image de référence" : "Générer"} kbd="↵">
+        <Tip label={notReady && model.compatible ? "À installer avant de générer" : !model.compatible ? "Modèle incompatible avec cette machine" : blocked ? "Ajoutez une image de référence" : "Générer"} kbd="↵">
           <button
             onClick={send}
             disabled={!canSend}
