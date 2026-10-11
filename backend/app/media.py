@@ -12,6 +12,9 @@ from .config import OUTPUTS_DIR, THUMBS_DIR, UPLOADS_DIR
 
 THUMB_SIZE = 640
 MAX_UPLOAD_SIDE = 4096
+# « Origine » reprend la taille de la référence, plafonnée pour ne pas surprendre par un calcul énorme
+# (une photo de 12 Mpx coûterait des dizaines de minutes) ; une taille plus grande reste possible en « Libre ».
+NATIVE_MAX_MP = 1.6
 
 Image.MAX_IMAGE_PIXELS = 120_000_000
 
@@ -87,7 +90,8 @@ def resolve_size(
     """Dimensions finales à partir des paramètres de l'interface.
 
     - aspect "custom" : largeur/hauteur explicites ;
-    - aspect "auto"   : ratio de la première image de référence (sinon carré) ;
+    - aspect "auto"   : ratio de la première image de référence (sinon carré) ; si `megapixels` est absent ou 0
+                        ("Origine"), la taille de cette image est reprise telle quelle (plafonnée à NATIVE_MAX_MP) ;
     - aspect "W:H"    : ratio donné.
     La surface visée est `megapixels`, arrondie au multiple requis par le modèle.
     """
@@ -100,6 +104,9 @@ def resolve_size(
     ratio = None
     if aspect == "auto" and reference is not None:
         rw, rh = image_size(reference)
+        if not params.get("megapixels"):  # « Origine » : on garde la taille de la référence
+            scale = min(1.0, max_side / max(rw, rh), math.sqrt(NATIVE_MAX_MP * 1024 * 1024 / (rw * rh)))
+            return snap(rw * scale, multiple, min_side, max_side), snap(rh * scale, multiple, min_side, max_side)
         ratio = rw / rh
     if ratio is None:
         ratio = parse_aspect(aspect) or 1.0

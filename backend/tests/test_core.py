@@ -109,3 +109,45 @@ class TestSizes:
     def test_max_side_respected(self):
         w, h = resolve_size({"aspect": "21:9", "megapixels": 4.0}, **self.M)
         assert max(w, h) <= 2048
+
+
+class TestNativeSize:
+    """« Origine » : en édition, la taille de la référence est reprise (plafonnée), sauf choix explicite."""
+
+    M = dict(multiple=32, min_side=256, max_side=2048, default_megapixels=1.0)
+
+    def ref(self, tmp_path, w, h):
+        from PIL import Image
+
+        p = tmp_path / "ref.png"
+        Image.new("RGB", (w, h)).save(p)
+        return p
+
+    def test_auto_without_megapixels_keeps_the_reference_size(self, tmp_path):
+        ref = self.ref(tmp_path, 576, 576)
+        assert resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M) == (576, 576)
+        assert resolve_size({"aspect": "auto"}, reference=ref, **self.M) == (576, 576)
+
+    def test_non_square_reference_is_kept_and_snapped(self, tmp_path):
+        ref = self.ref(tmp_path, 1000, 600)
+        w, h = resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M)
+        assert (w, h) == (992, 608)  # multiples de 32 les plus proches de 1000 et 600
+
+    def test_huge_reference_is_capped(self, tmp_path):
+        ref = self.ref(tmp_path, 4000, 3000)
+        w, h = resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M)
+        assert w * h <= 1.7 * 1024 * 1024 and abs(w / h - 4 / 3) < 0.03
+
+    def test_explicit_definition_is_respected(self, tmp_path):
+        ref = self.ref(tmp_path, 576, 576)
+        assert resolve_size({"aspect": "auto", "megapixels": 0.25}, reference=ref, **self.M) == (512, 512)
+        assert resolve_size({"aspect": "auto", "megapixels": 1.0}, reference=ref, **self.M) == (1024, 1024)
+
+    def test_explicit_ratio_and_custom_size_ignore_the_reference(self, tmp_path):
+        ref = self.ref(tmp_path, 576, 576)
+        w, h = resolve_size({"aspect": "16:9", "megapixels": 0}, reference=ref, **self.M)
+        assert abs(w / h - 16 / 9) < 0.05
+        assert resolve_size({"aspect": "custom", "width": 1536, "height": 640}, reference=ref, **self.M) == (1536, 640)
+
+    def test_auto_without_reference_falls_back_to_square(self):
+        assert resolve_size({"aspect": "auto", "megapixels": 0}, reference=None, **self.M) == (1024, 1024)

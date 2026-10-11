@@ -11,6 +11,7 @@ crashs d'un pilote GPU n'emportent pas le serveur. Le coût est le rechargement 
     fa_variants    builds pour lesquelles activer FlashAttention (--diffusion-fa)
     guidance_arg   option de la guidance (défaut --cfg-scale)
     edit_guidance  guidance appliquée en édition (références) quand l'utilisateur laisse la valeur par défaut (1)
+    edit_steps     nombre d'étapes appliqué en édition quand l'utilisateur laisse la valeur par défaut
 """
 
 from __future__ import annotations
@@ -31,6 +32,23 @@ from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 
 # « |=====>    | 3/8 - 2.34s/it » ou « 3/8 - 0.42it/s »
 PROGRESS = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
+
+
+def effective_settings(spec, req: GenerationRequest, editing: bool) -> tuple[int, float | None]:
+    """Étapes et guidance réellement utilisées.
+
+    En édition par instruction (images de référence), les valeurs par défaut de création ne conviennent pas : il
+    faut une guidance (mesuré : 1 ne suit pas l'instruction) et 12 étapes suffisent (mesuré : 12 donnent le même
+    résultat que 20 en deux fois moins de temps). On ne remplace que les valeurs laissées par défaut par
+    l'utilisateur, jamais un réglage explicite."""
+    o = spec.options
+    steps, guidance = req.steps, req.guidance
+    if editing:
+        if o.get("edit_steps") and steps == spec.default_params().get("steps"):
+            steps = o["edit_steps"]
+        if o.get("edit_guidance") and (guidance is None or guidance <= 1.0):
+            guidance = o["edit_guidance"]
+    return steps, guidance
 
 
 class SdcppEngine(Engine):
@@ -67,11 +85,9 @@ class SdcppEngine(Engine):
                 if role in o.get("vision_for_refs", []) and not refs:
                     continue
                 cmd += [f"--{role}", path]
-            cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--steps", str(req.steps),
+            steps, guidance = effective_settings(self.spec, req, editing=bool(refs) and not use_init)
+            cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--steps", str(steps),
                     "-s", str(req.seed), "-o", str(out)]
-            guidance = req.guidance
-            if refs and not use_init and o.get("edit_guidance") and (guidance is None or guidance <= 1.0):
-                guidance = o["edit_guidance"]  # l'édition par instruction exige une guidance (mesuré : 1 ne suffit pas)
             if guidance is not None:
                 cmd += [o.get("guidance_arg", "--cfg-scale"), str(guidance)]
             if (req.negative_prompt or "").strip():

@@ -71,7 +71,9 @@ QWEN21_GGUF = ModelSpec(
     reference_mode="multi",
     max_references=4,
     params=[
-        ParamSpec("steps", "Étapes", "int", 20, 8, 50, 1, "Plus d'étapes = plus de détails, plus lent."),
+        ParamSpec("steps", "Étapes", "int", 20, 8, 50, 1,
+                  "Plus d'étapes = plus de détails, plus lent. Valeur par défaut (20) : remplacée par 12 en édition "
+                  "avec des références, qui donne le même résultat en deux fois moins de temps."),
         ParamSpec("guidance", "Guidance (CFG)", "float", 1.0, 1.0, 10.0, 0.5,
                   "1 = automatique : désactivée pour créer une image, 4 pour éditer avec des références "
                   "(la guidance double le temps de calcul).", advanced=True),
@@ -97,6 +99,7 @@ QWEN21_GGUF = ModelSpec(
         "fa_variants": ["metal", "cuda", "rocm"],
         "guidance_arg": "--cfg-scale",
         "edit_guidance": 4.0,
+        "edit_steps": 12,
     },
 )
 

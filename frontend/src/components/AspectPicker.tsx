@@ -65,16 +65,21 @@ export function AspectPicker({ model, params, reference, onChange }: Props) {
           </div>
 
           {aspect === "custom" ? (
+            <>
             <div className="mt-3 flex items-center gap-2">
               <DimInput label="Largeur" value={params.width ?? size.width} onChange={(width) => onChange({ width })} model={model} />
               <span className="pt-4 text-faint">×</span>
               <DimInput label="Hauteur" value={params.height ?? size.height} onChange={(height) => onChange({ height })} model={model} />
             </div>
+            <p className="mt-1.5 text-[11px] leading-snug text-faint">
+              Arrondi au multiple de {model.size_multiple} px · de {model.min_side} à {model.max_side} px par côté.
+            </p>
+            </>
           ) : (
             <>
               <div className="eyebrow mb-2 mt-4">Définition</div>
-              <div className="grid grid-cols-4 gap-1 rounded-xl bg-surface p-1 ring-1 ring-line">
-                {QUALITIES.map((q) => {
+              <div className={cx("grid gap-1 rounded-xl bg-surface p-1 ring-1 ring-line", reference && aspect === "auto" ? "grid-cols-5" : "grid-cols-4")}>
+                {QUALITIES.filter((q) => !("needsReference" in q) || (reference && aspect === "auto")).map((q) => {
                   const active = Math.abs((params.megapixels ?? model.default_megapixels) - q.mp) < 0.01;
                   return (
                     <button

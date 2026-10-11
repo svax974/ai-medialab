@@ -52,6 +52,8 @@ export function addAsReference(asset: Asset) {
 export function effectiveParams(model: ModelInfo, stored: GenParams | undefined, hasRefs: boolean): GenParams {
   const defaults: GenParams = Object.fromEntries(model.params.map((p) => [p.key, p.default]));
   const merged: GenParams = { ...defaults, megapixels: model.default_megapixels, ...stored };
+  // Avec des références, la définition par défaut est « Origine » (0) : on garde la taille de l'image.
+  if (hasRefs && stored?.megapixels === undefined) merged.megapixels = 0;
   if (!merged.aspect || (merged.aspect === "auto" && !hasRefs)) merged.aspect = hasRefs ? "auto" : "1:1";
   return merged;
 }
