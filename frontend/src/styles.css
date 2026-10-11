@@ -154,6 +154,10 @@
     padding: 6px;
     z-index: 60;
     animation: fade 0.14s ease both;
+    /* Jamais plus haut que la place disponible (Radix la calcule selon la fenêtre) : on défile au lieu de déborder */
+    max-height: min(var(--radix-popper-available-height, 85vh), 85vh);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .menu-item {
     display: flex;

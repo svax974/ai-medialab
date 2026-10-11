@@ -41,7 +41,7 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
         </Popover.Trigger>
       </Tip>
       <Popover.Portal>
-        <Popover.Content side="top" align="start" sideOffset={8} className="menu w-[340px] p-3.5">
+        <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[340px] p-3.5">
           <div className="mb-3 flex items-center justify-between">
             <span className="eyebrow">Réglages · {model.name}</span>
             <button

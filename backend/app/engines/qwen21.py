@@ -9,8 +9,9 @@ SPEC = ModelSpec(
     id="qwen-image-2.1",
     name="Qwen Image 2.1",
     family="Qwen",
-    description="Texte → image de haute qualité, excellent rendu du texte dans l'image. "
-    "Une image jointe sert d'image de départ (img2img).",
+    description="Texte → image de haute qualité, excellent rendu du texte dans l'image ; rapide sur Mac. "
+    "Une image jointe sert seulement de point de départ (img2img) : pour éditer avec une ou plusieurs "
+    "références, utilisez la version GGUF.",
     engine="app.engines.qwen21:Qwen21Engine",
     backend="mlx",
     reference_mode="init",

@@ -252,7 +252,7 @@ function ConversationItem({ conv, active }: { conv: ConversationSummary; active:
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="start" sideOffset={4} className="menu min-w-44">
+          <DropdownMenu.Content collisionPadding={12} align="start" sideOffset={4} className="menu min-w-44">
             <DropdownMenu.Item className="menu-item" onSelect={() => api.patchConversation(conv.id, { pinned: !conv.pinned })}>
               {conv.pinned ? <PinOff className="size-4" /> : <Pin className="size-4" />}
               {conv.pinned ? "Désépingler" : "Épingler"}

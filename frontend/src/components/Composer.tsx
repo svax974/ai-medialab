@@ -44,6 +44,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
 
   const welcomeShown = !!useWelcomeModel(); // l'accueil affiche déjà la carte d'installation de ce modèle
   const hasRefs = references.length > 0;
+  const setModel = useStore((st) => st.setModel);
   const params = effectiveParams(model, stored, hasRefs);
 
   useEffect(() => {
@@ -59,14 +60,27 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     el.style.height = `${Math.min(el.scrollHeight, window.innerHeight * 0.4)}px`;
   }, [prompt]);
 
+  // Un modèle qui accepte toutes les images jointes : prêt d'abord, sinon installable, le plus léger en premier.
+  const { data: catalog } = useModels();
+  const multiAlternative = (catalog?.models ?? [])
+    .filter((m) => m.id !== model.id && m.reference_mode === "multi" && m.compatible && m.max_references >= references.length)
+    .sort((a, b) => Number(b.ready) - Number(a.ready) || (a.download_size_gb ?? 0) - (b.download_size_gb ?? 0))[0];
+  const switchAction = multiAlternative
+    ? { label: `Passer à ${multiAlternative.name} (${BACKENDS[multiAlternative.backend]})`, run: () => setModel(multiAlternative.id) }
+    : undefined;
+
   // Contraintes du modèle vis-à-vis des références.
-  const notices: { tone: "warn" | "info"; text: string }[] = [];
+  const notices: { tone: "warn" | "info"; text: string; action?: { label: string; run: () => void } }[] = [];
   if (model.requires_references && !hasRefs)
     notices.push({ tone: "warn", text: `${model.name} modifie des images existantes : ajoutez au moins une image de référence.` });
   if (model.reference_mode === "none" && hasRefs)
-    notices.push({ tone: "warn", text: `${model.name} n'utilise pas les images de référence.` });
+    notices.push({ tone: "warn", text: `${model.name} n'utilise pas les images de référence.`, action: switchAction });
   if (model.reference_mode === "init" && references.length > 1)
-    notices.push({ tone: "info", text: `${model.name} part d'une seule image (img2img) : seule la 1re sera utilisée. Pour combiner plusieurs images, choisissez un modèle d'édition.` });
+    notices.push({
+      tone: "warn",
+      text: `${model.name} part d'une seule image (img2img) : seule la 1re sera utilisée. Pour combiner plusieurs images, il faut un modèle d'édition.`,
+      action: switchAction,
+    });
   if (model.reference_mode === "multi" && references.length > model.max_references)
     notices.push({ tone: "info", text: `${model.name} accepte ${model.max_references} images au plus : les suivantes seront ignorées.` });
   const notReady = !model.ready;
@@ -169,7 +183,15 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
               ) : (
                 <Info className="mt-px size-3.5 shrink-0" />
               )}
-              {n.text}
+              <span className="min-w-0 flex-1">{n.text}</span>
+              {n.action && (
+                <button
+                  onClick={n.action.run}
+                  className="shrink-0 rounded-lg bg-safe px-2.5 py-1 text-[11.5px] font-medium text-safe-ink hover:brightness-110"
+                >
+                  {n.action.label}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -220,6 +242,8 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     </div>
   );
 }
+
+const BACKENDS: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "démo" };
 
 function placeholderFor(model: ModelInfo, hasRefs: boolean) {
   if (!hasRefs) {

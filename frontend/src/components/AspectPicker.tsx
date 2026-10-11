@@ -41,7 +41,7 @@ export function AspectPicker({ model, params, reference, onChange }: Props) {
         </button>
       </Popover.Trigger>
       <Popover.Portal>
-        <Popover.Content side="top" align="start" sideOffset={8} className="menu w-[340px] p-3">
+        <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[340px] p-3">
           <div className="eyebrow mb-2">Format</div>
           <div className="grid grid-cols-4 gap-1.5">
             {reference && (

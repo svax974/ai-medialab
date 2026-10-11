@@ -24,7 +24,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content side="top" align="start" sideOffset={8} className="menu max-h-[70vh] w-[380px] overflow-y-auto">
+        <DropdownMenu.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[380px]">
           <div className="eyebrow px-2.5 pb-1 pt-1.5">Modèles locaux</div>
           {data?.models.map((m) => {
             const loaded = engine?.model_id === m.id;

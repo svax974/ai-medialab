@@ -258,7 +258,7 @@ function MessageFooter({ message, active }: { message: Message; active: boolean 
           </button>
         </DropdownMenu.Trigger>
         <DropdownMenu.Portal>
-          <DropdownMenu.Content align="start" sideOffset={4} className="menu min-w-56">
+          <DropdownMenu.Content collisionPadding={12} align="start" sideOffset={4} className="menu min-w-56">
             <DropdownMenu.Item className="menu-item" onSelect={reuseSettings}>
               <PencilLine className="size-4" /> Reprendre ces réglages
             </DropdownMenu.Item>
