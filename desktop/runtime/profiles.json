@@ -1,0 +1,71 @@
+{
+  "_comment": "Profils d'exécution embarqués dans l'application. Un installateur = un profil. Index et versions vérifiés le 2026-10-11 (HEAD des index) ; seul « mac-arm64 » a été construit ET testé de bout en bout.",
+  "profiles": {
+    "mac-arm64": {
+      "label": "macOS Apple Silicon (Metal : MLX + PyTorch/MPS)",
+      "os": "macos",
+      "arch": "aarch64",
+      "python": "3.12",
+      "extras": ["mlx", "torch"],
+      "index_url": null,
+      "extra_index_urls": [],
+      "requirements": ["torchvision"],
+      "status": "verified",
+      "notes": "Roues macOS arm64 de PyPI (torch avec backend MPS)."
+    },
+    "win-cuda": {
+      "label": "Windows + NVIDIA (CUDA 12.8)",
+      "os": "windows",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": ["torch"],
+      "index_url": null,
+      "extra_index_urls": ["https://download.pytorch.org/whl/cu128"],
+      "requirements": ["torch==2.11.0+cu128", "torchvision==0.26.0+cu128"],
+      "status": "unverified",
+      "notes": "cu128 couvre Maxwell à Blackwell (RTX 50). Non construit ici (impossible hors Windows)."
+    },
+    "linux-cuda": {
+      "label": "Linux + NVIDIA (CUDA 12.8)",
+      "os": "linux",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": ["torch"],
+      "index_url": null,
+      "extra_index_urls": ["https://download.pytorch.org/whl/cu128"],
+      "requirements": ["torch==2.11.0+cu128", "torchvision==0.26.0+cu128"],
+      "status": "unverified",
+      "notes": "Non construit ici."
+    },
+    "linux-rocm": {
+      "label": "Linux + AMD (ROCm 7.2)",
+      "os": "linux",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": ["torch"],
+      "index_url": null,
+      "extra_index_urls": ["https://download.pytorch.org/whl/rocm7.2"],
+      "requirements": ["torch==2.14.1+rocm7.2", "torchvision==0.29.1+rocm7.2"],
+      "status": "unverified",
+      "notes": "Roues officielles PyTorch ROCm 7.2. Nécessite le pilote amdgpu/ROCm côté hôte. Non construit ici."
+    },
+    "win-rocm": {
+      "label": "Windows + AMD Radeon (ROCm 7.2.1, préversion)",
+      "os": "windows",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": ["torch"],
+      "index_url": null,
+      "extra_index_urls": [],
+      "requirements": [
+        "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_core-7.2.1-py3-none-win_amd64.whl",
+        "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_devel-7.2.1-py3-none-win_amd64.whl",
+        "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/rocm_sdk_libraries_custom-7.2.1-py3-none-win_amd64.whl",
+        "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torch-2.9.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl",
+        "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torchvision-0.24.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl"
+      ],
+      "status": "experimental",
+      "notes": "Pas d'index pip : roues directes hébergées par AMD (repo.radeon.com), Python 3.12 obligatoire, GPU Radeon RX 7000/9000 (+ quelques APU Ryzen AI) selon les notes de version AMD 7.2. Préversion publique ; non construit ici."
+    }
+  }
+}

@@ -1,0 +1,140 @@
+# Chambre noire
+
+Studio local de création et d'édition d'images, sous forme de chat. Les modèles ouverts tournent sur la
+machine — Metal (Apple Silicon), NVIDIA (CUDA) ou AMD (ROCm) — sans service externe. L'application embarque
+le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hugging Face).
+
+- Conversations : historique, recherche, épinglage, renommage, suppression.
+- Composer : prompt, images de référence (bouton, glisser-déposer, coller), choix du modèle,
+  format/définition, nombre d'images (1–4), étapes, graine fixe ou aléatoire, prompt négatif…
+- Génération en temps réel : file d'attente, chargement du modèle, étapes, temps restant, aperçus
+  intermédiaires qui « se révèlent », annulation.
+- Résultats : varier (nouvelles graines), relancer à l'identique, reprendre les réglages, utiliser une
+  image comme référence pour l'itération suivante, favoris, téléchargement, visionneuse plein écran.
+- Galerie de toutes les images, filtrable (prompt, favoris).
+- Interface sombre par défaut (thème clair en option).
+- Gestionnaire de modèles : détection de la machine (GPU, mémoire, disque), téléchargement avec progression,
+  reprise et annulation, suppression, compatibilité mémoire par modèle.
+
+## Démarrer (développement)
+
+```sh
+./start.sh            # installe, compile l'interface, sert sur http://127.0.0.1:8000
+```
+
+Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20. Sur Mac Apple Silicon `start.sh` installe MLX et PyTorch ;
+le premier lancement installe les dépendances dans `backend/.venv`. Pour une application autonome (aucun prérequis),
+voir « Application de bureau » plus bas.
+
+Variables utiles :
+
+| Variable | Rôle |
+|---|---|
+| `PORT`, `HOST` | Adresse d'écoute (défaut `127.0.0.1:8000`) |
+| `IMAGEGEN_DATA_DIR` | Dossier des données (défaut `./data` : base SQLite, images) |
+| `HF_HOME` / `HF_HUB_CACHE` | Emplacement des modèles (défaut `~/.cache/huggingface/hub`, partagé avec mflux/diffusers) |
+| `IMAGEGEN_DEMO=1` | Ajoute un modèle « Démo » instantané, sans GPU, pour tester l'interface |
+
+Développement (rechargement à chaud) : `./dev.sh` puis http://localhost:5173.
+
+## Moteurs et modèles
+
+Deux moteurs d'inférence, choisis selon la machine :
+
+| Moteur | Matériel | Remarque |
+|---|---|---|
+| **MLX** (mflux) | Apple Silicon (Metal natif) | Modèles quantifiés 4/6/8 bits : le plus économe en mémoire sur Mac |
+| **PyTorch + diffusers** | NVIDIA (CUDA), AMD (ROCm), Apple (MPS) | Pleine précision bf16 ; déchargement CPU automatique si la VRAM est insuffisante |
+
+| Modèle | Moteur | Usage | Références | Téléchargement |
+|---|---|---|---|---|
+| **Qwen Image 2.1** | MLX | Texte → image, img2img | 1 image de départ | 33 Go |
+| **Qwen Image 2.1** | PyTorch | Texte → image, **édition**, RGBA | jusqu'à 10 images | 33 Go (32 Go de poids bf16) |
+| **Z-Image Turbo** (Apache 2.0) | PyTorch | Texte → image rapide (≈ 9 étapes) | — | 33 Go |
+| **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 7 Go |
+| **Qwen Image Edit** | MLX | Édition par instruction | 1 à 3 images | 58 Go |
+
+Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
+renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine
+(planificateur mémoire : tout sur le GPU, composants chargés un à un, couche par couche, ou refus avec explication).
+
+Un seul modèle est chargé à la fois ; il reste en mémoire entre deux générations puis est déchargé après un délai
+réglable (Réglages → Mémoire) ou à la demande (indicateur en bas de la barre latérale).
+
+**Économie de mémoire (MLX, activée par défaut).** L'encodeur de texte de Qwen Image 2.1 (≈ 15 Go) n'est chargé que
+le temps d'encoder le prompt, puis libéré ; le décodage VAE se fait par tuiles. Mesuré sur un Mac 36 Go : ≈ 9 Go
+résidents (pic transitoire ≈ 24 Go pendant l'encodage d'un nouveau prompt), contre ≈ 31 Go sans ces mesures — ce qui
+fait swapper la machine. À désactiver dans Réglages sur une machine très dotée en mémoire.
+
+### Ajouter un modèle
+
+- **Modèle diffusers** (le plus courant) : ajouter une `ModelSpec` dans `backend/app/engines/torch_models.py`
+  — dépôt Hugging Face, motifs de fichiers à télécharger, classe de pipeline, paramètres exposés. Aucun code de
+  moteur à écrire : les arguments inconnus du pipeline sont ignorés.
+- **Autre moteur** : une classe `Engine` (`load()` + `generate()`) dans `backend/app/engines/`, voir `qwen21.py`
+  pour MLX. Puis l'inscrire dans `backend/app/engines/__init__.py`.
+
+L'interface s'adapte seule : sélecteur, curseurs, règles sur les images de référence, état d'installation.
+
+## Architecture
+
+```
+backend/   FastAPI · SQLite · worker MLX dans un processus séparé
+  app/main.py        application, fichiers statiques, interface compilée
+  app/api/routes.py  API REST + flux SSE (/api/events)
+  app/jobs.py        file d'attente, cycle de vie du worker, progression
+  app/worker.py      processus qui charge le modèle et génère
+  app/engines/       registre, moteurs MLX et diffusers, catalogue des modèles
+  app/downloads.py   téléchargement des modèles (processus dédié, reprise, annulation)
+  app/system.py      détection GPU / mémoire / disque, planificateur mémoire
+frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
+data/      base SQLite, références importées, images générées, vignettes (créé au démarrage)
+```
+
+Le worker tourne dans son propre processus : le serveur reste réactif pendant le calcul, décharger un
+modèle libère vraiment la mémoire, et un plantage (mémoire insuffisante…) n'emporte pas l'application.
+
+## Application de bureau
+
+Application autonome (coque [Tauri](https://tauri.app) v2 + interpréteur Python et dépendances **embarqués** + serveur + interface).
+Aucune installation de Python, Node ou uv n'est nécessaire pour l'utiliser ; interface en thème sombre.
+
+| Profil | Cible | État |
+|---|---|---|
+| `mac-arm64` | macOS Apple Silicon — Metal (MLX) et PyTorch/MPS | **construit et testé** |
+| `win-cuda` | Windows + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
+| `linux-cuda` | Linux + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
+| `linux-rocm` | Linux + AMD (ROCm 7.2) | scripté, **non vérifié** |
+| `win-rocm` | Windows + AMD Radeon (ROCm 7.2.1, préversion AMD) | scripté, **expérimental, non vérifié** |
+
+Un installateur = un profil (le build de PyTorch dépend du GPU). Les profils (index pip, versions) sont dans
+`desktop/runtime/profiles.json` ; le workflow `.github/workflows/build-desktop.yml` (jamais exécuté) les construit sur
+macOS, Windows et Linux — **un profil ne se construit que sur son propre OS**.
+
+### Construire (macOS Apple Silicon)
+
+Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20, Rust (`rustup`), Xcode Command Line Tools. ~6 Go d'espace libre.
+
+```sh
+cd frontend && npm install && npm run build && cd ..        # interface (si dist/ absent)
+python3 scripts/build_runtime.py --profile mac-arm64        # → desktop/build/resources (Python + dépendances, ~1,3 Go)
+cd desktop && npm install && npx tauri build --bundles app,dmg
+# → desktop/src-tauri/target/release/bundle/macos/Chambre noire.app
+# → desktop/src-tauri/target/release/bundle/dmg/Chambre noire_0.1.0_aarch64.dmg
+```
+
+Après une modification du backend ou de l'interface, `python3 scripts/build_runtime.py --profile mac-arm64 --refresh-app`
+ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx tauri build` régénère l'application.
+
+### Fonctionnement
+
+- Au lancement, la coque choisit un port local libre, démarre le serveur avec le Python embarqué, affiche un écran de
+  démarrage, puis charge l'interface. À la fermeture elle arrête le serveur **et** le worker de génération.
+- Données (base, images, journaux) : `~/Library/Application Support/app.chambrenoire.studio/`
+  (journal du serveur : `logs/backend.log`). Les modèles restent dans le cache Hugging Face habituel (`~/.cache/huggingface`).
+- Signature **ad hoc** uniquement (pas de compte développeur Apple) : une application téléchargée est mise en quarantaine
+  par Gatekeeper. Pour l'ouvrir : clic droit → Ouvrir, ou `xattr -dr com.apple.quarantine "/Applications/Chambre noire.app"`.
+  Une distribution publique demande un certificat « Developer ID » et la notarisation.
+- Itérer sans réassembler le bundle : `CHAMBRE_NOIRE_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/chambre-noire`
+  (la coque utilise alors ces ressources au lieu de celles du `.app`).
+- Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.

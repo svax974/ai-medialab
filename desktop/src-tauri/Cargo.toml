@@ -1,0 +1,27 @@
+[package]
+name = "chambre-noire"
+version = "0.1.0"
+description = "Chambre noire — studio local de création et d'édition d'images"
+edition = "2021"
+rust-version = "1.77"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde_json = "1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# Binaire de coque : petit et rapide à produire (le poids de l'application est dans le runtime Python).
+[profile.release]
+opt-level = "s"
+lto = "thin"
+codegen-units = 4
+strip = true
+panic = "abort"

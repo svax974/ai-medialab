@@ -1,0 +1,45 @@
+# NON VÉRIFIÉ : ce workflow n'a jamais été exécuté (il a été écrit sur un Mac sans accès à GitHub Actions).
+# Seul le profil mac-arm64 a été construit et testé, en local, avec scripts/build_runtime.py + `tauri build`.
+name: build-desktop
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    name: ${{ matrix.profile }}
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { profile: mac-arm64,  runner: macos-14,      bundles: "app,dmg", experimental: false }
+          - { profile: win-cuda,   runner: windows-2022,  bundles: "nsis",    experimental: false }
+          - { profile: win-rocm,   runner: windows-2022,  bundles: "nsis",    experimental: true }
+          - { profile: linux-cuda, runner: ubuntu-22.04,  bundles: "appimage,deb", experimental: false }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Dépendances Linux (webkit2gtk)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+      - name: Interface
+        working-directory: frontend
+        run: npm ci && npm run build
+      - name: Runtime embarqué (${{ matrix.profile }})
+        run: python scripts/build_runtime.py --profile ${{ matrix.profile }} --out desktop/build/resources
+      - name: Application
+        working-directory: desktop
+        run: npm ci && npx tauri build --bundles ${{ matrix.bundles }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chambre-noire-${{ matrix.profile }}
+          path: desktop/src-tauri/target/release/bundle/**/*

@@ -1,0 +1,38 @@
+[project]
+name = "chambre-noire"
+version = "0.1.0"
+description = "Chambre noire — studio local de création et d'édition d'images (backend)"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "python-multipart>=0.0.12",
+    "pillow>=11.0",
+    "huggingface_hub>=0.30",
+    "psutil>=6.0",
+]
+
+[project.optional-dependencies]
+# Moteur Metal natif (Apple Silicon) : mflux / MLX.
+mlx = ["mflux==0.20.0; sys_platform == 'darwin' and platform_machine == 'arm64'"]
+# Moteur PyTorch + diffusers : NVIDIA (CUDA), AMD (ROCm), Apple (MPS). Le build de torch est choisi
+# par le profil d'exécution (voir desktop/runtime/profiles.json), pas ici.
+torch = [
+    "torch>=2.4",
+    "torchvision",  # requis par le processeur d'images Qwen3-VL (transformers 5)
+    "diffusers>=0.41",
+    "transformers>=5.17",
+    "accelerate>=1.0",
+    "sentencepiece",
+    "protobuf",
+    "safetensors",
+]
+
+[dependency-groups]
+dev = ["pytest>=8", "httpx>=0.27"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 110

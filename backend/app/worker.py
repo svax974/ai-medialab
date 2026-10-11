@@ -1,0 +1,118 @@
+"""Processus worker : charge un modèle une fois et enchaîne les générations.
+
+Isolé dans un processus séparé (multiprocessing « spawn ») pour que :
+- le serveur web reste réactif pendant le calcul MLX ;
+- décharger un modèle libère réellement toute la mémoire (fin du processus) ;
+- un plantage (mémoire insuffisante, erreur Metal) n'emporte pas le serveur.
+
+Protocole : le parent envoie des dicts sur `commands`, le worker répond par des dicts sur `events`.
+"""
+
+from __future__ import annotations
+
+import os
+import time
+import traceback
+from pathlib import Path
+
+
+def _exit_with_parent() -> None:
+    """Le worker tient des Go de mémoire : il ne doit jamais survivre au serveur (même tué brutalement)."""
+    import multiprocessing
+    import threading
+
+    parent = multiprocessing.parent_process()
+    if parent is None:
+        return
+
+    def watch() -> None:
+        parent.join()  # retourne dès que le processus parent n'existe plus
+        os._exit(0)
+
+    threading.Thread(target=watch, daemon=True, name="parent-watch").start()
+
+
+def run_worker(model_id: str, quantize: int | None, options: dict, commands, events, cancel_event) -> None:
+    from PIL import Image
+
+    _exit_with_parent()
+
+    from .engines import create_engine, get_spec
+    from .engines.base import GenerationCancelled, GenerationRequest, Hooks
+
+    def emit(kind: str, **data) -> None:
+        events.put({"type": kind, **data})
+
+    emit("loading", model_id=model_id, pid=os.getpid())
+    started = time.time()
+    try:
+        spec = get_spec(model_id)
+        engine = create_engine(spec, quantize, options)
+        engine.load()
+    except BaseException as exc:  # noqa: BLE001
+        emit("load_error", error=_describe(exc), trace=traceback.format_exc())
+        return
+    emit("ready", model_id=model_id, load_seconds=round(time.time() - started, 1))
+
+    while True:
+        cmd = commands.get()
+        if cmd is None or cmd.get("type") == "shutdown":
+            break
+        if cmd.get("type") != "generate":
+            continue
+
+        job_id = cmd["job_id"]
+        cancel_event.clear()
+        items: list[dict] = cmd["items"]
+        preview_every = int(cmd.get("preview_every") or 0)
+        try:
+            for index, item in enumerate(items):
+                req = GenerationRequest(**item["request"])
+                output = Path(item["output"])
+                preview_base = Path(cmd["preview_dir"]) / f"{job_id}_{index}"
+                counter = {"n": 0}
+
+                def on_step(step: int, total: int, index=index) -> None:
+                    emit("step", job_id=job_id, index=index, step=step, total=total, t=time.time())
+
+                def on_preview(image: Image.Image, index=index, base=preview_base, counter=counter) -> None:
+                    counter["n"] += 1
+                    path = base.with_name(f"{base.name}_{counter['n']}.jpg")
+                    image.convert("RGB").save(path, quality=80)
+                    emit("preview", job_id=job_id, index=index, path=str(path))
+
+                hooks = Hooks(on_step, on_preview, cancel_event.is_set, preview_every)
+                emit("item_start", job_id=job_id, index=index, seed=req.seed, t=time.time())
+                t0 = time.time()
+                result = engine.generate(req, hooks)
+                engine.save(result, output)
+                emit(
+                    "image",
+                    job_id=job_id,
+                    index=index,
+                    path=str(output),
+                    seed=req.seed,
+                    seconds=round(time.time() - t0, 1),
+                )
+                if cancel_event.is_set():
+                    raise GenerationCancelled()
+            emit("done", job_id=job_id)
+        except GenerationCancelled:
+            emit("cancelled", job_id=job_id)
+        except BaseException as exc:  # noqa: BLE001
+            emit("error", job_id=job_id, error=_describe(exc), trace=traceback.format_exc())
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                break
+
+
+def _describe(exc: BaseException) -> str:
+    text = str(exc).strip() or exc.__class__.__name__
+    lowered = text.lower()
+    if "out of memory" in lowered or "insufficient memory" in lowered:
+        return f"Mémoire insuffisante : {text}. Essayez une quantification plus forte ou une taille plus petite."
+    if "gpu timeout" in lowered or "commandbuffercallbackerrortimeout" in lowered:
+        return (
+            "Le GPU a expiré, généralement parce que la mémoire est saturée (swap). Fermez des applications "
+            "gourmandes, activez l'économie de mémoire ou réduisez la taille, puis réessayez."
+        )
+    return text
