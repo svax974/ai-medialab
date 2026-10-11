@@ -38,7 +38,7 @@ export interface ModelInfo {
   memory_hint: string;
   tags: string[];
   downloaded: boolean;
-  backend: "mlx" | "torch" | "demo";
+  backend: "mlx" | "torch" | "sdcpp" | "demo";
   engine_available: boolean;
   engine_reason: string | null;
   compatible: boolean;

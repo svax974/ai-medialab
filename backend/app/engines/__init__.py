@@ -5,10 +5,10 @@ from __future__ import annotations
 import importlib
 
 from ..config import DEMO_MODE
-from . import demo, qwen21, qwen_edit, torch_models
+from . import demo, gguf_models, qwen21, qwen_edit, torch_models
 from .base import Engine, ModelSpec
 
-_SPECS: list[ModelSpec] = [qwen21.SPEC, *torch_models.SPECS, qwen_edit.SPEC]
+_SPECS: list[ModelSpec] = [qwen21.SPEC, *gguf_models.SPECS, *torch_models.SPECS, qwen_edit.SPEC]
 if DEMO_MODE:
     _SPECS.append(demo.SPEC)
 

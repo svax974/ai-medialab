@@ -1,0 +1,5 @@
+# Cross-compilation Windows depuis macOS/Linux avec mingw-w64 (brew install mingw-w64).
+# Utilisé seulement quand on compile avec --target x86_64-pc-windows-gnu ; sans effet sur le build macOS.
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+ar = "x86_64-w64-mingw32-ar"

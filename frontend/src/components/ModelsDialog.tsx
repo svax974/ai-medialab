@@ -15,9 +15,11 @@ import { Button, IconButton, Spinner } from "./ui";
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 const bytesToGb = (b: number) => b / 1024 ** 3;
 
-const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyTorch", demo: "Démo" };
+const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "Démo" };
+const SDCPP_DEVICE: Record<string, string> = { metal: "Metal", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan", cpu: "CPU" };
 
 function backendLabel(m: ModelInfo, system?: SystemInfo) {
+  if (m.backend === "sdcpp") return `GGUF · ${SDCPP_DEVICE[system?.engines.sdcpp?.device ?? ""] ?? "GPU"}`;
   if (m.backend !== "torch") return BACKEND_LABEL[m.backend];
   const dev = system?.engines.torch?.device;
   return dev === "cuda" ? `PyTorch · ${system?.accelerators[0]?.backend === "rocm" ? "ROCm" : "CUDA"}` : dev === "mps" ? "PyTorch · Metal" : "PyTorch";

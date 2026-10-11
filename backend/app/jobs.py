@@ -210,7 +210,7 @@ class JobManager:
             return
 
         spec = get_spec(plan["model_id"])
-        if spec.hf_repo:
+        if spec.all_sources():
             from .downloads import downloads
 
             downloads.invalidate()

@@ -6,55 +6,97 @@
       "os": "macos",
       "arch": "aarch64",
       "python": "3.12",
-      "extras": ["mlx", "torch"],
+      "extras": [
+        "mlx",
+        "torch"
+      ],
       "index_url": null,
       "extra_index_urls": [],
-      "requirements": ["torchvision"],
+      "requirements": [
+        "torchvision"
+      ],
       "status": "verified",
-      "notes": "Roues macOS arm64 de PyPI (torch avec backend MPS)."
+      "notes": "Roues macOS arm64 de PyPI (torch avec backend MPS).",
+      "sdcpp_variants": [
+        "metal"
+      ]
     },
     "win-cuda": {
       "label": "Windows + NVIDIA (CUDA 12.8)",
       "os": "windows",
       "arch": "x86_64",
       "python": "3.12",
-      "extras": ["torch"],
+      "extras": [
+        "torch"
+      ],
       "index_url": null,
-      "extra_index_urls": ["https://download.pytorch.org/whl/cu128"],
-      "requirements": ["torch==2.11.0+cu128", "torchvision==0.26.0+cu128"],
+      "extra_index_urls": [
+        "https://download.pytorch.org/whl/cu128"
+      ],
+      "requirements": [
+        "torch==2.11.0+cu128",
+        "torchvision==0.26.0+cu128"
+      ],
       "status": "unverified",
-      "notes": "cu128 couvre Maxwell à Blackwell (RTX 50). Non construit ici (impossible hors Windows)."
+      "notes": "cu128 couvre Maxwell à Blackwell (RTX 50). Non construit ici (impossible hors Windows).",
+      "sdcpp_variants": [
+        "cuda",
+        "vulkan"
+      ]
     },
     "linux-cuda": {
       "label": "Linux + NVIDIA (CUDA 12.8)",
       "os": "linux",
       "arch": "x86_64",
       "python": "3.12",
-      "extras": ["torch"],
+      "extras": [
+        "torch"
+      ],
       "index_url": null,
-      "extra_index_urls": ["https://download.pytorch.org/whl/cu128"],
-      "requirements": ["torch==2.11.0+cu128", "torchvision==0.26.0+cu128"],
+      "extra_index_urls": [
+        "https://download.pytorch.org/whl/cu128"
+      ],
+      "requirements": [
+        "torch==2.11.0+cu128",
+        "torchvision==0.26.0+cu128"
+      ],
       "status": "unverified",
-      "notes": "Non construit ici."
+      "notes": "Non construit ici.",
+      "sdcpp_variants": [
+        "vulkan"
+      ]
     },
     "linux-rocm": {
       "label": "Linux + AMD (ROCm 7.2)",
       "os": "linux",
       "arch": "x86_64",
       "python": "3.12",
-      "extras": ["torch"],
+      "extras": [
+        "torch"
+      ],
       "index_url": null,
-      "extra_index_urls": ["https://download.pytorch.org/whl/rocm7.2"],
-      "requirements": ["torch==2.14.1+rocm7.2", "torchvision==0.29.1+rocm7.2"],
+      "extra_index_urls": [
+        "https://download.pytorch.org/whl/rocm7.2"
+      ],
+      "requirements": [
+        "torch==2.14.1+rocm7.2",
+        "torchvision==0.29.1+rocm7.2"
+      ],
       "status": "unverified",
-      "notes": "Roues officielles PyTorch ROCm 7.2. Nécessite le pilote amdgpu/ROCm côté hôte. Non construit ici."
+      "notes": "Roues officielles PyTorch ROCm 7.2. Nécessite le pilote amdgpu/ROCm côté hôte. Non construit ici.",
+      "sdcpp_variants": [
+        "rocm",
+        "vulkan"
+      ]
     },
     "win-rocm": {
       "label": "Windows + AMD Radeon (ROCm 7.2.1, préversion)",
       "os": "windows",
       "arch": "x86_64",
       "python": "3.12",
-      "extras": ["torch"],
+      "extras": [
+        "torch"
+      ],
       "index_url": null,
       "extra_index_urls": [],
       "requirements": [
@@ -65,7 +107,44 @@
         "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torchvision-0.24.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl"
       ],
       "status": "experimental",
-      "notes": "Pas d'index pip : roues directes hébergées par AMD (repo.radeon.com), Python 3.12 obligatoire, GPU Radeon RX 7000/9000 (+ quelques APU Ryzen AI) selon les notes de version AMD 7.2. Préversion publique ; non construit ici."
+      "notes": "Pas d'index pip : roues directes hébergées par AMD (repo.radeon.com), Python 3.12 obligatoire, GPU Radeon RX 7000/9000 (+ quelques APU Ryzen AI) selon les notes de version AMD 7.2. Préversion publique ; non construit ici.",
+      "sdcpp_variants": [
+        "rocm",
+        "vulkan"
+      ]
+    },
+    "win-universal": {
+      "label": "Windows — NVIDIA + AMD + Intel (moteur GGUF : CUDA, ROCm et Vulkan)",
+      "os": "windows",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": [],
+      "index_url": null,
+      "extra_index_urls": [],
+      "requirements": [],
+      "sdcpp_variants": [
+        "cuda",
+        "rocm",
+        "vulkan"
+      ],
+      "status": "unverified",
+      "notes": "Sans PyTorch : runtime Python léger (≈ 0,2 Go) + trois builds de stable-diffusion.cpp (≈ 1,2 Go) ; le backend est choisi selon le GPU détecté (CUDA, ROCm, repli Vulkan). Modèles GGUF uniquement (Qwen Image 2.1, Z-Image Turbo…). Compatible avec un vrai installateur (< 2 Go). Jamais exécuté sur Windows."
+    },
+    "linux-universal": {
+      "label": "Linux — NVIDIA + AMD + Intel (moteur GGUF : ROCm et Vulkan)",
+      "os": "linux",
+      "arch": "x86_64",
+      "python": "3.12",
+      "extras": [],
+      "index_url": null,
+      "extra_index_urls": [],
+      "requirements": [],
+      "sdcpp_variants": [
+        "rocm",
+        "vulkan"
+      ],
+      "status": "unverified",
+      "notes": "Sans PyTorch. Les versions officielles ne publient pas de build CUDA pour Linux : NVIDIA passe par Vulkan. Jamais exécuté sur Linux."
     }
   }
 }

@@ -33,7 +33,17 @@ class ParamSpec:
     requires_references: bool = False
 
 
-Backend = Literal["mlx", "torch", "demo"]
+Backend = Literal["mlx", "torch", "sdcpp", "demo"]
+
+
+@dataclass
+class HfSource:
+    """Un dépôt Hugging Face (ou une partie) dont dépend un modèle."""
+
+    repo: str
+    patterns: list[str] | None = None  # fichiers à télécharger (fnmatch) ; None = tout le dépôt
+    check_files: list[str] = field(default_factory=list)  # motifs requis pour être « installé »
+    size_gb: float | None = None  # taille approximative, pour la progression globale
 
 
 @dataclass
@@ -73,6 +83,15 @@ class ModelSpec:
     tags: list[str] = field(default_factory=list)
     # Options propres au moteur (classe de pipeline, noms d'arguments…).
     options: dict[str, Any] = field(default_factory=dict)
+    # Modèles composés de plusieurs dépôts (ex. GGUF + encodeur + VAE) : prime sur hf_repo.
+    sources: list[HfSource] = field(default_factory=list)
+
+    def all_sources(self) -> list[HfSource]:
+        if self.sources:
+            return self.sources
+        if self.hf_repo:
+            return [HfSource(self.hf_repo, self.hf_patterns, self.check_files, self.download_size_gb)]
+        return []
 
     def default_params(self) -> dict[str, Any]:
         return {p.key: p.default for p in self.params}
@@ -83,6 +102,7 @@ class ModelSpec:
         d.pop("options")
         d.pop("hf_patterns")
         d.pop("check_files")
+        d.pop("sources")
         return d
 
 
@@ -102,16 +122,8 @@ def _matches(rel: str, patterns: list[str]) -> bool:
     return any(fnmatch(rel, p) for p in patterns)
 
 
-def installation_status(spec: ModelSpec) -> dict[str, Any]:
-    """État d'installation d'un modèle d'après le cache Hugging Face.
-
-    state : "installed" | "partial" (certains fichiers requis manquent ou un téléchargement est
-    interrompu) | "missing". Le cache est partagé avec mflux et diffusers : un modèle déjà
-    téléchargé par un autre outil est reconnu tel quel.
-    """
-    if not spec.hf_repo:
-        return {"state": "installed", "size_gb": 0.0}
-    root = repo_cache_dir(spec.hf_repo)
+def _source_status(src: HfSource) -> dict[str, Any]:
+    root = repo_cache_dir(src.repo)
     snapshots = root / "snapshots"
     best: tuple[int, Path] | None = None
     if snapshots.is_dir():
@@ -119,19 +131,19 @@ def installation_status(spec: ModelSpec) -> dict[str, Any]:
             if not snap.is_dir():
                 continue
             files = [p.relative_to(snap).as_posix() for p in snap.rglob("*") if p.is_file() or p.is_symlink()]
-            if spec.check_files:
-                ok = sum(1 for pat in spec.check_files if any(_matches(f, [pat]) for f in files))
+            if src.check_files:
+                ok = sum(1 for pat in src.check_files if any(_matches(f, [pat]) for f in files))
             else:
-                ok = 1 if any(f.endswith(".safetensors") for f in files) else 0
+                ok = 1 if any(f.endswith((".safetensors", ".gguf")) for f in files) else 0
             if best is None or ok > best[0]:
                 best = (ok, snap)
-    needed = len(spec.check_files) or 1
+    needed = len(src.check_files) or 1
     size = 0
     if best:
         snap = best[1]
         for p in snap.rglob("*"):
             rel = p.relative_to(snap).as_posix()
-            if (spec.hf_patterns is None or _matches(rel, spec.hf_patterns)) and (p.is_file() or p.is_symlink()):
+            if (src.patterns is None or _matches(rel, src.patterns)) and (p.is_file() or p.is_symlink()):
                 try:
                     size += p.stat().st_size
                 except OSError:
@@ -143,7 +155,27 @@ def installation_status(spec: ModelSpec) -> dict[str, Any]:
         state = "partial"
     else:
         state = "missing"
-    return {"state": state, "size_gb": round(size / 1024**3, 2)}
+    return {"state": state, "size": size}
+
+
+def installation_status(spec: ModelSpec) -> dict[str, Any]:
+    """État d'installation d'un modèle d'après le cache Hugging Face (partagé avec mflux et diffusers).
+
+    state : "installed" | "partial" (fichiers requis manquants ou téléchargement interrompu) | "missing".
+    Un modèle composé de plusieurs dépôts n'est « installé » que si chacun l'est.
+    """
+    sources = spec.all_sources()
+    if not sources:
+        return {"state": "installed", "size_gb": 0.0}
+    parts = [_source_status(src) for src in sources]
+    states = {p["state"] for p in parts}
+    if states == {"installed"}:
+        state = "installed"
+    elif states == {"missing"}:
+        state = "missing"
+    else:
+        state = "partial"
+    return {"state": state, "size_gb": round(sum(p["size"] for p in parts) / 1024**3, 2)}
 
 
 @dataclass

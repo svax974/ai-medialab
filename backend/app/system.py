@@ -129,16 +129,22 @@ def _compute() -> dict[str, Any]:
             "torch_mps": bool(torch_info.get("mps")),
         })
 
-    # Pour le diagnostic : GPU présents mais non exploitables par ce runtime.
+    # Pour le diagnostic : GPU présents mais non exploitables par PyTorch dans ce runtime.
     unusable = []
-    if not torch_info.get("cuda"):
-        for g in _gpu_names_fallback():
+    fallback_gpus = _gpu_names_fallback()
+    if not torch_info.get("cuda") and torch_info.get("torch") is not None:
+        for g in fallback_gpus:
             if g["vendor"] in ("nvidia", "amd"):
                 unusable.append({**g, "reason": _why_unusable(g["vendor"], torch_info)})
+    if not accelerators:  # runtime sans PyTorch : on décrit les GPU vus par le système (VRAM parfois inconnue)
+        for g in fallback_gpus:
+            accelerators.append({"vendor": g["vendor"], "backend": "vulkan", "name": g["name"],
+                                 "memory_gb": g.get("memory_gb"), "unified": False})
 
     engines = {
         "mlx": _engine_mlx(apple),
         "torch": _engine_torch(torch_info, accelerators),
+        "sdcpp": _engine_sdcpp(accelerators),
     }
     from huggingface_hub import constants
 
@@ -194,6 +200,16 @@ def _engine_torch(info: dict[str, Any], accelerators: list[dict[str, Any]]) -> d
     return {"available": False, "reason": "Aucun GPU exploitable par PyTorch (CUDA, ROCm ou Metal)."}
 
 
+def _engine_sdcpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
+    from . import sdcpp
+
+    vendors = [a["vendor"] for a in accelerators]
+    res = sdcpp.pick(vendors)
+    if res["available"]:
+        res["device"] = res["variant"]
+    return res
+
+
 def get_system(refresh: bool = False) -> dict[str, Any]:
     global _cache
     with _lock:
@@ -237,6 +253,24 @@ def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict
         ok = ram >= weights_gb * 0.55
         return {"fits": ok, "strategy": "full",
                 "note": "" if ok else f"≈ {weights_gb * 0.55:.0f} Go de mémoire nécessaires, {ram:.0f} Go disponibles."}
+
+    if engine == "sdcpp":
+        # Poids quantifiés (GGUF) ; stable-diffusion.cpp place lui-même les poids selon la mémoire libre
+        # (GPU, sinon RAM, sinon disque : --auto-fit). La VRAM sert à décider de la vitesse, pas de la faisabilité.
+        if accel is None:
+            return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}
+        if accel["unified"]:
+            ok = ram >= weights_gb * 1.3
+            return {"fits": ok, "strategy": "full",
+                    "note": "" if ok else f"Il faut ≈ {weights_gb * 1.3:.0f} Go de mémoire ({ram:.0f} Go ici)."}
+        vram = accel["memory_gb"]
+        if vram is None or vram >= weights_gb * 1.1:
+            return {"fits": True, "strategy": "full", "note": ""}
+        if ram + vram >= weights_gb * 1.2:
+            return {"fits": True, "strategy": "model_offload",
+                    "note": f"{vram:.0f} Go de VRAM < {weights_gb:.0f} Go de poids : une partie reste en RAM (plus lent)."}
+        return {"fits": False, "strategy": "none",
+                "note": f"{vram:.0f} Go de VRAM + {ram:.0f} Go de RAM ne suffisent pas ({weights_gb:.0f} Go de poids)."}
 
     if accel is None:
         return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}

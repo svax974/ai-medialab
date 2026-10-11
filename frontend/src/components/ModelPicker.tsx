@@ -5,7 +5,7 @@ import { cx } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 
-const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", demo: "démo" };
+const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "démo" };
 
 export function ModelPicker({ model }: { model: ModelInfo }) {
   const { data } = useModels();

@@ -39,20 +39,35 @@ Développement (rechargement à chaud) : `./dev.sh` puis http://localhost:5173.
 
 ## Moteurs et modèles
 
-Deux moteurs d'inférence, choisis selon la machine :
+Trois moteurs d'inférence, choisis selon la machine et le modèle :
 
 | Moteur | Matériel | Remarque |
 |---|---|---|
 | **MLX** (mflux) | Apple Silicon (Metal natif) | Modèles quantifiés 4/6/8 bits : le plus économe en mémoire sur Mac |
 | **PyTorch + diffusers** | NVIDIA (CUDA), AMD (ROCm), Apple (MPS) | Pleine précision bf16 ; déchargement CPU automatique si la VRAM est insuffisante |
+| **GGUF** ([stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)) | Apple (Metal), NVIDIA (CUDA), AMD (ROCm), tout GPU Vulkan (NVIDIA, AMD, Intel) | Poids quantifiés : 3 à 5 fois moins de mémoire que PyTorch ; binaire de 30 à 340 Mo, sans PyTorch |
+
+Le moteur GGUF pilote le programme `sd-cli` (un processus par génération : annulation immédiate, mémoire intégralement
+rendue). Le backend est choisi d'après le GPU détecté — CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon
+(`IMAGEGEN_SDCPP_VARIANT=vulkan` impose un backend, utile pour comparer les vitesses). Les binaires officiels se
+récupèrent avec `python3 scripts/fetch_sdcpp.py --variant metal|vulkan|cuda|rocm [--os windows|linux]` (somme SHA-256
+vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarque.
 
 | Modèle | Moteur | Usage | Références | Téléchargement |
 |---|---|---|---|---|
 | **Qwen Image 2.1** | MLX | Texte → image, img2img | 1 image de départ | 33 Go |
+| **Qwen Image 2.1** | **GGUF** | Texte → image, **édition** par instruction | jusqu'à 4 images | **11 Go** |
 | **Qwen Image 2.1** | PyTorch | Texte → image, **édition**, RGBA | jusqu'à 10 images | 33 Go (32 Go de poids bf16) |
-| **Z-Image Turbo** (Apache 2.0) | PyTorch | Texte → image rapide (≈ 9 étapes) | — | 33 Go |
+| **Z-Image Turbo** (Apache 2.0) | **GGUF** | Texte → image rapide (8 étapes) | — | **6,7 Go** |
+| **Z-Image Turbo** (Apache 2.0) | PyTorch | idem, pleine précision | — | 33 Go |
 | **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 7 Go |
 | **Qwen Image Edit** | MLX | Édition par instruction | 1 à 3 images | 58 Go |
+
+Mesuré sur un M3 Max (36 Go) en Metal, poids Q4_K : Z-Image Turbo, 3,2 s par étape à 512×512 (45 s par image de
+560×560, chargement compris) ; Qwen Image 2.1, 5,8 s par étape à 576×576 (129 s pour 20 étapes, texte rendu
+correctement dans l'image) et 149 s en édition avec guidance 1 — qui ne suit pas bien l'instruction : l'application
+applique donc une guidance de 4 en édition (338 s, instruction suivie). Aucune mesure Vulkan/CUDA/ROCm n'a pu être
+faite ici.
 
 Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
 renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine

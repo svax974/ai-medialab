@@ -31,7 +31,8 @@
     "resources": {
       "../build/resources/backend": "backend",
       "../build/resources/frontend": "frontend",
-      "../build/resources/runtime": "runtime"
+      "../build/resources/runtime": "runtime",
+      "../build/resources/engines": "engines"
     },
     "macOS": {
       "minimumSystemVersion": "14.0",

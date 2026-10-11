@@ -26,6 +26,7 @@ use tauri::{
 };
 
 const BOOT_TIMEOUT: Duration = Duration::from_secs(240);
+#[cfg(unix)]
 const STOP_GRACE: Duration = Duration::from_secs(6);
 
 struct Backend(Mutex<Option<Child>>);
@@ -40,6 +41,13 @@ extern "C" fn on_signal(_sig: libc::c_int) {
 }
 
 fn main() {
+    // Linux : le moteur de rendu DMA-BUF de WebKitGTK affiche une fenêtre vide ou plante avec certains pilotes
+    // NVIDIA propriétaires (cas d'usage principal de cette version). Désactivé sauf demande explicite.
+    #[cfg(target_os = "linux")]
+    if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
+        env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+    }
+
     #[cfg(unix)]
     unsafe {
         for sig in [libc::SIGTERM, libc::SIGINT, libc::SIGHUP] {
@@ -66,7 +74,7 @@ fn main() {
             app.manage(Backend(Mutex::new(None)));
             let logs_dir = app
                 .path()
-                .app_data_dir()
+                .app_local_data_dir()
                 .map(|d| d.join("logs"))
                 .unwrap_or_else(|_| env::temp_dir());
 
@@ -190,6 +198,12 @@ fn splash_error(app: &AppHandle, title: &str, detail: &str, log: &str) {
 fn resources_dir(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = env::var_os("CHAMBRE_NOIRE_RESOURCES") {
         return Some(PathBuf::from(p));
+    }
+    // Distribution « portable » (Windows/Linux) : backend/, frontend/ et runtime/ sont à côté de l'exécutable.
+    if let Some(dir) = env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf)) {
+        if python_path(&dir).is_file() {
+            return Some(dir);
+        }
     }
     app.path().resource_dir().ok()
 }
@@ -329,6 +343,46 @@ kill -s KILL -- "-$2" 2>/dev/null
         .spawn();
 }
 
+/// Windows : le serveur et le worker de génération (qui peut tenir des dizaines de Go) sont placés dans un
+/// « Job Object » configuré KILL_ON_JOB_CLOSE : si la coque disparaît (plantage, fin de tâche), Windows ferme
+/// le job et tue tout l'arbre — l'équivalent de la sentinelle Unix.
+#[cfg(windows)]
+mod winjob {
+    use std::os::windows::io::AsRawHandle;
+    use std::process::Child;
+    use std::sync::atomic::{AtomicIsize, Ordering};
+
+    use windows_sys::Win32::Foundation::HANDLE;
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    // Conservé pour toute la vie du processus : sa fermeture (par Windows) déclenche l'arrêt de l'arbre.
+    static JOB: AtomicIsize = AtomicIsize::new(0);
+
+    pub fn attach(child: &Child) {
+        unsafe {
+            let job: HANDLE = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+            if job.is_null() {
+                return;
+            }
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            let ok = SetInformationJobObject(
+                job,
+                JobObjectExtendedLimitInformation,
+                &info as *const _ as *const core::ffi::c_void,
+                std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
+            );
+            if ok == 0 || AssignProcessToJobObject(job, child.as_raw_handle() as HANDLE) == 0 {
+                return; // pas de job : on se rabat sur taskkill à la fermeture normale
+            }
+            JOB.store(job as isize, Ordering::SeqCst);
+        }
+    }
+}
+
 fn boot(app: AppHandle) {
     // Laisse la webview charger l'écran de démarrage avant d'y envoyer des messages.
     thread::sleep(Duration::from_millis(900));
@@ -337,7 +391,7 @@ fn boot(app: AppHandle) {
         splash_error(&app, "Ressources introuvables", "Le dossier des ressources de l'application est inaccessible.", "");
         return;
     };
-    let data_dir = match app.path().app_data_dir() {
+    let data_dir = match app.path().app_local_data_dir() {
         Ok(d) => d,
         Err(e) => {
             splash_error(&app, "Dossier de données inaccessible", &e.to_string(), "");
@@ -365,6 +419,8 @@ fn boot(app: AppHandle) {
     };
     #[cfg(unix)]
     spawn_sentinel(std::process::id(), child.id());
+    #[cfg(windows)]
+    winjob::attach(&child);
     app.state::<Backend>().0.lock().unwrap().replace(child);
 
     let started = Instant::now();

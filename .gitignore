@@ -13,3 +13,10 @@ desktop/src-tauri/target/
 desktop/src-tauri/gen/
 desktop/src-tauri/icons/android/
 desktop/src-tauri/icons/ios/
+
+# Cross-construction Windows/Linux et livrables
+desktop/build-cross/
+desktop/dist/
+
+# Moteurs d'inférence externes (binaires stable-diffusion.cpp, voir scripts/fetch_sdcpp.py)
+/engines/
