@@ -75,6 +75,10 @@ class PackDef:
     gpu: str = ""
     # French sentence shown when the machine does not have that hardware.
     gpu_reason: str = ""
+    # AMD/Linux PyTorch wheel index; the default one only carries recent PyTorch versions, pinned packs name an older one.
+    rocm: str = "rocm6.4"
+    # Folders of `<runtime>/shims/` put on the worker's import path (stand-ins for optional compiled libraries).
+    shims: tuple[str, ...] = ()
 
 
 PACKS: dict[str, PackDef] = {
@@ -104,17 +108,21 @@ PACKS: dict[str, PackDef] = {
         id="kiwi",
         name="Kiwi-Edit (montage vidéo)",
         family="video",
-        python="3.10",  # the authors' environment: Python 3.10, PyTorch 2.7 (CUDA 12.8), transformers 4.57.0
+        python="3.10",  # the authors' environment: Python 3.10, PyTorch 2.7 (CUDA 12.8)
         torch_packages=("torch==2.7.0", "torchvision==0.22.0"),
+        rocm="rocm6.3",  # the rocm6.4 index starts at PyTorch 2.8
         # The weights repo ships the pipeline code (loaded with trust_remote_code), so no source archive is needed.
-        requirements=("diffusers==0.36.0", "transformers==4.57.0", "accelerate", "einops", "huggingface_hub>=0.30",
+        # Its code only needs torch, torchvision, diffusers, transformers, einops, requests and packaging at import time
+        # (decord and torchcodec are optional there: we hand it decoded frames). transformers 4.57.0 is the authors' pin
+        # but was yanked from PyPI (broken extras metadata); 4.57.1 is the fixed re-release.
+        requirements=("diffusers==0.36.0", "transformers==4.57.1", "accelerate", "einops", "huggingface_hub>=0.30",
                       "safetensors", "av", "pillow", "numpy", "tqdm", "requests", "packaging"),
-        imports=("torch", "diffusers", "transformers", "accelerate", "einops", "av"),
+        imports=("torch", "torchvision", "diffusers", "transformers", "accelerate", "einops", "av"),
         size_mb=4500,
         gpu="cuda",
         gpu_reason="Kiwi-Edit demande une carte graphique NVIDIA (CUDA 12.8) ; il ne tourne ni sur Mac Apple Silicon ni sur processeur.",
         engine="PyTorch 2.7 + diffusers",
-        contents="PyTorch 2.7, diffusers et transformers 4.57.0, aux versions exactes du dépôt officiel (Python 3.10).",
+        contents="PyTorch 2.7, diffusers 0.36 et transformers 4.57, aux versions du dépôt officiel (Python 3.10).",
     ),
     "bernini": PackDef(
         id="bernini",
@@ -122,18 +130,29 @@ PACKS: dict[str, PackDef] = {
         family="video",
         python="3.11",  # the authors' environment: Python 3.11, PyTorch 2.7.1, diffusers 0.35.2, transformers 4.57.3
         torch_packages=("torch==2.7.1", "torchvision==0.22.1"),
+        rocm="rocm6.3",  # the rocm6.4 index starts at PyTorch 2.8
+        # Pins from the authors' uv.lock. Left out on purpose: flash-attn (needs a compiler; see `shims`), torchcodec,
+        # datasets, librosa, PyYAML, torchdata (training only), openai (prompt enhancer) and gradio (demo).
         requirements=("diffusers==0.35.2", "accelerate==0.34.2", "transformers==4.57.3", "huggingface_hub>=0.30",
                       "safetensors", "einops", "numpy", "pillow", "tqdm", "ftfy", "scipy", "decord", "imageio",
-                      "imageio-ffmpeg", "av"),
-        # The `bernini` package is not pip-installable (no build config): take it from the pinned commit of the official repo.
+                      "imageio-ffmpeg", "av", "packaging"),
+        # Neither `bernini` nor VeOmni is pip-installable from PyPI as we need them: both come from pinned commits of
+        # their official repos. VeOmni (the v0.1.11 tag) is imported unconditionally by `bernini.pipeline`, even for
+        # single-GPU inference (its logging helper, constants and sequence-parallel stubs); only its `veomni` folder
+        # is taken, which needs just torch, transformers and packaging.
         archives=(PackArchive("https://github.com/bytedance/Bernini/archive/e6c2cf11843470b08491745947abcba9c3c6b079.tar.gz",
-                              ("bernini",)),),
-        imports=("torch", "diffusers", "transformers", "decord", "bernini.pipeline"),
+                              ("bernini",)),
+                  PackArchive("https://github.com/ByteDance-Seed/VeOmni/archive/f90b3dc6fbb0ce693745223cc7a94064123dbf4d.tar.gz",
+                              ("veomni",))),
+        # `bernini.models` raises at import unless flash_attn is importable, although its attention layer falls back to
+        # PyTorch SDPA. flash-attn has no Windows wheels and compiles on Linux, so a small stand-in stays on the path.
+        shims=("bernini",),
+        imports=("torch", "torchvision", "diffusers", "transformers", "decord", "veomni", "bernini.pipeline"),
         size_mb=4800,
         gpu="cuda",
         gpu_reason="Bernini demande une carte graphique NVIDIA (CUDA) ; il ne tourne ni sur Mac Apple Silicon ni sur processeur.",
         engine="PyTorch 2.7 + code officiel Bernini",
-        contents="PyTorch 2.7.1, diffusers 0.35.2, transformers 4.57.3 et le code officiel de Bernini (Python 3.11).",
+        contents="PyTorch 2.7.1, diffusers 0.35.2, transformers 4.57.3 et le code officiel de Bernini et VeOmni (Python 3.11).",
     ),
 }
 
@@ -167,9 +186,17 @@ def code_dir(pack_id: str) -> Path:
 
 
 def pack_env(pack_id: str) -> dict[str, str]:
-    """Extra environment of a pack's worker: its extracted source code on the import path."""
-    src = code_dir(pack_id)
-    return {"PYTHONPATH": str(src)} if src.is_dir() else {}
+    """Extra environment of a pack's worker: its extracted source code and shims on the import path.
+
+    Video workers also run offline: the app downloads the weights itself, so nothing may reach for the Hub."""
+    pack = PACKS.get(pack_id)
+    paths = [str(code_dir(pack_id))] if code_dir(pack_id).is_dir() else []
+    if pack:
+        paths += [str(runtime_dir(pack_id) / "shims" / name) for name in pack.shims]
+    env = {"PYTHONPATH": os.pathsep.join(paths)} if paths else {}
+    if pack and pack.family == "video":
+        env["HF_HUB_OFFLINE"] = "1"
+    return env
 
 
 def venv_python(pack_id: str) -> Path:
@@ -256,7 +283,7 @@ def engine_info(pack_id: str) -> dict[str, Any]:
     return info
 
 
-def _torch_index(accelerators: list[dict[str, Any]]) -> str | None:
+def _torch_index(accelerators: list[dict[str, Any]], rocm: str = "rocm6.4") -> str | None:
     """PyTorch index matching the GPU (macOS: PyPI wheels, which include Metal)."""
     if sys.platform == "darwin":
         return None
@@ -264,7 +291,7 @@ def _torch_index(accelerators: list[dict[str, Any]]) -> str | None:
     if "nvidia" in vendors:
         return "https://download.pytorch.org/whl/cu128"
     if "amd" in vendors and sys.platform.startswith("linux"):
-        return "https://download.pytorch.org/whl/rocm6.4"
+        return f"https://download.pytorch.org/whl/{rocm}"
     if sys.platform == "win32":
         return "https://download.pytorch.org/whl/cpu"
     return None
@@ -391,7 +418,7 @@ class PackInstaller:
                 self._exec([sys.executable, "-m", "venv", str(venv)], "Création de l'environnement Python…")
                 install = [str(venv_python(pack.id)), "-m", "pip", "install", "--disable-pip-version-check"]
 
-            index = _torch_index(accelerators)
+            index = _torch_index(accelerators, pack.rocm)
             if index and pack.torch_packages:
                 self._exec([*install, *pack.torch_packages, "--index-url", index],
                            f"Installation de PyTorch ({'GPU' if 'cu' in index or 'rocm' in index else 'CPU'})…")

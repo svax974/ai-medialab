@@ -5,6 +5,7 @@
 
 Nothing here installs a pack, downloads weights or touches a GPU."""
 
+import ast
 import asyncio
 import hashlib
 import importlib.util
@@ -13,6 +14,7 @@ import json
 import os
 import py_compile
 import shutil
+import subprocess
 import sys
 import tarfile
 import types
@@ -67,7 +69,7 @@ class TestSpecs:
     def test_descriptions_and_inputs(self):
         kiwi, bernini = get_spec("kiwi-edit-5b"), get_spec("bernini-r-1.3b")
         assert kiwi.description == "Édition de vidéo par instruction, avec image de référence optionnelle."
-        assert bernini.description == "Génération et édition de vidéo guidées par un planificateur multimodal."
+        assert "planificateur" not in bernini.description and bernini.description.endswith("(version légère).")
         assert kiwi.video.video_input == "required" and kiwi.video.tasks == ["v2v"]
         assert kiwi.video.image_input == "optional" and kiwi.video.image_role == "reference"
         assert kiwi.video.license_warning and "Qwen" in kiwi.video.license_warning
@@ -79,17 +81,35 @@ class TestSpecs:
         assert d["video"]["image_role"] == "reference" and "options" not in d
 
     def test_runtime_files_compile(self, tmp_path):
-        for f in [RUNTIME / "worker.py", RUNTIME / "common.py", *(RUNTIME / "engines").glob("*.py")]:
+        for f in [RUNTIME / "worker.py", RUNTIME / "common.py", *(RUNTIME / "engines").glob("*.py"), *(RUNTIME / "shims").rglob("*.py")]:
             py_compile.compile(str(f), cfile=str(tmp_path / (f.name + "c")), doraise=True)
 
 
 class TestPackDefinitions:
     def test_pins(self):
         kiwi, bernini = audio_packs.PACKS["kiwi"], audio_packs.PACKS["bernini"]
-        assert "transformers==4.57.0" in kiwi.requirements and "torch==2.7.0" in kiwi.torch_packages
+        # 4.57.0 (the authors' pin) was yanked from PyPI; 4.57.1 is its fixed re-release.
+        assert "transformers==4.57.1" in kiwi.requirements and "torch==2.7.0" in kiwi.torch_packages
         assert "transformers==4.57.3" in bernini.requirements and "diffusers==0.35.2" in bernini.requirements
-        (archive,) = bernini.archives
-        assert archive.url.endswith("e6c2cf11843470b08491745947abcba9c3c6b079.tar.gz") and archive.folders == ("bernini",)
+        assert "torch==2.7.1" in bernini.torch_packages and "decord" in bernini.requirements
+        bernini_repo, veomni = bernini.archives
+        assert bernini_repo.url.endswith("e6c2cf11843470b08491745947abcba9c3c6b079.tar.gz") and bernini_repo.folders == ("bernini",)
+        assert "ByteDance-Seed/VeOmni" in veomni.url and veomni.folders == ("veomni",)
+        assert "veomni" in bernini.imports and "bernini.pipeline" in bernini.imports
+
+    def test_nothing_that_needs_a_compiler_or_the_training_stack(self):
+        for pid in ("kiwi", "bernini"):
+            names = {r.split("==")[0].split(">")[0] for r in audio_packs.PACKS[pid].requirements}
+            assert not names & {"flash-attn", "flash_attn", "deepspeed", "torchcodec", "datasets", "librosa", "mpi4py", "ninja"}
+
+    def test_rocm_index_carries_the_pinned_torch(self, monkeypatch):
+        # download.pytorch.org/whl/rocm6.4 starts at PyTorch 2.8: the 2.7 pins need the 6.3 index.
+        monkeypatch.setattr(sys, "platform", "linux")
+        amd, nvidia = [{"vendor": "amd"}], [{"vendor": "nvidia"}]
+        assert audio_packs._torch_index(amd).endswith("/rocm6.4")  # audio packs keep the default
+        for pid in ("kiwi", "bernini"):
+            assert audio_packs._torch_index(amd, audio_packs.PACKS[pid].rocm).endswith("/rocm6.3")
+            assert audio_packs._torch_index(nvidia, audio_packs.PACKS[pid].rocm).endswith("/cu128")
 
     def test_hash_depends_on_python_and_archive(self):
         import dataclasses
@@ -214,9 +234,204 @@ class TestArchive:
 
     def test_worker_env_exposes_the_extracted_code(self, tmp_path, monkeypatch):
         monkeypatch.setattr(audio_packs, "pack_dir", lambda pid: tmp_path / pid)
-        assert audio_packs.pack_env("bernini") == {}
+        # No extracted code yet: only the shims of the pack, and video workers never reach for the Hub.
+        env = audio_packs.pack_env("bernini")
+        assert env["PYTHONPATH"] == str(RUNTIME / "shims" / "bernini") and env["HF_HUB_OFFLINE"] == "1"
         (tmp_path / "bernini" / "src").mkdir(parents=True)
-        assert audio_packs.pack_env("bernini") == {"PYTHONPATH": str(tmp_path / "bernini" / "src")}
+        env = audio_packs.pack_env("bernini")
+        assert env["PYTHONPATH"].split(os.pathsep) == [str(tmp_path / "bernini" / "src"), str(RUNTIME / "shims" / "bernini")]
+        assert audio_packs.pack_env("kiwi") == {"HF_HUB_OFFLINE": "1"}
+        assert audio_packs.pack_env("speech") == {}  # audio packs are untouched
+
+    def test_every_shim_folder_exists(self):
+        for pack in audio_packs.PACKS.values():
+            for name in pack.shims:
+                assert (RUNTIME / "shims" / name).is_dir()
+
+
+class TestFlashAttnShim:
+    """`bernini.models` raises at import unless `flash_attn` is importable: the pack ships a torch-free stand-in."""
+
+    def _run(self, code):
+        shim = RUNTIME / "shims" / "bernini"
+        return subprocess.run([sys.executable, "-I", "-c", f"import sys; sys.path.insert(0, {str(shim)!r})\n{code}"],
+                              capture_output=True, text=True, timeout=60)
+
+    def test_the_names_bernini_imports_are_there(self):
+        # Same lookups as bernini/models/modeling_qwen2_5_vl.py and bernini/attention.py.
+        done = self._run("import importlib.util as u\n"
+                         "assert u.find_spec('flash_attn') is not None and u.find_spec('flash_attn_interface') is None\n"
+                         "from flash_attn import flash_attn_func, flash_attn_varlen_func\n"
+                         "from flash_attn.bert_padding import unpad_input\n"
+                         "assert 'torch' not in sys.modules")
+        assert done.returncode == 0, done.stderr
+
+    def test_no_package_metadata_so_transformers_ignores_it(self):
+        done = self._run("import importlib.metadata as m\n"
+                         "try:\n    m.version('flash_attn')\nexcept m.PackageNotFoundError:\n    pass\n"
+                         "else:\n    raise SystemExit('metadata found')")
+        assert done.returncode == 0, done.stderr
+
+    def test_planner_only_functions_say_so(self):
+        done = self._run("from flash_attn import flash_attn_func\n"
+                         "try:\n    flash_attn_func()\nexcept NotImplementedError as e:\n    print(e)")
+        assert "planificateur" in done.stdout
+
+
+class TestUpstreamContracts:
+    """The engines against the real signatures of the upstream code, recorded from the sources the pack installs
+    (Kiwi-Edit weights repo rev 2760d81, Bernini commit e6c2cf1). Nothing here can run the models."""
+
+    KIWI_CALL = {"prompt", "source_video", "source_input", "ref_image", "negative_prompt", "input_video", "height", "width",
+                 "num_frames", "num_inference_steps", "guidance_scale", "sigma_shift", "denoising_strength", "seed", "tiled",
+                 "tile_size", "tile_stride", "output_type", "progress_bar"}
+    BERNINI_CALL = {"prompt", "neg_prompt", "num_frames", "max_image_size", "height", "width", "video", "image", "images",
+                    "num_inference_steps", "guidance_mode", "omega_vid", "omega_img", "omega_txt", "omega_scale", "flow_shift",
+                    "seed", "fps", "vae_fps", "vit_fps", "eta", "norm_threshold", "momentum", "system_prompt", "output_path",
+                    "write_output"}
+    BERNINI_FROM_PRETRAINED = {"config_dir", "high_noise_ckpt", "low_noise_ckpt", "device", "load_ckpt_weights",
+                               "use_unipc", "shift", "use_src_id_rotary_emb", "interpolate_src_id", "max_trained_src_id"}
+    # bernini/models/wan_diffusion.py: GEN_Wanx22.sample
+    BERNINI_MODES = {"rv2v", "v2v", "v2v_chain", "t2v", "r2v_apg", "v2v_apg", "t2v_apg"}
+
+    def _calls(self, filename, attr):
+        tree = ast.parse((RUNTIME / "engines" / filename).read_text())
+        found = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                 and n.func.attr == attr]
+        assert found, attr
+        return found
+
+    def _pipe_call(self, filename):
+        (call,) = [n for n in ast.walk(ast.parse((RUNTIME / "engines" / filename).read_text()))
+                   if isinstance(n, ast.Call) and ast.unparse(n.func) == "self.pipe"]
+        return call
+
+    def test_kiwi_pipeline_call(self):
+        call = self._pipe_call("kiwi_engine.py")
+        names = {k.arg for k in call.keywords}
+        assert names <= self.KIWI_CALL and {"prompt", "source_video", "ref_image", "height", "width", "num_frames", "seed"} <= names
+        assert not call.args  # everything by keyword: the signature has many optional parameters in between
+
+    def test_kiwi_loads_like_the_authors_demo(self):
+        (load,) = self._calls("kiwi_engine.py", "from_pretrained")
+        assert {k.arg for k in load.keywords} == {"trust_remote_code", "torch_dtype"}
+
+    def test_bernini_pipeline_call(self):
+        call = self._pipe_call("bernini_engine.py")
+        assert {k.arg for k in call.keywords} <= self.BERNINI_CALL and len(call.args) == 1  # the prompt is positional
+        (load,) = self._calls("bernini_engine.py", "from_pretrained")
+        assert {k.arg for k in load.keywords} <= self.BERNINI_FROM_PRETRAINED
+
+    @pytest.fixture
+    def _engine(self, monkeypatch):
+        """Import an engine module of the video runtime (it only needs numpy and Pillow until a model loads)."""
+        def load(name):
+            for mod in [m for m in sys.modules if m == "common" or m == "engines" or m.startswith("engines.")]:
+                monkeypatch.delitem(sys.modules, mod)
+            monkeypatch.syspath_prepend(str(RUNTIME))
+            return importlib.import_module(f"engines.{name}")
+
+        return load
+
+    def test_bernini_routing_uses_modes_that_exist(self, _engine):
+        engine = _engine("bernini_engine")
+        modes = {engine.route(v, r)[1] for v in (None, "v.mp4") for r in ([], ["r.png"])}
+        assert modes == {"t2v_apg", "r2v_apg", "v2v_apg", "rv2v"} and modes <= self.BERNINI_MODES
+        assert engine.route(None, []) == ("t2v", "t2v_apg") and engine.route("v.mp4", ["r.png"]) == ("rv2v", "rv2v")
+        assert engine.route("v.mp4", []) == ("v2v", "v2v_apg") and engine.route(None, ["r.png"]) == ("r2v", "r2v_apg")
+
+    def test_bernini_progress_bar_reports_and_cancels(self, _engine):
+        mod = _engine("bernini_engine")
+        steps, cancel = [], []
+        engine = mod.BerniniEngine({})
+        engine.on_step = lambda step, total: steps.append((step, total))
+        engine.cancelled = lambda: bool(cancel)
+        mod._Bar.engine = engine
+        bar = mod._Bar(list(range(4)))
+        bar.update(1)
+        bar.update(1)
+        assert steps == [(1, 4), (2, 4)]
+        cancel.append(True)
+        with pytest.raises(sys.modules["common"].Cancelled):
+            bar.update(1)
+
+    def test_kiwi_progress_bar_reports_and_cancels(self, _engine):
+        mod = _engine("kiwi_engine")
+        steps, cancel = [], []
+        engine = mod.KiwiEngine({})
+        engine.on_step = lambda step, total: steps.append((step, total))
+        engine.cancelled = lambda: bool(cancel)
+        run = engine._bar()
+        seen = []
+        with pytest.raises(sys.modules["common"].Cancelled):
+            for item in run(iter([10, 20, 30])):
+                seen.append(item)
+                if item == 20:
+                    cancel.append(True)
+        assert seen == [10, 20] and steps == [(1, 3), (2, 3)]
+
+    def test_frame_counts_are_4n_plus_1(self):
+        common = _load("video_runtime_common", RUNTIME / "common.py")
+        assert [common.valid_frame_count(n) for n in (0, 1, 4, 5, 8, 9, 61, 64, 81)] == [0, 1, 1, 5, 5, 9, 61, 61, 81]
+
+
+class TestHuggingFaceLayouts:
+    """File lists of the weights repos (HF API, revisions pinned below): the download patterns must fetch everything
+    the offline loaders read, the remote-code .py files included."""
+
+    KIWI = {  # revision 2760d8197b6bdb49181bce8cceb2da781568b766
+        "__init__.py", "conditional_embedder.py", "mllm_encoder.py", "model_index.json", "pipeline_kiwi_edit.py",
+        "wan_video_vae.py", "README.md", "mllm_encoder/config.json", "mllm_encoder/generation_config.json",
+        "mllm_encoder/mllm_encoder.py", "mllm_encoder/diffusion_pytorch_model.safetensors",
+        "mllm_encoder/model-00001-of-00002.safetensors", "mllm_encoder/model-00002-of-00002.safetensors",
+        "mllm_encoder/model.safetensors.index.json", "processor/added_tokens.json", "processor/chat_template.jinja",
+        "processor/merges.txt", "processor/preprocessor_config.json", "processor/qwen_config.json",
+        "processor/special_tokens_map.json", "processor/tokenizer.json", "processor/tokenizer_config.json",
+        "processor/video_preprocessor_config.json", "processor/vocab.json", "ref_embedder/conditional_embedder.py",
+        "ref_embedder/config.json", "ref_embedder/diffusion_pytorch_model.safetensors", "scheduler/scheduler_config.json",
+        "source_embedder/conditional_embedder.py", "source_embedder/config.json",
+        "source_embedder/diffusion_pytorch_model.safetensors", "transformer/config.json",
+        "transformer/diffusion_pytorch_model.safetensors", "vae/config.json", "vae/diffusion_pytorch_model.safetensors",
+        "vae/wan_video_vae.py",
+    }
+    BERNINI = {  # revision ff4c5d4d2d31365c2ffeb30e9753065ee18f58ce
+        "README.md", "assets/arena.png", "assets/bernini-icon.png", "config.json", "scheduler/scheduler_config.json",
+        "text_encoder/config.json", "text_encoder/model.safetensors.index.json",
+        *(f"text_encoder/model-0000{i}-of-00005.safetensors" for i in range(1, 6)),
+        "tokenizer/special_tokens_map.json", "tokenizer/spiece.model", "tokenizer/tokenizer.json",
+        "tokenizer/tokenizer_config.json", "transformer/config.json", "transformer/diffusion_pytorch_model.safetensors.index.json",
+        "transformer/diffusion_pytorch_model-00001-of-00002.safetensors",
+        "transformer/diffusion_pytorch_model-00002-of-00002.safetensors", "vae/config.json",
+        "vae/diffusion_pytorch_model.safetensors",
+    }
+
+    def _fetched(self, spec, files):
+        (src,) = spec.sources
+        return {f for f in files if src.patterns is None or audio_packs_matches(f, src.patterns)}, src
+
+    def test_kiwi_downloads_the_whole_repo_with_its_remote_code(self):
+        fetched, src = self._fetched(get_spec("kiwi-edit-5b"), self.KIWI)
+        assert src.patterns is None and fetched == self.KIWI
+        for pattern in src.check_files:
+            assert any(audio_packs_matches(f, [pattern]) for f in self.KIWI), pattern
+
+    def test_bernini_patterns_cover_everything_the_loader_reads(self):
+        fetched, src = self._fetched(get_spec("bernini-r-1.3b"), self.BERNINI)
+        assert fetched == {f for f in self.BERNINI if not f.startswith("assets/") and f != "README.md"}
+        for pattern in src.check_files:
+            assert any(audio_packs_matches(f, [pattern]) for f in self.BERNINI), pattern
+
+    def test_bernini_config_names_its_own_repo_as_the_wan_base(self):
+        # config.json says `"wan22_base": "ByteDance/Bernini-R-1.3B-Diffusers"`; `_prefer_local_dir` swaps it for the
+        # snapshot folder because tokenizer/, text_encoder/ and vae/ are there (so no Hub access), hence these three.
+        assert {"tokenizer", "text_encoder", "vae"} <= {f.split("/")[0] for f in self.BERNINI}
+        assert get_spec("bernini-r-1.3b").hf_repo == "ByteDance/Bernini-R-1.3B-Diffusers"
+
+
+def audio_packs_matches(rel, patterns):
+    from app.engines.base import _matches
+
+    return _matches(rel, patterns)
 
 
 class TestPlans:

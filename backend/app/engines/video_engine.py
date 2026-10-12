@@ -69,6 +69,16 @@ def _patch_ltx2_converter() -> None:
     entry["checkpoint_mapping_fn"] = convert
 
 
+def _offload_overflow(largest_gb: float | None, system: dict[str, Any]) -> str:
+    """Error text when whole-component offload cannot work: the largest component alone exceeds the VRAM."""
+    accel = system["accelerators"][0] if system["accelerators"] else None
+    vram = accel["memory_gb"] if accel else None
+    if not largest_gb or not vram or accel.get("unified") or largest_gb * 1.05 <= vram:
+        return ""
+    return (f"Ce modèle quantifié a un composant de {largest_gb:.0f} Go, trop gros pour {vram:.0f} Go de VRAM "
+            "(le déchargement couche par couche n'est pas compatible avec les poids quantifiés).")
+
+
 class VideoDiffusersEngine(Engine):
     def load(self) -> None:
         import diffusers
@@ -88,6 +98,9 @@ class VideoDiffusersEngine(Engine):
         self.strategy = plan["strategy"]
         if o.get("gguf") and self.strategy == "sequential":
             self.strategy = "model_offload"  # layer-by-layer offload does not mix with quantized weights
+            err = _offload_overflow(self.spec.largest_component_gb, get_system())
+            if err:
+                raise RuntimeError(err)
 
         root = self._local_root()
         kwargs: dict[str, Any] = {}

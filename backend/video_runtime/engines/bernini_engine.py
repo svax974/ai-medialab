@@ -5,11 +5,16 @@
 
 Runs the authors' own `BerniniRendererPipeline` (their `bernini/` package, extracted by the pack installer into
 `<pack>/src`) the way `infer_single_gpu.py` does. It has no planner: it follows the prompt and the attached media
-directly. Task routing mirrors the authors' scripts:
+directly. Task routing mirrors the authors' `scripts/bernini_r/*.sh`:
     text only                -> t2v  (guidance_mode t2v_apg)
     source video             -> v2v  (v2v_apg)
     source video + reference -> rv2v (rv2v)
     reference image only     -> r2v  (r2v_apg)
+
+Conventions of the pipeline (checked against commit e6c2cf1): the video and the images are passed as file paths (it
+decodes them with decord and picks 4n + 1 frames at `fps`); with a source video the output size follows that video,
+scaled so its long side is `max_image_size` and snapped to multiples of 16; the model weights stay on the CPU and are
+moved to the GPU one component at a time (text encoder, then transformer, then VAE); the MP4 is written by the pipeline.
 """
 
 from __future__ import annotations
@@ -18,6 +23,13 @@ import os
 
 from . import Engine, require_cuda
 from common import Cancelled, local_snapshot, probe
+
+
+def route(video, references) -> tuple[str, str]:
+    """(task for the system prompt, guidance mode) from what is attached."""
+    if video:
+        return ("rv2v", "rv2v") if references else ("v2v", "v2v_apg")
+    return ("r2v", "r2v_apg") if references else ("t2v", "t2v_apg")
 
 
 class _Bar:
@@ -83,24 +95,18 @@ class BerniniEngine(Engine):
         extra = req["extra"]
         video = extra.get("video")
         refs = list(req.get("references") or [])
-        if video:
-            task, mode = ("rv2v", "rv2v") if refs else ("v2v", "v2v_apg")
-        elif refs:
-            task, mode = "r2v", "r2v_apg"
-        else:
-            task, mode = "t2v", "t2v_apg"
+        task, mode = route(video, refs)
         negative = (req.get("negative_prompt") or "").strip() or DEFAULT_NEG_PROMPT
-        with torch.inference_mode():
-            self.pipe(
-                req["prompt"],
-                neg_prompt=negative, num_frames=int(extra["frames"]), fps=int(extra.get("fps") or 16),
-                max_image_size=max(int(req["width"]), int(req["height"])),  # a source video sets its own output size
-                height=int(req["height"]), width=int(req["width"]),
-                video=video or None, images=refs or None,
-                num_inference_steps=int(req["steps"]), guidance_mode=mode,
-                omega_vid=1.25, omega_img=4.5, omega_txt=4.0, omega_scale=0.8, flow_shift=5.0,
-                seed=int(req["seed"]), eta=0.5, norm_threshold=(50.0, 50.0, 50.0), momentum=0,
-                system_prompt=get_system_prompt_for_task(task), output_path=output,
-            )
+        self.pipe(
+            req["prompt"],
+            neg_prompt=negative, num_frames=int(extra["frames"]), fps=int(extra.get("fps") or 16),
+            max_image_size=max(int(req["width"]), int(req["height"])),  # a source video sets its own output size
+            height=int(req["height"]), width=int(req["width"]),
+            video=video or None, images=refs or None,
+            num_inference_steps=int(req["steps"]), guidance_mode=mode,
+            omega_vid=1.25, omega_img=4.5, omega_txt=4.0, omega_scale=0.8, flow_shift=5.0,
+            seed=int(req["seed"]), eta=0.5, norm_threshold=(50.0, 50.0, 50.0), momentum=0,
+            system_prompt=get_system_prompt_for_task(task), output_path=output,
+        )
         torch.cuda.empty_cache()
         return probe(output)

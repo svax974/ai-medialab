@@ -23,6 +23,11 @@ def fit(img: Image.Image, width: int, height: int) -> Image.Image:
     return ImageOps.fit(img.convert("RGB"), (width, height), Image.Resampling.LANCZOS)
 
 
+def valid_frame_count(n: int) -> int:
+    """Largest 4k + 1 not above `n` (what the Wan-based video models accept), 0 when there is none."""
+    return (n - 1) // 4 * 4 + 1 if n >= 1 else 0
+
+
 def read_frames_at(path: str, fps: float, count: int, size: tuple[int, int] | None = None) -> list[Image.Image]:
     """Up to `count` frames sampled at `fps` from the start of a video, so motion keeps its speed whatever the
     source frame rate is. Frames are fitted to `size` (width, height) when given."""

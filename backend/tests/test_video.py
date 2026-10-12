@@ -237,3 +237,48 @@ class TestFilesAndServing:
         cid = client.post("/api/conversations", json={"mode": "video"}).json()["id"]
         assert [c["id"] for c in client.get("/api/conversations", params={"mode": "video"}).json()] == [cid]
         assert client.get("/api/conversations", params={"mode": "image"}).json() == []
+
+
+class TestLtx:
+    def test_memory_numbers_add_up(self):
+        spec = MODELS["ltx-2.3-distilled"]
+        for v in spec.variants:
+            assert v.weights_gb == pytest.approx(sum(s.size_gb for s in v.sources), abs=0.1), v.key
+            assert v.size_gb == pytest.approx(v.weights_gb, abs=0.1)
+        bf16 = next(v for v in spec.variants if v.key == "bf16")
+        assert bf16.largest_component_gb >= 37  # the bf16 transformer, not the text encoder
+        q4 = with_variant(spec, "Q4_K_S")
+        assert q4.weights_gb == pytest.approx(45.8, abs=0.1) and q4.largest_component_gb == 24.4
+
+    def test_text_encoder_is_the_bf16_copy_not_the_fp32_one(self):
+        q4 = with_variant(MODELS["ltx-2.3-distilled"], "Q4_K_S")
+        gemma = [s for s in q4.sources if s.repo == q4.options["text_encoder_repo"]]
+        assert gemma and gemma[0].size_gb < 30  # the fp32 copy is 48.7 GB
+
+    def test_gguf_converter_patch_renames_prompt_adaln(self):
+        torch = pytest.importorskip("torch")
+        pytest.importorskip("diffusers")
+        from diffusers.loaders import single_file_model as sfm
+
+        from app.engines.video_engine import _patch_ltx2_converter
+
+        _patch_ltx2_converter()
+        _patch_ltx2_converter()  # idempotent
+        fn = sfm.SINGLE_FILE_LOADABLE_CLASSES["LTX2VideoTransformer3DModel"]["checkpoint_mapping_fn"]
+        meta = lambda *shape: torch.empty(*shape, device="meta")  # noqa: E731
+        out = fn({
+            "prompt_adaln_single.linear.weight": meta(4, 2), "audio_prompt_adaln_single.linear.bias": meta(4),
+            "adaln_single.linear.weight": meta(4, 2), "patchify_proj.weight": meta(4, 2),
+            "video_embeddings_connector.x": meta(1),
+        })
+        assert set(out) == {"prompt_adaln.linear.weight", "audio_prompt_adaln.linear.bias", "time_embed.linear.weight",
+                            "proj_in.weight"}
+
+    def test_offload_guard_for_quantized_models(self):
+        from app.engines.video_engine import _offload_overflow
+
+        gpu = lambda gb, unified=False: {"accelerators": [{"memory_gb": gb, "unified": unified}]}  # noqa: E731
+        assert "24 Go" in _offload_overflow(24.4, gpu(24))  # Gemma alone would not fit a 24 GB card
+        assert _offload_overflow(24.4, gpu(32)) == ""
+        assert _offload_overflow(24.4, gpu(8, unified=True)) == ""
+        assert _offload_overflow(None, gpu(8)) == "" and _offload_overflow(9, {"accelerators": []}) == ""

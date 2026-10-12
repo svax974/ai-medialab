@@ -150,7 +150,10 @@ WAN_I2V_A14B = _wan14("I2V", "i2v", (3.5, 3.5), "Anime une image avec un rendu d
 # LTX-2.3 ------------------------------------------------------------------------------------------------
 
 LTX_REPO = "diffusers/LTX-2.3-Distilled-Diffusers"
-LTX_GEMMA = "Lightricks/gemma-3-12b-it-qat-q4_0-unquantized"  # bf16 copy of the text encoder (the diffusers repo stores fp32)
+# bf16 copy of the text encoder (the diffusers repo stores fp32, 48.7 GB). Checked against it through safetensors headers:
+# same 1065 tensors, names and shapes, 12,187,325,040 parameters, same Gemma3ForConditionalGeneration config, and the
+# sampled values are bit-identical once the bf16 ones are widened to fp32 (the fp32 files are an exact upcast).
+LTX_GEMMA = "Lightricks/gemma-3-12b-it-qat-q4_0-unquantized"
 LTX_BASE = ["model_index.json", "scheduler/*", "tokenizer/*", "processor/*", "connectors/*", "vae/*", "audio_vae/*",
             "vocoder/*"]
 LTX_CHECK = ["model_index.json", "connectors/*.safetensors", "vae/*.safetensors", "vocoder/*.safetensors"]
@@ -184,11 +187,11 @@ LTX_23 = ModelSpec(
         image_input="optional", audio_out=True, english_only=True,
     ),
     hf_repo=LTX_REPO,
-    license="LTX-2 Community License (usage libre sous un certain chiffre d'affaires)",
-    weights_gb=45.5, largest_component_gb=24.4, download_size_gb=45.8,
+    license="LTX-2 Community License (usage libre sous 10 M$ de chiffre d'affaires annuel) ; encodeur de texte sous licence Gemma",
+    weights_gb=45.8, largest_component_gb=24.4, download_size_gb=45.8,
     memory_hint="Modèle de 22 Md de paramètres : Q4 ≈ 46 Go de poids et de téléchargement (encodeur de texte Gemma 3 de "
-    "24 Go compris). Mac avec 64 Go de mémoire minimum ; GPU 24 Go+ avec 64 Go de RAM. Version distillée : 8 étapes, "
-    "sans guidance. Prompts en anglais.",
+    "24 Go compris), tous résidents en mémoire pendant la génération. Mac : 64 Go au plus juste, 96 Go conseillés ; "
+    "carte graphique : 32 Go de VRAM et 64 Go de RAM. Version distillée : 8 étapes, sans guidance. Prompts en anglais.",
     tags=["texte→vidéo", "image→vidéo", "son", "24 ips", "rapide"],
     options={"pipeline": "LTX2Pipeline", "i2v_pipeline": "LTX2ImageToVideoPipeline", "family": "ltx2",
              "transformer_class": "LTX2VideoTransformer3DModel", "text_encoder_repo": LTX_GEMMA, "distilled": True},
@@ -198,7 +201,7 @@ LTX_23 = ModelSpec(
         Variant("bf16", "bf16", round(8.3 + 24.4 + 38.0, 2),
                 [_src(LTX_REPO, LTX_BASE + ["transformer/*"], LTX_CHECK + ["transformer/*.safetensors"], 46.3),
                  LTX_GEMMA_SRC],
-                options={"gguf": None}, weights_gb=70.7, largest_component_gb=24.4),
+                options={"gguf": None}, weights_gb=70.7, largest_component_gb=38.0),  # the bf16 transformer is the largest piece
     ],
     default_variant="Q4_K_S",
 )
@@ -318,8 +321,13 @@ KIWI_EDIT = ModelSpec(
         "Qwen2.5-VL-3B, sous licence de recherche Qwen (usage non commercial). Vérifiez avant tout usage commercial.",
     ),
     hf_repo=KIWI_REPO,
-    sources=[_src(KIWI_REPO, None, ["model_index.json", "pipeline_kiwi_edit.py", "mllm_encoder.py", "wan_video_vae.py",
-                                     "transformer/*.safetensors", "mllm_encoder/model-*.safetensors", "vae/*.safetensors"], 20.4)],
+    # Whole repo (patterns=None): the remote code (*.py at the root and in the component folders), the Qwen processor and the
+    # two embedders are needed offline too, and the loader never reaches the Hub.
+    sources=[_src(KIWI_REPO, None, ["model_index.json", "pipeline_kiwi_edit.py", "mllm_encoder.py", "conditional_embedder.py",
+                                     "wan_video_vae.py", "scheduler/*.json", "processor/tokenizer.json", "processor/qwen_config.json",
+                                     "transformer/*.safetensors", "mllm_encoder/model-*.safetensors",
+                                     "mllm_encoder/diffusion_pytorch_model.safetensors", "vae/*.safetensors",
+                                     "source_embedder/*.safetensors", "ref_embedder/*.safetensors"], 20.4)],
     license="Non précisée (poids) · MIT (code) · encodeur Qwen2.5-VL-3B : licence de recherche Qwen",
     weights_gb=20.4, largest_component_gb=10.0, download_size_gb=20.4,
     memory_hint="Poids bf16 de 20,4 Go (transformeur 10 Go, encodeur Qwen2.5-VL 7,6 Go, VAE 2,8 Go) chargés en entier sur la "
@@ -337,7 +345,7 @@ BERNINI_R_13B = ModelSpec(
     id="bernini-r-1.3b",
     name="Bernini-R 1.3B",
     family="Bernini",
-    description="Génération et édition de vidéo guidées par un planificateur multimodal.",
+    description="Génération et édition de vidéo avec vidéo source et images de référence optionnelles (version légère).",
     engine="bernini_engine:BerniniEngine", backend="pack", kind="video", text_to_image=False,
     default_quantize=None, quantize_options=[],
     params=[_steps(40, 10, 60), NEGATIVE],
@@ -349,13 +357,14 @@ BERNINI_R_13B = ModelSpec(
     ),
     hf_repo=BERNINI_R_REPO,
     sources=[_src(BERNINI_R_REPO, ["config.json", "scheduler/*", "tokenizer/*", "text_encoder/*", "transformer/*", "vae/*"],
-                  ["config.json", "text_encoder/*.safetensors", "transformer/*.safetensors", "vae/*.safetensors"], 28.9)],
+                  ["config.json", "scheduler/scheduler_config.json", "tokenizer/tokenizer.json", "text_encoder/*.safetensors",
+                   "transformer/*.safetensors", "vae/*.safetensors"], 28.9)],
     license="Apache 2.0",
     weights_gb=28.9, largest_component_gb=22.7, download_size_gb=28.9,
     memory_hint="Version légère de Bernini : le moteur de rendu seul (Wan 2.1 1,3 Md), sans le planificateur multimodal "
     "(le planificateur complet pèse 192 Go). 28,9 Go à télécharger (poids fp32). Le code charge les composants sur la carte "
     "graphique à tour de rôle (≈ 14 Go en bf16 au total) : NVIDIA avec 16 Go minimum et 32 Go de RAM (estimation d'après "
-    "le code, non mesurée). Le guide officiel lance la vidéo sur 8 GPU ; le mode 1 GPU est celui de la démo Gradio. "
+    "le code, non mesurée). Le guide officiel montre la vidéo sur 8 GPU, mais le script mono-GPU accepte les mêmes tâches. "
     "Proche de la version 14 Md sur les tâches simples (style, retrait de sous-titres, retouche locale), moins bon sur "
     "les scènes complexes et les personnes. Ne tourne ni sur Mac ni sur processeur.",
     tags=["texte→vidéo", "montage vidéo", "image de référence", "16 ips", "Apache 2.0", "NVIDIA"],

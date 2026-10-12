@@ -170,12 +170,12 @@ d'attente, progression et annulation, galerie, téléchargements et mémoire par
 | **LTX-2.3 Distilled** | Rapide, haute définition, son synchronisé | texte → vidéo, image → vidéo | 46 Go (Q4_K_S) | licence LTX |
 | **HunyuanVideo 1.5** (T2V, I2V distillé) | Réalisme et mouvement soignés, 480p | texte → vidéo, image → vidéo | 53 / 35 Go | Tencent Hunyuan : **exclue dans l'UE, au Royaume-Uni et en Corée du Sud** (avertissement dans l'interface) |
 | **Kiwi-Edit 5B** | Édition de vidéo par instruction (+ image de référence) | édition | 20 Go | MIT (code) ; poids sans licence déclarée |
-| **Bernini-R 1.3B** | Génération et édition guidées par un planificateur multimodal | texte → vidéo, édition, référence | 29 Go | Apache 2.0 |
+| **Bernini-R 1.3B** | Génération et édition de vidéo (rendu seul, sans planificateur) | texte → vidéo, édition, référence | 29 Go | Apache 2.0 |
 
 Seules les variantes les plus légères sont proposées, quantifiées en 4 bits (GGUF) quand diffusers sait les charger
 (Wan, LTX-2) ; CogVideoX et HunyuanVideo 1.5 restent en pleine précision. Le planificateur mémoire refuse un modèle qui
 ne tient pas dans la mémoire de la machine (sur Mac, GPU et processeur partagent la même mémoire : pas de déchargement
-« gratuit »). Les poids de LTX-2.3 dépassent 60 Go de mémoire, donc plutôt un Mac de 64 Go ou une carte NVIDIA.
+« gratuit »). LTX-2.3 demande environ 46 Go de poids résidents : Mac de 64 Go au plus juste (96 Go conseillés), ou 32 Go de VRAM + 64 Go de RAM.
 
 **Matériel.** Wan, LTX, CogVideoX et HunyuanVideo passent par PyTorch + diffusers (CUDA, ROCm, MPS) ; pas de Vulkan pour la
 vidéo. Sur Mac, seuls CogVideoX et Wan 2.2 TI2V 5B sont raisonnables (32 Go ou plus). **Kiwi-Edit et Bernini** ont besoin du code
@@ -185,7 +185,9 @@ officiel et de dépendances épinglées : ils tournent dans un **environnement P
 **Non vérifié.** Aucune génération réelle n'a été lancée (pas de GPU adapté ni assez de mémoire ici) : le moteur, le chargement
 des poids GGUF et les deux packs reposent sur la lecture du code des bibliothèques et sur des tests avec moteur simulé. Les tailles viennent
 de l'API Hugging Face ; les besoins en mémoire des packs sont des estimations. Pour LTX-2.3, l'encodeur de texte est pris dans la copie
-bf16 `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (24 Go) au lieu des 49 Go fp32 du dépôt diffusers, en supposant des poids identiques.
+bf16 `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (24 Go) au lieu des 49 Go fp32 du dépôt diffusers : mêmes 1065 tenseurs et mêmes formes,
+valeurs échantillonnées identiques (comparaison complète non faite). Les deux packs ont été relus contre le code amont et leurs
+dépendances épinglées se résolvent (Linux et Windows CUDA), mais ils n'ont jamais été installés ni exécutés (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 
 ## Architecture
 
