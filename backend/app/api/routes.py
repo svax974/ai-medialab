@@ -75,9 +75,10 @@ async def uninstall_pack(pack_id: str) -> dict[str, Any]:
         if spec.options.get("pack") == pack_id:
             raise HTTPException(409, "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.")
     try:
-        pack_installer.uninstall(pack_id)
+        await asyncio.to_thread(pack_installer.uninstall, pack_id)  # la réponse n'arrive qu'une fois tout supprimé
     except RuntimeError as exc:
         raise HTTPException(409, str(exc)) from None
+    bus.publish("models.changed", {})
     return {"ok": True}
 
 
@@ -119,11 +120,15 @@ async def delete_model(model_id: str) -> dict[str, Any]:
     if jobs.worker and jobs.worker.model_id == model_id:
         raise HTTPException(409, "Ce modèle est chargé en mémoire : déchargez-le d'abord.")
     try:
-        return downloads.delete(model_id)
+        # Suppression réelle des fichiers hors de la boucle d'événements (le serveur reste réactif) ; on ne répond
+        # qu'une fois les fichiers effacés et l'espace libéré.
+        result = await asyncio.to_thread(downloads.delete, model_id)
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from None
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(409, str(exc)) from None
+    bus.publish("models.changed", {})
+    return result
 
 
 # --- Modèles Hugging Face ajoutés par l'utilisateur ------------------------------------------------
@@ -171,7 +176,7 @@ async def remove_custom_model(model_id: str) -> dict[str, Any]:
     freed = 0.0
     try:
         if downloads.status(spec)["size_gb"] > 0:
-            freed = downloads.delete(model_id)["freed_gb"]
+            freed = (await asyncio.to_thread(downloads.delete, model_id))["freed_gb"]
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(409, str(exc)) from None
     custom.remove(MODELS, model_id)

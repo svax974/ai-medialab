@@ -47,3 +47,9 @@ export function formatModelSize(gb: number | null | undefined): string {
   if (gb < 1) return `${Math.max(10, Math.round((gb * 1000) / 10) * 10)} Mo`;
   return `${(gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)).replace(".", ",")} Go`;
 }
+
+/** Modèles installés d'abord, les autres ensuite ; l'ordre du catalogue est conservé dans chaque groupe. */
+export function installedFirst<T extends { install: string }>(models: T[]): T[] {
+  const rank = (m: T) => (m.install === "installed" ? 0 : 1);
+  return models.map((m, i) => ({ m, i })).sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i).map((x) => x.m);
+}

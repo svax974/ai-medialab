@@ -112,6 +112,7 @@ class DownloadManager:
         return True
 
     def delete(self, model_id: str) -> dict[str, Any]:
+        """Supprime les fichiers du modèle ; bloquant (à lancer dans un thread). L'appelant publie `models.changed`."""
         spec = get_spec(model_id)
         sources = spec.all_sources()
         if not sources:
@@ -127,7 +128,6 @@ class DownloadManager:
         mine = {(s.repo, p) for s in sources for p in (s.patterns or ["*"])}
         shared = [m.id for m in all_specs() if m.id != spec.id
                   and any((s.repo, p) in mine for s in m.all_sources() for p in (s.patterns or ["*"]))]
-        bus.publish("models.changed", {})
         return {"freed_gb": round(freed / 1024**3, 2), "also_affects": shared}
 
     # --- Suivi du sous-processus -------------------------------------------------------------------------

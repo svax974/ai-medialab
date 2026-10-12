@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, type ModelInfo, type ModelKind, type SystemInfo } from "../lib/api";
-import { cx, formatModelSize } from "../lib/format";
+import { cx, formatModelSize, installedFirst } from "../lib/format";
 import { keys, queryClient, useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
@@ -50,8 +50,8 @@ export function ModelsDialog() {
   }, [open, searchKind]);
   const { data: system } = useQuery({ queryKey: ["system"], queryFn: api.system, enabled: open, staleTime: 5_000, refetchInterval: open ? 8_000 : false });
   const models = data?.models.filter((m) => m.kind === tab) ?? [];
-  const speech = models.filter((m) => m.audio?.task === "stt");
-  const generators = models.filter((m) => m.audio?.task !== "stt");
+  const speech = installedFirst(models.filter((m) => m.audio?.task === "stt"));
+  const generators = installedFirst(models.filter((m) => m.audio?.task !== "stt"));
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -148,6 +148,13 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   const freeGb = system?.disk.free_gb;
   const noRoom = !installed && !dl && need > 0 && freeGb != null && freeGb < need + 1;
 
+  // Suppression bloquante : on reste en attente tant que les fichiers ne sont pas réellement effacés.
+  const [deleting, setDeleting] = useState(false);
+  const refresh = () => Promise.all([
+    queryClient.invalidateQueries({ queryKey: keys.models }),
+    queryClient.invalidateQueries({ queryKey: ["system"] }),
+  ]);
+
   const start = useMutation({
     mutationFn: () => api.downloadModel(m.id),
     onSuccess: (d) => useStore.getState().setDownload(d),
@@ -163,13 +170,15 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       danger: true,
     });
     if (!ok) return;
+    setDeleting(true);
     try {
       const r = await api.deleteModel(m.id);
+      await refresh();
       toast.success(`${gb(r.freed_gb)} Go libérés${r.also_affects.length ? " (les variantes qui partagent ces fichiers sont aussi supprimées)" : ""}`);
-      queryClient.invalidateQueries({ queryKey: keys.models });
-      queryClient.invalidateQueries({ queryKey: ["system"] });
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -181,19 +190,21 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       danger: true,
     });
     if (!ok) return;
+    setDeleting(true);
     try {
       await api.removeCustomModel(m.id);
-      queryClient.invalidateQueries({ queryKey: keys.models });
-      queryClient.invalidateQueries({ queryKey: ["system"] });
+      await refresh();
     } catch (e) {
       toast.error((e as Error).message);
+    } finally {
+      setDeleting(false);
     }
   };
 
   const saveQuantize = (q: number | null) => api.saveSettings({ quantize: { [m.id]: q } }).then(() => queryClient.invalidateQueries({ queryKey: keys.models }));
 
   return (
-    <article className={cx("rounded-2xl border bg-surface-2/50 p-4", m.compatible ? "border-line" : "border-line opacity-80")}>
+    <article aria-busy={deleting} className={cx("rounded-2xl border bg-surface-2/50 p-4", m.compatible ? "border-line" : "border-line opacity-80")}>
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <h3 className="text-[15px] font-medium text-ink">{m.name}</h3>
         <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{backendLabel(m, system)}</span>
@@ -212,7 +223,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         {m.license && <span className="font-mono text-[10px] text-faint">· {m.license}</span>}
       </div>
 
-      {m.variants.length > 1 && <VariantPicker model={m} />}
+      {m.variants.length > 1 && <VariantPicker model={m} disabled={deleting} />}
 
       {(m.plan.note || m.engine_reason) && (
         <div className={cx("mt-2.5 flex items-start gap-2 text-[12px] leading-snug", m.compatible ? "text-muted" : "text-warn")}>
@@ -247,7 +258,11 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        {dl ? (
+        {deleting ? (
+          <Button variant="secondary" disabled>
+            <Spinner /> Suppression en cours… <span className="font-mono text-[11px] opacity-80">≈ {gb(m.installed_gb)} Go</span>
+          </Button>
+        ) : dl ? (
           <Button variant="secondary" onClick={() => cancel.mutate()} disabled={cancel.isPending}>Annuler</Button>
         ) : m.needs_engine_install ? (
           <Button variant="primary" disabled={!m.compatible} onClick={() => startSetup(m)}>
@@ -281,8 +296,8 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
             {need > 0 && <span className="font-mono text-[11px] opacity-80">≈ {gb(need)} Go</span>}
           </Button>
         )}
-        {m.custom && !dl && <Button variant="ghost" onClick={retire} disabled={loaded}><Trash2 className="size-4" /> Retirer de la liste</Button>}
-        {installed && m.backend === "mlx" && m.quantize_options.length > 0 && (
+        {m.custom && !dl && !deleting && <Button variant="ghost" onClick={retire} disabled={loaded}><Trash2 className="size-4" /> Retirer de la liste</Button>}
+        {installed && !deleting && m.backend === "mlx" && m.quantize_options.length > 0 && (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[11.5px] text-faint">Précision</span>
             <div className="flex rounded-lg bg-surface p-0.5 ring-1 ring-line">
@@ -304,7 +319,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
 }
 
 /** Choix de la quantification : seule celle qu'on sélectionne est téléchargée, aucune copie inutile. */
-function VariantPicker({ model: m }: { model: ModelInfo }) {
+function VariantPicker({ model: m, disabled }: { model: ModelInfo; disabled?: boolean }) {
   const choose = useMutation({
     mutationFn: (key: string) => api.saveSettings({ variant: { [m.id]: key } }),
     onSuccess: () => {
@@ -322,7 +337,7 @@ function VariantPicker({ model: m }: { model: ModelInfo }) {
         {m.variants.map((v) => (
           <button
             key={v.key}
-            disabled={choose.isPending}
+            disabled={choose.isPending || disabled}
             onClick={() => !v.selected && choose.mutate(v.key)}
             title={v.install === "installed" ? "Déjà téléchargée" : `À télécharger : ≈ ${gb(v.need_gb)} Go`}
             className={cx(
@@ -450,6 +465,7 @@ function KindTabs({ value, onChange }: { value: ModelKind; onChange: (k: ModelKi
 }
 
 function PacksCard({ system }: { system: SystemInfo }) {
+  const [uninstalling, setUninstalling] = useState<string | null>(null);
   const live = useStore((s) => s.packInstall);
   const install = live.state !== "idle" ? live : system.pack_install;
   const running = install?.state === "running";
@@ -488,16 +504,23 @@ function PacksCard({ system }: { system: SystemInfo }) {
                       danger: true,
                     });
                     if (!ok) return;
+                    setUninstalling(id);
                     try {
                       await api.uninstallPack(id);
-                      queryClient.invalidateQueries({ queryKey: keys.models });
-                      queryClient.invalidateQueries({ queryKey: ["system"] });
+                      await Promise.all([
+                        queryClient.invalidateQueries({ queryKey: keys.models }),
+                        queryClient.invalidateQueries({ queryKey: ["system"] }),
+                      ]);
                     } catch (e) {
                       toast.error((e as Error).message);
+                    } finally {
+                      setUninstalling(null);
                     }
                   }}
+                  disabled={uninstalling !== null}
                 >
-                  <Trash2 className="size-4" /> Désinstaller
+                  {uninstalling === id ? <Spinner /> : <Trash2 className="size-4" />}
+                  {uninstalling === id ? "Désinstallation…" : "Désinstaller"}
                 </Button>
               )}
             </div>

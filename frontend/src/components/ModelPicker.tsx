@@ -1,7 +1,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown, CloudDownload, Cpu, Search, Settings2 } from "lucide-react";
 import type { ModelInfo } from "../lib/api";
-import { cx, formatModelSize } from "../lib/format";
+import { cx, formatModelSize, installedFirst } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 
@@ -27,9 +27,9 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
         </button>
       </DropdownMenu.Trigger>
       <DropdownMenu.Portal>
-        <DropdownMenu.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[380px]">
+        <DropdownMenu.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[min(580px,calc(100vw-24px))]">
           <div className="eyebrow px-2.5 pb-1 pt-1.5">Modèles locaux</div>
-          {data?.models.filter((m) => m.kind === model.kind && m.audio?.task !== "stt").map((m) => {
+          {installedFirst(data?.models.filter((m) => m.kind === model.kind && m.audio?.task !== "stt") ?? []).map((m) => {
             const loaded = engine?.model_id === m.id;
             return (
               <DropdownMenu.Item

@@ -273,8 +273,7 @@ class PackInstaller:
     def uninstall(self, pack_id: str) -> None:
         if self.running and self.state.get("pack") == pack_id:
             raise RuntimeError("Une installation est en cours.")
-        shutil.rmtree(pack_dir(pack_id), ignore_errors=True)
-        bus.publish("models.changed", {})
+        shutil.rmtree(pack_dir(pack_id), ignore_errors=True)  # bloquant ; l'appelant publie `models.changed`
 
 
 installer = PackInstaller()
