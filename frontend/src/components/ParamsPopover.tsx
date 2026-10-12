@@ -4,6 +4,7 @@
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import * as Slider from "@radix-ui/react-slider";
+import * as Switch from "@radix-ui/react-switch";
 import { ChevronRight, Dices, Lock, RotateCcw, SlidersHorizontal } from "lucide-react";
 import type { GenParams, ModelInfo, ParamSpec } from "../lib/api";
 import { cx } from "../lib/format";
@@ -110,7 +111,25 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
   );
 }
 
-function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unknown; onChange: (v: number | string) => void }) {
+function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unknown; onChange: (v: number | string | boolean) => void }) {
+  if (spec.type === "bool") {
+    return (
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <span className="block text-[12.5px] text-ink-2">{spec.label}</span>
+          {spec.help && <p className="mt-1 text-[11px] leading-snug text-faint">{spec.help}</p>}
+        </div>
+        <Switch.Root
+          aria-label={spec.label}
+          checked={typeof value === "boolean" ? value : Boolean(spec.default)}
+          onCheckedChange={onChange}
+          className="relative mt-0.5 h-5 w-9 shrink-0 rounded-full bg-surface-3 ring-1 ring-line transition-colors data-[state=checked]:bg-safe"
+        >
+          <Switch.Thumb className="block size-4 translate-x-0.5 rounded-full bg-white shadow transition-transform data-[state=checked]:translate-x-[18px]" />
+        </Switch.Root>
+      </div>
+    );
+  }
   if (spec.type === "text") {
     return (
       <label className="block">

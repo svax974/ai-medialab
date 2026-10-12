@@ -188,17 +188,23 @@ Le planificateur mémoire refuse un modèle qui ne tient pas (sur Mac, GPU et pr
 déchargement « gratuit »). Sur une machine de 36 Go : Wan 5B (Q4 ou Q8), HunyuanVideo 1.5 480p et CogVideoX passent ; Wan 14B, LTX et
 LTX-2.5 demandent 48 Go ou plus (LTX-2.3 en Q3_K_M passe de justesse).
 
-**Non vérifié.** Aucune génération réelle n'a été lancée (pas assez de mémoire ici et aucun test lourd par prudence) : les moteurs, les
-deux packs et le démuxage du `.webm` de `sd-cli` reposent sur la lecture du code amont et sur des tests avec un faux `sd-cli`. Tailles
-issues de l'API Hugging Face ; besoins en mémoire estimés. Points précis : les réglages « distillé » de LTX (8 étapes, sigmas
+**Mesuré sur un M3 Max (36 Go), seul essai réel à ce jour** : Wan 2.2 TI2V 5B Q4_K_M via `sd-cli` (Metal), texte → vidéo, 480×832.
+9 images, 20 étapes : échantillonnage ≈ 6 s par étape, 7 Go de mémoire résidente, MP4 H.264 valide, image cohérente. 33 images :
+≈ 20 s par étape et la mémoire libre du système est tombée sous 6 Go (essai interrompu par le garde-fou) ; les clips sont donc limités
+à 1 s par défaut (2 s au plus) sur ces modèles. À 384×256 le modèle ne produit que du bruit abstrait : rien sous 480p n'est proposé.
+Le décodage du VAE complet est le goulot sur Metal (150 à 170 s même pour 9 images, tuilage sans effet) : l'option **« Décodage
+rapide »** (TAEHV, 23 Mo téléchargés au premier usage, vérifiés par SHA-256, activée par défaut sur Mac) le ramène à moins d'une seconde.
+
+**Non vérifié.** Tout le reste n'a jamais tourné pour de vrai : image → vidéo, Wan 14B, LTX, HunyuanVideo, CogVideoX, les deux
+packs, le démuxage du `.webm` de `sd-cli`. Ils reposent sur la lecture du code amont et sur des tests avec un faux `sd-cli`.
+Tailles issues de l'API Hugging Face ; besoins en mémoire estimés. Points précis : les réglages « distillé » de LTX (8 étapes, sigmas
 de diffusers) sont une inférence ; le GGUF Gemma 4 de LTX-2.5 n'est pas confirmé chargeable par `sd-cli` (sinon le convertir avec
 `sd-cli -M convert`) ; l'I2V de HunyuanVideo n'est pas documenté côté `sd-cli` ; l'effet de `--offload-to-cpu` sur Metal est inconnu
 (`IMAGEGEN_SDCPP_OFFLOAD=on|off`). LTX-2.3 en PyTorch utilise la copie bf16 de Gemma 3
 `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (mêmes 1065 tenseurs, valeurs échantillonnées identiques). Les packs ont été relus contre le
 code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 
-**À essayer en vrai, du plus petit au plus gros** (surveiller la pression mémoire à chaque étape) : Wan 5B Q4 en 480p, 1 s, texte → vidéo ;
-puis image → vidéo ; Wan 5B en 720p ; HunyuanVideo 480p ; LTX-2.3 Q3_K_M ; sur 48 Go ou plus seulement, Wan 14B et LTX-2.5.
+**À essayer en vrai, du plus petit au plus gros** (surveiller la pression mémoire à chaque étape) : Wan 5B image → vidéo (le texte → vidéo est fait) ; Wan 5B en 720p ; HunyuanVideo 480p ; LTX-2.3 Q3_K_M ; sur 48 Go ou plus seulement, Wan 14B et LTX-2.5.
 
 ## Architecture
 

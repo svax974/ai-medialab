@@ -25,7 +25,7 @@ ReferenceMode = Literal["none", "init", "multi"]
 class ParamSpec:
     key: str
     label: str
-    type: Literal["int", "float", "text"]
+    type: Literal["int", "float", "text", "bool"]
     default: Any
     min: float | None = None
     max: float | None = None

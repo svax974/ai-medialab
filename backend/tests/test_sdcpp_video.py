@@ -23,6 +23,7 @@ from app.engines import MODELS, custom, get_spec, video_gguf  # noqa: E402
 from app.engines.base import GenerationCancelled, GenerationRequest, Hooks, with_variant  # noqa: E402
 from app.engines.sdcpp_video_engine import (ProgressTracker, SdcppVideoEngine, build_command, offload_enabled,  # noqa: E402
                                             split_steps)
+from app import taehv  # noqa: E402
 from app.media import probe_video, read_video_with_audio  # noqa: E402
 from app.system import memory_plan  # noqa: E402
 
@@ -32,6 +33,8 @@ STUB = textwrap.dedent('''\
     import numpy as np
     from PIL import Image
     a = sys.argv[1:]
+    import os, json
+    if os.environ.get("STUB_ARGV"): open(os.environ["STUB_ARGV"], "w").write(json.dumps(a))
     def opt(name, default=None):
         return a[a.index(name) + 1] if name in a else default
     out, frames = opt("-o"), int(opt("--video-frames", "1"))
@@ -94,6 +97,8 @@ def machine(tmp_path, monkeypatch):
     monkeypatch.setattr(sys.modules[__name__], "SYSTEM", system, raising=False)
     monkeypatch.setattr("huggingface_hub.hf_hub_download", lambda repo, filename, **kw: f"/cache/{repo}/{filename}")
     monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
+    monkeypatch.setattr("app.config.ENGINES_DIR", tmp_path / "engines")
+    monkeypatch.setenv("STUB_ARGV", str(tmp_path / "argv.json"))
     return binary
 
 
@@ -229,6 +234,84 @@ class TestCommand:
         assert offload_enabled({}, {"IMAGEGEN_SDCPP_OFFLOAD": "on"}) and not offload_enabled({}, {})
 
 
+class TestFastDecode:
+    def command(self, tae):
+        spec = MODELS["wan-2.2-ti2v-5b-gguf"]
+        paths = {role: f"/m/{f}" for role, (_, f) in spec.options["files"].items()}
+        return build_command("/b/sd-cli", "metal", spec, paths, request(), "/o/%05d.png", [], True, tae)
+
+    def test_tae_replaces_the_vae_and_never_both(self):
+        cmd = self.command("/t/taew2_2.safetensors")
+        assert cmd[cmd.index("--tae") + 1] == "/t/taew2_2.safetensors" and "--vae" not in cmd
+        assert "--vae" in self.command(None) and "--tae" not in self.command(None)
+
+    def test_specs_pick_the_decoder_of_their_vae(self):
+        assert MODELS["wan-2.2-ti2v-5b-gguf"].options["tae"] == "taew2_2"
+        for mid in ("wan-2.2-t2v-a14b-gguf", "wan-2.2-i2v-a14b-gguf"):
+            assert MODELS[mid].options["tae"] == "taew2_1"
+        for mid in ("wan-2.2-ti2v-5b-gguf", "wan-2.2-t2v-a14b-gguf", "wan-2.2-i2v-a14b-gguf"):
+            assert any(p.key == "fast_decode" and p.type == "bool" for p in MODELS[mid].params)
+        assert not any(p.key == "fast_decode" for p in MODELS["ltx-2.3-distilled-gguf"].params)
+
+    def test_wan_never_offers_a_size_the_model_cannot_draw(self):
+        for mid in ("wan-2.2-ti2v-5b-gguf", "wan-2.2-t2v-a14b-gguf", "wan-2.2-i2v-a14b-gguf"):
+            assert all(r.short_side >= 480 for r in MODELS[mid].video.resolutions)
+            assert MODELS[mid].video.default_resolution == "480p"
+
+    def run(self, machine, tmp_path, fetch, on=True):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        hooks = Recorder()
+        orig = taehv.ensure_tae
+        taehv.ensure_tae = lambda name, fetch_=None: orig(name, fetch)
+        try:
+            eng.save(eng.generate(request(fast_decode=on), hooks), tmp_path / "c.mp4")
+        finally:
+            taehv.ensure_tae = orig
+        return json.loads((tmp_path / "argv.json").read_text()), [e[1] for e in hooks.events if e[0] == "phase"]
+
+    @staticmethod
+    def good(url, dest):
+        assert url.endswith("/011dfc2112197741c540e0bdd5b7b67bcc930771/safetensors/taew2_2.safetensors")
+        dest.write_bytes(b"x")
+
+    def test_download_then_cached(self, machine, tmp_path, monkeypatch):
+        data = b"tiny decoder"
+        import hashlib
+
+        monkeypatch.setitem(taehv.FILES, "taew2_2", (len(data), hashlib.sha256(data).hexdigest()))
+        calls = []
+        fetch = lambda url, dest: (calls.append(url), dest.write_bytes(data))  # noqa: E731
+        argv, phases = self.run(machine, tmp_path, fetch)
+        assert argv[argv.index("--tae") + 1] == str(tmp_path / "engines" / "taehv" / "taew2_2.safetensors") and "--vae" not in argv
+        assert phases == ["fetch", "prepare", "sampling", "decode", "encode"] and len(calls) == 1
+        assert [p.name for p in (tmp_path / "engines" / "taehv").iterdir()] == ["taew2_2.safetensors"]  # no .part left
+        argv, phases = self.run(machine, tmp_path, fetch)  # second run: no download
+        assert len(calls) == 1 and "fetch" not in phases and "--tae" in argv
+
+    def test_off_uses_the_full_vae(self, machine, tmp_path):
+        argv, phases = self.run(machine, tmp_path, self.good, on=False)
+        assert "--vae" in argv and "--tae" not in argv and "fetch" not in phases
+
+    def test_failed_download_falls_back_to_the_full_vae(self, machine, tmp_path):
+        def offline(url, dest):
+            dest.write_bytes(b"partial")
+            raise OSError("no network")
+
+        argv, _ = self.run(machine, tmp_path, offline)
+        assert "--vae" in argv and "--tae" not in argv
+        assert not list((tmp_path / "engines" / "taehv").iterdir())
+
+    def test_wrong_checksum_is_rejected(self, machine, tmp_path):
+        with pytest.raises(taehv.TaeUnavailable, match="corrompu"):
+            taehv.ensure_tae("taew2_2", self.good)
+        assert not list((tmp_path / "engines" / "taehv").iterdir())
+        argv, _ = self.run(machine, tmp_path, self.good)  # the engine falls back instead of failing
+        assert "--vae" in argv and "--tae" not in argv
+
+    def test_default_follows_the_platform(self):
+        assert video_gguf.FAST_DECODE.default is video_gguf.FAST_DECODE_DEFAULT
+
+
 class TestProgress:
     def feed(self, tracker, lines):
         return [e for line in lines for e in tracker.feed(line)]
@@ -251,6 +334,12 @@ class TestProgress:
         steps = [e for e in events if e[0] == "step"]
         assert steps[0] == ("step", 1, 18) and ("step", 8, 18) in steps and ("step", 9, 18) in steps
         assert steps[-2:] == [("step", 18, 18), ("step", 18, 18)] and events[-1] == ("phase", "decode")
+
+    def test_tae_decode_bars_are_ignored_too(self):
+        t = ProgressTracker([2])
+        events = self.feed(t, ["generate_video 832x480x9", "|=>| 1/2 - 1s/it", "|=>| 2/2 - 1s/it", "sampling completed, taking 2s",
+                               "|=>| 1/3 - 0.1s/it", "|=>| 3/3 - 0.1s/it", "decode_first_stage completed, taking 0.7s"])
+        assert events == [("phase", "sampling"), ("step", 1, 2), ("step", 2, 2), ("step", 2, 2), ("phase", "decode")]
 
     def test_repeated_bar_is_reported_once(self):
         t = ProgressTracker([4])

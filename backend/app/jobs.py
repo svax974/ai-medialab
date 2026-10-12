@@ -578,7 +578,8 @@ class JobManager:
                 prompt=msg["prompt"], width=width, height=height, steps=steps, seed=int(seed),
                 guidance=float(guidance) if guidance is not None else None, negative_prompt=negative,
                 references=[str(p) for p in images], strength=float(strength) if strength is not None else None,
-                extra={"task": task, "frames": frames, "fps": caps.fps, "video": str(videos[0]) if videos else None},
+                extra={"task": task, "frames": frames, "fps": caps.fps, "video": str(videos[0]) if videos else None,
+                       **{p.key: bool(params.get(p.key, p.default)) for p in spec.params if p.type == "bool"}},
             )
             items.append({"request": asdict(req), "output": str(OUTPUTS_DIR / f"{msg['id']}_{i}.mp4")})
         return {"kind": "video", "model_id": spec.id, "conversation_id": msg["conversation_id"], "params": params,

@@ -16,6 +16,9 @@ LTX-2.5 is the only model with gated files (the VAEs and the Gemma 4 encoder): `
 
 from __future__ import annotations
 
+import platform
+import sys
+
 from .base import HfSource, ModelSpec, ParamSpec, Variant, VideoCaps, VideoResolution
 from .video_specs import NEGATIVE, TENCENT_WARNING
 
@@ -37,6 +40,15 @@ GATED_NOTICE = ("Accès restreint : acceptez la licence sur Hugging Face (dépô
 
 UMT5 = ("city96/umt5-xxl-encoder-gguf", "umt5-xxl-encoder-Q4_K_M.gguf")
 QWEN_VL = ("mradermacher/Qwen2.5-VL-7B-Instruct-GGUF", "Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf")  # shared with Qwen Image Edit
+
+
+# "Fast decode" (sd-cli --tae, see taehv.py). The full Wan VAE takes 150-170 s on Metal even at 384x256x9 (scalar 3D
+# convolution, --vae-tiling changes nothing), TAEHV 0.7 s at 480x832x9 with a peak of 7.6 GB. On by default on Apple
+# Silicon only: CUDA, ROCm and Vulkan decode the full VAE in reasonable time.
+FAST_DECODE_DEFAULT = sys.platform == "darwin" and platform.machine() == "arm64"
+FAST_DECODE = ParamSpec(
+    "fast_decode", "Décodage rapide", "bool", FAST_DECODE_DEFAULT,
+    help="Décode en moins d'une seconde au lieu de plusieurs minutes (Metal) ; légère perte de détail.")
 
 
 def _res(rid: str, short: int, long: int) -> VideoResolution:
@@ -101,18 +113,24 @@ WAN_TI2V_5B = _model(
     family="Wan",
     description="Polyvalent, meilleure qualité ouverte en texte → vidéo et image → vidéo. Version quantifiée "
     "(GGUF) : ≈ 8,5 Go, sans PyTorch, sur Mac, NVIDIA, AMD et Intel.",
-    params=[_steps(30, 10, 50), _guidance(6.0), NEGATIVE],
+    params=[_steps(20, 10, 50), _guidance(6.0), FAST_DECODE, NEGATIVE],
     size_multiple=32,
+    # Measured with the Q4_K_M on an M3 Max (36 GB): at 384x256 the 5B draws abstract noise whatever the step count (6 or
+    # 20), so nothing below 480p is offered; native sizes are 480x832 and 704x1280. At 480x832, 20 steps: 9 frames take
+    # about 6 s per step and ~7 GB; 33 frames about 20 s per step and push the whole machine to < 6 GB free, so clips
+    # are kept short (1 s by default, 2 s at most) and 20 steps is the default.
     video=VideoCaps(
-        tasks=["t2v", "i2v"], fps=24, frame_step=4, default_seconds=3.0, min_seconds=1.0, max_seconds=5.0,
+        tasks=["t2v", "i2v"], fps=24, frame_step=4, default_seconds=1.0, min_seconds=1.0, max_seconds=2.0,
         resolutions=[_res("480p", 480, 832), _res("720p", 704, 1280)], default_resolution="480p", image_input="optional",
     ),
     license="Apache 2.0",
     memory_hint="≈ 8,5 Go de poids (Q4_K_M : diffusion 3,4 + encodeur de texte 3,7 + VAE 1,4) et quelques Go de calcul. "
     "Mac Apple Silicon avec 24 Go de mémoire minimum. 480p recommandé : la 720p et le décodage du VAE sont très longs. "
-    "La variante Q8_0 gagne en finesse.",
+    "Mesuré sur un M3 Max (36 Go) : clip d'une seconde en 480p, environ 7 Go ; au-delà de 1,5 s la mémoire devient juste. "
+    "La variante Q8_0 gagne en finesse. Le décodage rapide (TAEHV, 23 Mo téléchargés au premier usage) ramène le décodage de plusieurs minutes à une seconde sur Mac.",
     tags=["texte→vidéo", "image→vidéo", "24 ips", "GGUF", "Apache 2.0"],
-    options={"files": {}, "cli_args": WAN_CLI, "offload_to_cpu": True, "default_negative": WAN_NEGATIVE, "overhead_gb": 5.0},
+    options={"files": {}, "cli_args": WAN_CLI, "offload_to_cpu": True, "default_negative": WAN_NEGATIVE, "overhead_gb": 5.0,
+             "tae": "taew2_2"},
 )
 
 
@@ -133,7 +151,8 @@ def _wan14(task: str, kind: str, desc: str) -> ModelSpec:
         family="Wan",
         description=desc,
         # Guides: 10 low-noise + 8 high-noise steps, guidance 3.5 on both experts.
-        params=[_steps(18, 8, 40, "Réparties entre les deux experts (≈ 45 % pour celui du bruit fort)."), _guidance(3.5), NEGATIVE],
+        params=[_steps(18, 8, 40, "Réparties entre les deux experts (≈ 45 % pour celui du bruit fort)."), _guidance(3.5),
+                FAST_DECODE, NEGATIVE],
         size_multiple=32,
         video=VideoCaps(
             tasks=["t2v"] if t2v else ["i2v"], fps=16, frame_step=4, default_seconds=3.0, min_seconds=1.0, max_seconds=5.0,
@@ -146,7 +165,7 @@ def _wan14(task: str, kind: str, desc: str) -> ModelSpec:
         "avec 32 Go de RAM. Préférez la version 5B pour essayer.",
         tags=["texte→vidéo" if t2v else "image→vidéo", "16 ips", "14 Md", "GGUF", "Apache 2.0", "lent"],
         options={"files": {}, "cli_args": WAN_CLI, "offload_to_cpu": True, "default_negative": WAN_NEGATIVE, "overhead_gb": 8.0,
-                 "high_noise": {"steps_ratio": 8 / 18, "sampling": "euler"}},
+                 "tae": "taew2_1", "high_noise": {"steps_ratio": 8 / 18, "sampling": "euler"}},
     )
 
 

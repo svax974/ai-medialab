@@ -114,7 +114,8 @@ function StatusLine({ message, model, queuePos }: { message: Message; model?: Mo
   if (message.status === "running") {
     const count = p.count ?? 1;
     // The GGUF engine reports its stages; decoding the video can take minutes and shows no steps.
-    const waiting = progress?.stage === "decode" ? "décodage de la vidéo (peut durer plusieurs minutes)…"
+    const waiting = progress?.stage === "fetch" ? "téléchargement du décodeur rapide (23 Mo)…"
+      : progress?.stage === "decode" ? (p.fast_decode ? "décodage rapide de la vidéo…" : "décodage de la vidéo (peut durer plusieurs minutes)…")
       : progress?.stage === "encode" ? "encodage MP4…"
       : progress?.stage === "sampling" ? "échantillonnage…" : "préparation…";
     return (

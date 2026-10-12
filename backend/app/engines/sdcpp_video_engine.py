@@ -16,6 +16,7 @@ step (Wan/Hunyuan 4k+1, LTX 8k+1).
     offload_to_cpu    pass --offload-to-cpu (what the sd.cpp guides recommend); `IMAGEGEN_SDCPP_OFFLOAD=on|off` overrides
     default_negative  negative prompt used when the user left it empty
     high_noise        Wan 2.2 A14B: {"steps_ratio": share of the steps run by the high-noise expert, "sampling": method}
+    tae               Wan fast decode: name of the TAEHV file (taehv.py) passed as `--tae` in place of the `vae` file
     sigmas            fixed sigma schedule (distilled LTX); `steps` must match its length - 1
 """
 
@@ -23,6 +24,7 @@ from __future__ import annotations
 
 import os
 import queue
+import logging
 import re
 import shutil
 import subprocess
@@ -35,6 +37,8 @@ from typing import Any
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 from .sdcpp_engine import PROGRESS, _explain, _kill, _pump
 
+log = logging.getLogger(__name__)
+
 # Log lines that mark the phases of vid_gen (stable-diffusion.cpp src/pipeline/video.cpp).
 SAMPLING_START = re.compile(r"\bgenerate_video \d+x\d+x\d+")
 
@@ -42,8 +46,8 @@ SAMPLING_START = re.compile(r"\bgenerate_video \d+x\d+x\d+")
 class ProgressTracker:
     """Turns sd-cli's log lines into phases and cumulative sampling steps.
 
-    The VAE (encode of the start image, decode of the video) draws the same `k/N - s/it` bars as the sampler, so a bar only
-    counts as a step between the `generate_video WxHxF` line and the end of sampling. Wan 2.2 A14B samples twice (high-noise
+    The VAE (encode of the start image, decode of the video; full VAE tiles or the TAE alike) draws the same `k/N - s/it`
+    bars as the sampler, so a bar only counts as a step between the `generate_video WxHxF` line and the end of sampling. Wan 2.2 A14B samples twice (high-noise
     expert, then low-noise one) and the counter restarts: steps are accumulated over both passes.
 
     `feed(line)` returns events: ("phase", name) with name in prepare | sampling | decode | encode, and ("step", done, total)."""
@@ -118,14 +122,18 @@ def split_steps(options: dict[str, Any], steps: int) -> tuple[int, int | None]:
 
 
 def build_command(binary: str, variant: str, spec, paths: dict[str, str], req: GenerationRequest, output: str,
-                  references: list[str], offload: bool) -> list[str]:
+                  references: list[str], offload: bool, tae: str | None = None) -> list[str]:
     o = spec.options
     frames = int(req.extra["frames"])
     fps = int(req.extra.get("fps") or spec.video.fps)
     low, high = split_steps(o, req.steps)
     cmd = [binary, "-M", "vid_gen"]
     for role, path in paths.items():
+        if role == "vae" and tae:
+            continue  # --tae replaces --vae: never both
         cmd += [f"--{role}", path]
+    if tae:
+        cmd += ["--tae", tae]
     cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--video-frames", str(frames),
             "--fps", str(fps), "--steps", str(low), "-s", str(req.seed), "-o", output]
     if req.guidance is not None:
@@ -179,6 +187,23 @@ class SdcppVideoEngine(Engine):
             except LocalEntryNotFoundError:
                 raise RuntimeError(f"Fichier du modèle introuvable : {repo}/{filename} — téléchargez le modèle.") from None
 
+    def _fast_decoder(self, req: GenerationRequest, hooks: Hooks) -> str | None:
+        """Path of the TAEHV decoder when fast decode is on and available; None means the full VAE is used.
+
+        The first use downloads 23 MB. If that fails (offline...), generation goes on with the full VAE: slower, not broken."""
+        from .. import taehv
+
+        name = self.spec.options.get("tae")
+        if not name or not req.extra.get("fast_decode"):
+            return None
+        try:
+            if not taehv.is_ready(name):
+                hooks.on_phase("fetch")  # "téléchargement du décodeur rapide (23 Mo)…"
+            return str(taehv.ensure_tae(name))
+        except taehv.TaeUnavailable as e:
+            log.warning("%s Décodage complet du VAE à la place.", e)
+            return None
+
     def generate(self, req: GenerationRequest, hooks: Hooks) -> SdcppVideoResult:
         from PIL import Image, ImageOps
 
@@ -202,8 +227,9 @@ class SdcppVideoEngine(Engine):
                 img = fit_image(ImageOps.exif_transpose(Image.open(ref)).convert("RGB"), req.width, req.height)
                 refs.append(str(tmp / f"ref{i}.png"))
                 img.save(refs[-1])
+            tae = self._fast_decoder(req, hooks)
             cmd = build_command(str(self.binary), self.variant, self.spec, self.paths, req, str(output), refs,
-                                offload_enabled(o))
+                                offload_enabled(o), tae)
             hooks.on_phase("prepare")
 
             lines: "queue.Queue[str | None]" = queue.Queue()

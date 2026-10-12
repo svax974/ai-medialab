@@ -8,8 +8,8 @@ export type ReferenceMode = "none" | "init" | "multi";
 export interface ParamSpec {
   key: string;
   label: string;
-  type: "int" | "float" | "text";
-  default: number | string;
+  type: "int" | "float" | "text" | "bool";
+  default: number | string | boolean;
   min: number | null;
   max: number | null;
   step: number | null;
@@ -336,7 +336,7 @@ export interface JobProgress {
   conversation_id?: string;
   phase?: "loading" | "running";
   /** Stage of a running video job (GGUF engine): prompt/image encoding, sampling, VAE decoding, MP4 encoding. */
-  stage?: "prepare" | "sampling" | "decode" | "encode" | null;
+  stage?: "prepare" | "fetch" | "sampling" | "decode" | "encode" | null;
   load_started_at?: number;
   index?: number;
   count?: number;
