@@ -167,10 +167,14 @@ def _kill(proc: subprocess.Popen) -> None:
         proc.wait()
 
 
-def _explain(code: int, tail: list[str], variant: str) -> str:
+def _explain(code: int, tail: list[str], variant: str, video: bool = False) -> str:
     text = "\n".join(tail[-8:])
     low = text.lower()
-    if any(k in low for k in ("out of memory", "failed to allocate", "vk_error_out_of", "cudamalloc")):
+    if any(k in low for k in ("out of memory", "failed to allocate", "vk_error_out_of", "cudamalloc",
+                              "cannot make enough memory available", "erroroutofdevicememory")):
+        if video:
+            return ("Mémoire insuffisante pour cette vidéo. Réduisez la définition ou la durée, choisissez une "
+                    f"quantification plus légère, ou fermez d'autres applications. ({variant})")
         return ("Mémoire GPU insuffisante pour ce modèle à cette taille. Réduisez la définition ou choisissez "
                 f"une quantification plus légère. ({variant})")
     return f"sd-cli s'est arrêté (code {code}, build {variant}).\n{text}"

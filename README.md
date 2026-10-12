@@ -162,32 +162,43 @@ d'attente, progression et annulation, galerie, téléchargements et mémoire par
 - **Modèles Hugging Face** : la recherche du gestionnaire de modèles propose aussi les dépôts vidéo au format
   diffusers (Wan, CogVideoX, HunyuanVideo 1.5, LTX-2) et les quantifications GGUF de Wan 2.2 TI2V 5B.
 
-| Modèle | Spécialité | Tâches | Téléchargement | Licence |
+| Modèle | Spécialité | Moteur | Téléchargement | Licence |
 |---|---|---|---|---|
-| **CogVideoX 2B** (5B, 5B I2V) | Léger, clips courts 480p | texte → vidéo (5B : édition ; I2V : image → vidéo) | 14 Go (5B : 22 Go) | Apache 2.0 (5B : licence CogVideoX) |
-| **Wan 2.2 TI2V 5B** | Polyvalent, la meilleure qualité ouverte | texte → vidéo, image → vidéo | 18 Go (Q4_K_M) | Apache 2.0 |
-| **Wan 2.2 14B** (T2V, I2V) | Qualité maximale, début et fin au choix (I2V) | texte → vidéo, image → vidéo | 29 Go (Q4_K_S, deux experts) | Apache 2.0 |
-| **LTX-2.3 Distilled** | Rapide, haute définition, son synchronisé | texte → vidéo, image → vidéo | 46 Go (Q4_K_S) | licence LTX |
-| **HunyuanVideo 1.5** (T2V, I2V distillé) | Réalisme et mouvement soignés, 480p | texte → vidéo, image → vidéo | 53 / 35 Go | Tencent Hunyuan : **exclue dans l'UE, au Royaume-Uni et en Corée du Sud** (avertissement dans l'interface) |
-| **Kiwi-Edit 5B** | Édition de vidéo par instruction (+ image de référence) | édition | 20 Go | MIT (code) ; poids sans licence déclarée |
-| **Bernini-R 1.3B** | Génération et édition de vidéo (rendu seul, sans planificateur) | texte → vidéo, édition, référence | 29 Go | Apache 2.0 |
+| **Wan 2.2 TI2V 5B** | Polyvalent, la meilleure qualité ouverte (texte → vidéo, image → vidéo) | **GGUF** (Metal, CUDA, ROCm, Vulkan) ou PyTorch | 8,5 Go (Q4_K_M) / 34 Go (PyTorch) | Apache 2.0 |
+| **Wan 2.2 14B** (T2V, I2V) | Qualité maximale, début et fin au choix (I2V) ; lent | GGUF (deux experts) | 21 Go (Q4_K_S) | Apache 2.0 |
+| **LTX-2.3 Distilled 1.1** | Rapide, haute définition, son synchronisé | GGUF | 24,5 Go (Q4_K_S ; Q3_K_M : 22 Go) | licence LTX-2 (gratuite sous 10 M$ de CA) |
+| **LTX-2.5 Distilled** | Dernière version de LTX : encodeur Gemma 4, son synchronisé | GGUF | 25,5 Go | licence LTX-2 ; **dépôts à accès restreint** (jeton Hugging Face requis) |
+| **HunyuanVideo 1.5** (T2V, I2V) | Réalisme et mouvement soignés, 480p | GGUF ou PyTorch | 12,7 Go (Q4_K_M) | Tencent Hunyuan : **exclue dans l'UE, au Royaume-Uni et en Corée du Sud** (avertissement dans l'interface) |
+| **CogVideoX 2B** (5B, 5B I2V) | Léger, clips courts 480p | PyTorch | 14 Go (5B : 22 Go) | Apache 2.0 (5B : licence CogVideoX) |
+| **Kiwi-Edit 5B** | Édition de vidéo par instruction (+ image de référence) | pack isolé, NVIDIA | 20 Go | MIT (code) ; poids sans licence déclarée |
+| **Bernini-R 1.3B** | Génération et édition de vidéo (rendu seul, sans planificateur) | pack isolé, NVIDIA | 29 Go | Apache 2.0 |
 
-Seules les variantes les plus légères sont proposées, quantifiées en 4 bits (GGUF) quand diffusers sait les charger
-(Wan, LTX-2) ; CogVideoX et HunyuanVideo 1.5 restent en pleine précision. Le planificateur mémoire refuse un modèle qui
-ne tient pas dans la mémoire de la machine (sur Mac, GPU et processeur partagent la même mémoire : pas de déchargement
-« gratuit »). LTX-2.3 demande environ 46 Go de poids résidents : Mac de 64 Go au plus juste (96 Go conseillés), ou 32 Go de VRAM + 64 Go de RAM.
+Chaque modèle est pris dans sa **dernière version ouverte** (vérifié le 12/10/2026) : pas de Wan 2.5+ ouvert, LTX-2.5 est la
+plus récente de sa famille (LTX-2.3 `distilled-1.1` reste disponible sans compte), Bernini v2 complet (planificateur + rendu,
+≈ 48 Go même en int4) est trop lourd, on garde le rendu seul.
 
-**Matériel.** Wan, LTX, CogVideoX et HunyuanVideo passent par PyTorch + diffusers (CUDA, ROCm, MPS) ; pas de Vulkan pour la
-vidéo. Sur Mac, seuls CogVideoX et Wan 2.2 TI2V 5B sont raisonnables (32 Go ou plus). **Kiwi-Edit et Bernini** ont besoin du code
+**Moteurs.** La vidéo passe de préférence par le moteur **GGUF** (`sd-cli -M vid_gen`, stable-diffusion.cpp, version épinglée
+`master-956`), donc sur Metal, CUDA, ROCm et Vulkan avec des poids quantifiés en 4 bits ; `sd-cli` ne produit pas de MP4, l'application
+convertit sa sortie (et le son de LTX). Sur Mac, une build de `sd-cli` antérieure à `master-745` est refusée (Wan n'y fonctionnait pas).
+Les versions PyTorch + diffusers restent en alternative (CogVideoX n'existe que là). **Kiwi-Edit et Bernini** ont besoin du code
 officiel et de dépendances épinglées : ils tournent dans un **environnement Python isolé** (« pack », créé à la demande dans
 `<données>/engines/video/`) et exigent une carte NVIDIA (ou AMD sous Linux) ; sinon ils sont listés comme incompatibles avec la raison.
 
-**Non vérifié.** Aucune génération réelle n'a été lancée (pas de GPU adapté ni assez de mémoire ici) : le moteur, le chargement
-des poids GGUF et les deux packs reposent sur la lecture du code des bibliothèques et sur des tests avec moteur simulé. Les tailles viennent
-de l'API Hugging Face ; les besoins en mémoire des packs sont des estimations. Pour LTX-2.3, l'encodeur de texte est pris dans la copie
-bf16 `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (24 Go) au lieu des 49 Go fp32 du dépôt diffusers : mêmes 1065 tenseurs et mêmes formes,
-valeurs échantillonnées identiques (comparaison complète non faite). Les deux packs ont été relus contre le code amont et leurs
-dépendances épinglées se résolvent (Linux et Windows CUDA), mais ils n'ont jamais été installés ni exécutés (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
+Le planificateur mémoire refuse un modèle qui ne tient pas (sur Mac, GPU et processeur partagent la même mémoire : pas de
+déchargement « gratuit »). Sur une machine de 36 Go : Wan 5B (Q4 ou Q8), HunyuanVideo 1.5 480p et CogVideoX passent ; Wan 14B, LTX et
+LTX-2.5 demandent 48 Go ou plus (LTX-2.3 en Q3_K_M passe de justesse).
+
+**Non vérifié.** Aucune génération réelle n'a été lancée (pas assez de mémoire ici et aucun test lourd par prudence) : les moteurs, les
+deux packs et le démuxage du `.webm` de `sd-cli` reposent sur la lecture du code amont et sur des tests avec un faux `sd-cli`. Tailles
+issues de l'API Hugging Face ; besoins en mémoire estimés. Points précis : les réglages « distillé » de LTX (8 étapes, sigmas
+de diffusers) sont une inférence ; le GGUF Gemma 4 de LTX-2.5 n'est pas confirmé chargeable par `sd-cli` (sinon le convertir avec
+`sd-cli -M convert`) ; l'I2V de HunyuanVideo n'est pas documenté côté `sd-cli` ; l'effet de `--offload-to-cpu` sur Metal est inconnu
+(`IMAGEGEN_SDCPP_OFFLOAD=on|off`). LTX-2.3 en PyTorch utilise la copie bf16 de Gemma 3
+`Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (mêmes 1065 tenseurs, valeurs échantillonnées identiques). Les packs ont été relus contre le
+code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
+
+**À essayer en vrai, du plus petit au plus gros** (surveiller la pression mémoire à chaque étape) : Wan 5B Q4 en 480p, 1 s, texte → vidéo ;
+puis image → vidéo ; Wan 5B en 720p ; HunyuanVideo 480p ; LTX-2.3 Q3_K_M ; sur 48 Go ou plus seulement, Wan 14B et LTX-2.5.
 
 ## Architecture
 

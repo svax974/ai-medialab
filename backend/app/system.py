@@ -248,8 +248,11 @@ def warm_up() -> None:
     threading.Thread(target=get_system, daemon=True, name="system-probe").start()
 
 
-def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict[str, Any], engine: str) -> dict[str, Any]:
+def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict[str, Any], engine: str,
+                overhead_gb: float = 0.0) -> dict[str, Any]:
     """Decide how to load a model on this machine.
+
+    `overhead_gb`: memory used while computing on top of the weights (video latents and attention), GGUF engine only.
 
     strategy: "full" (all on the GPU), "model_offload" (one component at a time on the GPU),
     "sequential" (layer by layer, very slow) or "none" (won't fit).
@@ -270,6 +273,7 @@ def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict
         # (GPU, then RAM, then disk: --auto-fit). VRAM only affects speed, not feasibility.
         if accel is None:
             return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}
+        weights_gb = weights_gb + overhead_gb
         if accel["unified"]:
             ok = ram >= weights_gb * 1.3
             return {"fits": ok, "strategy": "full",

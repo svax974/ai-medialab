@@ -198,6 +198,30 @@ def read_frames(path: Path, max_frames: int, size: tuple[int, int] | None = None
     return frames
 
 
+def read_video_with_audio(path: Path):
+    """(frames uint8 [F, H, W, 3], audio float32 [channels, samples] or None, sample rate or None) of a video file."""
+    import av
+    import numpy as np
+
+    with av.open(str(path)) as container:
+        frames = np.stack([f.to_ndarray(format="rgb24") for f in container.decode(video=0)]) \
+            if any(s.type == "video" for s in container.streams) else np.zeros((0, 0, 0, 3), np.uint8)
+    chunks, rate = [], None
+    with av.open(str(path)) as container:
+        if any(s.type == "audio" for s in container.streams):
+            rate = container.streams.audio[0].rate
+            for frame in container.decode(audio=0):
+                arr = frame.to_ndarray()
+                channels = len(frame.layout.channels)
+                if not frame.format.is_planar:
+                    arr = arr.reshape(-1, channels).T
+                if arr.dtype.kind in "iu":
+                    arr = arr.astype(np.float32) / 32768.0
+                chunks.append(arr.astype(np.float32))
+    audio = np.concatenate(chunks, axis=1) if chunks else None
+    return frames, audio, (int(rate) if audio is not None and rate else None)
+
+
 def video_thumb(src: Path, asset_id: str) -> str:
     """WebP thumbnail of the first frame."""
     filename = f"{asset_id}.webp"

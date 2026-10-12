@@ -84,7 +84,10 @@ def run_worker(model_id: str, quantize: int | None, options: dict, commands, eve
                     image.convert("RGB").save(path, quality=80)
                     emit("preview", job_id=job_id, index=index, path=str(path))
 
-                hooks = Hooks(on_step, on_preview, cancel_event.is_set, preview_every)
+                def on_phase(phase: str, index=index) -> None:
+                    emit("phase", job_id=job_id, index=index, phase=phase, t=time.time())
+
+                hooks = Hooks(on_step, on_preview, cancel_event.is_set, preview_every, on_phase)
                 emit("item_start", job_id=job_id, index=index, seed=req.seed, t=time.time())
                 t0 = time.time()
                 result = engine.generate(req, hooks)

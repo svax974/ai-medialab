@@ -17,7 +17,7 @@ import { IndeterminateBar, ProgressBar, startSetup } from "./Setup";
 import { navigate, paths } from "../lib/router";
 import { Button, IconButton, Spinner } from "./ui";
 import { HubSearch } from "./HubSearch";
-import { LicenseWarning, VideoBadges } from "./VideoInfo";
+import { GatedNotice, LicenseWarning, VideoBadges } from "./VideoInfo";
 
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 
@@ -228,6 +228,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         </div>
       )}
       {m.kind === "video" && <LicenseWarning model={m} className="mt-2.5" />}
+      <GatedNotice model={m} className="mt-2.5" />
       <div className="mt-2 flex flex-wrap items-center gap-1">
         {m.tags.map((t) => (
           <span key={t} className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{t}</span>
@@ -380,7 +381,7 @@ function TokenField() {
     <section className="rounded-2xl border border-line bg-surface-2/50 p-4">
       <div className="mb-1 flex items-center gap-2 text-[13px] font-medium text-ink"><KeyRound className="size-4 text-muted" /> Jeton Hugging Face <span className="font-normal text-faint">(facultatif)</span></div>
       <p className="mb-2.5 text-[12px] leading-snug text-muted">
-        Les modèles proposés ici se téléchargent sans compte. Un jeton n'est utile que pour des dépôts à accès restreint.
+        La plupart des modèles se téléchargent sans compte. Un jeton n'est utile que pour les dépôts à accès restreint (LTX-2.5 par exemple) : acceptez d'abord leur licence sur Hugging Face.
         {data?.has_hf_token && <span className="text-ok"> Un jeton est enregistré.</span>}
       </p>
       <div className="flex gap-2">

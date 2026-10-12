@@ -106,6 +106,8 @@ export interface ModelInfo {
   hf_repo: string | null;
   download_size_gb: number | null;
   license: string;
+  /** Hugging Face files that need an account: licence accepted on the hub and a token saved in the settings. */
+  gated: boolean;
   memory_hint: string;
   tags: string[];
   downloaded: boolean;
@@ -333,6 +335,8 @@ export interface JobProgress {
   message_id: string;
   conversation_id?: string;
   phase?: "loading" | "running";
+  /** Stage of a running video job (GGUF engine): prompt/image encoding, sampling, VAE decoding, MP4 encoding. */
+  stage?: "prepare" | "sampling" | "decode" | "encode" | null;
   load_started_at?: number;
   index?: number;
   count?: number;

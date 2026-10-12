@@ -7,7 +7,7 @@ import type { ModelInfo } from "../lib/api";
 import { cx, formatModelSize, installedFirst } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
-import { LicenseWarning, VideoBadges } from "./VideoInfo";
+import { GatedNotice, LicenseWarning, VideoBadges } from "./VideoInfo";
 
 const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", pack: "audio", demo: "démo" };
 const backendOf = (m: ModelInfo) => (m.backend === "pack" && m.kind === "video" ? "vidéo" : BACKEND[m.backend]);
@@ -61,6 +61,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                     </div>
                   )}
                   {m.kind === "video" && <LicenseWarning model={m} className="mt-1.5 !px-2.5 !py-1.5 !text-[11.5px]" />}
+                  <GatedNotice model={m} className="mt-1.5 !px-2.5 !py-1.5 !text-[11.5px]" />
                   {m.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {m.tags.map((t) => (

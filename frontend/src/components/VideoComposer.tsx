@@ -19,7 +19,7 @@ import {
 import { ModelPicker } from "./ModelPicker";
 import { ParamsPopover } from "./ParamsPopover";
 import { SetupPrompt, useWelcomeModel } from "./Setup";
-import { LicenseWarning } from "./VideoInfo";
+import { GatedNotice, LicenseWarning } from "./VideoInfo";
 import { Spinner, Tip } from "./ui";
 
 export function VideoComposer({ conversationId, hero = false }: { conversationId: string | null; hero?: boolean }) {
@@ -181,6 +181,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
       {model.compatible && !model.ready && !(hero && welcomeShown) && <SetupPrompt model={model} />}
 
       {caps.license_warning && <LicenseWarning model={model} className="mx-4 mb-1.5" />}
+      <GatedNotice model={model} className="mx-4 mb-1.5" />
 
       {notices.length > 0 && (
         <div className="space-y-1 px-4.5 pb-1">

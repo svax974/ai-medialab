@@ -84,7 +84,7 @@ class TestSpecs:
         for mid in ("hunyuan-video-1.5-t2v", "hunyuan-video-1.5-i2v"):
             assert "Union européenne" in MODELS[mid].video.license_warning and mid not in VIDEO_STARTER_ORDER
         assert not MODELS["cogvideox-2b"].video.license_warning
-        assert VIDEO_STARTER_ORDER[0] == "cogvideox-2b"
+        assert VIDEO_STARTER_ORDER == ["wan-2.2-ti2v-5b-gguf", "wan-2.2-ti2v-5b", "cogvideox-2b"]
 
     def test_public_serialization(self):
         d = MODELS["ltx-2.3-distilled"].to_public()
@@ -100,7 +100,7 @@ class TestRecipes:
         assert c("a/h", ["diffusers:HunyuanVideo15ImageToVideoPipeline"])[1]["pipeline"] == "HunyuanVideo15ImageToVideoPipeline"
         assert c("a/l", ["diffusers:LTX2Pipeline"])[0] == "video-diffusers"
         g = c("a/g", ["gguf", "base_model:quantized:Wan-AI/Wan2.2-TI2V-5B"])
-        assert g[0] == "video-gguf" and g[1]["template"] == "wan-2.2-ti2v-5b"
+        assert g[0] == "video-gguf" and g[1]["template"] == "wan-2.2-ti2v-5b-gguf"  # run by stable-diffusion.cpp
         assert c("a/f", ["gguf", "base_model:quantized:Wan-AI/Wan2.2-I2V-A14B"]) is None  # two-file GGUF: not supported
 
     def test_template_picks_a14b_by_files(self):

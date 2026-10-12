@@ -326,6 +326,8 @@ class Hooks:
     on_preview: Callable[[Image.Image], None]
     is_cancelled: Callable[[], bool]
     preview_every: int = 0  # 0 = no intermediate previews
+    # Stage of a long generation ("prepare", "sampling", "decode", "encode"), for engines that know it.
+    on_phase: Callable[[str], None] = lambda phase: None
 
 
 class Engine:

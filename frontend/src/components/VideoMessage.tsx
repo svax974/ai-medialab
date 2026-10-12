@@ -113,9 +113,13 @@ function StatusLine({ message, model, queuePos }: { message: Message; model?: Mo
   }
   if (message.status === "running") {
     const count = p.count ?? 1;
+    // The GGUF engine reports its stages; decoding the video can take minutes and shows no steps.
+    const waiting = progress?.stage === "decode" ? "décodage de la vidéo (peut durer plusieurs minutes)…"
+      : progress?.stage === "encode" ? "encodage MP4…"
+      : progress?.stage === "sampling" ? "échantillonnage…" : "préparation…";
     return (
       <span className="font-mono text-[11px] text-safe">
-        {progress?.step ? `étape ${progress.step}/${progress.total}` : "préparation…"}
+        {progress?.step ? `étape ${progress.step}/${progress.total}` : waiting}
         {count > 1 && ` · clip ${(progress?.index ?? 0) + 1}/${count}`}
         {progress?.eta != null && progress.step ? ` · ~${formatDuration(progress.eta)} restantes` : ""}
       </span>

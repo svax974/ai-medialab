@@ -33,6 +33,10 @@ from .config import ENGINES_DIR
 from .events import bus
 
 REPO = "leejet/stable-diffusion.cpp"
+# Release the app installs. "latest" is not used: the video models need Metal Wan support (from master-745) and the
+# memory manager regressed for Wan 2.2 / LTX between master-864 and master-899 (issue #1976), so we pin a build that
+# was checked. `IMAGEGEN_SDCPP_TAG=latest` (or any release tag) overrides it.
+PINNED_TAG = "master-956-1b0ba10"
 DOWNLOAD_PREFIX = f"https://github.com/{REPO}/releases/download/"
 
 # (os, variant) -> release asset patterns: the first is the build, any others are add-ons.
@@ -72,6 +76,10 @@ def candidate_variants(vendors: list[str], os_name: str | None = None) -> list[s
     if "vulkan" not in order:
         order.append("vulkan")
     return [v for v in order if (os_name, v) in ASSETS]
+
+
+def default_tag() -> str:
+    return os.environ.get("IMAGEGEN_SDCPP_TAG") or PINNED_TAG
 
 
 def install_size_mb(variant: str, os_name: str | None = None) -> int:
@@ -116,12 +124,13 @@ def install_variant(
     variant: str,
     dest_root: Path,
     *,
-    tag: str = "latest",
+    tag: str | None = None,
     progress: Callable[[int, int, str], None] | None = None,
     cancel: threading.Event | None = None,
     allow_unverified: bool = False,
 ) -> dict[str, Any]:
     """Download, verify and install a build into dest_root/<variant>/. Returns its metadata."""
+    tag = tag or default_tag()
     patterns = ASSETS.get((os_name, variant))
     if not patterns:
         raise RuntimeError(f"Pas de build « {variant} » pour {os_name}.")

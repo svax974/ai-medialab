@@ -23,14 +23,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.engine_install import ASSETS, host_os, install_variant  # noqa: E402
+from app.engine_install import ASSETS, PINNED_TAG, host_os, install_variant  # noqa: E402
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--variant", required=True, choices=["metal", "cuda", "rocm", "vulkan", "cpu"])
     ap.add_argument("--os", dest="target_os", choices=["macos", "windows", "linux"], default=host_os())
-    ap.add_argument("--tag", default="latest", help="étiquette de la version (défaut : la dernière)")
+    ap.add_argument("--tag", default=PINNED_TAG, help="étiquette de la version (défaut : la version validée ; « latest » pour la dernière)")
     ap.add_argument("--dest", type=Path, default=ROOT / "engines" / "sdcpp")
     ap.add_argument("--allow-unverified", action="store_true", help="accepte une archive sans somme publiée (déconseillé)")
     args = ap.parse_args()

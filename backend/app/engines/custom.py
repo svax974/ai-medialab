@@ -14,7 +14,8 @@ how to run are accepted:
     whisper-ct2    Whisper converted for faster-whisper (transcription)
     video-diffusers  Wan 2.x / CogVideoX / HunyuanVideo 1.5 / LTX-2 diffusers repo: runs with the settings of the
                    matching built-in model (same pipeline family)
-    video-gguf     another 4-bit GGUF of the Wan 2.2 TI2V 5B transformer (text encoder and VAE are kept)
+    video-gguf     another GGUF of the Wan 2.2 TI2V 5B transformer (text encoder and VAE are kept), run by
+                   stable-diffusion.cpp; recipes saved before that ran it with diffusers and still do
 """
 
 from __future__ import annotations
@@ -25,7 +26,7 @@ import re
 from typing import Any
 
 from .. import db
-from . import audio_specs, gguf_models, video_specs
+from . import audio_specs, gguf_models, video_gguf, video_specs
 from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
@@ -57,7 +58,7 @@ VIDEO_TEMPLATES = {
 # Wan 2.2 A14B repos (two experts) have their own settings.
 WAN_A14B_TEMPLATES = {"WanPipeline": "wan-2.2-t2v-a14b", "WanImageToVideoPipeline": "wan-2.2-i2v-a14b"}
 # GGUF repos of a reference video model: Hugging Face base_model -> id of the model whose spec is copied.
-VIDEO_GGUF_TEMPLATES = {"Wan-AI/Wan2.2-TI2V-5B": "wan-2.2-ti2v-5b"}
+VIDEO_GGUF_TEMPLATES = {"Wan-AI/Wan2.2-TI2V-5B": "wan-2.2-ti2v-5b-gguf"}
 I2V_PIPELINES = {"WanImageToVideoPipeline", "CogVideoXImageToVideoPipeline", "HunyuanVideo15ImageToVideoPipeline",
                  "LTX2ImageToVideoPipeline"}
 
@@ -211,8 +212,42 @@ def _video_diffusers(r: dict[str, Any]) -> ModelSpec:
     return spec
 
 
+def _video_sdcpp_gguf(r: dict[str, Any], base: ModelSpec) -> ModelSpec:
+    """Same swap as `_gguf_variant`, for a video model: the diffusion file changes, everything else is kept."""
+    spec = copy.deepcopy(base)
+    spec.variants, spec.default_variant, spec.variant = [], "", ""
+    repo, file, size = r["repo"], r["file"], float(r["size_gb"])
+    old_repo, old_file = base.options["files"]["diffusion-model"]
+    old_gb = base.options["diffusion_gb"]
+    sources = []
+    for s in base.sources:
+        if s.repo == old_repo and old_file in (s.patterns or []):
+            rest = [p for p in s.patterns if p != old_file]  # e.g. the VAE next to the GGUF files of Wan 2.2 5B
+            if rest:
+                sources.append(HfSource(s.repo, rest, rest, round((s.size_gb or 0) - old_gb, 2)))
+            sources.insert(0, HfSource(repo, [file], [file], size))
+        else:
+            sources.append(s)
+    spec.sources = sources
+    spec.options["files"]["diffusion-model"] = (repo, file)
+    delta = size - old_gb
+    spec.download_size_gb = round((base.download_size_gb or 0) + delta, 2)
+    spec.weights_gb = round((base.weights_gb or 0) + delta, 2)
+    spec.largest_component_gb = max(base.largest_component_gb or 0, size)
+    spec.id, spec.custom, spec.precision = r["id"], True, r["precision"]
+    spec.name = f"{base.name} · {r['name']}"
+    spec.description = (f"Variante {r['precision']} du dépôt {repo}, exécutée comme {base.name} (mêmes encodeur de texte "
+                        f"et VAE). Plus la quantification est basse, plus le fichier est léger et la qualité dégradée.")
+    spec.license = r.get("license") or "voir le dépôt"
+    spec.memory_hint = f"≈ {spec.weights_gb:.0f} Go de poids ({r['precision']})."
+    spec.tags = [t for t in base.tags if t not in ("Apache 2.0",)] + ["Hugging Face"]
+    return spec
+
+
 def _video_gguf(r: dict[str, Any]) -> ModelSpec:
-    base = next(m for m in video_specs.SPECS if m.id == r["template"])
+    base = next(m for m in [*video_specs.SPECS, *video_gguf.SPECS] if m.id == r["template"])
+    if base.backend == "sdcpp":
+        return _video_sdcpp_gguf(r, base)
     variant = next(v for v in base.variants if v.options.get("gguf"))  # any 4-bit variant: same diffusers repo
     spec = copy.deepcopy(base)
     spec.variants, spec.default_variant, spec.variant = [], "", ""

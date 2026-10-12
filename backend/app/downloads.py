@@ -23,6 +23,8 @@ from .system import get_system
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 _STATUS_TTL = 4.0
+GATED_MESSAGE = ("Ce modèle est à accès restreint : acceptez sa licence sur la page Hugging Face du dépôt, puis "
+                 "renseignez votre jeton d'accès dans Réglages → Modèles.")
 
 
 @dataclass
@@ -77,6 +79,8 @@ class DownloadManager:
         spec = get_spec(model_id)
         if not spec.all_sources():
             raise ValueError("Ce modèle n'a rien à télécharger.")
+        if spec.gated and not db.get_settings().get("hf_token"):
+            raise RuntimeError(GATED_MESSAGE)
         if (j := self.jobs.get(model_id)) and j.state == "running":
             return j
         if any(j.state == "running" for j in self.jobs.values()):

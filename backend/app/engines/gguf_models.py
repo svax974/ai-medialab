@@ -4,8 +4,8 @@
 """Quantized GGUF models run by stable-diffusion.cpp (Metal, CUDA, ROCm, Vulkan).
 
 Small: 5 to 11 GB instead of 20 to 33 GB at full precision, so 8 to 12 GB cards are enough. Each
-model is assembled from files in several repos (diffusion, text encoder, VAE). Only ungated repos
-are used.
+model is assembled from files in several repos (diffusion, text encoder, VAE). These image models use
+ungated repos only; the one exception in the app is LTX-2.5 (`video_gguf.py`, `gated=True`).
 """
 
 from __future__ import annotations

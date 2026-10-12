@@ -268,7 +268,14 @@ class JobManager:
             kind = evt["type"]
             if kind == "item_start":
                 item_started = evt["t"]
-                prog.update(index=evt["index"], step=0, preview_url=None)
+                prog.update(index=evt["index"], step=0, preview_url=None, stage=None)
+                self._publish_progress(prog)
+            elif kind == "phase":
+                prog.update(stage=evt["phase"], index=evt["index"])
+                if evt["phase"] == "sampling":
+                    item_started = evt["t"]  # loading and encoding the prompt are not part of the step time
+                else:
+                    prog.update(step=0, eta=None, seconds_per_step=None)
                 self._publish_progress(prog)
             elif kind == "step":
                 step, total = evt["step"], evt["total"]

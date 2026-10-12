@@ -20,8 +20,9 @@ from .system import get_system, memory_plan
 STARTER_ORDER = ["z-image-turbo-gguf", "qwen-image-2.1-gguf", "qwen-image-2.1", "sdxl-base", "z-image-turbo"]
 # Audio: Pocket TTS (cloning, French, real time on CPU), then Kokoro (lightest).
 AUDIO_STARTER_ORDER = ["pocket-tts", "kokoro-82m", "qwen3-tts-custom-small"]
-# Video: the lightest first (CogVideoX 2B), then Wan 2.2 TI2V 5B. HunyuanVideo (restrictive licence) is never suggested.
-VIDEO_STARTER_ORDER = ["cogvideox-2b", "wan-2.2-ti2v-5b"]
+# Video: Wan 2.2 TI2V 5B in GGUF first (runs on every GPU), then its PyTorch version and the lightest CogVideoX.
+# HunyuanVideo (restrictive licence) and the gated LTX-2.5 are never suggested.
+VIDEO_STARTER_ORDER = ["wan-2.2-ti2v-5b-gguf", "wan-2.2-ti2v-5b", "cogvideox-2b"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
@@ -125,7 +126,8 @@ def describe_models() -> dict[str, Any]:
         elif spec.backend == "pack":
             plan = _pack_plan(spec, system)
         else:
-            plan = memory_plan(spec.weights_gb, spec.largest_component_gb, system, spec.backend)
+            plan = memory_plan(spec.weights_gb, spec.largest_component_gb, system, spec.backend,
+                               spec.options.get("overhead_gb", 0.0))
         status = downloads.status(spec)
         job = downloads.job(spec.id)
         compatible = bool(usable_engine and plan["fits"])

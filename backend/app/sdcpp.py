@@ -13,7 +13,9 @@ falling back to Vulkan. `IMAGEGEN_SDCPP_VARIANT` forces one, handy for comparing
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 import sys
 from functools import lru_cache
@@ -42,6 +44,29 @@ def engines_roots() -> list[Path]:
 
 def binary_name(tool: str = "sd-cli") -> str:
     return f"{tool}.exe" if sys.platform == "win32" else tool
+
+
+# Oldest macOS build that runs Wan video: before master-745 the Metal backend lacks IM2COL_3D.
+METAL_VIDEO_MIN_BUILD = 745
+
+
+def build_number(binary: Path) -> int | None:
+    """Release number of an installed build (`master-956-...` -> 956), from the VERSION.json the installer writes."""
+    try:
+        tag = json.loads((Path(binary).parent / "VERSION.json").read_text()).get("tag", "")
+    except (OSError, ValueError):
+        return None
+    m = re.match(r"master-(\d+)", str(tag))
+    return int(m.group(1)) if m else None
+
+
+def video_unsupported(binary: Path, variant: str) -> str | None:
+    """French error when this build cannot run video models, else None (unknown versions are given the benefit of the doubt)."""
+    number = build_number(binary)
+    if variant == "metal" and number is not None and number < METAL_VIDEO_MIN_BUILD:
+        return (f"Le moteur GGUF installé (version {number}) est trop ancien pour la vidéo sur Mac : il faut la version "
+                f"{METAL_VIDEO_MIN_BUILD} ou plus récente. Réinstallez le moteur depuis l'écran « Modèles ».")
+    return None
 
 
 def find_variants() -> dict[str, Path]:

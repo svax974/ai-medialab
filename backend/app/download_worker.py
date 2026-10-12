@@ -92,7 +92,8 @@ def _describe(exc: BaseException) -> str:
     if any(k in low for k in ("connecterror", "connectionerror", "name resolution", "offline", "timeout", "temporary failure")):
         return "Impossible de joindre Hugging Face : vérifiez la connexion Internet."
     if "gated" in low or "401" in low or "403" in low:
-        return "Accès refusé : ce modèle demande un compte Hugging Face (jeton d'accès à renseigner dans les réglages)."
+        return ("Accès refusé : ce modèle est à accès restreint. Acceptez sa licence sur la page Hugging Face du dépôt "
+                "(avec le compte du jeton), puis renseignez le jeton dans Réglages → Modèles.")
     if "no space left" in low or "errno 28" in low:
         return "Espace disque insuffisant."
     return f"{name}: {text}"[:500]
