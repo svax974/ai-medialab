@@ -6,7 +6,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { api, type ModelInfo, type ModelKind, type SystemInfo } from "../lib/api";
-import { cx } from "../lib/format";
+import { cx, formatModelSize } from "../lib/format";
 import { keys, queryClient, useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
@@ -198,6 +198,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         <h3 className="text-[15px] font-medium text-ink">{m.name}</h3>
         <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{backendLabel(m, system)}</span>
         {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
+        {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
         {m.custom && <span className="rounded-md bg-safe-soft px-1.5 py-px font-mono text-[10px] text-ink-2">Hugging Face</span>}
         {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
         {installed && <span className="flex items-center gap-1 font-mono text-[10.5px] text-ok"><Check className="size-3" />installé · {gb(m.installed_gb)} Go</span>}

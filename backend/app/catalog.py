@@ -56,14 +56,14 @@ _SDCPP_DEVICE = {"metal": "Metal", "cuda": "CUDA", "rocm": "ROCm", "vulkan": "Vu
 
 def _engine_name(spec, engine: dict[str, Any]) -> str:
     if spec.backend == "pack":
-        return engine.get("pack_name") or ""
-    return {"sdcpp": "stable-diffusion.cpp (GGUF)", "torch": "PyTorch + diffusers", "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
+        return engine.get("pack_engine") or engine.get("pack_name") or ""
+    return {"sdcpp": "GGUF (stable-diffusion.cpp)", "torch": "PyTorch + diffusers", "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
 
 
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
     """Ce que l'installation apporte, en clair."""
     if spec.backend == "pack":
-        return engine.get("pack_contents") or ""
+        return f"environnement Python isolé avec {engine.get('pack_contents') or ''}".rstrip()
     if spec.backend == "sdcpp":
         dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
         return ("Petit programme autonome qui exécute les modèles GGUF, sans Python"

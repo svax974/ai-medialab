@@ -40,3 +40,10 @@ export function periodOf(ts: number): string {
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
+
+/** Taille d'un modèle à télécharger : « 650 Mo » sous 1 Go, « 4,5 Go » ensuite ; vide si inconnue. */
+export function formatModelSize(gb: number | null | undefined): string {
+  if (!gb || gb <= 0) return "";
+  if (gb < 1) return `${Math.max(10, Math.round((gb * 1000) / 10) * 10)} Mo`;
+  return `${(gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)).replace(".", ",")} Go`;
+}

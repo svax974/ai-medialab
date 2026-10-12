@@ -1,7 +1,7 @@
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown, CloudDownload, Cpu, Search, Settings2 } from "lucide-react";
 import type { ModelInfo } from "../lib/api";
-import { cx } from "../lib/format";
+import { cx, formatModelSize } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 
@@ -45,6 +45,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                     <span className="font-medium text-ink">{m.name}</span>
                     <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line">{BACKEND[m.backend]}</span>
                     {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
+                    {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
                     {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-muted">{m.description}</p>
@@ -63,7 +64,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                     )}
                     {m.install !== "installed" && m.compatible && (
                       <span className="flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-px font-mono text-[10px] text-warn">
-                        <CloudDownload className="size-3" /> {m.install === "partial" ? "à compléter" : "à télécharger"}
+                        <CloudDownload className="size-3" /> {m.install === "partial" ? "à compléter" : "télécharger le modèle"}
                         {m.download_size_gb ? ` · ~${m.download_size_gb < 1 ? `${Math.round(m.download_size_gb * 10) * 100} Mo` : `${Math.round(m.download_size_gb)} Go`}` : ""}
                       </span>
                     )}
