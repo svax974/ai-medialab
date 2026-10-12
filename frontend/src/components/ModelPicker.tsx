@@ -57,20 +57,25 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                   )}
                   <div className="mt-1.5 flex flex-wrap items-center gap-1">
                     {m.needs_engine_install && (
-                      <span className="flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-px font-mono text-[10px] text-warn">
-                        <CloudDownload className="size-3" /> moteur à installer{m.engine_install_size_mb ? ` · ${m.engine_install_size_mb} Mo` : ""}
+                      <span title={m.engine_detail} className="flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-px font-mono text-[10px] text-warn">
+                        <CloudDownload className="size-3" /> moteur à installer : {(m.engine_name ?? "").replace(/\s*\(.*\)/, "")}{m.engine_install_size_mb ? ` · ${m.engine_install_size_mb} Mo` : ""}
                       </span>
                     )}
                     {m.install !== "installed" && m.compatible && (
                       <span className="flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-px font-mono text-[10px] text-warn">
                         <CloudDownload className="size-3" /> {m.install === "partial" ? "à compléter" : "à télécharger"}
-                        {m.download_size_gb ? ` · ~${Math.round(m.download_size_gb)} Go` : ""}
+                        {m.download_size_gb ? ` · ~${m.download_size_gb < 1 ? `${Math.round(m.download_size_gb * 10) * 100} Mo` : `${Math.round(m.download_size_gb)} Go`}` : ""}
                       </span>
                     )}
                     {!m.compatible && (
                       <span className="rounded-md bg-danger/10 px-1.5 py-px font-mono text-[10px] text-danger">trop gourmand pour cette machine</span>
                     )}
                   </div>
+                  {m.needs_engine_install && m.engine_detail && (
+                    <p className="mt-1 text-[11.5px] leading-snug text-faint">
+                      <b className="font-medium text-muted">{m.engine_name}</b> : {m.engine_detail}
+                    </p>
+                  )}
                 </div>
               </DropdownMenu.Item>
             );

@@ -233,6 +233,16 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         </div>
       )}
 
+      {m.needs_engine_install && !dl && (
+        <div className="mt-2.5 flex items-start gap-2 rounded-xl bg-warn/10 px-3 py-2 text-[12px] leading-snug text-ink-2">
+          <CloudDownload className="mt-px size-3.5 shrink-0 text-warn" />
+          <span>
+            <b className="font-medium text-ink">Moteur à installer : {m.engine_name}</b>
+            {m.engine_install_size_mb ? ` (≈ ${m.engine_install_size_mb} Mo)` : ""}. {m.engine_detail}
+          </span>
+        </div>
+      )}
+
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {dl ? (
           <Button variant="secondary" onClick={() => cancel.mutate()} disabled={cancel.isPending}>Annuler</Button>

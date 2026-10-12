@@ -41,6 +41,8 @@ class PackDef:
     # Paquets PyTorch à installer d'abord depuis l'index du GPU (sinon pip prend la version CPU sous Windows).
     torch_packages: tuple[str, ...] = ("torch",)
     note: str = ""
+    # Ce qu'on installe, en une phrase (affiché avant l'installation).
+    contents: str = ""
 
 
 PACKS: dict[str, PackDef] = {
@@ -51,6 +53,7 @@ PACKS: dict[str, PackDef] = {
                       "soundfile>=0.12", "numpy>=2", "huggingface_hub>=0.30"),
         imports=("kokoro", "pocket_tts", "faster_whisper", "soundfile"),
         size_mb=900,
+        contents="Kokoro, Pocket TTS et Whisper (bibliothèques Python, sans carte graphique requise).",
     ),
     "qwen3": PackDef(
         id="qwen3",
@@ -59,6 +62,7 @@ PACKS: dict[str, PackDef] = {
         imports=("qwen_tts", "soundfile"),
         size_mb=1100,
         torch_packages=("torch", "torchaudio"),
+        contents="la bibliothèque qwen-tts et PyTorch (le calcul passe par le GPU quand il y en a un).",
     ),
 }
 
@@ -119,9 +123,9 @@ def engine_info(pack_id: str) -> dict[str, Any]:
     if not pack:
         return {"available": False, "reason": f"Pack audio inconnu : {pack_id}"}
     if is_installed(pack_id):
-        return {"available": True, "pack": pack_id}
+        return {"available": True, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents}
     ok, why = can_install()
-    info: dict[str, Any] = {"available": False, "pack": pack_id, "pack_name": pack.name,
+    info: dict[str, Any] = {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents,
                             "reason": f"Le moteur « {pack.name} » n'est pas installé."}
     if ok:
         info.update(installable=True, install_size_mb=pack.size_mb)

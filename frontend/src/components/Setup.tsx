@@ -120,7 +120,7 @@ export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welc
   const engineMb = model.engine_install_size_mb ?? 0;
   const packRunning = isPack && packEngine.state === "running";
   const working = installing || !!download || busy || !!pending;
-  const totalLabel = [needEngine ? `moteur ≈ ${mb(engineMb)}` : null, needModel ? `modèle ≈ ${gb(modelGb)} Go` : null]
+  const totalLabel = [needEngine ? `moteur ${model.engine_name ? `« ${model.engine_name} » ` : ""}≈ ${mb(engineMb)}` : null, needModel ? `modèle ≈ ${gb(modelGb)} Go` : null]
     .filter(Boolean)
     .join(" + ");
 

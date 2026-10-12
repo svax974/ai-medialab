@@ -51,6 +51,26 @@ def precision_of(spec, quantize: int | None) -> str:
     return ""
 
 
+_SDCPP_DEVICE = {"metal": "Metal", "cuda": "CUDA", "rocm": "ROCm", "vulkan": "Vulkan", "cpu": "processeur"}
+
+
+def _engine_name(spec, engine: dict[str, Any]) -> str:
+    if spec.backend == "pack":
+        return engine.get("pack_name") or ""
+    return {"sdcpp": "stable-diffusion.cpp (GGUF)", "torch": "PyTorch + diffusers", "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
+
+
+def _engine_detail(spec, engine: dict[str, Any]) -> str:
+    """Ce que l'installation apporte, en clair."""
+    if spec.backend == "pack":
+        return engine.get("pack_contents") or ""
+    if spec.backend == "sdcpp":
+        dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
+        return ("Petit programme autonome qui exécute les modèles GGUF, sans Python"
+                + (f" ({dev})" if dev else "") + ". Il est téléchargé une seule fois et sert à tous les modèles GGUF.")
+    return ""
+
+
 def describe_models() -> dict[str, Any]:
     system = get_system()
     settings = load_settings()
@@ -86,7 +106,8 @@ def describe_models() -> dict[str, Any]:
             needs_engine_install=bool(engine.get("installable") and not engine["available"]),
             engine_install_size_mb=engine.get("install_size_mb"),
             engine_pack=spec.options.get("pack") if spec.backend == "pack" else None,
-            engine_name=engine.get("pack_name"),
+            engine_name=_engine_name(spec, engine),
+            engine_detail=_engine_detail(spec, engine),
             compatible=compatible,
             plan=plan,
             install=status["state"],

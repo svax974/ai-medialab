@@ -52,6 +52,8 @@ export interface ModelInfo {
   /** Pack de moteur audio (environnement isolé) dont dépend ce modèle. */
   engine_pack: string | null;
   engine_name: string | null;
+  /** Ce que l'installation du moteur apporte, en une phrase. */
+  engine_detail: string;
   name: string;
   family: string;
   description: string;
