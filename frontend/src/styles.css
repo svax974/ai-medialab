@@ -6,7 +6,7 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Palette : « chambre noire » (sombre, noir chaud + lumière inactinique) et « tirage » (clair, papier). */
+/* Palette : « labo » (sombre, noir chaud + lumière inactinique) et « tirage » (clair, papier). */
 :root,
 [data-theme="dark"] {
   --bg: #0d0b0a;
