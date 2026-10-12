@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Cross-construit un livrable PORTABLE (sans installateur) de Chambre noire pour Windows ou Linux x86_64.
+"""Cross-construit un livrable PORTABLE (sans installateur) de AI MediaLab pour Windows ou Linux x86_64.
 
-    python3 scripts/package_cross.py --profile win-cuda      # → desktop/dist/Chambre-noire-win-cuda.zip
-    python3 scripts/package_cross.py --profile linux-cuda    # → desktop/dist/Chambre-noire-linux-cuda.tar.gz
+    python3 scripts/package_cross.py --profile win-cuda      # → desktop/dist/AI-MediaLab-win-cuda.zip
+    python3 scripts/package_cross.py --profile linux-cuda    # → desktop/dist/AI-MediaLab-linux-cuda.tar.gz
 
 Étapes : (1) runtime Python + dépendances de la cible (scripts/build_runtime.py, mode cross), (2) coque Tauri de la cible,
 (3) archive + somme SHA-256.
@@ -36,7 +36,7 @@ TAURI = DESKTOP / "src-tauri"
 DIST = DESKTOP / "dist"
 CROSS = DESKTOP / "build-cross"
 PROFILES = json.loads((DESKTOP / "runtime" / "profiles.json").read_text())["profiles"]
-BINARY = "chambre-noire"
+BINARY = "ai-medialab"
 
 
 def log(msg: str) -> None:
@@ -65,13 +65,13 @@ def human(n: float) -> str:
 
 
 READMES = {
-    "windows": """Chambre noire — version Windows ({label})
+    "windows": """AI MediaLab — version Windows ({label})
 =========================================================
 
 Application portable : aucun installateur, rien à installer en dehors des prérequis ci-dessous.
 
-1. Extraire l'archive dans un dossier à chemin COURT (ex. C:\\Chambre-noire) — Windows limite les chemins à 260 caractères.
-2. Lancer « Chambre noire.exe ».
+1. Extraire l'archive dans un dossier à chemin COURT (ex. C:\\AI-MediaLab) — Windows limite les chemins à 260 caractères.
+2. Lancer « AI MediaLab.exe ».
 
 Prérequis
 - Windows 10 (1809+) ou 11, 64 bits.
@@ -83,29 +83,29 @@ Prérequis
 Premier lancement : Windows SmartScreen peut afficher « Windows a protégé votre ordinateur » car l'exécutable n'est pas
 signé (pas de certificat de signature) : « Informations complémentaires » → « Exécuter quand même ».
 
-Données (base, images générées, journaux) : %LOCALAPPDATA%\\app.chambrenoire.studio
+Données (base, images générées, journaux) : %LOCALAPPDATA%\\app.aimedialab.studio
 Modèles : %USERPROFILE%\\.cache\\huggingface\\hub (téléchargés depuis l'application : bouton « Modèles »).
-Journal du serveur : %LOCALAPPDATA%\\app.chambrenoire.studio\\logs\\backend.log
+Journal du serveur : %LOCALAPPDATA%\\app.aimedialab.studio\\logs\\backend.log
 
 WebView2Loader.dll (Microsoft, licence BSD) est livrée à côté de l'exécutable : ne pas la supprimer.
 
 Statut : construit par cross-compilation depuis macOS ; son exécution sur Windows n'a pas pu être vérifiée par l'auteur.
 """,
-    "linux": """Chambre noire — version Linux x86_64 ({label})
+    "linux": """AI MediaLab — version Linux x86_64 ({label})
 =========================================================
 
 Application portable : aucun installateur.
 
-    tar xzf Chambre-noire-{profile}.tar.gz
-    cd Chambre-noire-{profile}
-    ./chambre-noire.sh
+    tar xzf AI-MediaLab-{profile}.tar.gz
+    cd AI-MediaLab-{profile}
+    ./ai-medialab.sh
 
 Prérequis
 - Distribution 64 bits récente (glibc ≥ 2.28 ; coque construite sous Ubuntu 22.04).
 - Bibliothèques WebKitGTK : sous Debian/Ubuntu `sudo apt install libwebkit2gtk-4.1-0 libgtk-3-0 libayatana-appindicator3-1`.
 {gpu}
 
-Données : ~/.local/share/app.chambrenoire.studio (journal du serveur : logs/backend.log)
+Données : ~/.local/share/app.aimedialab.studio (journal du serveur : logs/backend.log)
 Modèles : ~/.cache/huggingface/hub (téléchargés depuis l'application : bouton « Modèles »).
 
 Statut : construit par cross-compilation depuis macOS. Le serveur embarqué et la coque démarrent dans un conteneur sans GPU ;
@@ -179,10 +179,10 @@ def package_windows(profile_name: str, profile: dict, skip_runtime: bool) -> Pat
     if not skip_runtime:
         ensure_runtime(profile_name, resources)
     exe, loader = build_shell_windows()
-    top = f"Chambre-noire-{profile_name}"
+    top = f"AI-MediaLab-{profile_name}"
     archive = DIST / f"{top}.zip"
     log(f"Archive {archive.name}…")
-    write_zip(archive, top, [(exe, "Chambre noire.exe"), (loader, "WebView2Loader.dll")], resources,
+    write_zip(archive, top, [(exe, "AI MediaLab.exe"), (loader, "WebView2Loader.dll")], resources,
               {"LISEZMOI.txt": readme_text(profile_name, profile)})
     return archive
 
@@ -199,8 +199,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \\
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain stable
 ENV PATH=/root/.cargo/bin:$PATH
 """
-LINUX_IMAGE = "chambre-noire-linux-builder"
-LINUX_VOLUME = "chambre-noire-linux-target"
+LINUX_IMAGE = "ai-medialab-linux-builder"
+LINUX_VOLUME = "ai-medialab-linux-target"
 
 
 def build_shell_linux() -> Path:
@@ -231,9 +231,9 @@ def build_shell_linux() -> Path:
 
 
 LAUNCHER = """#!/bin/sh
-# Lanceur de Chambre noire (version portable).
+# Lanceur de AI MediaLab (version portable).
 cd "$(dirname "$(readlink -f "$0")")" || exit 1
-exec ./chambre-noire "$@"
+exec ./ai-medialab "$@"
 """
 
 
@@ -250,7 +250,7 @@ def write_tar(archive: Path, top: str, binary: Path, resources: Path, readme: st
 
     with tarfile.open(archive, "w:gz", compresslevel=6) as tf:
         tf.add(binary, f"{top}/{BINARY}", filter=lambda i: (setattr(i, "mode", 0o755), i)[1])
-        add_bytes(tf, "chambre-noire.sh", LAUNCHER.encode(), 0o755)
+        add_bytes(tf, "ai-medialab.sh", LAUNCHER.encode(), 0o755)
         add_bytes(tf, "LISEZMOI.txt", readme.encode(), 0o644)
         for sub in ("backend", "frontend", "runtime"):
             tf.add(resources / sub, f"{top}/{sub}")
@@ -286,7 +286,7 @@ def package_linux(profile_name: str, profile: dict, skip_runtime: bool, keep: bo
         if not skip_runtime:
             ensure_runtime(profile_name, resources)
         binary = build_shell_linux()
-        top = f"Chambre-noire-{profile_name}"
+        top = f"AI-MediaLab-{profile_name}"
         archive = DIST / f"{top}.tar.gz"
         log(f"Archive {archive.name}…")
         write_tar(archive, top, binary, resources, readme_text(profile_name, profile))

@@ -1,6 +1,6 @@
 # Licences tierces
 
-Chambre noire est publiée sous licence MIT (voir `LICENSE`). Elle ne redistribue aucun modèle : les
+AI MediaLab est publiée sous licence MIT (voir `LICENSE`). Elle ne redistribue aucun modèle : les
 modèles et les moteurs sont téléchargés ou installés à la demande, et **gardent leur propre licence**,
 que l'application affiche dans le sélecteur de modèles. Vérifiez-la avant tout usage commercial.
 

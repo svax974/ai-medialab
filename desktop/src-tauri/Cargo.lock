@@ -18,6 +18,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ai-medialab"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-single-instance",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
 name = "alloc-no-stdlib"
 version = "3.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -459,18 +471,6 @@ name = "cfg-if"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4e7648175b45a9a48536d676f68d918270699102aa8dab5496df06904c914600"
-
-[[package]]
-name = "chambre-noire"
-version = "0.1.0"
-dependencies = [
- "libc",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-single-instance",
- "windows-sys 0.59.0",
-]
 
 [[package]]
 name = "chrono"

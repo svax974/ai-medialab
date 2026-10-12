@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
     await jobs.shutdown()
 
 
-app = FastAPI(title="Chambre noire", lifespan=lifespan)
+app = FastAPI(title="AI MediaLab", lifespan=lifespan)
 app.include_router(router)
 
 ensure_dirs()

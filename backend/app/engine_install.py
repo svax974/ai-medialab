@@ -78,7 +78,7 @@ def install_size_mb(variant: str, os_name: str | None = None) -> int:
 # --- Téléchargement vérifié ----------------------------------------------------------------------------
 
 def _http_json(url: str) -> Any:
-    req = urllib.request.Request(url, headers={"User-Agent": "chambre-noire", "Accept": "application/vnd.github+json"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ai-medialab", "Accept": "application/vnd.github+json"})
     if token := os.environ.get("GITHUB_TOKEN"):
         req.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(req, timeout=30) as r:
@@ -89,7 +89,7 @@ def _download(url: str, dest: Path, on_bytes: Callable[[int], None], cancel: thr
     if not url.startswith(DOWNLOAD_PREFIX):
         raise RuntimeError(f"Adresse de téléchargement inattendue : {url}")
     sha = hashlib.sha256()
-    req = urllib.request.Request(url, headers={"User-Agent": "chambre-noire"})
+    req = urllib.request.Request(url, headers={"User-Agent": "ai-medialab"})
     with urllib.request.urlopen(req, timeout=60) as r, dest.open("wb") as f:
         while chunk := r.read(1 << 20):
             if cancel is not None and cancel.is_set():

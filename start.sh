@@ -1,5 +1,5 @@
 #!/bin/sh
-# Chambre noire — installe les dépendances si besoin, compile l'interface et démarre le serveur.
+# AI MediaLab — installe les dépendances si besoin, compile l'interface et démarre le serveur.
 #   ./start.sh              → http://127.0.0.1:8000
 #   PORT=9000 ./start.sh
 #   IMAGEGEN_DEMO=1 ./start.sh   (ajoute un modèle « Démo » sans GPU, pour tester l'interface)
@@ -19,6 +19,6 @@ EXTRAS="--extra torch"
 echo "› Interface…"
 (cd frontend && { [ -d node_modules ] || npm install --silent; } && npm run build --silent >/dev/null)
 
-echo "› Chambre noire sur http://$HOST:$PORT"
+echo "› AI MediaLab sur http://$HOST:$PORT"
 cd backend
 exec uv run uvicorn app.main:app --host "$HOST" --port "$PORT" --log-level warning --timeout-graceful-shutdown 3

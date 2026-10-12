@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Chambre noire",
+  "productName": "AI MediaLab",
   "version": "0.1.0",
-  "identifier": "app.chambrenoire.studio",
+  "identifier": "app.aimedialab.studio",
   "build": {
     "frontendDist": "../splash"
   },

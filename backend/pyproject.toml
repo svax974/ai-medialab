@@ -1,7 +1,7 @@
 [project]
-name = "chambre-noire"
+name = "ai-medialab"
 version = "0.1.0"
-description = "Chambre noire — studio local de création et d'édition d'images (backend)"
+description = "AI MediaLab — studio local de création d'images et d'audio (backend)"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.115",

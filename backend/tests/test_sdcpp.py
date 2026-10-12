@@ -2,7 +2,7 @@
 
 import os
 
-os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/chambre-noire-tests")
+os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
 from app.engines import MODELS  # noqa: E402
 from app.engines.base import GenerationRequest  # noqa: E402

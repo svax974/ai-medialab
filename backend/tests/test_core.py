@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/chambre-noire-tests")
+os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
 from app.engines.base import ModelSpec, installation_status  # noqa: E402
 from app.media import resolve_size  # noqa: E402

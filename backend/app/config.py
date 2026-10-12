@@ -14,7 +14,7 @@ ENGINES_DIR = DATA_DIR / "engines"
 AUDIO_PACKS_DIR = ENGINES_DIR / "audio"
 AUDIO_RUNTIME_DIR = ROOT_DIR / "backend" / "audio_runtime"
 
-DB_PATH = DATA_DIR / "chambre-noire.db"
+DB_PATH = DATA_DIR / "ai-medialab.db"
 UPLOADS_DIR = DATA_DIR / "uploads"
 OUTPUTS_DIR = DATA_DIR / "outputs"
 THUMBS_DIR = DATA_DIR / "thumbs"
@@ -34,3 +34,10 @@ MEDIA_DIRS = {
 def ensure_dirs() -> None:
     for d in (DATA_DIR, *MEDIA_DIRS.values()):
         d.mkdir(parents=True, exist_ok=True)
+    # Migration : la base s'appelait « chambre-noire.db » avant le renommage du projet (journaux SQLite compris).
+    legacy = DATA_DIR / "chambre-noire.db"
+    if legacy.exists() and not DB_PATH.exists():
+        for suffix in ("", "-wal", "-shm"):
+            old = legacy.with_name(legacy.name + suffix)
+            if old.exists():
+                old.rename(DB_PATH.with_name(DB_PATH.name + suffix))

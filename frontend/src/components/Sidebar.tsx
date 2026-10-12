@@ -62,7 +62,7 @@ export function Sidebar() {
     <aside className="flex h-full w-[284px] shrink-0 flex-col border-r border-line bg-bg-elev">
       <div className="flex h-14 items-center gap-2.5 px-4">
         <Mark className="size-6" />
-        <span className="font-display text-[22px] italic leading-none tracking-tight text-ink">Chambre noire</span>
+        <span className="font-display text-[22px] italic leading-none tracking-tight text-ink">AI MediaLab</span>
         <div className="flex-1" />
         <IconButton label="Masquer le panneau" kbd="⌘B" size="sm" onClick={toggleSidebar} tipSide="right">
           <PanelLeftClose className="size-4" />

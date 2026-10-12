@@ -1,6 +1,6 @@
-# Chambre noire
+# AI MediaLab
 
-Studio local de création et d'édition d'images, sous forme de chat. Les modèles ouverts tournent sur la
+Studio local de création d'images et d'audio (synthèse vocale, clonage de voix), sous forme de chat. Les modèles ouverts tournent sur la
 machine — Metal (Apple Silicon), NVIDIA (CUDA) ou AMD (ROCm) — sans service externe. L'application embarque
 le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hugging Face).
 
@@ -193,8 +193,8 @@ Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20, Rust (`rustup`), 
 cd frontend && npm install && npm run build && cd ..        # interface (si dist/ absent)
 python3 scripts/build_runtime.py --profile mac-arm64        # → desktop/build/resources (Python + dépendances, ~1,3 Go)
 cd desktop && npm install && npx tauri build --bundles app,dmg
-# → desktop/src-tauri/target/release/bundle/macos/Chambre noire.app
-# → desktop/src-tauri/target/release/bundle/dmg/Chambre noire_0.1.0_aarch64.dmg
+# → desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app
+# → desktop/src-tauri/target/release/bundle/dmg/AI MediaLab_0.1.0_aarch64.dmg
 ```
 
 Après une modification du backend ou de l'interface, `python3 scripts/build_runtime.py --profile mac-arm64 --refresh-app`
@@ -204,12 +204,13 @@ ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx taur
 
 - Au lancement, la coque choisit un port local libre, démarre le serveur avec le Python embarqué, affiche un écran de
   démarrage, puis charge l'interface. À la fermeture elle arrête le serveur **et** le worker de génération.
-- Données (base, images, journaux) : `~/Library/Application Support/app.chambrenoire.studio/`
-  (journal du serveur : `logs/backend.log`). Les modèles restent dans le cache Hugging Face habituel (`~/.cache/huggingface`).
+- Données (base, images, journaux) : `~/Library/Application Support/app.aimedialab.studio/`
+  (journal du serveur : `logs/backend.log`). Une installation faite sous l'ancien nom « Chambre noire » est migrée
+  automatiquement (dossier de données et base). Les modèles restent dans le cache Hugging Face habituel (`~/.cache/huggingface`).
 - Signature **ad hoc** uniquement (pas de compte développeur Apple) : une application téléchargée est mise en quarantaine
-  par Gatekeeper. Pour l'ouvrir : clic droit → Ouvrir, ou `xattr -dr com.apple.quarantine "/Applications/Chambre noire.app"`.
+  par Gatekeeper. Pour l'ouvrir : clic droit → Ouvrir, ou `xattr -dr com.apple.quarantine "/Applications/AI MediaLab.app"`.
   Une distribution publique demande un certificat « Developer ID » et la notarisation.
-- Itérer sans réassembler le bundle : `CHAMBRE_NOIRE_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/chambre-noire`
+- Itérer sans réassembler le bundle : `AI_MEDIALAB_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/ai-medialab`
   (la coque utilise alors ces ressources au lieu de celles du `.app`).
 - Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
 

@@ -1,7 +1,7 @@
 [package]
-name = "chambre-noire"
+name = "ai-medialab"
 version = "0.1.0"
-description = "Chambre noire — studio local de création et d'édition d'images"
+description = "AI MediaLab — studio local de création d'images et d'audio"
 edition = "2021"
 rust-version = "1.77"
 

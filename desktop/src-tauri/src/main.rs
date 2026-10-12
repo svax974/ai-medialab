@@ -1,4 +1,4 @@
-// Chambre noire — coque de bureau.
+// AI MediaLab — coque de bureau.
 //
 // Rôle : lancer le serveur Python embarqué (runtime/python + backend), attendre qu'il réponde, puis
 // afficher l'interface dans la fenêtre. À la fermeture, arrêter proprement tout l'arbre de processus
@@ -91,7 +91,7 @@ fn main() {
             // Fenêtre créée ici (et non dans tauri.conf.json) pour pouvoir brancher le gestionnaire de
             // téléchargements : sans lui, WKWebView ignore les liens <a download>.
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Chambre noire")
+                .title("AI MediaLab")
                 .inner_size(1440.0, 900.0)
                 .min_inner_size(960.0, 640.0)
                 .center()
@@ -193,10 +193,10 @@ fn splash_error(app: &AppHandle, title: &str, detail: &str, log: &str) {
 
 // --- Démarrage du backend --------------------------------------------------------------------------
 
-/// Dossier contenant backend/, frontend/ et runtime/. `CHAMBRE_NOIRE_RESOURCES` permet de pointer
+/// Dossier contenant backend/, frontend/ et runtime/. `AI_MEDIALAB_RESOURCES` permet de pointer
 /// vers desktop/build/resources en développement (`tauri dev`).
 fn resources_dir(app: &AppHandle) -> Option<PathBuf> {
-    if let Some(p) = env::var_os("CHAMBRE_NOIRE_RESOURCES") {
+    if let Some(p) = env::var_os("AI_MEDIALAB_RESOURCES") {
         return Some(PathBuf::from(p));
     }
     // Distribution « portable » (Windows/Linux) : backend/, frontend/ et runtime/ sont à côté de l'exécutable.
@@ -335,7 +335,7 @@ sleep 6
 kill -s KILL -- "-$2" 2>/dev/null
 "#;
     let _ = Command::new("/bin/sh")
-        .args(["-c", SCRIPT, "chambre-noire-sentinel", &shell_pid.to_string(), &backend_pgid.to_string()])
+        .args(["-c", SCRIPT, "ai-medialab-sentinel", &shell_pid.to_string(), &backend_pgid.to_string()])
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -398,6 +398,13 @@ fn boot(app: AppHandle) {
             return;
         }
     };
+    // Migration : avant le renommage en « AI MediaLab », les données vivaient dans le dossier de l'ancien identifiant.
+    if let Some(parent) = data_dir.parent() {
+        let legacy = parent.join("app.chambrenoire.studio");
+        if legacy.is_dir() && !data_dir.exists() {
+            let _ = fs::rename(&legacy, &data_dir);
+        }
+    }
     let _ = fs::create_dir_all(&data_dir);
     let log_path = data_dir.join("logs").join("backend.log");
 

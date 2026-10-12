@@ -8,7 +8,7 @@ import zipfile
 
 import pytest
 
-os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/chambre-noire-tests")
+os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
 from app import engine_install as ei  # noqa: E402
 
