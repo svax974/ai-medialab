@@ -1,11 +1,14 @@
-"""Binaires stable-diffusion.cpp (GGUF) : localisation, détection des GPU utilisables, choix du backend.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Un « variant » est une build du même programme pour un backend de calcul : metal (macOS), cuda, rocm,
-vulkan (tous GPU, y compris NVIDIA, AMD et Intel) ou cpu. Ils vivent dans `<engines>/sdcpp/<variant>/` ;
-`scripts/fetch_sdcpp.py` les télécharge depuis les versions officielles (somme de contrôle vérifiée).
+"""stable-diffusion.cpp (GGUF) binaries: locating them, detecting usable GPUs, picking the backend.
 
-Le variant est choisi d'après le GPU détecté (CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon),
-avec repli sur Vulkan ; `IMAGEGEN_SDCPP_VARIANT` impose un variant (utile pour comparer les vitesses).
+A "variant" is a build of the same program for one compute backend: metal (macOS), cuda, rocm,
+vulkan (any GPU, including NVIDIA, AMD and Intel) or cpu. They live in `<engines>/sdcpp/<variant>/`;
+`scripts/fetch_sdcpp.py` downloads them from the official releases (checksum verified).
+
+The variant follows the detected GPU (CUDA on NVIDIA, ROCm on AMD, Metal on Apple, Vulkan otherwise),
+falling back to Vulkan. `IMAGEGEN_SDCPP_VARIANT` forces one, handy for comparing speeds.
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ from typing import Any
 from .config import ENGINES_DIR, ROOT_DIR
 
 VARIANTS = ("metal", "cuda", "rocm", "vulkan", "cpu")
-# Ordre de préférence selon le fournisseur du GPU.
+# Preference order by GPU vendor.
 PREFERENCE = {
     "apple": ("metal", "vulkan"),
     "nvidia": ("cuda", "vulkan"),
@@ -31,9 +34,9 @@ NON_GPU = {"CPU", "BLAS"}
 
 
 def engines_roots() -> list[Path]:
-    """Dossiers où chercher les builds : l'application (ou le dépôt), puis les moteurs installés par l'utilisateur.
+    """Folders to search for builds: the app (or repo) first, then engines the user installed.
 
-    `IMAGEGEN_ENGINES_DIR` remplace le premier (builds embarquées) : tests, installations personnalisées."""
+    `IMAGEGEN_ENGINES_DIR` replaces the first one (bundled builds), for tests and custom setups."""
     return [Path(os.environ.get("IMAGEGEN_ENGINES_DIR") or ROOT_DIR / "engines"), ENGINES_DIR]
 
 
@@ -53,7 +56,7 @@ def find_variants() -> dict[str, Path]:
 
 @lru_cache(maxsize=16)
 def _devices(binary: str, mtime: float) -> tuple[tuple[str, str], ...]:
-    """Appareils de calcul vus par cette build (`--list-devices`) : [(nom, description)]."""
+    """Compute devices this build sees (`--list-devices`): [(name, description)]."""
     try:
         out = subprocess.run([binary, "--list-devices"], capture_output=True, text=True, timeout=30,
                              cwd=str(Path(binary).parent)).stdout
@@ -76,7 +79,7 @@ def gpu_devices(binary: Path) -> list[tuple[str, str]]:
 
 
 def pick(vendors: list[str]) -> dict[str, Any]:
-    """Choisit la build à utiliser. Retourne {available, variant, binary, devices, reason}."""
+    """Pick the build to use. Returns {available, variant, binary, devices, reason}."""
     variants = find_variants()
     if not variants:
         return {"available": False, "reason": "Le moteur GGUF (stable-diffusion.cpp) n'est pas installé."}

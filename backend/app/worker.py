@@ -1,11 +1,14 @@
-"""Processus worker : charge un modèle une fois et enchaîne les générations.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Isolé dans un processus séparé (multiprocessing « spawn ») pour que :
-- le serveur web reste réactif pendant le calcul MLX ;
-- décharger un modèle libère réellement toute la mémoire (fin du processus) ;
-- un plantage (mémoire insuffisante, erreur Metal) n'emporte pas le serveur.
+"""Worker process: loads a model once and runs generations back to back.
 
-Protocole : le parent envoie des dicts sur `commands`, le worker répond par des dicts sur `events`.
+It runs in a separate process (multiprocessing "spawn") so that:
+- the web server stays responsive during MLX compute;
+- unloading a model really frees its memory (the process exits);
+- a crash (out of memory, Metal error) doesn't take the server down.
+
+Protocol: the parent sends dicts on `commands`, the worker answers with dicts on `events`.
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ from pathlib import Path
 
 
 def _exit_with_parent() -> None:
-    """Le worker tient des Go de mémoire : il ne doit jamais survivre au serveur (même tué brutalement)."""
+    """The worker holds GBs of memory, so it must never outlive the server (even if that is killed hard)."""
     import multiprocessing
     import threading
 
@@ -26,7 +29,7 @@ def _exit_with_parent() -> None:
         return
 
     def watch() -> None:
-        parent.join()  # retourne dès que le processus parent n'existe plus
+        parent.join()  # returns as soon as the parent process is gone
         os._exit(0)
 
     threading.Thread(target=watch, daemon=True, name="parent-watch").start()

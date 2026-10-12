@@ -1,14 +1,17 @@
-"""Worker audio : charge un moteur de synthèse vocale une fois et enchaîne les générations.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Lancé par le serveur avec l'interpréteur du pack concerné :
-    <pack>/python worker.py <module:Classe> '<options JSON>'
+"""Audio worker: loads a TTS engine once and runs generations back to back.
 
-Protocole JSON, une ligne par message.
-  stdin  (serveur -> worker) : {"type": "generate", ...} | {"type": "cancel"} | {"type": "shutdown"}
-  fd privé (worker -> serveur) : mêmes types d'événements que le worker image
+Started by the server with the interpreter of the relevant pack:
+    <pack>/python worker.py <module:Class> '<options JSON>'
+
+JSON protocol, one message per line.
+  stdin (server -> worker): {"type": "generate", ...} | {"type": "cancel"} | {"type": "shutdown"}
+  private fd (worker -> server): same event types as the image worker
       loading / ready / load_error / item_start / step / audio / done / cancelled / error
 
-stdout est redirigé vers stderr : les bibliothèques bavardes ne peuvent pas corrompre le protocole.
+stdout is redirected to stderr so chatty libraries can't corrupt the protocol stream.
 """
 
 from __future__ import annotations
@@ -36,7 +39,7 @@ def emit(kind: str, **data) -> None:
 
 
 def _exit_with_parent() -> None:
-    """Un worker qui tient des Go de mémoire ne doit pas survivre au serveur."""
+    """A worker holding GBs of memory must not outlive the server."""
     ppid = os.getppid()
 
     def watch() -> None:
@@ -84,7 +87,7 @@ def main() -> None:
                 cancel.set()
             else:
                 commands.put(msg)
-        commands.put({"type": "shutdown"})  # le serveur a fermé le tube
+        commands.put({"type": "shutdown"})  # the server closed the pipe
 
     threading.Thread(target=read_stdin, daemon=True, name="stdin").start()
 
@@ -117,13 +120,13 @@ def main() -> None:
                 ctx = {k: item.get(k) for k in ("language", "instruct", "speed", "seed", "params")}
                 ctx["params"] = ctx.get("params") or {}
 
-                plan: list[tuple[int, str, str]] = []  # (segment, texte, séparation)
+                plan: list[tuple[int, str, str]] = []  # (segment, text, separator)
                 for si, seg in enumerate(segments):
                     for text, sep in split_text(seg["text"], engine.max_chars):
                         plan.append((si, text, sep))
                 total = len(plan)
                 pieces: list[np.ndarray] = []
-                markers: list[dict] = []  # position (s) de chaque segment, pour la timeline
+                markers: list[dict] = []  # start time (s) of each segment, for the timeline
                 cursor = 0
                 for n, (si, text, sep) in enumerate(plan):
                     if cancel.is_set():
@@ -147,7 +150,7 @@ def main() -> None:
                     emit("step", job_id=job_id, index=index, step=n + 1, total=total, t=time.time())
                 full = np.concatenate(pieces) if pieces else np.zeros(1, dtype=np.float32)
                 peak = float(np.abs(full).max() or 1.0)
-                if peak > 0.99:  # évite l'écrêtage à l'export
+                if peak > 0.99:  # avoid clipping on export
                     full = full * (0.97 / peak)
                 write_wav(item["output"], full, engine.sample_rate)
                 emit(

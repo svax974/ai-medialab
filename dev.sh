@@ -1,5 +1,8 @@
 #!/bin/sh
-# Mode développement : backend avec rechargement auto (port 8000) + Vite avec HMR (port 5173).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+# Dev mode: backend with auto-reload (port 8000) + Vite with HMR (port 5173).
 set -eu
 cd "$(dirname "$0")"
 EXTRAS="--extra torch"

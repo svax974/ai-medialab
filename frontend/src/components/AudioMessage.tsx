@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -21,7 +24,7 @@ const ACTIVE = ["queued", "loading", "running"];
 const RATES = [0.75, 1, 1.25, 1.5, 2];
 const autoplayed = new Set<string>();
 
-// --- Message de réponse ------------------------------------------------------------------------------
+// --- Reply message ---
 
 export function AudioAssistantMessage({ message }: { message: Message }) {
   const { data } = useModels();
@@ -33,7 +36,7 @@ export function AudioAssistantMessage({ message }: { message: Message }) {
   const count = message.params.count ?? 1;
   const queuePos = engine?.queue.indexOf(message.id) ?? -1;
 
-  // Lecture automatique de la première prise qui vient d'être générée (pas au rechargement d'une conversation).
+  // Autoplay the first take once it has just been generated (not when reloading a conversation).
   useEffect(() => {
     const first = message.outputs[0];
     if (!auto || !first || autoplayed.has(first.id)) return;
@@ -121,7 +124,7 @@ function StatusLine({ message, model, queuePos }: { message: Message; model?: Mo
   );
 }
 
-// --- Prise (lecteur) --------------------------------------------------------------------------------------
+// --- Take (player) ---
 
 export function TakeCard({ asset, index = 0, total = 1, compact = false }: { asset: Asset; index?: number; total?: number; compact?: boolean }) {
   const mine = usePlayer((s) => s.id === asset.id);
@@ -305,7 +308,7 @@ function PendingTake({ running, fraction }: { running: boolean; fraction: number
   );
 }
 
-// --- Actions du message --------------------------------------------------------------------------------------
+// --- Message actions ---
 
 function Footer({ message, active }: { message: Message; active: boolean }) {
   const [busy, setBusy] = useState(false);

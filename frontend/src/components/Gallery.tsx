@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Heart, Search } from "lucide-react";

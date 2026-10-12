@@ -1,4 +1,7 @@
-"""Registre des modèles disponibles."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Registry of available models."""
 
 from __future__ import annotations
 
@@ -13,28 +16,28 @@ if DEMO_MODE:
     _SPECS.append(demo.SPEC)
 
 MODELS: dict[str, ModelSpec] = {s.id: s for s in _SPECS}
-custom.register_all(MODELS)  # modèles ajoutés depuis Hugging Face
+custom.register_all(MODELS)  # user-added Hugging Face models
 DEFAULT_MODEL_ID = qwen21.SPEC.id
 
 
 def selected_variants() -> dict[str, str]:
-    """Quantification choisie par modèle (réglages)."""
+    """Quantization picked per model (from settings)."""
     from .. import db
 
     try:
         return dict(db.get_settings().get("variant", {}))
-    except Exception:  # base absente : variantes par défaut
+    except Exception:  # no database yet: use default variants
         return {}
 
 
 def resolve(spec: ModelSpec, chosen: dict[str, str] | None = None) -> ModelSpec:
-    """La spec avec la quantification choisie (ou celle par défaut)."""
+    """Spec with the chosen quantization applied (default if none)."""
     chosen = selected_variants() if chosen is None else chosen
     return with_variant(spec, chosen.get(spec.id))
 
 
 def get_spec(model_id: str) -> ModelSpec:
-    """Un modèle prêt à l'emploi : sources, options et précision de la quantification sélectionnée."""
+    """Spec ready to use, with the selected quantization applied."""
     try:
         return resolve(MODELS[model_id])
     except KeyError:

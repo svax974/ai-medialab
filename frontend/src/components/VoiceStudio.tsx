@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
@@ -16,7 +19,7 @@ const LANGS = [
   ["nl", "Nederlands"], ["zh", "中文"], ["ja", "日本語"], ["ko", "한국어"], ["ru", "Русский"],
 ] as const;
 
-// Texte à lire pendant l'enregistrement : varié (voyelles, consonnes, intonations), ~20 s à voix posée.
+// Text read aloud while recording: varied vowels, consonants and intonation, about 20 s at a calm pace.
 const READING: Record<string, string> = {
   fr: "Le matin, quand la ville s'éveille, j'aime marcher lentement le long du fleuve. L'air est frais, les péniches glissent sans un bruit, et quelque part une boulangerie ouvre ses portes. Est-ce que vous avez déjà remarqué à quel point le silence peut être beau ?",
   en: "In the morning, when the city wakes up, I like to walk slowly along the river. The air is cool, the barges glide by without a sound, and somewhere a bakery opens its doors. Have you ever noticed how beautiful silence can be?",
@@ -71,7 +74,7 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
       try {
         wav = await toWavFile(raw, fileName);
       } catch {
-        wav = raw instanceof File ? raw : new File([raw], fileName); // format que le navigateur ne lit pas : le serveur essaiera
+        wav = raw instanceof File ? raw : new File([raw], fileName); // format the browser can't decode: let the server try
       }
       const info = await filePeaks(wav).catch(() => ({ peaks: [], duration: 0 }));
       if (info.duration && info.duration < 1) return toast.error("Extrait trop court : il faut au moins une seconde de parole.");
@@ -94,7 +97,7 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
     void load(blob, "Enregistrement.wav");
   });
 
-  /** Crée la voix (une seule fois) ; les appels suivants ne font que mettre à jour. */
+  /** Creates the voice once; later calls only update it. */
   const ensureSaved = async (): Promise<Voice | null> => {
     if (savedId) {
       return api.patchVoice(savedId, { name: name.trim() || "Ma voix", transcript, language });
@@ -338,7 +341,7 @@ function WhisperInstall() {
       onClick={async () => {
         try {
           if (!packOk) {
-            // Moteur d'abord ; le téléchargement de Whisper suit automatiquement (SetupController).
+            // Engine first; the Whisper download follows automatically (SetupController).
             useStore.getState().setPendingModel("whisper-small");
             useStore.getState().setPackInstall(await api.installPack("speech"));
           } else {

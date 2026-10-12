@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowUp, Info, Sparkles, TriangleAlert, Users, Volume2, VolumeX } from "lucide-react";
 import { toast } from "sonner";
@@ -67,7 +70,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
     el.style.height = `${Math.min(el.scrollHeight, window.innerHeight * 0.4)}px`;
   }, [prompt]);
 
-  // Scénario : « Nom : réplique ». Au moins deux personnages, et un modèle qui a plusieurs voix à proposer.
+  // Script format is "Name: line". Needs at least two characters and a model offering several voices.
   const speakers = useMemo(() => speakersIn(prompt), [prompt]);
   const pool: VoiceRef[] = useMemo(
     () => [
@@ -80,10 +83,10 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
   const castFor = (name: string, i: number): VoiceRef | undefined => {
     const chosen = cast[name];
     if (chosen && pool.some((p) => p.source === chosen.source && p.id === chosen.id)) return chosen;
-    // Distribution automatique : le 1er personnage garde la voix choisie, les suivants prennent d'autres voix.
+    // Auto-casting: the first character keeps the selected voice, the others get different ones.
     if (i === 0 && voice.ref) return voice.ref;
     const others = pool.filter((p) => !(voice.ref && p.source === voice.ref.source && p.id === voice.ref.id));
-    // Les voix de genre opposé à la voix principale d'abord : deux personnages se distinguent mieux.
+    // Opposite-gender voices first, so the characters are easier to tell apart.
     const genderOf = (p: VoiceRef) => caps.voices.find((v) => p.source === "preset" && v.id === p.id)?.gender;
     const mainGender = voice.preset?.gender;
     const opposite = others.filter((p) => mainGender && genderOf(p) && genderOf(p) !== mainGender);

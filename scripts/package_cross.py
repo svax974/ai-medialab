@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
-"""Cross-construit un livrable PORTABLE (sans installateur) de AI MediaLab pour Windows ou Linux x86_64.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Cross-builds a PORTABLE (no installer) AI MediaLab package for Windows or Linux x86_64.
 
     python3 scripts/package_cross.py --profile win-cuda      # → desktop/dist/AI-MediaLab-win-cuda.zip
     python3 scripts/package_cross.py --profile linux-cuda    # → desktop/dist/AI-MediaLab-linux-cuda.tar.gz
 
-Étapes : (1) runtime Python + dépendances de la cible (scripts/build_runtime.py, mode cross), (2) coque Tauri de la cible,
-(3) archive + somme SHA-256.
+Steps: (1) target Python runtime + dependencies (scripts/build_runtime.py, cross mode), (2) target Tauri shell,
+(3) archive + SHA-256 sum.
 
-- Windows : coque compilée avec mingw-w64 (cible Rust x86_64-pc-windows-gnu ; `brew install mingw-w64`).
-- Linux   : coque compilée dans un conteneur Docker linux/amd64 (WebKitGTK n'est pas cross-compilable sans sysroot) ;
-            runtime assemblé sur un volume APFS sensible à la casse (sinon des fichiers de roues Linux ne différant que
-            par la casse s'écraseraient sur le disque insensible à la casse du Mac).
+- Windows: shell built with mingw-w64 (Rust target x86_64-pc-windows-gnu; `brew install mingw-w64`).
+- Linux:   shell built in a linux/amd64 Docker container (WebKitGTK can't be cross-compiled without a sysroot);
+           runtime assembled on a case-sensitive APFS volume (otherwise Linux wheel files that differ only by
+           case would overwrite each other on the Mac's case-insensitive disk).
 
-Aucun livrable cross-construit n'a pu être exécuté sur son matériel cible (voir README) : seule la coque Linux et le
-serveur embarqué sont éprouvés sans GPU dans un conteneur.
+No cross-built package has been run on its target hardware (see README); only the Linux shell and the
+bundled server were exercised, without a GPU, in a container.
 """
 
 from __future__ import annotations
@@ -123,7 +126,7 @@ def readme_text(profile_name: str, profile: dict) -> str:
     return READMES[profile["os"]].format(label=profile["label"], gpu=gpu, profile=profile_name)
 
 
-# --- Runtime ---------------------------------------------------------------------------------------
+# --- Runtime ---
 
 def ensure_runtime(profile_name: str, resources: Path) -> None:
     if (resources / "runtime" / "python").is_dir() and (resources / "runtime" / "site-packages").is_dir():
@@ -132,7 +135,7 @@ def ensure_runtime(profile_name: str, resources: Path) -> None:
     run([sys.executable, ROOT / "scripts" / "build_runtime.py", "--profile", profile_name, "--out", resources])
 
 
-# --- Windows ---------------------------------------------------------------------------------------
+# --- Windows ---
 
 def build_shell_windows() -> tuple[Path, Path]:
     log("Coque Tauri → x86_64-pc-windows-gnu (mingw-w64)…")
@@ -144,7 +147,7 @@ def build_shell_windows() -> tuple[Path, Path]:
         "CC_x86_64_pc_windows_gnu": "x86_64-w64-mingw32-gcc",
         "CXX_x86_64_pc_windows_gnu": "x86_64-w64-mingw32-g++",
         "AR_x86_64_pc_windows_gnu": "x86_64-w64-mingw32-ar",
-        # Ne pas recopier le runtime macOS (desktop/build/resources) dans le dossier cible.
+        # Don't copy the macOS runtime (desktop/build/resources) into the target folder.
         "TAURI_CONFIG": json.dumps({"bundle": {"resources": []}}),
     }
     run(["rustup", "target", "add", "x86_64-pc-windows-gnu"], env=env)
@@ -159,7 +162,7 @@ def build_shell_windows() -> tuple[Path, Path]:
 
 
 def write_zip(archive: Path, top: str, entries: list[tuple[Path, str]], resources: Path, extra_text: dict[str, str]) -> None:
-    """Zip64 en flux (pas de dossier intermédiaire de plusieurs Go sur le disque)."""
+    """Streamed Zip64 (avoids a multi-GB intermediate folder on disk)."""
     archive.parent.mkdir(parents=True, exist_ok=True)
     archive.unlink(missing_ok=True)
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=6, allowZip64=True) as zf:
@@ -187,7 +190,7 @@ def package_windows(profile_name: str, profile: dict, skip_runtime: bool) -> Pat
     return archive
 
 
-# --- Linux -----------------------------------------------------------------------------------------
+# --- Linux ---
 
 DOCKERFILE = """FROM ubuntu:22.04
 ENV DEBIAN_FRONTEND=noninteractive
@@ -214,7 +217,7 @@ def build_shell_linux() -> Path:
     out_dir = CROSS / "linux-shell"
     shutil.rmtree(out_dir, ignore_errors=True)
     out_dir.mkdir(parents=True)
-    # Sources en lecture seule + copie de travail dans le conteneur ; target/ dans un volume nommé (supprimé ensuite).
+    # Sources mounted read-only + working copy inside the container; target/ in a named volume (removed afterwards).
     script = (
         "set -e; mkdir -p /work && cd /src && "
         "tar --exclude=./target --exclude=./gen -cf - . | tar -xf - -C /work && cd /work && "
@@ -231,7 +234,7 @@ def build_shell_linux() -> Path:
 
 
 LAUNCHER = """#!/bin/sh
-# Lanceur de AI MediaLab (version portable).
+# Launcher for the portable build.
 cd "$(dirname "$(readlink -f "$0")")" || exit 1
 exec ./ai-medialab "$@"
 """
@@ -257,7 +260,7 @@ def write_tar(archive: Path, top: str, binary: Path, resources: Path, readme: st
 
 
 def case_sensitive_volume(name: str, size_gb: int) -> Path:
-    """Volume APFS sensible à la casse (image sparse) monté sous /Volumes ; retourne son point de montage."""
+    """Case-sensitive APFS volume (sparse image) mounted under /Volumes; returns its mount point."""
     image = CROSS / f"{name}.sparseimage"
     mount = Path("/Volumes") / name
     if mount.exists():

@@ -1,7 +1,10 @@
-"""Sous-processus de téléchargement : `python -m app.download_worker <repo> <patterns_json>`.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Écrit une ligne JSON par événement sur stdout. Tuer le processus suffit à annuler : les fichiers
-partiels (.incomplete) restent dans le cache et le téléchargement reprend là où il s'était arrêté.
+"""Download subprocess: `python -m app.download_worker <repo> <patterns_json>`.
+
+Writes one JSON line per event on stdout. Killing the process is enough to cancel: partial files
+(.incomplete) stay in the cache and the download resumes where it stopped.
 """
 
 from __future__ import annotations
@@ -29,16 +32,16 @@ def main() -> int:
     devnull = open(os.devnull, "w")
 
     class ByteBars(tqdm):
-        """Récupère les barres d'octets agrégées créées par snapshot_download (réseau et écriture disque)."""
+        """Captures the aggregate byte bars snapshot_download creates (network and disk write)."""
 
         def __init__(self, *args, **kwargs):
             kwargs.pop("name", None)
-            # Une barre « désactivée » n'incrémenterait plus `n` : on la garde active mais muette.
+            # A disabled bar stops updating `n`, so keep it enabled but silent.
             kwargs["disable"] = False
             kwargs["file"] = devnull
             super().__init__(*args, **kwargs)
             if kwargs.get("unit") == "B":
-                # snapshot_download crée d'abord la barre « réseau », puis la barre « écriture disque ».
+                # snapshot_download creates the network bar first, then the disk-write bar.
                 bars["transfer" if "transfer" not in bars else "disk"] = self
 
     stop = threading.Event()
@@ -64,7 +67,7 @@ def main() -> int:
     def watch_parent() -> None:
         while True:
             time.sleep(2)
-            if os.getppid() != parent:  # le serveur a disparu : inutile de continuer à télécharger
+            if os.getppid() != parent:  # server is gone, stop downloading
                 os._exit(0)
 
     threading.Thread(target=watch_parent, daemon=True).start()

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useState } from "react";
 import * as Popover from "@radix-ui/react-popover";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
@@ -9,7 +12,7 @@ import { useVoices } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { Waveform } from "./Waveform";
 
-/** Voix effective affichée : la sélection si elle est valide pour la langue, sinon la première voix du modèle. */
+/** Voice actually shown: the selection if valid for the language, else the model's first voice. */
 export function effectiveVoice(
   caps: AudioCaps,
   ref: VoiceRef | undefined,
@@ -37,7 +40,7 @@ export function defaultLanguage(caps: AudioCaps, stored?: string): string {
   return codes.includes(ui) ? ui : codes.includes("fr") ? "fr" : (codes[0] ?? "en");
 }
 
-// --- Avatar ----------------------------------------------------------------------------------------------
+// --- Avatar ---
 
 function hue(name: string) {
   let h = 0;
@@ -62,7 +65,7 @@ export function VoiceAvatar({ name, size = 28, library = false }: { name: string
   );
 }
 
-// --- Sélecteur de voix --------------------------------------------------------------------------------------
+// --- Voice picker ---
 
 interface Props {
   model: ModelInfo;
@@ -230,7 +233,7 @@ function Row({
   );
 }
 
-// --- Sélecteur de langue ---------------------------------------------------------------------------------------
+// --- Language picker ---
 
 export function LanguagePicker({ caps, value, onChange }: { caps: AudioCaps; value: string; onChange: (code: string) => void }) {
   if (caps.languages.length < 2) return null;

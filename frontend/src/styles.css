@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2026 Stéphane Vaxelaire
+ * SPDX-License-Identifier: MIT
+ */
+
 @import "tailwindcss";
 @import "@fontsource/instrument-serif/400.css";
 @import "@fontsource/instrument-serif/400-italic.css";
@@ -6,7 +11,7 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Palette : « labo » (sombre, noir chaud + lumière inactinique) et « tirage » (clair, papier). */
+/* Palette: dark (warm black, safelight red) and light (paper). */
 :root,
 [data-theme="dark"] {
   --bg: #0d0b0a;
@@ -97,7 +102,7 @@
   from { opacity: 0; }
   to { opacity: 1; }
 }
-/* Révélation façon bain de développement : l'image émerge du noir, d'abord chaude et floue. */
+/* Darkroom-style reveal: the image emerges from black, first warm and blurred. */
 @keyframes develop {
   0% { opacity: 0; filter: blur(18px) sepia(1) saturate(2.2) hue-rotate(-18deg) brightness(0.35); transform: scale(1.015); }
   45% { opacity: 1; filter: blur(4px) sepia(0.6) saturate(1.6) hue-rotate(-10deg) brightness(0.8); }
@@ -126,7 +131,7 @@
     -webkit-font-smoothing: antialiased;
     overflow: hidden;
   }
-  /* Grain argentique très léger sur toute l'interface. */
+  /* Very light film grain over the whole UI. */
   body::after {
     content: "";
     position: fixed;
@@ -158,7 +163,7 @@
     padding: 6px;
     z-index: 60;
     animation: fade 0.14s ease both;
-    /* Jamais plus haut que la place disponible (Radix la calcule selon la fenêtre) : on défile au lieu de déborder */
+    /* Never taller than the available space (Radix computes it from the window): scroll instead of overflowing */
     max-height: min(var(--radix-popper-available-height, 85vh), 85vh);
     overflow-y: auto;
     overscroll-behavior: contain;

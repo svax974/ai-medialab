@@ -1,4 +1,7 @@
-"""Tests de la logique pure : mémoire, installation des modèles, dimensions."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Pure logic tests: memory planning, model installation, image sizes."""
 
 import os
 from pathlib import Path
@@ -112,7 +115,7 @@ class TestSizes:
 
 
 class TestNativeSize:
-    """« Origine » : en édition, la taille de la référence est reprise (plafonnée), sauf choix explicite."""
+    """"Origin" size: when editing, the reference size is reused (capped) unless the user chose otherwise."""
 
     M = dict(multiple=32, min_side=256, max_side=2048, default_megapixels=1.0)
 
@@ -131,7 +134,7 @@ class TestNativeSize:
     def test_non_square_reference_is_kept_and_snapped(self, tmp_path):
         ref = self.ref(tmp_path, 1000, 600)
         w, h = resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M)
-        assert (w, h) == (992, 608)  # multiples de 32 les plus proches de 1000 et 600
+        assert (w, h) == (992, 608)  # nearest multiples of 32 to 1000 and 600
 
     def test_huge_reference_is_capped(self, tmp_path):
         ref = self.ref(tmp_path, 4000, 3000)

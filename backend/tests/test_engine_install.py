@@ -1,4 +1,7 @@
-"""Installation du moteur GGUF : choix de la build, motifs de fichiers, vérification et extraction sûres."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""GGUF engine install: build selection, asset patterns, checksum verification and safe extraction."""
 
 import hashlib
 import io
@@ -12,7 +15,7 @@ os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
 from app import engine_install as ei  # noqa: E402
 
-# Noms réels des fichiers de la version master-956 (relevés sur GitHub).
+# Real asset names from the master-956 release (taken from GitHub).
 REAL_ASSETS = [
     "cudart-sd-bin-win-cu12-x64.zip",
     "sd-master-1b0ba10-bin-Darwin-macOS-26.6.2-arm64.zip",
@@ -60,7 +63,7 @@ def make_zip(files: dict[str, bytes]) -> bytes:
 
 @pytest.fixture
 def fake_release(monkeypatch):
-    """Remplace le réseau : une « version » dont l'unique fichier est une petite archive."""
+    """Fake the network: a release whose only asset is a small archive."""
 
     def setup(archive: bytes, digest: str | None, name="sd-master-x-bin-win-vulkan-x64.zip"):
         monkeypatch.setattr(ei, "_http_json", lambda url: {"tag_name": "master-1", "assets": [{
@@ -89,7 +92,7 @@ def test_install_verifies_extracts_and_marks_executable(tmp_path, fake_release):
     assert (tmp_path / "vulkan" / "sd-cli").read_bytes() == b"binaire"
     assert os.access(tmp_path / "vulkan" / "sd-cli", os.X_OK)
     assert (tmp_path / "vulkan" / "VERSION.json").is_file()
-    assert [p.name for p in tmp_path.iterdir()] == ["vulkan"]  # aucun résidu de téléchargement
+    assert [p.name for p in tmp_path.iterdir()] == ["vulkan"]  # no download leftovers
 
 
 def test_install_refuses_a_wrong_checksum(tmp_path, fake_release):

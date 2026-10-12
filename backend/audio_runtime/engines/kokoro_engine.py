@@ -1,4 +1,7 @@
-"""Kokoro-82M (Apache-2.0) : très rapide, voix intégrées (pas de clonage), plusieurs langues."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Kokoro-82M (Apache-2.0): very fast, preset voices only (no cloning), several languages."""
 
 from __future__ import annotations
 
@@ -10,14 +13,14 @@ import numpy as np
 
 from . import Engine, pick_device, seed_everything
 
-# Préfixe de l'identifiant de voix -> code de langue du phonémiseur de Kokoro.
+# Voice id prefix -> Kokoro phonemizer language code.
 LANG_BY_PREFIX = {"a": "a", "b": "b", "e": "e", "f": "f", "h": "h", "i": "i", "p": "p", "j": "j", "z": "z"}
 
 
 def _short_espeak_data() -> None:
-    """eSpeak-ng tronque à 160 caractères le chemin de ses données : au-delà, il retombe sur un chemin codé en
-    dur dans la bibliothèque (introuvable) et la phonémisation échoue. Les chemins d'une application installée
-    (venv sous « Application Support »…) dépassent facilement. On copie alors les données sous un chemin court."""
+    """eSpeak-ng truncates its data path at 160 characters and falls back to a path hardcoded in the
+    library (which doesn't exist), so phonemization fails. Paths of an installed app (a venv under
+    "Application Support"...) easily exceed that, so copy the data to a short path."""
     import espeakng_loader
 
     src = espeakng_loader.get_data_path()
@@ -30,7 +33,7 @@ def _short_espeak_data() -> None:
         shutil.copytree(src, tmp)
         try:
             os.rename(tmp, dst)
-        except OSError:  # un autre worker l'a créé entre-temps
+        except OSError:  # another worker created it in the meantime
             shutil.rmtree(tmp, ignore_errors=True)
     os.environ["PHONEMIZER_ESPEAK_DATA_PATH"] = dst
 
@@ -43,10 +46,10 @@ class KokoroEngine(Engine):
         import torch
 
         _short_espeak_data()
-        import misaki.espeak  # noqa: F401  (fixe le chemin des données à l'import…)
+        import misaki.espeak  # noqa: F401  (sets the data path on import...)
         from phonemizer.backend.espeak.wrapper import EspeakWrapper
 
-        EspeakWrapper.set_data_path(None)  # …on laisse la variable d'environnement reprendre la main
+        EspeakWrapper.set_data_path(None)  # ...so let the environment variable take over again
         from kokoro import KModel
 
         self.repo = self.options.get("repo", "hexgrad/Kokoro-82M")

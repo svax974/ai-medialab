@@ -1,14 +1,17 @@
-"""Modèles ajoutés par l'utilisateur depuis Hugging Face.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Un modèle personnalisé n'est qu'une « recette » (dépôt, fichier choisi, famille) enregistrée dans les réglages ;
-la `ModelSpec` correspondante se reconstruit sans réseau, y compris dans les processus worker. Seules des
-familles que l'application sait exécuter sont acceptées :
+"""Models the user adds from Hugging Face.
 
-    gguf-variant   autre quantification (ou fine-tune) d'un modèle GGUF déjà géré : on remplace le fichier de
-                   diffusion du modèle de référence, ses autres composants (encodeur, VAE) restent les siens
-    sd-diffusers   dépôt diffusers Stable Diffusion 1.x ou XL (moteur PyTorch)
-    qwen3-tts      variante de Qwen3-TTS (voix intégrées, création de voix ou clonage)
-    whisper-ct2    modèle Whisper converti pour faster-whisper (transcription)
+A custom model is just a "recipe" (repo, chosen file, family) stored in the settings. The matching
+`ModelSpec` is rebuilt without network access, worker processes included. Only families the app knows
+how to run are accepted:
+
+    gguf-variant   another quantization (or fine-tune) of an already supported GGUF model: the reference
+                   model's diffusion file is swapped, its other components (encoder, VAE) are kept
+    sd-diffusers   Stable Diffusion 1.x or XL diffusers repo (PyTorch engine)
+    qwen3-tts      Qwen3-TTS variant (preset voices, voice design or cloning)
+    whisper-ct2    Whisper converted for faster-whisper (transcription)
 """
 
 from __future__ import annotations
@@ -24,7 +27,7 @@ from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
 
-# Modèles GGUF de référence : base_model Hugging Face -> id du modèle dont on copie la recette.
+# Reference GGUF models: Hugging Face base_model -> id of the model whose spec is copied.
 GGUF_TEMPLATES = {
     "Tongyi-MAI/Z-Image-Turbo": "z-image-turbo-gguf",
     "Qwen/Qwen-Image-2.1": "qwen-image-2.1-gguf",
@@ -45,12 +48,12 @@ def _title(repo: str) -> str:
     return repo.split("/", 1)[-1].replace("_", " ").replace("-", " ").strip()
 
 
-# --- Recettes -> spécifications ------------------------------------------------------------------------------
+# Recipes -> specs
 
 def _gguf_variant(r: dict[str, Any]) -> ModelSpec:
     base = next(s for s in gguf_models.SPECS if s.id == r["template"])
     spec = copy.deepcopy(base)
-    spec.variants, spec.default_variant, spec.variant = [], "", ""  # une recette = un fichier précis
+    spec.variants, spec.default_variant, spec.variant = [], "", ""  # a recipe is one specific file
     repo, file, size = r["repo"], r["file"], float(r["size_gb"])
     old_repo, old_file = base.options["files"]["diffusion-model"]
     i = next(i for i, s in enumerate(base.sources) if s.repo == old_repo and old_file in (s.patterns or []))
@@ -97,7 +100,7 @@ def _sd_diffusers(r: dict[str, Any]) -> ModelSpec:
         ],
         size_multiple=64, min_side=512 if xl else 256, max_side=1536 if xl else 1024,
         default_megapixels=1.0 if xl else 0.25,
-        hf_repo=r["repo"],  # lu par le moteur diffusers (les fichiers à télécharger sont dans `sources`)
+        hf_repo=r["repo"],  # read by the diffusers engine (files to download are in `sources`)
         sources=[HfSource(r["repo"], files, [f for f in files if f.endswith(".safetensors")] + ["model_index.json"], size)],
         download_size_gb=size, license=r.get("license") or "voir le dépôt",
         weights_gb=float(r["weights_gb"]), largest_component_gb=float(r["largest_gb"]),
@@ -156,12 +159,12 @@ def build(recipe: dict[str, Any]) -> ModelSpec:
     return BUILDERS[recipe["family"]](recipe)
 
 
-# --- Persistance et enregistrement ---------------------------------------------------------------------------
+# Persistence and registration
 
 def load_recipes() -> list[dict[str, Any]]:
     try:
         return list(db.get_settings().get(SETTINGS_KEY, []))
-    except Exception:  # base absente ou illisible : aucun modèle personnalisé
+    except Exception:  # missing or unreadable database: no custom models
         return []
 
 
@@ -169,8 +172,8 @@ def register_all(models: dict[str, ModelSpec]) -> None:
     for r in load_recipes():
         try:
             models[r["id"]] = build(r)
-        except Exception as exc:  # recette obsolète : on l'ignore plutôt que de bloquer le démarrage
-            print(f"[custom] recette ignorée ({r.get('id')}): {exc}", flush=True)
+        except Exception as exc:  # stale recipe: skip it rather than block startup
+            print(f"[custom] skipping recipe ({r.get('id')}): {exc}", flush=True)
 
 
 def add(models: dict[str, ModelSpec], recipe: dict[str, Any]) -> ModelSpec:

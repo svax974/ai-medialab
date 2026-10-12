@@ -1,4 +1,9 @@
 <!doctype html>
+<!--
+  Copyright (c) 2026 Stéphane Vaxelaire
+  SPDX-License-Identifier: MIT
+-->
+
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
@@ -76,7 +81,7 @@
     </section>
   </main>
   <script>
-    // Piloté par la coque (Rust) via webview.eval().
+    // Driven by the Rust shell through webview.eval().
     window.cnSplash = {
       status(text) {
         document.body.classList.remove("failed");

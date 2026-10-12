@@ -1,4 +1,7 @@
-// Requêtes react-query, mutations et synchronisation temps réel (SSE).
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// react-query queries, mutations and live sync (SSE).
 import { useEffect } from "react";
 import { QueryClient, useQuery, type InfiniteData } from "@tanstack/react-query";
 import {
@@ -24,12 +27,12 @@ export function useModels() {
   return useQuery({ queryKey: keys.models, queryFn: api.models, staleTime: 60_000 });
 }
 
-/** Modèle actif du composer (préférence locale, sinon modèle par défaut du serveur), pour les images ou l'audio. */
+/** Active composer model (local preference, else the server default), for image or audio. */
 export function useActiveModel(kind: ModelKind = "image"): ModelInfo | undefined {
   const { data } = useModels();
   const stored = useStore((s) => (kind === "audio" ? s.audioModelId : s.modelId));
   if (!data) return undefined;
-  // La transcription (Whisper) n'est pas un modèle de génération : jamais proposée dans le composer.
+  // Transcription (Whisper) is not a generation model: never offered in the composer.
   const mine = data.models.filter((m) => m.kind === kind && m.audio?.task !== "stt");
   const defaultId = kind === "audio" ? data.audio.default_model_id : data.default_model_id;
   return mine.find((m) => m.id === stored) ?? mine.find((m) => m.id === defaultId) ?? mine[0];
@@ -55,7 +58,7 @@ export function useConversation(id: string | null) {
   });
 }
 
-// --- Mise à jour du cache --------------------------------------------------------------------------
+// --- Cache updates ---
 
 export function upsertMessage(msg: Message) {
   queryClient.setQueryData<Conversation>(keys.conversation(msg.conversation_id), (conv) => {
@@ -100,7 +103,7 @@ function refreshConversationList() {
   listTimer = setTimeout(() => queryClient.invalidateQueries({ queryKey: ["conversations"] }), 250);
 }
 
-/** Abonnement unique au flux d'événements du serveur. */
+/** Single subscription to the server event stream. */
 export function useServerEvents() {
   useEffect(() => {
     let source: EventSource | null = null;
@@ -114,7 +117,7 @@ export function useServerEvents() {
         source!.addEventListener(type, (e) => fn(JSON.parse((e as MessageEvent).data)));
 
       source.onopen = () => {
-        // Rattrape ce qui a pu être manqué pendant une déconnexion.
+        // Catch up on anything missed while disconnected.
         queryClient.invalidateQueries({ queryKey: ["conversation"] });
         refreshConversationList();
       };

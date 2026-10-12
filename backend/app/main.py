@@ -1,4 +1,7 @@
-"""Point d'entrée : `uv run uvicorn app.main:app` depuis backend/ (voir ../start.sh)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Entry point: `uv run uvicorn app.main:app` from backend/ (see ../start.sh)."""
 
 from __future__ import annotations
 
@@ -40,7 +43,7 @@ if (FRONTEND_DIST / "assets").is_dir():
 
 @app.get("/{path:path}", include_in_schema=False)
 async def spa(path: str):
-    """Sert l'interface compilée (frontend/dist) ; toute route inconnue renvoie index.html."""
+    """Serve the built frontend; unknown paths fall back to index.html (SPA routing)."""
     if path.startswith(("api/", "media/")):
         return JSONResponse({"detail": "Introuvable"}, status_code=404)
     candidate = (FRONTEND_DIST / path).resolve()

@@ -1,8 +1,11 @@
-"""Modèles audio (synthèse vocale, transcription).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Chaque modèle appartient à un « pack » : un environnement Python isolé, installé à la demande
-(voir `audio_packs.py`), dans lequel tourne `audio_runtime/worker.py`. Le champ `engine` désigne
-« module:Classe » *dans ce runtime*, pas dans le serveur.
+"""Audio models (TTS, transcription).
+
+Each model belongs to a "pack": an isolated Python environment installed on demand (see
+`audio_packs.py`) that runs `audio_runtime/worker.py`. `engine` is a "module:Class" inside that
+runtime, not in the server.
 """
 
 from __future__ import annotations
@@ -21,7 +24,7 @@ FR, EN, DE, ES, IT, PT, NL = ("fr", "Français"), ("en", "English"), ("de", "Deu
 
 SPEED = ParamSpec("speed", "Vitesse de parole", "float", 1.0, 0.6, 1.5, 0.05, "1 = vitesse naturelle.")
 
-# --- Kokoro -----------------------------------------------------------------------------------------
+# Kokoro
 
 _KOKORO_VOICES = [
     PresetVoice("ff_siwis", "Siwis", "fr", F, "Voix française naturelle, claire"),
@@ -81,7 +84,7 @@ KOKORO = ModelSpec(
     ),
 )
 
-# --- Pocket TTS (Kyutai) ----------------------------------------------------------------------------
+# Pocket TTS (Kyutai)
 
 _POCKET_FEMALE = {"alba": "Alba", "cosette": "Cosette", "eponine": "Éponine", "fantine": "Fantine", "jane": "Jane"}
 _POCKET_MALE = {"jean": "Jean", "marius": "Marius", "javert": "Javert", "charles": "Charles", "paul": "Paul",
@@ -131,7 +134,7 @@ POCKET = ModelSpec(
         max_chars=320,
     ),
 )
-# Même moteur, autres langues (un modèle de 220 Mo par langue).
+# Same engine, other languages (one 220 MB model per language).
 POCKET_INTL = ModelSpec(
     id="pocket-tts-intl",
     name="Pocket TTS · DE / ES / IT / PT / NL",
@@ -156,7 +159,7 @@ POCKET_INTL = ModelSpec(
     ),
 )
 
-# --- Qwen3-TTS ----------------------------------------------------------------------------------------
+# Qwen3-TTS
 
 QWEN_LANGS = _langs(("zh", "中文"), EN, ("ja", "日本語"), ("ko", "한국어"), DE, FR, ("ru", "Русский"), PT, ES, IT)
 
@@ -229,7 +232,7 @@ QWEN_CLONE_SMALL = _qwen(
     ["clonage", "multilingue", "léger"], [_QWEN_TEMPERATURE],
 )
 
-# --- Transcription (retranscrire une voix de référence) -------------------------------------------------
+# Transcription (of a reference voice sample)
 
 WHISPER_SMALL = ModelSpec(
     id="whisper-small", name="Whisper Small", family="Whisper", kind="audio",

@@ -1,8 +1,11 @@
-// Audio côté navigateur : lecteur partagé, conversion en WAV, enregistrement au micro.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Browser-side audio: shared player, WAV conversion, microphone recording.
 import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 
-/** Durée de parole estimée (≈ 15 caractères par seconde, débit moyen d'une lecture posée). */
+/** Estimated speech duration (about 15 characters per second, a calm reading pace). */
 export function estimateSeconds(text: string, speed = 1): number {
   const chars = text.replace(/\s+/g, " ").trim().length;
   return chars / 15 / Math.max(0.5, speed);
@@ -20,10 +23,10 @@ export function approxDuration(sec: number): string {
   return `≈ ${Math.floor(sec / 60)} min ${String(Math.round(sec % 60)).padStart(2, "0")} s`;
 }
 
-// --- Lecteur partagé ----------------------------------------------------------------------------------
+// --- Shared player ---
 
 interface PlayerState {
-  /** Identifiant de ce qui est chargé dans le lecteur (asset ou voix). */
+  /** Id of what is loaded in the player (asset or voice). */
   id: string | null;
   playing: boolean;
   time: number;
@@ -99,14 +102,14 @@ export const usePlayer = create<PlayerState>((set, get) => {
   };
 });
 
-/** Lance la lecture sans interaction directe (autoplay d'une prise qui vient d'être générée). */
+/** Starts playback without a direct user gesture (autoplay of a take that was just generated). */
 export function autoplay(id: string, url: string) {
   const s = usePlayer.getState();
   if (s.id === id && s.playing) return;
   s.toggle(id, url);
 }
 
-// --- WAV ---------------------------------------------------------------------------------------------------
+// --- WAV ---
 
 export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
@@ -132,7 +135,7 @@ export function encodeWav(samples: Float32Array, sampleRate: number): Blob {
   return new Blob([buffer], { type: "audio/wav" });
 }
 
-/** Décode n'importe quel format que le navigateur sait lire (m4a, webm, mp3…) et le renvoie en WAV mono. */
+/** Decodes any format the browser can read (m4a, webm, mp3...) and returns mono WAV. */
 export async function toWavFile(blob: Blob, name: string): Promise<File> {
   const ctx = new AudioContext();
   try {
@@ -161,7 +164,7 @@ export function peaksOf(samples: Float32Array, bins = 120): number[] {
   return out.map((v) => (top ? v / top : 0));
 }
 
-/** Profil d'onde d'un fichier local (aperçu avant enregistrement). */
+/** Waveform peaks of a local file (preview before saving). */
 export async function filePeaks(file: Blob, bins = 120): Promise<{ peaks: number[]; duration: number }> {
   const ctx = new AudioContext();
   try {
@@ -172,7 +175,7 @@ export async function filePeaks(file: Blob, bins = 120): Promise<{ peaks: number
   }
 }
 
-// --- Enregistrement ------------------------------------------------------------------------------------------
+// --- Recording ---
 
 export type RecorderState = "idle" | "requesting" | "recording" | "denied" | "unsupported";
 
@@ -239,9 +242,9 @@ export function useRecorder(onDone: (blob: Blob) => void) {
   return { state, seconds, level, start, stop };
 }
 
-// --- Scénario à plusieurs voix --------------------------------------------------------------------------------------
+// --- Multi-voice script ---
 
-// Même règle que le serveur (app/dialogue.py) : « Nom : réplique » en début de ligne.
+// Same rule as the server (app/dialogue.py): "Name: line" at the start of a line.
 const LINE = /^\s*[[(]?\s*([\p{L}][\p{L}\p{N}_ .'’-]{0,28}?)\s*[\])]?\s*[:：]\s*(.*)$/u;
 
 export function speakersIn(text: string): string[] {

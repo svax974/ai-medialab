@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useRef, useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Heart, Search } from "lucide-react";
@@ -8,7 +11,7 @@ import { navigate, paths } from "../lib/router";
 import { TakeCard } from "./AudioMessage";
 import { Spinner } from "./ui";
 
-/** Toutes les prises audio générées, de la plus récente à la plus ancienne. */
+/** All generated audio takes, newest first. */
 export function AudioGallery() {
   const [favorites, setFavorites] = useState(false);
   const [query, setQuery] = useState("");

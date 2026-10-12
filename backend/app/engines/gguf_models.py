@@ -1,8 +1,11 @@
-"""Modèles quantifiés GGUF exécutés par stable-diffusion.cpp (Metal, CUDA, ROCm, Vulkan).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Léger : 5 à 11 Go au lieu de 20 à 33 Go en pleine précision, donc des cartes de 8 à 12 Go suffisent.
-Chaque modèle se compose de plusieurs fichiers de dépôts différents (diffusion, encodeur de texte, VAE).
-Seuls des dépôts sans accès restreint sont utilisés.
+"""Quantized GGUF models run by stable-diffusion.cpp (Metal, CUDA, ROCm, Vulkan).
+
+Small: 5 to 11 GB instead of 20 to 33 GB at full precision, so 8 to 12 GB cards are enough. Each
+model is assembled from files in several repos (diffusion, text encoder, VAE). Only ungated repos
+are used.
 """
 
 from __future__ import annotations
@@ -79,7 +82,7 @@ QWEN21_GGUF = ModelSpec(
                   "(la guidance double le temps de calcul).", advanced=True),
         ParamSpec("negative_prompt", "Prompt négatif", "text", "", help="Ce que l'image doit éviter.", advanced=True),
     ],
-    size_multiple=32,  # exigé par stable-diffusion.cpp pour ce modèle
+    size_multiple=32,  # required by stable-diffusion.cpp for this model
     min_side=256,
     max_side=2048,
     default_quantize=None,
@@ -142,7 +145,7 @@ QWEN_EDIT_GGUF = ModelSpec(
     options={
         "files": {"diffusion-model": E_GGUF, "llm": E_LLM, "vae": E_VAE, "llm_vision": E_VISION},
         "vision_for_refs": ["llm_vision"],
-        # Réglages du guide stable-diffusion.cpp ; « zero_cond_t » est indispensable pour la version 2511.
+        # Settings from the stable-diffusion.cpp guide; zero_cond_t is required for the 2511 release.
         "cli_args": ["--sampling-method", "euler", "--flow-shift", "3", "--model-args", "qwen_image_zero_cond_t=true",
                      "--increase-ref-index"],
         "fa_variants": ["metal", "cuda", "rocm"],
@@ -150,8 +153,8 @@ QWEN_EDIT_GGUF = ModelSpec(
     },
 )
 
-# --- Quantifications proposées (tailles des fichiers de diffusion, en Go) ----------------------------------
-# On ne télécharge que la quantification choisie ; l'encodeur de texte et le VAE sont communs à toutes.
+# Offered quantizations (diffusion file sizes, in GB). Only the chosen one is downloaded; the text
+# encoder and VAE are shared by all of them.
 
 def _gguf_variants(spec: ModelSpec, repo: str, name: str, table: list[tuple[str, float]], default: str) -> None:
     old_repo, old_file = spec.options["files"]["diffusion-model"]

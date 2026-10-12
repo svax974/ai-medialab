@@ -1,4 +1,7 @@
-"""Qwen Image Edit 2509 via mflux : édition guidée par instruction, 1 à 3 images de référence."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Qwen Image Edit 2509 via mflux: instruction-based editing with 1 to 3 reference images."""
 
 from __future__ import annotations
 
@@ -42,8 +45,9 @@ class QwenEditEngine(MfluxEngine):
 
     @property
     def low_memory(self) -> bool:
-        # Pas de rechargement partiel de l'encodeur vision-langage : on le garde en mémoire.
+        # The vision-language encoder can't be reloaded on its own, so keep it in memory.
         return False
+
     def build_model(self):
         from mflux.models.qwen.latent_creator.qwen_latent_creator import QwenLatentCreator
         from mflux.models.qwen.variants.edit.qwen_image_edit import QwenImageEdit

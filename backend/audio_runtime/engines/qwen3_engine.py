@@ -1,9 +1,12 @@
-"""Qwen3-TTS (Alibaba, Apache-2.0) : voix premium pilotables par consigne, création de voix, clonage.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Trois familles de checkpoints, un seul moteur :
-  *-CustomVoice : neuf voix intégrées + consigne de style (1.7B)
-  *-VoiceDesign : la voix est décrite en langage naturel
-  *-Base        : clonage à partir d'un extrait (+ transcription facultative)
+"""Qwen3-TTS (Alibaba, Apache-2.0): premium voices steerable by instruction, voice design, cloning.
+
+Three checkpoint families, one engine:
+  *-CustomVoice: nine preset voices + style instruction (1.7B)
+  *-VoiceDesign: the voice is described in natural language
+  *-Base:        cloning from a sample (+ optional transcript)
 """
 
 from __future__ import annotations
@@ -33,7 +36,7 @@ class Qwen3Engine(Engine):
         kind = str(self.options.get("variant") or repo.rsplit("-", 1)[-1]).lower()
         self.variant = "base" if kind.endswith("base") else "design" if "design" in kind else "custom"
         device = pick_device(self.options.get("device"))
-        # float16 donne des NaN sur ce modèle (probabilités invalides) ; bfloat16 sur GPU, float32 sur CPU.
+        # float16 produces NaNs with this model (invalid probabilities): bfloat16 on GPU, float32 on CPU.
         dtype = torch.float32 if device == "cpu" else torch.bfloat16
         self.device = device
         self.model = Qwen3TTSModel.from_pretrained(repo, device_map=device, dtype=dtype)

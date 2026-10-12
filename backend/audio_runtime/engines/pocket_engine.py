@@ -1,4 +1,7 @@
-"""Pocket TTS (Kyutai, CC-BY-4.0) : ~100 M de paramètres, temps réel sur CPU, clonage vocal zéro-shot."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Pocket TTS (Kyutai, CC-BY-4.0): ~100M parameters, real time on CPU, zero-shot voice cloning."""
 
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ class PocketEngine(Engine):
         name = LANGUAGES.get((code or "en").split("-")[0].lower(), "english")
         if self.model is not None and self.language == name:
             return
-        self.model = None  # libère l'ancien modèle avant de charger le suivant
+        self.model = None  # free the old model before loading the next one
         self._voices.clear()
         self.model = TTSModel.load_model(language=name)
         self.language = name

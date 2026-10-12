@@ -1,4 +1,7 @@
-// Types et appels de l'API backend.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Types and calls for the backend API.
 
 export type ReferenceMode = "none" | "init" | "multi";
 
@@ -25,7 +28,7 @@ export interface Language {
 export interface PresetVoice {
   id: string;
   name: string;
-  /** Code de langue, ou "*" pour toutes les langues du modèle. */
+  /** Language code, or "*" for all the model's languages. */
   language: string;
   gender: "f" | "m" | "n";
   description: string;
@@ -49,10 +52,10 @@ export interface ModelInfo {
   id: string;
   kind: ModelKind;
   audio: AudioCaps | null;
-  /** Pack de moteur audio (environnement isolé) dont dépend ce modèle. */
+  /** Audio engine pack (isolated environment) this model depends on. */
   engine_pack: string | null;
   engine_name: string | null;
-  /** Ce que l'installation du moteur apporte, en une phrase. */
+  /** What installing the engine brings, in one sentence. */
   engine_detail: string;
   name: string;
   family: string;
@@ -83,16 +86,16 @@ export interface ModelInfo {
   install: "installed" | "partial" | "missing";
   installed_gb: number;
   download: DownloadProgress | null;
-  /** Prêt à générer : modèle installé, moteur disponible et compatible avec la machine. */
+  /** Ready to generate: model installed, engine available and compatible with this machine. */
   ready: boolean;
-  /** Le moteur de ce modèle n'est pas installé mais l'application sait l'installer. */
+  /** The model's engine is not installed but the app can install it. */
   needs_engine_install: boolean;
   engine_install_size_mb: number | null;
-  /** Précision des poids (« Q4_K », « bf16 », « 8 bits »…), vide si inconnue. */
+  /** Weight precision ("Q4_K", "bf16", "8 bits"...), empty if unknown. */
   precision: string;
-  /** Modèle ajouté depuis Hugging Face par l'utilisateur. */
+  /** Model added from Hugging Face by the user. */
   custom: boolean;
-  /** Quantifications proposées pour ce modèle (vide si une seule). */
+  /** Quantizations offered for this model (empty if only one). */
   variants: ModelVariant[];
   variant: string;
 }
@@ -100,11 +103,11 @@ export interface ModelInfo {
 export interface ModelVariant {
   key: string;
   label: string;
-  /** Taille du modèle complet avec cette quantification. */
+  /** Full model size with this quantization. */
   size_gb: number;
   install: "installed" | "partial" | "missing";
   installed_gb: number;
-  /** Reste à télécharger pour utiliser cette quantification. */
+  /** Remaining download needed to use this quantization. */
   need_gb: number;
   selected: boolean;
 }
@@ -117,7 +120,7 @@ export interface HubResult {
   downloads: number;
   likes: number;
   base: string;
-  /** Id du modèle déjà présent dans la liste, le cas échéant. */
+  /** Id of the model already in the list, if any. */
   already: string | null;
 }
 
@@ -213,7 +216,7 @@ export interface Asset {
   id: string;
   kind: "upload" | "generated";
   media: "image" | "audio";
-  /** Durée en secondes (audio). */
+  /** Duration in seconds (audio). */
   duration: number | null;
   url: string;
   thumb_url: string;
@@ -226,7 +229,7 @@ export interface Asset {
   conversation_id: string | null;
   message_id: string | null;
   created_at: number;
-  // Présents dans la galerie
+  // Only present in gallery results
   conversation_title?: string | null;
   prompt?: string | null;
   model_id?: string | null;
@@ -353,7 +356,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await res.json();
       detail = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail);
     } catch {
-      /* corps non JSON */
+      /* body is not JSON */
     }
     throw new ApiError(res.status, detail);
   }

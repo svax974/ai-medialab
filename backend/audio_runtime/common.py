@@ -1,7 +1,10 @@
-"""Utilitaires partagés par le worker audio : découpage du texte, assemblage, écriture WAV, profil d'onde.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Ce code tourne dans l'environnement d'un « pack » (numpy + soundfile uniquement) : aucune dépendance
-vers l'application elle-même.
+"""Helpers for the audio worker: text splitting, assembly, WAV output, waveform peaks.
+
+Runs inside a pack's environment (numpy + soundfile only), so it must not import anything from the
+app itself.
 """
 
 from __future__ import annotations
@@ -10,18 +13,18 @@ import re
 
 import numpy as np
 
-# Fin de phrase : ponctuation forte suivie d'un espace (les décimales « 3.5 » et les abréviations à
-# une lettre ne coupent pas).
+# Sentence end: strong punctuation followed by whitespace (so decimals like "3.5" and one-letter
+# abbreviations don't split).
 _SENTENCE_END = re.compile(r"(?<=[.!?…。！？])[\"'»”)\]]*\s+(?=[^\s])")
 _CLAUSE_END = re.compile(r"(?<=[,;:，、])\s+")
 
 
 def split_text(text: str, max_chars: int) -> list[tuple[str, str]]:
-    """Découpe un texte en morceaux (<= max_chars) à des frontières naturelles.
+    """Split text into chunks (<= max_chars) on natural boundaries.
 
-    Retourne des couples (morceau, séparation_après) où la séparation vaut "sentence" ou "paragraph".
-    Les paragraphes (lignes vides) sont toujours des coupures ; les phrases sont regroupées tant qu'elles
-    tiennent, pour garder une prosodie continue sans dépasser ce que le modèle sait faire d'un seul tenant.
+    Returns (chunk, separator_after) pairs where the separator is "sentence" or "paragraph".
+    Paragraphs (blank lines) always split; sentences are grouped while they fit, which keeps the
+    prosody continuous without exceeding what the model handles in one go.
     """
     out: list[tuple[str, str]] = []
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
@@ -33,7 +36,7 @@ def split_text(text: str, max_chars: int) -> list[tuple[str, str]]:
             if len(s) <= max_chars:
                 pieces.append(s)
                 continue
-            # Phrase trop longue : on coupe aux virgules, puis aux mots en dernier recours.
+            # Sentence too long: split at commas, then at words as a last resort.
             buf = ""
             for clause in _CLAUSE_END.split(s):
                 if buf and len(buf) + 1 + len(clause) > max_chars:
@@ -47,7 +50,7 @@ def split_text(text: str, max_chars: int) -> list[tuple[str, str]]:
                     buf = buf[cut:].strip()
             if buf:
                 pieces.append(buf)
-        # Regroupe les phrases courtes consécutives.
+        # Merge consecutive short sentences.
         chunk = ""
         grouped: list[str] = []
         for p in pieces:
@@ -69,12 +72,12 @@ def silence(seconds: float, sample_rate: int) -> np.ndarray:
 
 
 def to_mono_float32(wav) -> np.ndarray:
-    """Tenseur torch, liste ou ndarray -> vecteur float32 mono."""
+    """Torch tensor, list or ndarray -> mono float32 vector."""
     if hasattr(wav, "detach"):
         wav = wav.detach().cpu().float().numpy()
     arr = np.asarray(wav, dtype=np.float32)
     if arr.ndim > 1:
-        # (canaux, échantillons) ou (échantillons, canaux) : on moyenne sur l'axe le plus court
+        # (channels, samples) or (samples, channels): average over the shorter axis
         axis = 0 if arr.shape[0] <= arr.shape[-1] else -1
         arr = arr.mean(axis=axis)
     return np.ascontiguousarray(arr.reshape(-1))
@@ -90,7 +93,7 @@ def resample(audio: np.ndarray, src: int, dst: int) -> np.ndarray:
 
 
 def trim_silence(audio: np.ndarray, sample_rate: int, threshold: float = 0.004, keep: float = 0.06) -> np.ndarray:
-    """Retire le silence en début et en fin de morceau (les modèles en laissent parfois beaucoup)."""
+    """Trim leading and trailing silence (models sometimes leave a lot)."""
     if audio.size == 0:
         return audio
     loud = np.flatnonzero(np.abs(audio) > threshold)
@@ -101,7 +104,7 @@ def trim_silence(audio: np.ndarray, sample_rate: int, threshold: float = 0.004, 
 
 
 def peaks(audio: np.ndarray, bins: int = 240) -> list[float]:
-    """Profil d'onde normalisé (0..1) pour l'affichage."""
+    """Waveform peaks normalized to 0..1, for display."""
     if audio.size == 0:
         return [0.0] * bins
     edges = np.linspace(0, audio.size, bins + 1, dtype=int)

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useQuery } from "@tanstack/react-query";
 import { ArrowUpRight } from "lucide-react";
 import { api } from "../lib/api";
@@ -31,7 +34,7 @@ export function Home() {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col overflow-y-auto">
-      {/* Halo de lumière inactinique */}
+      {/* Safelight glow */}
       <div className="pointer-events-none absolute left-1/2 top-[-20%] h-[60vh] w-[80vw] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,var(--safe-soft),transparent)] blur-2xl" />
 
       <div className="relative mx-auto flex w-full max-w-[820px] flex-1 flex-col justify-center px-5 py-16">

@@ -1,4 +1,7 @@
-"""Suppression de modèles dans le cache Hugging Face (magasin global dédupliqué de huggingface_hub ≥ 1.0)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Deleting models from the Hugging Face cache (the deduplicated global store of huggingface_hub >= 1.0)."""
 
 import os
 from pathlib import Path
@@ -21,7 +24,7 @@ def hub(tmp_path, monkeypatch):
 
 
 def make_repo(hub: Path, repo: str, files: dict[str, bytes]) -> None:
-    """Disposition réelle : hub/blobs/<xx>/<hash> (données) <- repo/blobs/<hash> <- repo/snapshots/<rev>/<fichier>."""
+    """Real layout: hub/blobs/<xx>/<hash> (data) <- repo/blobs/<hash> <- repo/snapshots/<rev>/<file>."""
     root = hub / f"models--{repo.replace('/', '--')}"
     snap = root / "snapshots" / "rev"
     (root / "blobs").mkdir(parents=True, exist_ok=True)
@@ -64,7 +67,7 @@ def test_files_needed_by_another_model_are_kept(hub):
 
 def test_data_still_linked_from_another_repo_is_not_deleted(hub):
     make_repo(hub, "a/one", {"x.gguf": b"0" * 1000})
-    # même contenu référencé depuis un autre dépôt (déduplication)
+    # same content referenced from another repo (deduplication)
     other = hub / "models--b--two" / "snapshots" / "rev"
     other.mkdir(parents=True)
     shared = next(p for p in (hub / "blobs").rglob("*") if p.is_file())

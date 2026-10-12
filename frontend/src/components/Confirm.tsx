@@ -1,4 +1,7 @@
-// Boîte de confirmation asynchrone : `const ok = await confirm({...})`.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Async confirmation dialog: `const ok = await confirm({...})`.
 import { useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { create } from "zustand";

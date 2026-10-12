@@ -1,5 +1,7 @@
-"""Migration de l'ancienne base « chambre-noire.db » après le renommage du projet."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
+"""Migration of the old chambre-noire.db database after the project rename."""
 
 from app import config
 

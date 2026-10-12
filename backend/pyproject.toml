@@ -1,8 +1,13 @@
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
 [project]
 name = "ai-medialab"
 version = "0.1.0"
 description = "AI MediaLab — studio local de création d'images et d'audio (backend)"
 requires-python = ">=3.12"
+license = "MIT"
+authors = [{ name = "Stéphane Vaxelaire" }]
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
@@ -11,17 +16,17 @@ dependencies = [
     "huggingface_hub>=0.30",
     "psutil>=6.0",
     "numpy>=2.0",
-    "soundfile>=0.12",  # lecture/écriture des références vocales et des sorties audio
+    "soundfile>=0.12",  # read/write voice references and audio output
 ]
 
 [project.optional-dependencies]
-# Moteur Metal natif (Apple Silicon) : mflux / MLX.
+# Native Metal engine (Apple Silicon): mflux / MLX.
 mlx = ["mflux==0.20.0; sys_platform == 'darwin' and platform_machine == 'arm64'"]
-# Moteur PyTorch + diffusers : NVIDIA (CUDA), AMD (ROCm), Apple (MPS). Le build de torch est choisi
-# par le profil d'exécution (voir desktop/runtime/profiles.json), pas ici.
+# PyTorch + diffusers engine: NVIDIA (CUDA), AMD (ROCm), Apple (MPS). The torch build is picked by the
+# runtime profile (see desktop/runtime/profiles.json), not here.
 torch = [
     "torch>=2.4",
-    "torchvision",  # requis par le processeur d'images Qwen3-VL (transformers 5)
+    "torchvision",  # needed by the Qwen3-VL image processor (transformers 5)
     "diffusers>=0.41",
     "transformers>=5.17",
     "accelerate>=1.0",

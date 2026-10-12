@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useRef, useState } from "react";
 import { PanelLeftOpen, Upload } from "lucide-react";
 import { Toaster, toast } from "sonner";
@@ -22,7 +25,7 @@ import { VoiceStudio } from "./components/VoiceStudio";
 import { VoicesPage } from "./components/VoicesPage";
 import { IconButton } from "./components/ui";
 
-/** Le mode (image / audio) suit la page affichée ; la dernière page de chaque mode est mémorisée pour le commutateur. */
+/** The mode (image / audio) follows the current page; the last page of each mode is remembered for the mode switch. */
 function useModeSync() {
   const route = useRoute();
   const setMode = useStore((s) => s.setMode);
@@ -122,7 +125,7 @@ export default function App() {
   );
 }
 
-/** Glisser-déposer de fichiers (ou d'images de la conversation) n'importe où dans la fenêtre. */
+/** Drag and drop of files (or conversation images) anywhere in the window. */
 function useFileDrop() {
   const [dragging, setDragging] = useState(false);
   const depth = useRef(0);

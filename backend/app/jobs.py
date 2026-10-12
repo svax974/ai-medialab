@@ -1,8 +1,11 @@
-"""File d'attente des générations et cycle de vie du processus worker (côté serveur).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Une seule génération à la fois (le GPU est partagé) ; un seul modèle chargé à la fois
-(la mémoire unifiée ne permet pas d'en garder deux). Le modèle reste chargé entre deux
-générations, puis est déchargé après un délai d'inactivité configurable.
+"""Generation queue and worker process lifecycle (server side).
+
+One generation at a time (the GPU is shared) and one model loaded at a time (unified memory
+can't hold two). The model stays loaded between generations and is unloaded after a
+configurable idle delay.
 """
 
 from __future__ import annotations
@@ -28,11 +31,11 @@ from .media import asset_path, make_thumb, media_url, resolve_size
 from .worker import run_worker
 
 DEFAULT_SETTINGS: dict[str, Any] = {
-    "keep_alive_minutes": 10,  # -1 = jamais décharger, 0 = décharger après chaque génération
+    "keep_alive_minutes": 10,  # -1 = never unload, 0 = unload after each generation
     "previews": True,
-    "low_memory": True,  # libère l'encodeur de texte après l'encodage du prompt
-    "quantize": {},  # model_id -> bits (None = pleine précision)
-    "variant": {},  # model_id -> quantification choisie (clé d'une `Variant`)
+    "low_memory": True,  # free the text encoder after encoding the prompt
+    "quantize": {},  # model_id -> bits (None = full precision)
+    "variant": {},  # model_id -> chosen quantization (a `Variant` key)
 }
 
 
@@ -45,7 +48,7 @@ def new_seed() -> int:
 
 
 class WorkerHandle:
-    """Processus worker + pont de ses événements vers la boucle asyncio."""
+    """Worker process plus a bridge from its events to the asyncio loop."""
 
     def __init__(self, model_id: str, quantize: int | None, options: dict, loop: asyncio.AbstractEventLoop):
         ctx = mp.get_context("spawn")
@@ -105,18 +108,16 @@ class WorkerHandle:
 class JobManager:
     def __init__(self) -> None:
         self.queue: asyncio.Queue[str] = asyncio.Queue()
-        self.pending: list[str] = []  # ordre d'attente, pour l'affichage
+        self.pending: list[str] = []  # wait order, for display
         self.worker: WorkerHandle | None = None
         self.state = "idle"  # idle | loading | ready | busy
         self.current: str | None = None
         self.load_started_at: float | None = None
         self.last_error: str | None = None
-        self.progress: dict[str, dict] = {}  # message_id -> dernier état de progression
+        self.progress: dict[str, dict] = {}  # message_id -> latest progress state
         self._idle_task: asyncio.Task | None = None
         self._runner: asyncio.Task | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
-
-    # --- Cycle de vie ---------------------------------------------------------------------------
 
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -128,8 +129,6 @@ class JobManager:
         if self.worker:
             await self.worker.stop()
             self.worker = None
-
-    # --- API publique ---------------------------------------------------------------------------
 
     def status(self) -> dict[str, Any]:
         return {
@@ -156,7 +155,7 @@ class JobManager:
         if self.current == message_id and self.worker:
             self.worker.cancel_event.set()
             if self.state == "loading":
-                # Annuler pendant le chargement : on arrête le worker.
+                # Cancelling during load: just kill the worker.
                 await self.unload()
             return True
         return False
@@ -172,13 +171,11 @@ class JobManager:
     def snapshot(self) -> list[dict]:
         return list(self.progress.values())
 
-    # --- Boucle principale ----------------------------------------------------------------------
-
     async def _run(self) -> None:
         while True:
             message_id = await self.queue.get()
             if message_id not in self.pending:
-                continue  # annulé pendant l'attente
+                continue  # cancelled while waiting
             self.pending.remove(message_id)
             if self._idle_task:
                 self._idle_task.cancel()
@@ -188,7 +185,7 @@ class JobManager:
                 await self._process(message_id)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # garde-fou : la boucle ne doit jamais mourir
+            except Exception as exc:  # safety net: this loop must never die
                 self._finish(message_id, "error", f"Erreur interne : {exc}")
             finally:
                 self.current = None
@@ -342,7 +339,7 @@ class JobManager:
             self.worker = WorkerHandle(model_id, quantize, options, asyncio.get_running_loop())
         while True:
             worker = self.worker
-            if worker is None:  # annulé pendant le chargement
+            if worker is None:  # cancelled during load
                 self._finish(message_id, "cancelled")
                 return False
             evt = await worker.events.get()
@@ -375,8 +372,6 @@ class JobManager:
                 await self.unload()
 
         self._idle_task = asyncio.create_task(later())
-
-    # --- Préparation -----------------------------------------------------------------------------
 
     def _build_plan(self, msg: dict) -> dict:
         try:
@@ -449,8 +444,6 @@ class JobManager:
             "items": items,
             "prompt": msg["prompt"],
         }
-
-    # --- Audio ------------------------------------------------------------------------------------------------
 
     def _build_audio_plan(self, msg: dict, spec) -> dict:
         from .dialogue import parse_dialogue
@@ -541,8 +534,6 @@ class JobManager:
             )
             row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
         return repo.asset_public(row)
-
-    # --- Publication ------------------------------------------------------------------------------
 
     def _progress_base(self, message_id: str, plan: dict) -> dict:
         return {"message_id": message_id, "conversation_id": plan["conversation_id"]}

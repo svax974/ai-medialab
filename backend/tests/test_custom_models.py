@@ -1,4 +1,7 @@
-"""Modèles Hugging Face personnalisés : classification, recettes, précision (sans réseau)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Custom Hugging Face models: classification, recipes, precision (no network)."""
 
 import pytest
 
@@ -24,10 +27,10 @@ def test_classify_supported_formats():
 
 
 @pytest.mark.parametrize("repo,tags", [
-    ("a/flux", ["gguf", "base_model:quantized:black-forest-labs/FLUX.1-dev"]),   # architecture non gérée
-    ("a/tts-gguf", ["gguf", "qwen3_tts"]),                                          # quantifié : pas chargeable
+    ("a/flux", ["gguf", "base_model:quantized:black-forest-labs/FLUX.1-dev"]),   # unsupported architecture
+    ("a/tts-gguf", ["gguf", "qwen3_tts"]),                                          # quantized: can't be loaded
     ("a/tts-mlx", ["qwen3_tts", "mlx"]),
-    ("a/ct2", ["ctranslate2"]),                                                     # pas un Whisper
+    ("a/ct2", ["ctranslate2"]),                                                     # not a Whisper
     ("a/flux", ["diffusers", "diffusers:FluxPipeline"]),
 ])
 def test_classify_rejects_unsupported(repo, tags):
@@ -44,7 +47,7 @@ def test_gguf_variant_replaces_only_the_diffusion_file():
     assert spec.options["files"]["diffusion-model"] == ("u/Z-Image-Turbo-GGUF", "z-image-turbo-Q5_K_M.gguf")
     assert spec.options["files"]["llm"] == base.options["files"]["llm"]
     assert spec.sources[0].repo == "u/Z-Image-Turbo-GGUF" and spec.sources[1:] == base.sources[1:]
-    assert base.options["files"]["diffusion-model"][0] == "leejet/Z-Image-Turbo-GGUF"  # le modèle d'origine est intact
+    assert base.options["files"]["diffusion-model"][0] == "leejet/Z-Image-Turbo-GGUF"  # the original model is untouched
     assert spec.custom and precision_of(spec, None) == "Q5_K_M"
     assert installation_status(spec)["state"] in ("missing", "partial")
 
@@ -83,10 +86,10 @@ def test_variants_replace_only_the_weights():
     q8 = with_variant(base, "Q8_0")
     assert q8.variant == "Q8_0" and q8.precision == "Q8_0"
     assert q8.options["files"]["diffusion-model"][1] == "z_image_turbo-Q8_0.gguf"
-    assert q8.options["files"]["llm"] == base.options["files"]["llm"]  # encodeur et VAE communs
+    assert q8.options["files"]["llm"] == base.options["files"]["llm"]  # encoder and VAE are shared
     assert q8.download_size_gb > base.download_size_gb
-    assert with_variant(base, "inconnue").variant == "Q4_K"  # retombe sur la quantification par défaut
-    assert base.variant == ""  # la spec d'origine n'est pas modifiée
+    assert with_variant(base, "inconnue").variant == "Q4_K"  # falls back to the default quantization
+    assert base.variant == ""  # the original spec is not modified
 
 
 def test_mlx_qwen_has_no_bf16_download():

@@ -1,4 +1,7 @@
-"""Qwen Image 2.1 (Qwen/Qwen-Image-2.1) via mflux : texte → image, et img2img avec une image de départ."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Qwen Image 2.1 (Qwen/Qwen-Image-2.1) via mflux: text to image, and img2img from a start image."""
 
 from __future__ import annotations
 
@@ -7,7 +10,7 @@ import dataclasses
 from .base import HfSource, ModelSpec, ParamSpec, Variant
 from .mflux_common import MfluxEngine
 
-# Poids déjà quantifiés (format mflux) : on ne télécharge jamais les 33 Go de la version bf16.
+# Pre-quantized weights (mflux format), so the 33 GB bf16 version is never downloaded.
 _CHECK = ["transformer/*.safetensors", "text_encoder/*.safetensors", "vae/*.safetensors", "processor/tokenizer.json"]
 Q4_REPO = "mlx-community/Qwen-Image-2.1-mflux-q4"
 Q8_REPO = "JoyFusionAI/Qwen-Image-2.1-MLX-8bit"
@@ -43,7 +46,7 @@ SPEC = ModelSpec(
     ],
     size_multiple=16,
     max_side=2048,
-    default_quantize=None,  # poids déjà quantifiés : rien à quantifier au chargement
+    default_quantize=None,  # weights are already quantized, nothing to do at load time
     quantize_options=[],
     sources=_Q4.sources,
     variants=[_Q4, _Q8],
@@ -60,11 +63,11 @@ SPEC = ModelSpec(
 
 class Qwen21Engine(MfluxEngine):
     def build_model(self):
-        """Construit le modèle SANS l'encodeur de texte (17 Go en bf16).
+        """Build the model WITHOUT the text encoder (17 GB in bf16).
 
-        Charger les trois composants d'un coup demande ≈ 31 Go au pic, ce qui fait swapper une machine de
-        36 Go. Ici le transformeur est quantifié dès son chargement, et l'encodeur n'est chargé que le temps
-        d'encoder le prompt (voir `reload_encoders`) : les deux ne cohabitent jamais en pleine précision.
+        Loading all three components at once peaks around 31 GB, which makes a 36 GB machine swap.
+        Here the transformer is quantized as it loads and the encoder is only loaded while the prompt
+        is encoded (see `reload_encoders`), so the two are never in memory at full precision together.
         """
         from mlx import nn
 
@@ -114,7 +117,7 @@ class Qwen21Engine(MfluxEngine):
         return req.prompt not in cache or (needs_negative and negative not in cache)
 
     def reload_encoders(self) -> bool:
-        """Recharge seulement l'encodeur de texte (17 Go) sans toucher au transformeur quantifié."""
+        """Reload just the text encoder (17 GB), leaving the quantized transformer alone."""
         from mflux.models.common.weights.loading.weight_applier import WeightApplier
         from mflux.models.common.weights.loading.weight_loader import WeightLoader
         from mflux.models.qwen21.model.qwen21_text_encoder.qwen21_text_encoder import Qwen21TextEncoder
@@ -123,9 +126,9 @@ class Qwen21Engine(MfluxEngine):
         class TextEncoderOnly(Qwen21WeightDefinition):
             @staticmethod
             def get_components():
-                # mflux n'applique jamais de quantification à l'encodeur (« dégradation sémantique »), mais certains
-                # dépôts déjà quantifiés (4 bits) l'ont quantifié : il faut alors le structurer comme tel. Pour un
-                # encodeur bf16, rien n'est quantifié (aucun niveau enregistré dans ses fichiers).
+                # mflux never quantizes the encoder itself ("semantic degradation"), but some pre-quantized
+                # (4-bit) repos ship it quantized, and it must then be built with that structure. For a
+                # bf16 encoder nothing gets quantized (no level is recorded in its files).
                 return [dataclasses.replace(c, skip_quantization=False)
                         for c in Qwen21WeightDefinition.get_components() if c.name == "text_encoder"]
 

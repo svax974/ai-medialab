@@ -1,8 +1,11 @@
 #!/bin/sh
-# AI MediaLab — installe les dépendances si besoin, compile l'interface et démarre le serveur.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+# AI MediaLab: installs dependencies if needed, builds the UI and starts the server.
 #   ./start.sh              → http://127.0.0.1:8000
 #   PORT=9000 ./start.sh
-#   IMAGEGEN_DEMO=1 ./start.sh   (ajoute un modèle « Démo » sans GPU, pour tester l'interface)
+#   IMAGEGEN_DEMO=1 ./start.sh   (adds a GPU-less "Démo" model to try out the UI)
 set -eu
 cd "$(dirname "$0")"
 PORT="${PORT:-8000}"

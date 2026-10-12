@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import * as Popover from "@radix-ui/react-popover";
 import { ImageIcon, Ratio } from "lucide-react";
 import type { Asset, GenParams, ModelInfo } from "../lib/api";

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
@@ -178,7 +181,7 @@ export function Sidebar() {
   );
 }
 
-/** Dernière page visitée dans chaque mode : en revenant d'un mode à l'autre, on retrouve où l'on en était. */
+/** Last page visited in each mode, so switching modes returns you where you were. */
 export const lastPathByMode: Record<ModelKind, string> = { image: "/", audio: "/audio" };
 
 function ModeSwitch() {

@@ -1,8 +1,11 @@
-"""Recherche de modèles sur Hugging Face, limitée aux formats que l'application sait exécuter.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-`search` ne renvoie que des dépôts classés dans une famille gérée (voir `engines/custom.py`) ; `inspect` vérifie le
-contenu réel du dépôt (fichiers présents, configuration) et propose les variantes téléchargeables ;
-`make_recipe` fabrique la recette enregistrée quand l'utilisateur ajoute le modèle.
+"""Hugging Face model search, limited to the formats the app can run.
+
+`search` only returns repos that fall in a supported family (see `engines/custom.py`); `inspect` checks the
+actual repo contents (files, config) and lists the downloadable variants; `make_recipe` builds the recipe
+that gets saved when the user adds the model.
 """
 
 from __future__ import annotations
@@ -24,7 +27,7 @@ FAMILY_LABEL = {
     "whisper-ct2": "Whisper",
 }
 TASK = {"gguf-variant": "image", "sd-diffusers": "image", "qwen3-tts": "tts", "whisper-ct2": "stt"}
-# Dépôts quantifiés dans un format que le moteur Python de Qwen3-TTS ne charge pas.
+# Repos quantized in a format the Python Qwen3-TTS engine can't load.
 _NOT_TORCH = re.compile(r"gguf|mlx|onnx|gptq|awq|bnb|[-_ ](?:4|8)-?bit|int[48]|fp8", re.I)
 
 
@@ -43,7 +46,7 @@ def _tag_values(tags: list[str], prefix: str) -> list[str]:
 
 
 def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
-    """(famille, détails) si le dépôt relève d'un format géré, sinon None. Aucun accès réseau."""
+    """(family, details) if the repo is a supported format, else None. No network access."""
     ts = set(tags)
     for pipe in SD_PIPELINES:
         if f"diffusers:{pipe}" in ts:
@@ -113,8 +116,6 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
     return sorted(seen.values(), key=lambda r: -r["downloads"])[:limit]
 
 
-# --- Inspection d'un dépôt ------------------------------------------------------------------------------------
-
 def _size_gb(n: int | None) -> float:
     return round((n or 0) / 1024**3, 2)
 
@@ -133,7 +134,7 @@ _DTYPE_NAMES = {"BF16": "bf16", "F16": "fp16", "F32": "fp32", "F8_E4M3": "fp8", 
 
 
 def file_dtype(repo: str, filename: str) -> str:
-    """Précision dominante d'un fichier safetensors, lue dans son en-tête (requête partielle, sans le télécharger)."""
+    """Dominant precision of a safetensors file, read from its header (partial request, no full download)."""
     from collections import Counter
 
     try:
@@ -150,7 +151,7 @@ def file_dtype(repo: str, filename: str) -> str:
 
 
 def _dominant_dtype(info, repo: str = "", filename: str = "") -> str:
-    """Précision des poids : métadonnées du dépôt si présentes, sinon en-tête du fichier."""
+    """Weight precision: repo metadata when present, else the file header."""
     params = getattr(getattr(info, "safetensors", None), "parameters", None) or {}
     if params:
         dt = max(params, key=params.get)
@@ -243,7 +244,7 @@ def _select_diffusers(repo: str, files: dict[str, int], pipeline: str) -> dict[s
                 chosen.append(f)
             elif f.startswith(c + "/") and f.endswith(".safetensors"):
                 weights.setdefault(c, []).append(f)
-    # Variante fp16 si tous les composants lourds en proposent une (deux fois moins à télécharger).
+    # Use fp16 when every heavy component ships one (half the download).
     fp16 = bool(weights) and all(any(".fp16." in f for f in fs) for fs in weights.values())
     total, largest = 0, 0
     for c, fs in weights.items():
@@ -264,7 +265,7 @@ def _select_diffusers(repo: str, files: dict[str, int], pipeline: str) -> dict[s
 
 
 def make_recipe(repo: str, key: str) -> dict[str, Any]:
-    """Recette définitive d'un modèle (réseau : relit le dépôt pour ne rien croire de l'interface)."""
+    """Final recipe for a model. Re-reads the repo over the network rather than trusting what the UI sent."""
     info = inspect(repo)
     opt = next((o for o in info["options"] if o["key"] == key), None)
     if opt is None:

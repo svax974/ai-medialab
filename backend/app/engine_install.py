@@ -1,11 +1,14 @@
-"""Installation du moteur GGUF (stable-diffusion.cpp) depuis l'application.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Récupère la build officielle adaptée au GPU détecté (CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon),
-vérifie sa somme SHA-256 (publiée par GitHub), l'extrait sans jamais sortir du dossier cible, puis contrôle que la
-build voit bien un GPU. Si ce n'est pas le cas (pilote manquant), la build suivante est essayée : on retombe
-ainsi sur Vulkan, qui fonctionne sur presque tout.
+"""Installs the GGUF engine (stable-diffusion.cpp) from within the app.
 
-Aucun droit administrateur : tout va dans `<données>/engines/sdcpp/<variant>/`.
+Fetches the official build for the detected GPU (CUDA on NVIDIA, ROCm on AMD, Metal on Apple, Vulkan otherwise),
+checks its SHA-256 (published by GitHub), extracts it without ever leaving the target folder, then checks that
+the build actually sees a GPU. If not (missing driver), the next build is tried, ending on Vulkan, which works
+almost everywhere.
+
+No admin rights: everything goes under `<data>/engines/sdcpp/<variant>/`.
 """
 
 from __future__ import annotations
@@ -32,7 +35,7 @@ from .events import bus
 REPO = "leejet/stable-diffusion.cpp"
 DOWNLOAD_PREFIX = f"https://github.com/{REPO}/releases/download/"
 
-# (système, variant) -> motifs des fichiers de la version : le premier est la build, les suivants des compléments.
+# (os, variant) -> release asset patterns: the first is the build, any others are add-ons.
 ASSETS: dict[tuple[str, str], list[str]] = {
     ("macos", "metal"): [r"-bin-Darwin-.*-arm64\.zip$"],
     ("windows", "vulkan"): [r"-bin-win-vulkan-x64\.zip$"],
@@ -43,7 +46,7 @@ ASSETS: dict[tuple[str, str], list[str]] = {
     ("linux", "rocm"): [r"-bin-Linux-.*-x86_64-rocm-.*\.zip$"],
     ("linux", "cpu"): [r"-bin-Linux-[^-]*-[^-]*-x86_64\.zip$"],
 }
-# Tailles indicatives (Mo, version master-956), pour informer avant de télécharger.
+# Rough sizes in MB (release master-956), to show before downloading.
 APPROX_MB: dict[tuple[str, str], int] = {
     ("macos", "metal"): 35, ("windows", "vulkan"): 30, ("windows", "cuda"): 900, ("windows", "rocm"): 259,
     ("windows", "cpu"): 18, ("linux", "vulkan"): 37, ("linux", "rocm"): 285, ("linux", "cpu"): 26,
@@ -59,7 +62,7 @@ def host_os() -> str:
 
 
 def candidate_variants(vendors: list[str], os_name: str | None = None) -> list[str]:
-    """Builds à essayer, par ordre de préférence, d'après les fournisseurs de GPU détectés."""
+    """Builds to try, in order of preference, based on the detected GPU vendors."""
     os_name = os_name or host_os()
     order: list[str] = []
     for vendor in vendors or ["other"]:
@@ -74,8 +77,6 @@ def candidate_variants(vendors: list[str], os_name: str | None = None) -> list[s
 def install_size_mb(variant: str, os_name: str | None = None) -> int:
     return APPROX_MB.get((os_name or host_os(), variant), 0)
 
-
-# --- Téléchargement vérifié ----------------------------------------------------------------------------
 
 def _http_json(url: str) -> Any:
     req = urllib.request.Request(url, headers={"User-Agent": "ai-medialab", "Accept": "application/vnd.github+json"})
@@ -101,7 +102,7 @@ def _download(url: str, dest: Path, on_bytes: Callable[[int], None], cancel: thr
 
 
 def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
-    """Extrait en refusant tout chemin qui sortirait du dossier cible (zip-slip)."""
+    """Extract, rejecting any path that would escape the target folder (zip-slip)."""
     root = dest.resolve()
     for info in zf.infolist():
         target = (dest / info.filename).resolve()
@@ -120,7 +121,7 @@ def install_variant(
     cancel: threading.Event | None = None,
     allow_unverified: bool = False,
 ) -> dict[str, Any]:
-    """Télécharge, vérifie et installe une build dans dest_root/<variant>/. Retourne les métadonnées."""
+    """Download, verify and install a build into dest_root/<variant>/. Returns its metadata."""
     patterns = ASSETS.get((os_name, variant))
     if not patterns:
         raise RuntimeError(f"Pas de build « {variant} » pour {os_name}.")
@@ -175,10 +176,8 @@ def install_variant(
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-# --- Installation pilotée par l'application ----------------------------------------------------------------
-
 class EngineInstaller:
-    """Une installation à la fois ; l'état est diffusé en temps réel (événement `engine.install`)."""
+    """One install at a time; state is broadcast live through the `engine.install` event."""
 
     def __init__(self) -> None:
         self.state: dict[str, Any] = {"state": "idle"}
@@ -219,7 +218,7 @@ class EngineInstaller:
         self._cancel.set()
         return True
 
-    # -- thread --------------------------------------------------------------------------------------------
+    # Runs in a worker thread.
 
     def _run(self, variants: list[str]) -> None:
         notes: list[str] = []
@@ -242,7 +241,7 @@ class EngineInstaller:
                     self._set(state="done", variant=variant, message="Moteur prêt.", error=None)
                     self._publish_models_changed()
                     return
-                shutil.rmtree(binary.parent, ignore_errors=True)  # inutilisable ici (pilote manquant) : on libère la place
+                shutil.rmtree(binary.parent, ignore_errors=True)  # unusable here (missing driver), free the space
                 notes.append(f"{variant} : aucun GPU exploitable (pilote manquant ?)")
             self._set(state="error", error="Aucune build n'a trouvé de GPU exploitable. " + " · ".join(notes)
                       + (" Installez ou mettez à jour le pilote de votre carte graphique (Vulkan)."

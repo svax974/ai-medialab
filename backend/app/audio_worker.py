@@ -1,6 +1,9 @@
-"""Côté serveur d'un worker audio : un sous-processus (interpréteur du pack) + pont vers la boucle asyncio.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Même interface que `jobs.WorkerHandle` (processus image) pour que `JobManager` n'ait qu'une logique :
+"""Server side of an audio worker: a subprocess (the pack's interpreter) bridged to the asyncio loop.
+
+Exposes the same interface as `jobs.WorkerHandle` (image process) so `JobManager` has a single code path:
 `model_id`, `quantize`, `alive`, `events`, `send`, `cancel_event`, `stop`.
 """
 
@@ -19,7 +22,7 @@ from . import audio_packs
 
 
 class _Cancel:
-    """Équivalent de `multiprocessing.Event` : `set()` demande l'arrêt de la génération en cours."""
+    """Stand-in for `multiprocessing.Event`: `set()` asks the worker to stop the current generation."""
 
     def __init__(self, handle: "AudioWorkerHandle") -> None:
         self._handle = handle
@@ -27,7 +30,7 @@ class _Cancel:
     def set(self) -> None:
         self._handle.send({"type": "cancel"})
 
-    def clear(self) -> None:  # le worker réinitialise lui-même son drapeau à chaque génération
+    def clear(self) -> None:  # the worker resets its own flag on each generation
         pass
 
 
@@ -105,7 +108,7 @@ def _worker_env(extra: dict[str, str] | None) -> dict[str, str]:
 
 
 def run_transcribe(pack: str, audio: str, model_dir: str, language: str | None, timeout: int = 300) -> dict[str, Any]:
-    """Transcrit un fichier (processus à usage unique dans l'environnement du pack)."""
+    """Transcribe a file in a one-shot process inside the pack environment."""
     proc = subprocess.run(
         [str(audio_packs.venv_python(pack)), str(audio_packs.runtime_dir() / "transcribe.py"), audio, model_dir,
          language or ""],

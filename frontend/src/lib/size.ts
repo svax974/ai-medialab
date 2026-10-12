@@ -1,4 +1,7 @@
-// Calcul des dimensions (miroir de backend/app/media.py:resolve_size).
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Size computation (mirrors backend/app/media.py:resolve_size).
 import type { GenParams, ModelInfo } from "./api";
 
 export const ASPECTS = [
@@ -44,7 +47,7 @@ export function resolveSize(
   let ratio: number | null = null;
   if (aspect === "auto" && reference?.width && reference?.height) {
     if (!params.megapixels) {
-      // « Origine » : taille de la référence, plafonnée (miroir de backend/app/media.py)
+      // "Origine": reference image size, capped (mirrors backend/app/media.py)
       const { width: rw, height: rh } = reference as { width: number; height: number };
       const scale = Math.min(1, hi / Math.max(rw, rh), Math.sqrt((NATIVE_MAX_MP * 1024 * 1024) / (rw * rh)));
       return { width: snap(rw * scale, m, lo, hi), height: snap(rh * scale, m, lo, hi) };

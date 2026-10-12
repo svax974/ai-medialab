@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
 import sys
 from pathlib import Path
 
@@ -62,7 +65,7 @@ class TestResolveVoice:
     def test_valid_preset_id_is_respected(self):
         spec = MODELS["kokoro-82m"]
         v = resolve_voice(spec, {"source": "preset", "id": "af_heart"}, "fr", "")
-        assert v["id"] == "af_heart"  # id valide dans le modèle : respecté (le choix de langue vient de l'interface)
+        assert v["id"] == "af_heart"  # id valid for the model is respected (the UI is what picks the language)
 
     def test_design_model_requires_description(self):
         with pytest.raises(ValueError):

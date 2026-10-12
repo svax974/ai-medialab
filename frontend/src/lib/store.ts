@@ -1,4 +1,7 @@
-// État client (zustand) : brouillon du composer, préférences, progression temps réel, visionneuse.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Client state (zustand): composer draft, preferences, live progress, lightbox.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type {
@@ -19,24 +22,24 @@ interface LightboxState {
 }
 
 export interface VoiceStudioState {
-  /** Fichier audio déposé / choisi à l'ouverture. */
+  /** Audio file dropped or picked when opening. */
   file?: File;
-  /** Voix existante à modifier. */
+  /** Existing voice to edit. */
   voiceId?: string;
 }
 
 interface State {
-  // Mode : images ou audio (commutateur du panneau de gauche)
+  // Mode: image or audio (switch in the left panel)
   mode: ModelKind;
   setMode: (m: ModelKind) => void;
 
-  // Composer audio
+  // Audio composer
   audioPrompt: string;
   audioModelId: string | null;
   voiceByModel: Record<string, VoiceRef | undefined>;
   languageByModel: Record<string, string | undefined>;
   instructByModel: Record<string, string | undefined>;
-  /** Distribution des voix d'un scénario : nom du personnage -> voix. */
+  /** Voice casting for a script: character name -> voice. */
   cast: Record<string, VoiceRef | undefined>;
   audioCount: number;
   autoplay: boolean;
@@ -74,7 +77,7 @@ interface State {
   setCount: (n: number) => void;
   setSeed: (s: number | null) => void;
 
-  // Temps réel
+  // Live updates
   progress: Record<string, JobProgress>;
   engine: EngineStatus | null;
   setProgress: (p: JobProgress) => void;
@@ -84,18 +87,18 @@ interface State {
   setDownload: (d: DownloadProgress) => void;
   engineInstall: EngineInstallState;
   setEngineInstall: (s: EngineInstallState) => void;
-  /** Modèle à télécharger dès que le moteur sera installé (installation en deux temps, en un clic). */
+  /** Model to download as soon as the engine is installed (two-step install behind one click). */
   pendingModelId: string | null;
   setPendingModel: (id: string | null) => void;
 
-  // Interface
+  // UI
   theme: Theme;
   sidebarOpen: boolean;
   lightbox: LightboxState | null;
   settingsOpen: boolean;
   modelsOpen: boolean;
   setModelsOpen: (open: boolean) => void;
-  /** Ouvre « Modèles » directement sur la recherche Hugging Face. */
+  /** Opens "Modèles" straight on the Hugging Face search. */
   modelsSearch: ModelKind | null;
   openModelSearch: (kind: ModelKind) => void;
   clearModelSearch: () => void;
@@ -201,7 +204,7 @@ export const useStore = create<State>()(
         try {
           localStorage.setItem("cn-theme", theme);
         } catch {
-          /* stockage indisponible */
+          /* storage unavailable */
         }
         set({ theme });
       },

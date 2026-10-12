@@ -1,16 +1,19 @@
-"""Scénario à plusieurs voix : « Nom : réplique » -> segments, un par réplique, chacun avec sa voix."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Multi-voice script: "Name: line" -> one segment per line, each with its own voice."""
 
 from __future__ import annotations
 
 import re
 from typing import Any
 
-# Un nom court en début de ligne, éventuellement entre crochets : « Alice : », « [Marc] : », « Le narrateur: ».
+# A short name at line start, optionally bracketed: "Alice :", "[Marc] :", "Le narrateur:".
 LINE = re.compile(r"^\s*[\[\(]?\s*([^\W\d_][\w .'’\-]{0,28}?)\s*[\]\)]?\s*[:：]\s*(.*)$", re.UNICODE)
 
 
 def speakers_in(text: str) -> list[str]:
-    """Noms qui ouvrent au moins une ligne, dans l'ordre d'apparition (la détection que fait l'interface)."""
+    """Names that open at least one line, in order of appearance (mirrors the UI detection)."""
     seen: list[str] = []
     for line in text.splitlines():
         m = LINE.match(line)
@@ -20,9 +23,9 @@ def speakers_in(text: str) -> list[str]:
 
 
 def parse_dialogue(text: str, cast: dict[str, dict[str, Any]], default: dict[str, Any]) -> list[dict[str, Any]]:
-    """Découpe en répliques. Seuls les noms présents dans `cast` sont des locuteurs : « Note : … » reste du texte.
+    """Split into lines of dialogue. Only names in `cast` count as speakers, so "Note: ..." stays plain text.
 
-    Une ligne qui n'ouvre pas sur un nom prolonge la réplique précédente ; une ligne vide y ajoute une pause."""
+    A line without a speaker continues the previous one; a blank line adds a pause to it."""
     lookup = {name.casefold(): (name, voice) for name, voice in cast.items()}
     segments: list[dict[str, Any]] = []
     pause = False

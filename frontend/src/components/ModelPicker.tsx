@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { Check, ChevronDown, CloudDownload, Cpu, Search, Settings2 } from "lucide-react";
 import type { ModelInfo } from "../lib/api";

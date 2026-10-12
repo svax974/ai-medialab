@@ -1,4 +1,7 @@
-"""Moteurs de synthèse vocale exécutés dans le worker audio (un pack = un environnement Python isolé)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""TTS engines run inside the audio worker (one pack = one isolated Python environment)."""
 
 from __future__ import annotations
 
@@ -12,11 +15,11 @@ def create(engine: str, options: dict):
 
 
 class Engine:
-    """Contrat d'un moteur : `load()` une fois, puis `synth()` par morceau de texte.
+    """Engine contract: `load()` once, then `synth()` per text chunk.
 
-    `voice` : {"kind": "preset"|"clone"|"design", "id", "ref_audio", "ref_text", "description"}
-    `ctx`   : {"language", "instruct", "speed", "seed", "params"}
-    Retourne un vecteur float32 mono à `self.sample_rate`.
+    `voice`: {"kind": "preset"|"clone"|"design", "id", "ref_audio", "ref_text", "description"}
+    `ctx`:   {"language", "instruct", "speed", "seed", "params"}
+    Returns a mono float32 vector at `self.sample_rate`.
     """
 
     sample_rate = 24000
@@ -31,7 +34,7 @@ class Engine:
     def synth(self, text: str, voice: dict, ctx: dict) -> "np.ndarray":  # noqa: F821
         raise NotImplementedError
 
-    def cancelled(self) -> bool:  # remplacé par le worker
+    def cancelled(self) -> bool:  # replaced by the worker
         return False
 
 

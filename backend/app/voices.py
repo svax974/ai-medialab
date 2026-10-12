@@ -1,4 +1,7 @@
-"""Bibliothèque de voix (clonage) et résolution de la voix à utiliser pour une génération."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Voice library (cloning) and resolution of the voice to use for a generation."""
 
 from __future__ import annotations
 
@@ -44,7 +47,7 @@ def get_voice(voice_id: str) -> dict[str, Any] | None:
 
 
 def decode_audio(data: bytes) -> tuple[np.ndarray, int]:
-    """Décode WAV / FLAC / OGG / MP3 en vecteur mono float32."""
+    """Decode WAV / FLAC / OGG / MP3 into a mono float32 array."""
     import soundfile as sf
 
     samples, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=True)
@@ -67,7 +70,7 @@ def peaks_of(audio: np.ndarray, bins: int = 120) -> list[float]:
 
 
 def prepare_reference(data: bytes) -> tuple[np.ndarray, float]:
-    """Extrait de référence prêt pour le clonage : mono, 24 kHz, silences de bord retirés, 30 s au plus."""
+    """Reference clip ready for cloning: mono, 24 kHz, edge silence trimmed, 30 s at most."""
     audio, sr = decode_audio(data)
     audio = resample(audio, sr, REF_SAMPLE_RATE)
     loud = np.flatnonzero(np.abs(audio) > 0.01)
@@ -81,7 +84,7 @@ def prepare_reference(data: bytes) -> tuple[np.ndarray, float]:
         audio = audio[: int(MAX_REF_SECONDS * REF_SAMPLE_RATE)]
         duration = MAX_REF_SECONDS
     peak = float(np.abs(audio).max() or 1.0)
-    if peak < 0.5:  # extrait très faible : on le ramène à un niveau correct
+    if peak < 0.5:  # very quiet clip: bring it up to a usable level
         audio = audio * (0.8 / peak)
     return audio.astype(np.float32), duration
 
@@ -114,12 +117,10 @@ def delete_voice(voice_id: str) -> bool:
     return True
 
 
-# --- Résolution pour une génération --------------------------------------------------------------------------
-
 def resolve_voice(spec, ref: dict[str, Any] | None, language: str, instruct: str) -> dict[str, Any]:
-    """Voix effective, au format attendu par le worker : preset | clone | design.
+    """Effective voice in the format the worker expects: preset | clone | design.
 
-    `ref` : {"source": "preset", "id": "ff_siwis"} ou {"source": "library", "id": "<voix>"} ou None."""
+    `ref` is {"source": "preset", "id": "ff_siwis"}, {"source": "library", "id": "<voice>"} or None."""
     caps = spec.audio
     ref = ref or {}
     if ref.get("source") == "library":

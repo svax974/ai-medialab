@@ -1,4 +1,7 @@
-"""Requêtes et sérialisation des objets exposés par l'API."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Queries and serialization of the objects exposed by the API."""
 
 from __future__ import annotations
 
@@ -124,10 +127,9 @@ def delete_asset_files(row: sqlite3.Row | dict) -> None:
 
 
 def purge_assets(conn: sqlite3.Connection, asset_rows: list[sqlite3.Row]) -> None:
-    """Supprime des images, sauf celles encore utilisées comme référence par un message restant.
+    """Delete assets, except those still used as a reference by a remaining message.
 
-    À appeler après la suppression des messages/conversations concernés (les références en cascade
-    ont alors disparu)."""
+    Call after deleting the related messages/conversations, once the cascaded refs are gone."""
     for a in asset_rows:
         still_used = conn.execute("SELECT 1 FROM message_refs WHERE asset_id = ? LIMIT 1", (a["id"],)).fetchone()
         if still_used:

@@ -1,6 +1,9 @@
-"""Transcription d'un extrait (Whisper via faster-whisper), pour retranscrire une voix de référence.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-    python transcribe.py <audio> <dossier-modèle> [langue]   ->   une ligne JSON sur stdout
+"""Transcribe a clip (Whisper via faster-whisper), used for voice-cloning reference samples.
+
+    python transcribe.py <audio> <model-dir> [language]   ->   one JSON line on stdout
 """
 
 from __future__ import annotations
@@ -20,7 +23,7 @@ def main() -> None:
     from common import read_audio
     from faster_whisper import WhisperModel
 
-    # On décode nous-mêmes (WAV, FLAC, OGG, MP3 via libsndfile) : pas de dépendance à PyAV/ffmpeg.
+    # Decode ourselves (WAV, FLAC, OGG, MP3 via libsndfile) to avoid depending on PyAV/ffmpeg.
     samples, _ = read_audio(audio, 16000)
     model = WhisperModel(model_dir, device="cpu", compute_type="int8")
     segments, info = model.transcribe(samples, language=language, vad_filter=True, beam_size=5)

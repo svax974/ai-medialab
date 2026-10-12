@@ -1,4 +1,7 @@
-"""Outils partagés par les moteurs basés sur mflux (MLX, Apple Silicon)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Shared pieces for the mflux-based engines (MLX, Apple Silicon)."""
 
 from __future__ import annotations
 
@@ -12,11 +15,11 @@ PROMPT_CACHE_MAX = 64
 
 
 class ProgressDispatcher:
-    """Callback mflux enregistré une seule fois au chargement ; relaie la progression de la
-    génération en cours vers les hooks du worker, gère l'annulation et les aperçus.
+    """mflux callback, registered once at load time. Forwards progress of the current generation to
+    the worker hooks and handles cancellation and previews.
 
-    `before_loop` est appelé par mflux juste après l'encodage du prompt : c'est le moment où
-    l'encodeur de texte devient inutile et peut être libéré (mode économie de mémoire)."""
+    mflux calls `before_loop` right after the prompt is encoded, which is when the text encoder
+    is no longer needed and can be freed (low-memory mode)."""
 
     def __init__(self, preview_fn: Callable[[Any, Any], Any] | None):
         self.hooks: Hooks | None = None
@@ -52,24 +55,24 @@ class ProgressDispatcher:
                 image = self.preview_fn(latents, config)
                 if image is not None:
                     hooks.on_preview(image)
-            except Exception as exc:  # un aperçu raté ne doit jamais faire échouer la génération
-                print(f"[aperçu] échec : {exc}", flush=True)
+            except Exception as exc:  # a failed preview must never fail the generation
+                print(f"[preview] failed: {exc}", flush=True)
 
 
 class MfluxEngine(Engine):
-    """Base des moteurs mflux.
+    """Base for mflux engines.
 
-    La sous-classe fournit `build_model()`, `run()` et éventuellement `latent_creator` (aperçus).
+    Subclasses provide `build_model()`, `run()` and optionally `latent_creator` (for previews).
 
-    Économie de mémoire (option `low_memory`, active par défaut) : comme la CLI mflux, les encodeurs
-    de texte sont libérés dès que le prompt est encodé. Ils sont rechargés à la génération suivante
-    si le prompt n'est pas déjà en cache — seuls (`reload_encoders`) si la sous-classe sait le faire,
-    sinon en reconstruisant le modèle.
+    Low-memory mode (`low_memory` option, on by default) works like the mflux CLI: text encoders are
+    freed as soon as the prompt is encoded. They are reloaded on the next generation if the prompt
+    isn't cached, on their own (`reload_encoders`) when the subclass supports it, otherwise by
+    rebuilding the whole model.
     """
 
     latent_creator: Any = None
     encoder_attrs: tuple[str, ...] = ("text_encoder",)
-    # Composants qui restent en mémoire entre deux générations.
+    # Components kept in memory between generations.
     resident_attrs: tuple[str, ...] = ("transformer", "vae")
 
     @property
@@ -83,11 +86,11 @@ class MfluxEngine(Engine):
         raise NotImplementedError
 
     def needs_encoders(self, req) -> bool:
-        """Faux si les embeddings nécessaires sont déjà en cache (les encodeurs sont alors inutiles)."""
+        """False when the needed embeddings are already cached (encoders not needed)."""
         return True
 
     def reload_encoders(self) -> bool:
-        """Recharge uniquement les encodeurs. Retourne False si non pris en charge."""
+        """Reload only the encoders. Returns False if unsupported."""
         return False
 
     def load(self) -> None:
@@ -97,25 +100,25 @@ class MfluxEngine(Engine):
             self._enable_vae_tiling()
         self.encoders_loaded = all(getattr(self.model, a, None) is not None for a in self.encoder_attrs)
         if not self.encoders_loaded and not self.low_memory:
-            self._restore_encoders()  # assez de mémoire : on garde l'encodeur résident
+            self._restore_encoders()  # enough memory: keep the encoder resident
         self.dispatcher = ProgressDispatcher(self._preview if self.latent_creator else None)
         self.model.callbacks.register(self.dispatcher)
 
     def _enable_vae_tiling(self) -> None:
-        """Décodage VAE par tuiles : sans cela, décoder (même un simple aperçu 512²) demandait ≈ 17 Go
-        transitoires, ce qui suffisait à faire swapper une machine de 36 Go."""
+        """Tiled VAE decoding. Without it, even a 512x512 preview decode needed about 17 GB of
+        transient memory, enough to make a 36 GB machine swap."""
         from mflux.models.common.vae.tiling_config import TilingConfig
 
         if getattr(self.model, "tiling_config", None) is None and TilingConfig.may_tile_implicitly(self.model):
             self.model.tiling_config = TilingConfig()
 
     def _materialize(self) -> None:
-        """Évalue tout de suite les poids résidents.
+        """Evaluate the resident weights right away.
 
-        MLX charge et quantifie paresseusement : sans cela, la quantification n'a lieu qu'au premier calcul,
-        avec les poids bf16 d'origine encore référencés — mesuré : 15 Go retenus au lieu de 9 après la
-        première génération, puis +14 Go à chaque nouveau prompt (fuite). Évalués ici, les poids quantifiés
-        sont streamés tenseur par tenseur (pic ≈ 10 Go) et la mémoire reste stable.
+        MLX loads and quantizes lazily. Otherwise quantization only happens on the first forward pass
+        while the original bf16 weights are still referenced: measured 15 GB retained instead of 9
+        after the first generation, then +14 GB per new prompt (a leak). Evaluated here, the quantized
+        weights are streamed tensor by tensor (peak around 10 GB) and memory stays flat.
         """
         import mlx.core as mx
 
@@ -136,7 +139,7 @@ class MfluxEngine(Engine):
             return self.run(req, hooks)
         finally:
             self.dispatcher.stop()
-            # Libère le cache Metal accumulé entre deux générations.
+            # Release the Metal cache built up during the generation.
             gc.collect()
             mx.clear_cache()
 
@@ -147,7 +150,7 @@ class MfluxEngine(Engine):
             return
         cache = getattr(self.model, "prompt_cache", None)
         if cache:
-            # Matérialise les embeddings avant de lâcher l'encodeur (évaluation paresseuse de MLX).
+            # Force evaluation of the embeddings before dropping the encoder (MLX is lazy).
             while len(cache) > PROMPT_CACHE_MAX:
                 cache.pop(next(iter(cache)))
             mx.eval([a for pair in cache.values() for a in pair])
@@ -160,7 +163,7 @@ class MfluxEngine(Engine):
 
     def _restore_encoders(self) -> None:
         if not self.reload_encoders():
-            # Repli : reconstruction complète (coût équivalent à un lancement de la CLI).
+            # Fallback: full rebuild (same cost as starting the CLI).
             self.model = None
             gc.collect()
             self.load()
@@ -168,7 +171,7 @@ class MfluxEngine(Engine):
         self.encoders_loaded = True
 
     def save(self, result, path: Path) -> None:
-        # GeneratedImage de mflux : conserve les métadonnées de génération dans l'image.
+        # mflux GeneratedImage; metadata export is turned off.
         result.save(path=path, export_json_metadata=False, overwrite=True)
 
     def _preview(self, latents, config):
@@ -183,5 +186,5 @@ class MfluxEngine(Engine):
         image.thumbnail((512, 512))
         del unpacked, decoded
         gc.collect()
-        mx.clear_cache()  # rend au système les tampons du décodage au lieu de les garder en cache
+        mx.clear_cache()  # give the decode buffers back to the system instead of caching them
         return image

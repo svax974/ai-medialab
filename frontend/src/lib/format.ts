@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds == null || !isFinite(seconds)) return "—";
   const s = Math.max(0, Math.round(seconds));
@@ -24,7 +27,7 @@ export function formatDay(ts: number): string {
   return dayFmt.format(new Date(ts * 1000));
 }
 
-/** Regroupe par période, à la manière des messageries. */
+/** Groups by period, like chat apps. */
 export function periodOf(ts: number): string {
   const d = new Date(ts * 1000);
   const today = new Date();
@@ -41,14 +44,14 @@ export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(" ");
 }
 
-/** Taille d'un modèle à télécharger : « 650 Mo » sous 1 Go, « 4,5 Go » ensuite ; vide si inconnue. */
+/** Download size label: "650 Mo" below 1 GB, "4,5 Go" above; empty if unknown. */
 export function formatModelSize(gb: number | null | undefined): string {
   if (!gb || gb <= 0) return "";
   if (gb < 1) return `${Math.max(10, Math.round((gb * 1000) / 10) * 10)} Mo`;
   return `${(gb >= 10 ? gb.toFixed(0) : gb.toFixed(1)).replace(".", ",")} Go`;
 }
 
-/** Modèles installés d'abord, les autres ensuite ; l'ordre du catalogue est conservé dans chaque groupe. */
+/** Installed models first, then the rest; catalog order is kept within each group. */
 export function installedFirst<T extends { install: string }>(models: T[]): T[] {
   const rank = (m: T) => (m.install === "installed" ? 0 : 1);
   return models.map((m, i) => ({ m, i })).sort((a, b) => rank(a.m) - rank(b.m) || a.i - b.i).map((x) => x.m);

@@ -1,23 +1,26 @@
 #!/usr/bin/env python3
-"""Assemble les ressources embarquées de l'application de bureau pour un profil d'exécution.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Assembles the desktop app's bundled resources for one runtime profile.
 
     python3 scripts/build_runtime.py --profile mac-arm64 --out desktop/build/resources
 
-Structure produite (celle attendue par backend/app/config.py et par la coque Tauri) :
+Output layout (what backend/app/config.py and the Tauri shell expect):
 
-    <out>/backend/app/...            code du serveur
-    <out>/frontend/dist/...          interface compilée
-    <out>/runtime/python/...         interpréteur python-build-standalone (relocatable)
-    <out>/runtime/site-packages/...  dépendances du profil (uv pip install --target)
+    <out>/backend/app/...            server code
+    <out>/frontend/dist/...          built UI
+    <out>/runtime/python/...         python-build-standalone interpreter (relocatable)
+    <out>/runtime/site-packages/...  profile dependencies (uv pip install --target)
 
-Les profils (index pip, extras, versions de torch) sont dans desktop/runtime/profiles.json.
-Prérequis : uv, accès réseau (téléchargement de Python et des roues), npm (si l'interface n'est pas déjà compilée).
+Profiles (pip index, extras, torch versions) live in desktop/runtime/profiles.json.
+Requires uv, network access (Python and wheel downloads), and npm if the UI is not already built.
 
-Cross-construction : un profil dont l'OS n'est pas celui de l'hôte (ex. win-cuda / linux-cuda depuis un Mac) est assemblé
-sans rien exécuter de la cible : l'interpréteur python-build-standalone de la cible est téléchargé (SHA-256 vérifié contre
-la liste officielle de la release), les roues de la cible sont installées par `uv pip install --python-platform`, et le
-bytecode est compilé avec un Python 3.12 de l'hôte (même numéro magique). Aucun test de fumée n'est possible : on contrôle
-statiquement la présence des fichiers clés.
+Cross-building: a profile whose OS differs from the host's (e.g. win-cuda / linux-cuda from a Mac) is assembled
+without running anything from the target. The target's python-build-standalone interpreter is downloaded
+(SHA-256 checked against the release's official list), the target wheels are installed with
+`uv pip install --python-platform`, and bytecode is compiled with a host Python 3.12 (same magic number).
+No smoke test is possible, so we only check statically that the key files are present.
 """
 
 from __future__ import annotations
@@ -42,18 +45,18 @@ DESKTOP = ROOT / "desktop"
 PROFILES_FILE = DESKTOP / "runtime" / "profiles.json"
 IS_WINDOWS = sys.platform == "win32"
 
-# python-build-standalone : version et release épinglées pour la cross-construction (même 3.12 que `uv python install`).
+# python-build-standalone: version and release pinned for cross-building (same 3.12 as `uv python install`).
 PBS_RELEASE = "20260510"
 PBS_VERSION = "3.12.13"
 PBS_TRIPLES = {"windows": "x86_64-pc-windows-msvc", "linux": "x86_64-unknown-linux-gnu"}
-# Plateformes de roues pour `uv pip install --python-platform`.
+# Wheel platforms for `uv pip install --python-platform`.
 UV_PLATFORMS = {"windows": "x86_64-pc-windows-msvc", "linux": "x86_64-manylinux_2_28"}
 
-# Dossiers de tests supprimés des paquets embarqués (jamais importés à l'exécution).
+# Test folders stripped from bundled packages (never imported at runtime).
 PRUNE_DIR_NAMES = {"tests", "test", "testing_utils", "__pycache__"}
-# Gros dossiers de torch inutiles à l'exécution (en-têtes C++, CMake).
-PRUNE_PATHS = ["torch/include", "torch/share/cmake"]  # torch/bin (torch_shm_manager) est requis
-# Parties de la bibliothèque standard inutiles ici.
+# Big torch folders not needed at runtime (C++ headers, CMake).
+PRUNE_PATHS = ["torch/include", "torch/share/cmake"]  # torch/bin (torch_shm_manager) is required
+# Parts of the stdlib we don't need.
 PRUNE_STDLIB = ["test", "idlelib", "tkinter", "turtledemo", "ensurepip/_bundled"]
 
 
@@ -87,18 +90,18 @@ def host_os() -> str:
 
 
 def py_rel(target_os: str) -> str:
-    """Chemin de l'interpréteur dans runtime/python, selon l'OS CIBLE."""
+    """Interpreter path inside runtime/python, based on the TARGET OS."""
     return "python.exe" if target_os == "windows" else "bin/python3"
 
 
-# --- Étapes ----------------------------------------------------------------------------------------
+# --- Steps ---
 
 def ensure_frontend(force: bool) -> Path:
     dist = ROOT / "frontend" / "dist"
     if force or not (dist / "index.html").is_file():
         log("Compilation de l'interface…")
         fe = ROOT / "frontend"
-        npm = shutil.which("npm") or "npm"  # npm.cmd sous Windows
+        npm = shutil.which("npm") or "npm"  # npm.cmd on Windows
         if not (fe / "node_modules").is_dir():
             run([npm, "install", "--silent"], cwd=fe)
         run([npm, "run", "build", "--silent"], cwd=fe)
@@ -115,7 +118,7 @@ def copy_backend(out: Path) -> None:
 
 
 def download_verified(url: str, sums_url: str, filename: str, dest_dir: Path) -> Path:
-    """Télécharge une archive (donnée non fiable) dans un dossier dédié et vérifie son SHA-256 contre la liste officielle."""
+    """Downloads an archive (untrusted data) into its own folder and checks its SHA-256 against the official list."""
     dest_dir.mkdir(parents=True, exist_ok=True)
     sums = urllib.request.urlopen(sums_url, timeout=60).read().decode()
     expected = next((line.split()[0] for line in sums.splitlines() if line.strip().endswith(filename)), None)
@@ -144,7 +147,7 @@ def install_python_cross(target_os: str, version: str, cache: Path, out: Path) -
     dest = out / "runtime" / "python"
     with tempfile.TemporaryDirectory(dir=cache) as tmp:
         with tarfile.open(archive) as tf:
-            tf.extractall(tmp, filter="data")  # refuse chemins absolus, liens sortants, fichiers spéciaux
+            tf.extractall(tmp, filter="data")  # rejects absolute paths, escaping links, special files
         shutil.copytree(Path(tmp) / "python", dest, symlinks=True)
     return dest / py_rel(target_os)
 
@@ -173,12 +176,12 @@ def install_python(version: str, cache: Path, out: Path, target_os: str | None =
 
 
 def copy_engines(out: Path, profile: dict, build: Path) -> None:
-    """Embarque les binaires stable-diffusion.cpp (moteur GGUF) du profil dans <out>/engines/sdcpp/<variant>/.
+    """Bundles the profile's stable-diffusion.cpp (GGUF engine) binaries into <out>/engines/sdcpp/<variant>/.
 
-    Absents du dépôt, ils sont téléchargés depuis la version officielle (somme SHA-256 vérifiée,
-    voir scripts/fetch_sdcpp.py). Pour une cross-construction, ils vont dans un cache de build."""
+    Not in the repo: they are downloaded from the official release (SHA-256 checked,
+    see scripts/fetch_sdcpp.py). For a cross-build they go to a build cache."""
     variants = profile.get("sdcpp_variants", [])
-    (out / "engines").mkdir(parents=True, exist_ok=True)  # la coque déclare toujours ce dossier de ressources
+    (out / "engines").mkdir(parents=True, exist_ok=True)  # the shell always declares this resource folder
     if not variants:
         return
     log(f"Moteur GGUF (stable-diffusion.cpp) : {', '.join(variants)}…")
@@ -205,7 +208,7 @@ def prune_stdlib(py_root: Path, version: str, target_os: str | None = None) -> N
 
 
 def read_requirements(profile: dict) -> list[str]:
-    """Dépendances de base + extras du profil (depuis backend/pyproject.toml) + pins du profil."""
+    """Base dependencies + profile extras (from backend/pyproject.toml) + profile pins."""
     project = tomllib.loads((ROOT / "backend" / "pyproject.toml").read_text())["project"]
     reqs = list(project.get("dependencies", []))
     optional = project.get("optional-dependencies", {})
@@ -223,8 +226,8 @@ def install_dependencies(py: Path, profile: dict, out: Path, build: Path, cross:
     req_file.write_text("\n".join(reqs) + "\n")
     log(f"Installation de {len(reqs)} dépendances directes dans runtime/site-packages…")
     if cross:
-        # Roues de la plateforme cible, sans rien exécuter ; pas de compilation de sdist (--no-build) : une
-        # dépendance sans roue pour la cible fait échouer l'installation au lieu de produire un binaire hôte.
+        # Target-platform wheels, nothing executed. No sdist builds (--no-build): a dependency with no
+        # wheel for the target fails the install instead of producing a host binary.
         cmd: list[str | Path] = [
             "uv", "pip", "install", "--python-platform", UV_PLATFORMS[profile["os"]],
             "--python-version", profile["python"], "--target", site, "-r", req_file,
@@ -240,7 +243,7 @@ def install_dependencies(py: Path, profile: dict, out: Path, build: Path, cross:
     for url in profile.get("extra_index_urls", []):
         cmd += ["--extra-index-url", url]
     if profile.get("extra_index_urls"):
-        # Les roues GPU (+cuXXX / +rocmX) ne sont publiées que sur l'index PyTorch.
+        # GPU wheels (+cuXXX / +rocmX) are only published on the PyTorch index.
         cmd += ["--index-strategy", "unsafe-best-match"]
     run(cmd)
     return site
@@ -251,7 +254,7 @@ def prune_site_packages(site: Path) -> None:
     before = du(site)
     for rel in PRUNE_PATHS:
         shutil.rmtree(site / rel, ignore_errors=True)
-    for lib in site.glob("torch/lib/*.lib"):  # bibliothèques d'import Windows : inutiles à l'exécution
+    for lib in site.glob("torch/lib/*.lib"):  # Windows import libraries, not needed at runtime
         lib.unlink(missing_ok=True)
     for d in sorted((p for p in site.rglob("*") if p.is_dir() and p.name in PRUNE_DIR_NAMES), reverse=True):
         shutil.rmtree(d, ignore_errors=True)
@@ -261,15 +264,15 @@ def prune_site_packages(site: Path) -> None:
 
 
 def compile_bytecode(py: Path, *dirs: Path) -> None:
-    """Pré-compile avec l'interpréteur embarqué (bon numéro magique). unchecked-hash : l'application est figée,
-    et PYTHONDONTWRITEBYTECODE=1 à l'exécution — les .pyc ne doivent donc jamais dépendre des dates."""
+    """Precompiles with the bundled interpreter (right magic number). unchecked-hash because the app is frozen
+    and runs with PYTHONDONTWRITEBYTECODE=1, so the .pyc files must never depend on timestamps."""
     log("Pré-compilation du bytecode…")
     for d in dirs:
         run([py, "-m", "compileall", "-q", "-j", "0", "--invalidation-mode", "unchecked-hash", d])
 
 
 def host_python(version: str) -> Path:
-    """Python 3.12 de l'hôte, pour pré-compiler le bytecode d'une cible étrangère (le numéro magique ne dépend que de la version)."""
+    """Host Python 3.12, used to precompile bytecode for a foreign target (the magic number only depends on the version)."""
     found = subprocess.run(["uv", "python", "find", version], capture_output=True, text=True)
     if found.returncode != 0 or not found.stdout.strip():
         sys.exit(f"Python {version} introuvable sur l'hôte (uv python install {version}).")
@@ -277,7 +280,7 @@ def host_python(version: str) -> Path:
 
 
 def static_check(out: Path, profile: dict) -> None:
-    """Contrôle statique d'un runtime cross-construit (rien n'est exécuté)."""
+    """Static check of a cross-built runtime (nothing is executed)."""
     log("Contrôle statique du runtime cross-construit…")
     rt = out / "runtime"
     site = rt / "site-packages"
@@ -298,7 +301,7 @@ def static_check(out: Path, profile: dict) -> None:
     missing = [str(p.relative_to(out)) for p in required if not p.exists()]
     if missing:
         sys.exit("Fichiers manquants : " + ", ".join(missing))
-    # Aucun binaire de l'hôte ne doit s'être glissé dans les roues de la cible.
+    # No host binary may have slipped into the target wheels.
     foreign = [p for p in site.rglob("*") if p.is_file() and not p.is_symlink() and is_macho(p)][:3]
     if foreign:
         sys.exit("Binaires étrangers à la cible : " + ", ".join(str(p) for p in foreign))
@@ -317,7 +320,7 @@ def is_macho(path: Path) -> bool:
 
 
 def adhoc_sign_macos(runtime: Path) -> None:
-    """Sur Apple Silicon, tout binaire Mach-O doit porter au moins une signature ad hoc valide."""
+    """On Apple Silicon every Mach-O binary must carry at least a valid ad-hoc signature."""
     log("Vérification / signature ad hoc des binaires Mach-O…")
     candidates = [
         p for p in runtime.rglob("*")
@@ -355,7 +358,7 @@ def smoke_test(py: Path, runtime: Path, out: Path, profile: dict) -> None:
     shutil.rmtree(out.parent / "smoke-data", ignore_errors=True)
 
 
-# --- Programme -------------------------------------------------------------------------------------
+# --- Main ---
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useMemo } from "react";
 import { AudioLines, Mic, Pause, Pencil, Play, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -61,7 +64,7 @@ function VoiceCard({ voice: v }: { voice: Voice }) {
   const toggle = usePlayer((s) => s.toggle);
   const seek = usePlayer((s) => s.seek);
 
-  // Un modèle qui sait cloner : prêt d'abord, sinon celui qu'on installerait le plus facilement.
+  // A model that can clone: a ready one first, else the easiest to install.
   const cloner = useMemo(
     () =>
       (catalog?.models ?? [])

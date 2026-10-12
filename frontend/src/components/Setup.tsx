@@ -1,4 +1,7 @@
-// Installation en un clic : moteur + modèle manquants, avec progression, annulation et erreurs lisibles.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// One-click install of the missing engine and model, with progress, cancel and readable errors.
 import { useEffect, useState } from "react";
 import { Check, CloudDownload, Cpu, Sparkles, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
@@ -31,7 +34,7 @@ export function ProgressBar({ done, total, rate, eta, unit = "gb" }: { done: num
   );
 }
 
-/** Barre sans pourcentage connu (installation d'un environnement Python) : message, détail et temps écoulé. */
+/** Bar with no known percentage (Python env install): message, detail and elapsed time. */
 export function IndeterminateBar({ message, detail, since }: { message?: string; detail?: string; since?: number }) {
   const [now, setNow] = useState(() => Date.now() / 1000);
   useEffect(() => {
@@ -52,7 +55,7 @@ export function IndeterminateBar({ message, detail, since }: { message?: string;
   );
 }
 
-/** Lance ce qu'il faut pour rendre ce modèle utilisable : le moteur d'abord si besoin, puis le modèle. */
+/** Installs what the model needs: the engine first if missing, then the model. */
 export async function startSetup(model: ModelInfo): Promise<void> {
   const store = useStore.getState();
   try {
@@ -69,13 +72,13 @@ export async function startSetup(model: ModelInfo): Promise<void> {
   }
 }
 
-/** Enchaîne : quand le moteur est prêt, démarre le téléchargement du modèle demandé. */
+/** When the engine is ready, starts downloading the requested model. */
 export function SetupController() {
   const sd = useStore((s) => s.engineInstall);
   const pack = useStore((s) => s.packInstall);
   const pending = useStore((s) => s.pendingModelId);
   const setPending = useStore((s) => s.setPendingModel);
-  // Le moteur concerné est celui qui travaille (ou vient de finir) : un seul installateur tourne à la fois.
+  // The relevant engine is the one working (or just done): only one installer runs at a time.
   const engine = pack.state === "running" || (sd.state === "idle" && pack.state !== "idle") ? pack : sd;
 
   useEffect(() => {
@@ -85,7 +88,7 @@ export function SetupController() {
     setPending(null);
     (async () => {
       try {
-        // Appel direct : un fetchQuery sur la même clé serait annulé par l'invalidation déclenchée par cette installation.
+        // Direct call: a fetchQuery on the same key would be cancelled by the invalidation this install triggers.
         const data = await api.models();
         const model = data.models.find((m) => m.id === pending);
         if (model && model.install !== "installed") useStore.getState().setDownload(await api.downloadModel(pending));
@@ -97,7 +100,7 @@ export function SetupController() {
   return null;
 }
 
-/** Ce qu'il manque pour utiliser ce modèle, avec un bouton pour tout installer. */
+/** What is missing to use this model, with a button to install it all. */
 export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welcome?: boolean }) {
   const sdEngine = useStore((s) => s.engineInstall);
   const packEngine = useStore((s) => s.packInstall);
@@ -196,7 +199,7 @@ function Steps({ needEngine, engineState, needModel }: { needEngine: boolean; en
   );
 }
 
-/** Carte d'accueil : tant qu'aucun modèle n'est prêt, propose le plus adapté à cette machine. */
+/** Welcome card: while no model is ready, suggests the best fit for this machine. */
 export function useWelcomeModel(kind: ModelKind = "image"): ModelInfo | null {
   const { data } = useModels();
   const active = useActiveModel(kind);

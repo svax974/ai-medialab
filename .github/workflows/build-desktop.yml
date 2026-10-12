@@ -1,5 +1,8 @@
-# NON VÉRIFIÉ : ce workflow n'a jamais été exécuté (il a été écrit sur un Mac sans accès à GitHub Actions).
-# Seul le profil mac-arm64 a été construit et testé, en local, avec scripts/build_runtime.py + `tauri build`.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+# UNVERIFIED: this workflow has never run (it was written on a Mac without access to GitHub Actions).
+# Only the mac-arm64 profile has been built and tested, locally, with scripts/build_runtime.py + `tauri build`.
 name: build-desktop
 
 on:

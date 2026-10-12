@@ -1,8 +1,13 @@
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
 [package]
 name = "ai-medialab"
 version = "0.1.0"
 description = "AI MediaLab — studio local de création d'images et d'audio"
 edition = "2021"
+license = "MIT"
+authors = ["Stéphane Vaxelaire"]
 rust-version = "1.77"
 
 [build-dependencies]
@@ -21,7 +26,7 @@ libc = "0.2"
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_Security"] }
 
-# Binaire de coque : petit et rapide à produire (le poids de l'application est dans le runtime Python).
+# Shell binary: small and quick to build (the app's weight is in the Python runtime).
 [profile.release]
 opt-level = "s"
 lto = "thin"

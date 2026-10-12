@@ -1,7 +1,10 @@
-"""Détection du matériel et des moteurs d'inférence disponibles (Metal, NVIDIA/CUDA, AMD/ROCm).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-La sonde PyTorch tourne dans un sous-processus : importer torch coûte plusieurs secondes et des centaines
-de Mo, et on ne veut pas les payer (ni les garder) dans le processus du serveur.
+"""Detects the hardware and available inference engines (Metal, NVIDIA/CUDA, AMD/ROCm).
+
+The PyTorch probe runs in a subprocess: importing torch takes seconds and hundreds of MB, which we
+don't want to pay for (or keep) in the server process.
 """
 
 from __future__ import annotations
@@ -74,7 +77,7 @@ def _probe_torch() -> dict[str, Any]:
 
 
 def _gpu_names_fallback() -> list[dict[str, Any]]:
-    """Noms de GPU vus par le système, indépendamment de PyTorch (utile pour diagnostiquer un runtime inadapté)."""
+    """GPU names as the OS sees them, independent of PyTorch (helps diagnose a mismatched runtime)."""
     found: list[dict[str, Any]] = []
     if shutil.which("nvidia-smi"):
         out = _run(["nvidia-smi", "--query-gpu=name,memory.total", "--format=csv,noheader,nounits"])
@@ -129,14 +132,14 @@ def _compute() -> dict[str, Any]:
             "torch_mps": bool(torch_info.get("mps")),
         })
 
-    # Pour le diagnostic : GPU présents mais non exploitables par PyTorch dans ce runtime.
+    # Diagnostics: GPUs present but unusable by PyTorch in this runtime.
     unusable = []
     fallback_gpus = _gpu_names_fallback()
     if not torch_info.get("cuda") and torch_info.get("torch") is not None:
         for g in fallback_gpus:
             if g["vendor"] in ("nvidia", "amd"):
                 unusable.append({**g, "reason": _why_unusable(g["vendor"], torch_info)})
-    if not accelerators:  # runtime sans PyTorch : on décrit les GPU vus par le système (VRAM parfois inconnue)
+    if not accelerators:  # no PyTorch in this runtime: list the GPUs the OS sees (VRAM may be unknown)
         for g in fallback_gpus:
             accelerators.append({"vendor": g["vendor"], "backend": "vulkan", "name": g["name"],
                                  "memory_gb": g.get("memory_gb"), "unified": False})
@@ -210,7 +213,7 @@ def _engine_sdcpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
     if res["available"]:
         res["device"] = res["variant"]
         return res
-    # Pas utilisable : l'application peut-elle l'installer elle-même ?
+    # Not usable: can the app install it itself?
     present = set(sdcpp.find_variants())
     candidates = [v for v in engine_install.candidate_variants(vendors) if v not in present]
     if candidates:
@@ -226,7 +229,7 @@ def get_system(refresh: bool = False) -> dict[str, Any]:
         if _cache is None or refresh:
             _cache = _compute()
         info = dict(_cache)
-    # Valeurs qui changent à tout instant.
+    # These change constantly, so they're never cached.
     info["ram_free_gb"] = round(psutil.virtual_memory().available / 1024**3, 1)
     info["disk"] = _disk_info(info["paths"]["models"])
     return info
@@ -241,17 +244,15 @@ def _disk_info(path: str) -> dict[str, Any]:
 
 
 def warm_up() -> None:
-    """Lance la détection en arrière-plan au démarrage du serveur."""
+    """Run detection in the background at server startup."""
     threading.Thread(target=get_system, daemon=True, name="system-probe").start()
 
 
-# --- Planificateur mémoire -------------------------------------------------------------------------
-
 def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict[str, Any], engine: str) -> dict[str, Any]:
-    """Décide comment charger un modèle sur cette machine.
+    """Decide how to load a model on this machine.
 
-    strategy : "full" (tout sur le GPU), "model_offload" (un composant à la fois sur le GPU),
-    "sequential" (couche par couche, très lent) ou "none" (ne tiendra pas).
+    strategy: "full" (all on the GPU), "model_offload" (one component at a time on the GPU),
+    "sequential" (layer by layer, very slow) or "none" (won't fit).
     """
     if not weights_gb:
         return {"fits": True, "strategy": "full", "note": ""}
@@ -259,14 +260,14 @@ def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict
     accel = system["accelerators"][0] if system["accelerators"] else None
 
     if engine == "mlx":
-        # Poids quantifiés + marge ; mémoire unifiée.
+        # Quantized weights plus headroom; unified memory.
         ok = ram >= weights_gb * 0.55
         return {"fits": ok, "strategy": "full",
                 "note": "" if ok else f"≈ {weights_gb * 0.55:.0f} Go de mémoire nécessaires, {ram:.0f} Go disponibles."}
 
     if engine == "sdcpp":
-        # Poids quantifiés (GGUF) ; stable-diffusion.cpp place lui-même les poids selon la mémoire libre
-        # (GPU, sinon RAM, sinon disque : --auto-fit). La VRAM sert à décider de la vitesse, pas de la faisabilité.
+        # Quantized (GGUF) weights; stable-diffusion.cpp places them itself based on free memory
+        # (GPU, then RAM, then disk: --auto-fit). VRAM only affects speed, not feasibility.
         if accel is None:
             return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}
         if accel["unified"]:
@@ -284,7 +285,7 @@ def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict
 
     if accel is None:
         return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}
-    if accel["unified"]:  # MPS : le « décharge CPU » n'a aucun intérêt, c'est la même mémoire.
+    if accel["unified"]:  # MPS: CPU offload is pointless, it is the same memory.
         ok = ram >= weights_gb * 1.35
         return {"fits": ok, "strategy": "full",
                 "note": "" if ok else f"Il faut ≈ {weights_gb * 1.35:.0f} Go de mémoire unifiée en pleine précision ({ram:.0f} Go ici). "

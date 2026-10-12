@@ -1,4 +1,7 @@
-"""Routes REST + flux d'événements."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""REST routes and the SSE event stream."""
 
 from __future__ import annotations
 
@@ -29,7 +32,7 @@ router = APIRouter(prefix="/api")
 MAX_COUNT = 4
 
 
-# --- Modèles, moteur, réglages --------------------------------------------------------------------
+# Models, engines, settings
 
 @router.get("/models")
 def list_models() -> dict[str, Any]:
@@ -40,7 +43,7 @@ def list_models() -> dict[str, Any]:
 def system_info(refresh: bool = False) -> dict[str, Any]:
     info = get_system(refresh=refresh)
     engines = {k: dict(v) for k, v in info["engines"].items()}
-    engines["sdcpp"]["install"] = installer.public()  # état en direct, hors du cache de détection
+    engines["sdcpp"]["install"] = installer.public()  # live state, outside the detection cache
     packs = {
         p.id: {"name": p.name, "size_mb": p.size_mb, "installed": audio_packs.is_installed(p.id),
                **{k: v for k, v in audio_packs.engine_info(p.id).items() if k in ("installable", "reason")}}
@@ -75,7 +78,7 @@ async def uninstall_pack(pack_id: str) -> dict[str, Any]:
         if spec.options.get("pack") == pack_id:
             raise HTTPException(409, "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.")
     try:
-        await asyncio.to_thread(pack_installer.uninstall, pack_id)  # la réponse n'arrive qu'une fois tout supprimé
+        await asyncio.to_thread(pack_installer.uninstall, pack_id)  # only reply once everything is deleted
     except RuntimeError as exc:
         raise HTTPException(409, str(exc)) from None
     bus.publish("models.changed", {})
@@ -120,8 +123,7 @@ async def delete_model(model_id: str) -> dict[str, Any]:
     if jobs.worker and jobs.worker.model_id == model_id:
         raise HTTPException(409, "Ce modèle est chargé en mémoire : déchargez-le d'abord.")
     try:
-        # Suppression réelle des fichiers hors de la boucle d'événements (le serveur reste réactif) ; on ne répond
-        # qu'une fois les fichiers effacés et l'espace libéré.
+        # Delete files off the event loop so the server stays responsive; reply only once the space is freed.
         result = await asyncio.to_thread(downloads.delete, model_id)
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from None
@@ -131,7 +133,7 @@ async def delete_model(model_id: str) -> dict[str, Any]:
     return result
 
 
-# --- Modèles Hugging Face ajoutés par l'utilisateur ------------------------------------------------
+# User-added Hugging Face models
 
 @router.get("/hf/search")
 async def hf_search_models(kind: str = "image", q: str = "") -> dict[str, Any]:
@@ -247,7 +249,7 @@ async def put_settings(patch: SettingsPatch) -> dict[str, Any]:
     return _public_settings()
 
 
-# --- Conversations ---------------------------------------------------------------------------------
+# Conversations
 
 @router.get("/conversations")
 def list_conversations(q: str | None = None, mode: str | None = None) -> list[dict[str, Any]]:
@@ -327,7 +329,7 @@ def _summary(conversation_id: str) -> dict[str, Any] | None:
         return repo.conversation_summary(conn, row) if row else None
 
 
-# --- Messages / générations ------------------------------------------------------------------------
+# Messages / generations
 
 class MessageCreate(BaseModel):
     conversation_id: str | None = None
@@ -377,7 +379,7 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
                 "INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
                 (cid, _title_from_prompt(prompt), spec.kind, ts, ts),
             )
-        # Première génération d'une conversation créée vide : on la titre d'après le prompt.
+        # First generation in a conversation created empty: title it from the prompt.
         has_msgs = conn.execute("SELECT 1 FROM messages WHERE conversation_id = ? LIMIT 1", (cid,)).fetchone()
         if not has_msgs:
             conn.execute(
@@ -483,7 +485,7 @@ async def delete_message(message_id: str) -> dict[str, Any]:
     return {"ok": True, "deleted": ids}
 
 
-# --- Images ----------------------------------------------------------------------------------------
+# Assets
 
 @router.post("/assets")
 async def upload_assets(files: list[UploadFile] = File(...)) -> list[dict[str, Any]]:
@@ -575,7 +577,7 @@ def delete_asset(asset_id: str) -> dict[str, Any]:
     return {"ok": True}
 
 
-# --- Voix (bibliothèque de clonage) ------------------------------------------------------------------------
+# Voices (cloning library)
 
 @router.get("/voices")
 def list_voices() -> list[dict[str, Any]]:
@@ -618,7 +620,7 @@ class FromAsset(BaseModel):
 
 @router.post("/voices/from-asset")
 async def voice_from_asset(body: FromAsset) -> dict[str, Any]:
-    """Garde une prise générée comme voix de la bibliothèque (ex. une voix inventée par description)."""
+    """Keep a generated take as a library voice (e.g. a voice invented from a description)."""
     with db.connect() as conn:
         row = conn.execute("SELECT * FROM assets WHERE id = ? AND media = 'audio'", (body.asset_id,)).fetchone()
     if not row:
@@ -678,7 +680,7 @@ class TranscribeBody(BaseModel):
 
 @router.post("/voices/{voice_id}/transcribe")
 async def transcribe_voice(voice_id: str, body: TranscribeBody) -> dict[str, Any]:
-    """Retranscrit l'extrait d'une voix (Whisper) : la transcription améliore le clonage."""
+    """Re-transcribe a voice sample with Whisper; a transcript improves cloning."""
     from ..downloads import downloads as dl
     from ..engines.base import repo_cache_dir
 
@@ -705,7 +707,7 @@ async def transcribe_voice(voice_id: str, body: TranscribeBody) -> dict[str, Any
     return result
 
 
-# --- Temps réel ------------------------------------------------------------------------------------
+# Real-time events
 
 @router.get("/events")
 async def events(request: Request) -> StreamingResponse:

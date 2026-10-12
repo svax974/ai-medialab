@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
-"""Télécharge une build officielle de stable-diffusion.cpp (moteur GGUF) dans engines/sdcpp/<variant>/.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Downloads an official stable-diffusion.cpp build (GGUF engine) into engines/sdcpp/<variant>/.
 
     python3 scripts/fetch_sdcpp.py --variant metal                # macOS Apple Silicon
-    python3 scripts/fetch_sdcpp.py --variant vulkan --os windows  # tout GPU (NVIDIA, AMD, Intel)
-    python3 scripts/fetch_sdcpp.py --variant cuda   --os windows  # NVIDIA (inclut le runtime CUDA 12)
+    python3 scripts/fetch_sdcpp.py --variant vulkan --os windows  # any GPU (NVIDIA, AMD, Intel)
+    python3 scripts/fetch_sdcpp.py --variant cuda   --os windows  # NVIDIA (includes the CUDA 12 runtime)
     python3 scripts/fetch_sdcpp.py --variant rocm   --os windows  # AMD
 
-Réservé au développement et au packaging : l'application, elle, installe le moteur toute seule (écran « Modèles »).
-Même code que l'application (backend/app/engine_install.py) : somme SHA-256 vérifiée contre celle publiée par GitHub,
-extraction sans sortie du dossier cible, rien n'est exécuté. GITHUB_TOKEN (facultatif) évite la limite d'appels anonymes.
+For development and packaging only; the app installs the engine itself ("Modèles" screen).
+Same code as the app (backend/app/engine_install.py): SHA-256 checked against the sum GitHub publishes,
+extraction can't escape the target folder, nothing is executed. GITHUB_TOKEN (optional) avoids the anonymous rate limit.
 """
 
 from __future__ import annotations

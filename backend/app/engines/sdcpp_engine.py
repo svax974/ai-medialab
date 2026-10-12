@@ -1,17 +1,20 @@
-"""Moteur GGUF : pilote le programme `sd-cli` de stable-diffusion.cpp (Metal, CUDA, ROCm, Vulkan, CPU).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Un processus par génération : annulation = arrêt du processus, mémoire intégralement rendue ensuite, et les
-crashs d'un pilote GPU n'emportent pas le serveur. Le coût est le rechargement des poids à chaque image
-(quelques secondes, les fichiers étant déjà dans le cache disque) ; un mode serveur résident est possible.
+"""GGUF engine: drives stable-diffusion.cpp's `sd-cli` (Metal, CUDA, ROCm, Vulkan, CPU).
 
-`ModelSpec.options` :
-    files          rôle -> (dépôt, fichier) : diffusion-model, llm, vae, llm_vision…  (cache Hugging Face)
-    vision_for_refs  rôles ajoutés seulement quand des images de référence sont fournies (ex. llm_vision)
-    cli_args       arguments fixes (ex. ["--sampling-method", "euler"])
-    fa_variants    builds pour lesquelles activer FlashAttention (--diffusion-fa)
-    guidance_arg   option de la guidance (défaut --cfg-scale)
-    edit_guidance  guidance appliquée en édition (références) quand l'utilisateur laisse la valeur par défaut (1)
-    edit_steps     nombre d'étapes appliqué en édition quand l'utilisateur laisse la valeur par défaut
+One process per generation: cancelling just kills it, all memory is returned afterwards, and a GPU
+driver crash doesn't take the server down. The price is reloading the weights for every image (a few
+seconds, the files being in the disk cache); a resident server mode would be possible.
+
+`ModelSpec.options`:
+    files            role -> (repo, file): diffusion-model, llm, vae, llm_vision... (Hugging Face cache)
+    vision_for_refs  roles only added when reference images are given (e.g. llm_vision)
+    cli_args         fixed arguments (e.g. ["--sampling-method", "euler"])
+    fa_variants      builds for which FlashAttention is enabled (--diffusion-fa)
+    guidance_arg     guidance option (default --cfg-scale)
+    edit_guidance    guidance used when editing (references) if the user left the default (1)
+    edit_steps       step count used when editing if the user left the default
 """
 
 from __future__ import annotations
@@ -30,17 +33,17 @@ from PIL import Image
 
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 
-# « |=====>    | 3/8 - 2.34s/it » ou « 3/8 - 0.42it/s »
+# e.g. "|=====>    | 3/8 - 2.34s/it" or "3/8 - 0.42it/s"
 PROGRESS = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
 
 
 def effective_settings(spec, req: GenerationRequest, editing: bool) -> tuple[int, float | None]:
-    """Étapes et guidance réellement utilisées.
+    """Steps and guidance actually used.
 
-    En édition par instruction (images de référence), les valeurs par défaut de création ne conviennent pas : il
-    faut une guidance (mesuré : 1 ne suit pas l'instruction) et 12 étapes suffisent (mesuré : 12 donnent le même
-    résultat que 20 en deux fois moins de temps). On ne remplace que les valeurs laissées par défaut par
-    l'utilisateur, jamais un réglage explicite."""
+    The creation defaults don't suit instruction-based editing (reference images): it needs some
+    guidance (measured: 1 doesn't follow the instruction) and 12 steps are enough (measured: same
+    result as 20 in half the time). Only values the user left at the default are replaced, never an
+    explicit setting."""
     o = spec.options
     steps, guidance = req.steps, req.guidance
     if editing:
@@ -69,8 +72,6 @@ class SdcppEngine(Engine):
                 self.paths[role] = hf_hub_download(repo, filename, local_files_only=True)
             except LocalEntryNotFoundError:
                 raise RuntimeError(f"Fichier du modèle introuvable : {repo}/{filename} — téléchargez le modèle.") from None
-
-    # --- Génération ------------------------------------------------------------------------------------
 
     def generate(self, req: GenerationRequest, hooks: Hooks) -> Image.Image:
         o = self.spec.options
@@ -131,7 +132,7 @@ class SdcppEngine(Engine):
                         with Image.open(preview) as im:
                             hooks.on_preview(im.convert("RGB").copy())
                     except Exception:
-                        pass  # fichier en cours d'écriture : on réessaie au tour suivant
+                        pass  # file still being written, retry on the next loop
             code = proc.wait()
             if code != 0 or not out.exists():
                 raise RuntimeError(_explain(code, tail, self.variant))
@@ -142,7 +143,7 @@ class SdcppEngine(Engine):
 
 
 def _pump(proc: subprocess.Popen, lines: "queue.Queue[str | None]") -> None:
-    """Découpe la sortie sur \\n et \\r (la barre de progression se réécrit sur la même ligne)."""
+    """Split output on \\n and \\r (the progress bar rewrites the same line)."""
     buf = b""
     assert proc.stdout
     while chunk := proc.stdout.read1(4096):  # type: ignore[attr-defined]

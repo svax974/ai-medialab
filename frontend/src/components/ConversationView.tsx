@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, Pin } from "lucide-react";
 import { toast } from "sonner";
@@ -16,7 +19,7 @@ export function ConversationView({ id }: { id: string }) {
   const [atBottom, setAtBottom] = useState(true);
   const lastCount = useRef(0);
 
-  // Défile en bas à l'ouverture, puis à chaque nouveau message si l'on y était déjà.
+  // Scroll to the bottom on open, then on each new message if already at the bottom.
   useLayoutEffect(() => {
     lastCount.current = 0;
   }, [id]);
@@ -29,7 +32,7 @@ export function ConversationView({ id }: { id: string }) {
     lastCount.current = count;
   }, [conv]);
 
-  // Les images arrivent après coup : on reste collé en bas si l'utilisateur y est.
+  // Images load late: stay pinned to the bottom if the user is there.
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;

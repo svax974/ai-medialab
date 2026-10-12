@@ -1,17 +1,20 @@
-"""Moteur PyTorch + diffusers : NVIDIA (CUDA), AMD (ROCm) et Apple (MPS).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Un seul moteur générique, piloté par `ModelSpec.options` :
+"""PyTorch + diffusers engine: NVIDIA (CUDA), AMD (ROCm) and Apple (MPS).
 
-    pipeline        classe de pipeline diffusers (ex. "QwenImage21Pipeline")
-    img2img         classe utilisée quand une image de départ est fournie (réf. « init »), via from_pipe
-    guidance_arg    nom de l'argument de guidance du pipeline ("true_cfg_scale", "guidance_scale"…)
-    image_arg       nom de l'argument qui reçoit les images de référence (défaut "image")
-    image_is_list   les références sont passées en liste (édition multi-images) ou une seule image
-    load_kwargs     arguments de from_pretrained (ex. variant="fp16")
-    call_kwargs     arguments fixes ajoutés à chaque appel (ex. max_sequence_length)
+One generic engine driven by `ModelSpec.options`:
 
-Les arguments que le pipeline ne connaît pas sont ignorés (filtrage par signature) : ajouter un modèle
-se fait donc sans écrire de code dans la plupart des cas.
+    pipeline        diffusers pipeline class (e.g. "QwenImage21Pipeline")
+    img2img         class used when a start image is given ("init" references), built with from_pipe
+    guidance_arg    name of the pipeline's guidance argument ("true_cfg_scale", "guidance_scale"...)
+    image_arg       argument that receives the reference images (default "image")
+    image_is_list   pass references as a list (multi-image editing) or a single image
+    load_kwargs     from_pretrained arguments (e.g. variant="fp16")
+    call_kwargs     fixed arguments added to every call (e.g. max_sequence_length)
+
+Arguments the pipeline doesn't accept are dropped (filtered by signature), so most models need no
+new code.
 """
 
 from __future__ import annotations
@@ -58,19 +61,17 @@ class DiffusersEngine(Engine):
         if hasattr(pipe, "set_progress_bar_config"):
             pipe.set_progress_bar_config(disable=True)
         self.pipe = pipe
-        self.i2i = None  # pipeline img2img, créé à la demande
+        self.i2i = None  # img2img pipeline, created on demand
         self._tune_memory()
 
     def _tune_memory(self) -> None:
-        # Le VAE décode par tuiles : évite le pic mémoire sur les grandes images.
+        # Tiled VAE decoding avoids the memory spike on large images.
         vae = getattr(self.pipe, "vae", None)
         if vae is not None and hasattr(vae, "enable_tiling"):
             try:
                 vae.enable_tiling()
             except Exception:
                 pass
-
-    # --- Génération ------------------------------------------------------------------------------------
 
     def generate(self, req: GenerationRequest, hooks: Hooks) -> Image.Image:
         import torch
@@ -82,7 +83,7 @@ class DiffusersEngine(Engine):
         if use_i2i:
             pipe = self._img2img_pipe()
 
-        # Le générateur reste sur CPU : seul moyen d'avoir les mêmes graines d'une machine à l'autre.
+        # Keep the generator on CPU so the same seed gives the same result on every machine.
         generator = torch.Generator(device="cpu").manual_seed(req.seed)
         total = req.steps
 
@@ -114,7 +115,7 @@ class DiffusersEngine(Engine):
                 kwargs[image_arg] = refs[0]
                 if req.strength is not None:
                     kwargs["strength"] = req.strength
-                # img2img : la taille de sortie suit l'image de départ.
+                # img2img: output size follows the start image.
                 kwargs["width"], kwargs["height"] = refs[0].size
             else:
                 kwargs[image_arg] = refs if o.get("image_is_list", True) else refs[0]
@@ -124,7 +125,7 @@ class DiffusersEngine(Engine):
             dropped = [k for k in kwargs if k not in accepted]
             kwargs = {k: v for k, v in kwargs.items() if k in accepted}
             if dropped:
-                print(f"[diffusers] arguments ignorés par {type(pipe).__name__} : {dropped}", flush=True)
+                print(f"[diffusers] arguments ignored by {type(pipe).__name__}: {dropped}", flush=True)
 
         try:
             with torch.inference_mode():
@@ -158,7 +159,7 @@ def _load(path: str) -> Image.Image:
 
 
 def _pick_device(torch) -> str:
-    if torch.cuda.is_available():  # couvre aussi ROCm (torch.version.hip)
+    if torch.cuda.is_available():  # also true for ROCm builds (torch.version.hip)
         return "cuda"
     if getattr(torch.backends, "mps", None) and torch.backends.mps.is_available():
         return "mps"
@@ -167,6 +168,6 @@ def _pick_device(torch) -> str:
 
 def _pick_dtype(torch, device: str):
     if device == "cuda":
-        # bf16 sur Ampere+ / RDNA3+ ; fp16 sinon (cartes plus anciennes).
+        # bf16 on Ampere+ / RDNA3+, fp16 on older cards.
         return torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     return torch.bfloat16

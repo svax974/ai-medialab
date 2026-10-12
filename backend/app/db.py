@@ -1,7 +1,10 @@
-"""Persistance SQLite : conversations, messages, images et réglages.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Accès synchrone volontairement simple : une connexion par opération, mode WAL.
-Les routes FastAPI synchrones s'exécutent dans le pool de threads.
+"""SQLite persistence: conversations, messages, assets, voices and settings.
+
+Access is deliberately simple and synchronous: one connection per operation, WAL mode.
+Sync FastAPI routes run in the thread pool.
 """
 
 import json
@@ -85,7 +88,7 @@ CREATE TABLE IF NOT EXISTS settings (
 
 
 def new_id() -> str:
-    """Identifiant triable chronologiquement (horodatage ms + aléa)."""
+    """Time-sortable id (ms timestamp + random suffix)."""
     return f"{int(time.time() * 1000):011x}{secrets.token_hex(5)}"
 
 
@@ -108,7 +111,7 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
-# Colonnes ajoutées après la première version (bases existantes).
+# Columns added after the first release (for existing databases).
 MIGRATIONS = [
     ("conversations", "mode", "TEXT NOT NULL DEFAULT 'image'"),  # image | audio
     ("assets", "media", "TEXT NOT NULL DEFAULT 'image'"),  # image | audio
@@ -130,7 +133,7 @@ def init_db() -> None:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
         _migrate(conn)
-        # Les générations interrompues par un arrêt du serveur ne reprendront pas.
+        # Jobs interrupted by a server stop are not resumed.
         conn.execute(
             "UPDATE messages SET status = 'error', error = 'Interrompu par l''arrêt du serveur', finished_at = ? "
             "WHERE status IN ('queued', 'loading', 'running')",
@@ -148,7 +151,7 @@ def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     return d
 
 
-# --- Réglages -----------------------------------------------------------------------------------
+# Settings
 
 def get_settings() -> dict[str, Any]:
     with connect() as conn:

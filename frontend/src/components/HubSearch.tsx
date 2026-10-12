@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { forwardRef, useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Check, ChevronRight, Download, ExternalLink, Search, TriangleAlert } from "lucide-react";
@@ -18,7 +21,7 @@ const HELP: Record<ModelKind, string> = {
   audio: "Variantes de Qwen3-TTS (voix, création de voix, clonage) et modèles Whisper pour faster-whisper.",
 };
 
-/** Recherche sur Hugging Face, limitée aux formats que l'application sait exécuter. */
+/** Hugging Face search, limited to formats the app can run. */
 export const HubSearch = forwardRef<HTMLInputElement, { kind: ModelKind }>(function HubSearch({ kind }, inputRef) {
   const [text, setText] = useState("");
   const [q, setQ] = useState("");

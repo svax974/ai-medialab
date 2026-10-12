@@ -1,4 +1,7 @@
-"""Gestionnaire de téléchargement des modèles (Hugging Face), état d'installation et suppression."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Model download manager (Hugging Face): install state, progress and deletion."""
 
 from __future__ import annotations
 
@@ -52,8 +55,6 @@ class DownloadManager:
         self.jobs: dict[str, DownloadJob] = {}
         self._status_cache: dict[str, tuple[float, dict[str, Any]]] = {}
 
-    # --- État --------------------------------------------------------------------------------------------
-
     def status(self, spec: ModelSpec) -> dict[str, Any]:
         key = f"{spec.id}:{spec.variant}"
         cached = self._status_cache.get(key)
@@ -71,8 +72,6 @@ class DownloadManager:
 
     def job(self, model_id: str) -> DownloadJob | None:
         return self.jobs.get(model_id)
-
-    # --- Actions -----------------------------------------------------------------------------------------
 
     async def start(self, model_id: str) -> DownloadJob:
         spec = get_spec(model_id)
@@ -112,7 +111,7 @@ class DownloadManager:
         return True
 
     def delete(self, model_id: str) -> dict[str, Any]:
-        """Supprime les fichiers du modèle ; bloquant (à lancer dans un thread). L'appelant publie `models.changed`."""
+        """Delete the model files. Blocking, run it in a thread; the caller publishes `models.changed`."""
         spec = get_spec(model_id)
         sources = spec.all_sources()
         if not sources:
@@ -130,13 +129,11 @@ class DownloadManager:
                   and any((s.repo, p) in mine for s in m.all_sources() for p in (s.patterns or ["*"]))]
         return {"freed_gb": round(freed / 1024**3, 2), "also_affects": shared}
 
-    # --- Suivi du sous-processus -------------------------------------------------------------------------
-
     async def _run(self, job: DownloadJob, spec: ModelSpec) -> None:
-        """Télécharge chaque dépôt à la suite ; la progression est cumulée sur l'ensemble."""
+        """Download each repo in turn, with progress accumulated across all of them."""
         sources = spec.all_sources()
         estimates = [int((s.size_gb or 0) * 1024**3) for s in sources]
-        known: list[int | None] = [None] * len(sources)  # tailles réelles, connues une fois le dépôt traité
+        known: list[int | None] = [None] * len(sources)  # real sizes, known once a repo has been handled
         done_before = 0
         env = dict(os.environ)
         token = db.get_settings().get("hf_token")
@@ -201,7 +198,7 @@ class DownloadManager:
 
     @staticmethod
     def _clean_incomplete(repo: str) -> None:
-        """Supprime les fichiers partiels laissés par d'anciennes tentatives annulées."""
+        """Remove partial files left by earlier cancelled attempts."""
         blobs = repo_cache_dir(repo) / "blobs"
         if blobs.is_dir():
             for p in blobs.glob("*.incomplete"):
@@ -220,7 +217,7 @@ class DownloadManager:
 
 
 def _repo_links(hub: Path):
-    """Tous les liens symboliques des arbres de dépôts (snapshots/ et blobs/)."""
+    """Every symlink under the repo trees (snapshots/ and blobs/)."""
     for repo in hub.glob("models--*"):
         for sub in ("snapshots", "blobs"):
             d = repo / sub
@@ -231,14 +228,14 @@ def _repo_links(hub: Path):
 
 
 def _delete_source(src: HfSource, keep: list[HfSource]) -> int:
-    """Supprime les fichiers d'un dépôt qui appartiennent à ce modèle et à aucun autre ; retourne les octets libérés.
+    """Delete the files of a repo that belong to this model and no other; returns bytes freed.
 
-    Le cache Hugging Face (huggingface_hub ≥ 1.0) range les données dans un magasin global dédupliqué
-    (`hub/blobs/xx/<hash>`) ; chaque dépôt ne contient que des liens. Supprimer le dépôt ne libère donc rien :
-    il faut ensuite retirer les données qu'aucun lien ne référence plus.
+    The Hugging Face cache (huggingface_hub >= 1.0) keeps data in a global deduplicated store
+    (`hub/blobs/xx/<hash>`) and each repo only holds links, so removing the repo frees nothing by itself:
+    the data no link points to must be removed afterwards.
 
-    Plusieurs modèles peuvent partager un dépôt (ex. un encodeur de texte) : on ne retire alors que les fichiers
-    requis par aucun autre. Sans autre modèle sur ce dépôt, tout le dépôt est retiré."""
+    Models can share a repo (e.g. a text encoder). Then only files no other model needs are removed;
+    with no other model on the repo, the whole repo goes."""
     import shutil
 
     hub = hf_hub_dir().resolve()
@@ -252,7 +249,7 @@ def _delete_source(src: HfSource, keep: list[HfSource]) -> int:
             try:
                 if p.is_symlink():
                     targets.add(p.resolve())
-                elif p.is_file():  # ancienne disposition : données dans le dépôt
+                elif p.is_file():  # old layout: data stored in the repo itself
                     freed += p.stat().st_size
             except OSError:
                 pass
@@ -271,7 +268,7 @@ def _delete_source(src: HfSource, keep: list[HfSource]) -> int:
                     except OSError:
                         pass
                     p.unlink(missing_ok=True)
-        # liens de blobs/ du dépôt devenus orphelins
+        # blobs/ links of this repo that became orphans
         blobs = root / "blobs"
         if blobs.is_dir():
             live = set()
@@ -289,7 +286,7 @@ def _delete_source(src: HfSource, keep: list[HfSource]) -> int:
                     except OSError:
                         pass
 
-    # Données qu'aucun lien du cache ne référence plus.
+    # Data that no link in the cache points to anymore.
     referenced: set[Path] = set()
     for p in _repo_links(hub):
         try:

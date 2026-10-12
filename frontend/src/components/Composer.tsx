@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowUp, Info, Paperclip, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
@@ -42,7 +45,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const welcomeShown = !!useWelcomeModel(); // l'accueil affiche déjà la carte d'installation de ce modèle
+  const welcomeShown = !!useWelcomeModel(); // the welcome screen already shows this model's install card
   const hasRefs = references.length > 0;
   const setModel = useStore((st) => st.setModel);
   const params = effectiveParams(model, stored, hasRefs);
@@ -52,7 +55,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     return () => registerComposer(null);
   }, []);
 
-  // Hauteur automatique du champ.
+  // Auto-grow the textarea.
   useLayoutEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -60,7 +63,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     el.style.height = `${Math.min(el.scrollHeight, window.innerHeight * 0.4)}px`;
   }, [prompt]);
 
-  // Un modèle qui accepte toutes les images jointes : prêt d'abord, sinon installable, le plus léger en premier.
+  // A model that accepts all attached images: ready ones first, then installable, lightest first.
   const { data: catalog } = useModels();
   const multiAlternative = (catalog?.models ?? [])
     .filter((m) => m.id !== model.id && m.reference_mode === "multi" && m.compatible && m.max_references >= references.length)
@@ -69,7 +72,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     ? { label: `Passer à ${multiAlternative.name} (${BACKENDS[multiAlternative.backend]})`, run: () => setModel(multiAlternative.id) }
     : undefined;
 
-  // Contraintes du modèle vis-à-vis des références.
+  // Model constraints on reference images.
   const notices: { tone: "warn" | "info"; text: string; action?: { label: string; run: () => void } }[] = [];
   if (model.requires_references && !hasRefs)
     notices.push({ tone: "warn", text: `${model.name} modifie des images existantes : ajoutez au moins une image de référence.` });

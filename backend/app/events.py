@@ -1,4 +1,7 @@
-"""Diffusion d'événements temps réel vers les clients (Server-Sent Events)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Fan-out of real-time events to clients (Server-Sent Events)."""
 
 from __future__ import annotations
 
@@ -25,7 +28,7 @@ class EventBus:
             try:
                 q.put_nowait(payload)
             except asyncio.QueueFull:
-                # Client trop lent : on le déconnecte, il se reconnectera et rechargera l'état.
+                # Slow client: drop it. It will reconnect and reload its state.
                 self._subscribers.discard(q)
 
 

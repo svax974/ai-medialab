@@ -1,6 +1,9 @@
 #!/bin/sh
-# Crée le .dmg de l'application macOS avec hdiutil (sans AppleScript/Finder, donc utilisable en CI et en SSH).
-# Usage : scripts/make_dmg_macos.sh [chemin/vers/AI\ MediaLab.app] [sortie.dmg]
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+# Builds the macOS .dmg with hdiutil (no AppleScript/Finder, so it works in CI and over SSH).
+# Usage: scripts/make_dmg_macos.sh [chemin/vers/AI\ MediaLab.app] [sortie.dmg]
 set -eu
 cd "$(dirname "$0")/.."
 BUNDLE_DIR="desktop/src-tauri/target/release/bundle"
@@ -11,7 +14,7 @@ OUT="${2:-$BUNDLE_DIR/dmg/AI MediaLab_0.1.0_${ARCH}.dmg}"
 
 STAGE="$(mktemp -d "${TMPDIR:-/tmp}/cn-dmg.XXXXXX")"
 trap 'rm -rf "$STAGE"' EXIT
-ditto "$APP" "$STAGE/$(basename "$APP")"      # ditto conserve signature, liens et attributs
+ditto "$APP" "$STAGE/$(basename "$APP")"      # ditto keeps signature, links and attributes
 ln -s /Applications "$STAGE/Applications"
 mkdir -p "$(dirname "$OUT")"
 rm -f "$OUT"

@@ -1,4 +1,7 @@
-"""Réglages effectifs du moteur GGUF (étapes et guidance par défaut en édition)."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Effective GGUF engine settings (default steps and guidance when editing)."""
 
 import os
 

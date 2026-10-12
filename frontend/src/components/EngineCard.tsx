@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useState } from "react";
 import { Power } from "lucide-react";
 import { toast } from "sonner";
@@ -7,7 +10,7 @@ import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { IconButton } from "./ui";
 
-/** État du moteur : modèle chargé en mémoire, chargement en cours, génération, file d'attente. */
+/** Engine status: loaded model, loading, generating, queue. */
 export function EngineCard() {
   const engine = useStore((s) => s.engine);
   const { data } = useModels();

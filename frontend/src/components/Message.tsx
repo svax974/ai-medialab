@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import {
@@ -16,7 +19,7 @@ import { IconButton, Mark, Spinner, Tip } from "./ui";
 
 const ACTIVE = ["queued", "loading", "running"];
 
-// --- Message utilisateur ---------------------------------------------------------------------------
+// --- User message ---
 
 export function UserMessage({ message, audio = false }: { message: Message; audio?: boolean }) {
   const openLightbox = useStore((s) => s.openLightbox);
@@ -79,7 +82,7 @@ export function UserMessage({ message, audio = false }: { message: Message; audi
   );
 }
 
-// --- Réponse (génération) --------------------------------------------------------------------------
+// --- Reply (generation) ---
 
 export function AssistantMessage({ message }: { message: Message }) {
   const { data } = useModels();
@@ -286,7 +289,7 @@ function MessageFooter({ message, active }: { message: Message; active: boolean 
   );
 }
 
-// --- Tuiles ----------------------------------------------------------------------------------------
+// --- Tiles ---
 
 export function ImageTile({ asset, ratio, fresh, onOpen }: { asset: Asset; ratio: number; fresh: boolean; onOpen: () => void }) {
   const r = asset.width && asset.height ? asset.width / asset.height : ratio;
@@ -347,7 +350,7 @@ export function TileActions({ asset, onOpen }: { asset: Asset; onOpen?: () => vo
 }
 
 function DevelopingTile({ ratio, previewUrl, fraction, active }: { ratio: number; previewUrl?: string | null; fraction: number; active: boolean }) {
-  // Le flou et la teinte « bain de révélateur » diminuent à mesure que l'image se forme.
+  // Blur and the developer-bath tint fade as the image forms.
   const blur = Math.round(22 * (1 - fraction));
   return (
     <div className="tray relative overflow-hidden rounded-2xl ring-1 ring-line" style={{ aspectRatio: ratio }}>
@@ -373,7 +376,7 @@ function DevelopingTile({ ratio, previewUrl, fraction, active }: { ratio: number
   );
 }
 
-// --- Utilitaires -----------------------------------------------------------------------------------
+// --- Helpers ---
 
 export function copy(text: string) {
   navigator.clipboard.writeText(text).then(

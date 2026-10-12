@@ -1,5 +1,8 @@
-"""Moteur de démonstration : images synthétiques instantanées, pour tester l'interface sans GPU.
-Activé avec la variable d'environnement IMAGEGEN_DEMO=1."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Demo engine: fake images generated instantly, to try the UI without a GPU.
+Enabled with the IMAGEGEN_DEMO=1 environment variable."""
 
 from __future__ import annotations
 

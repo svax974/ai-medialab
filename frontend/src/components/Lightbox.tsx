@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { ChevronLeft, ChevronRight, Copy, Download, Heart, ImagePlus, MessageSquare, PanelRightClose, PanelRightOpen, Trash2, X } from "lucide-react";

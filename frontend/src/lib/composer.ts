@@ -1,4 +1,7 @@
-// Actions du composer partagées entre composants (import, focus, paramètres effectifs).
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Composer actions shared between components (import, focus, effective params).
 import { toast } from "sonner";
 import { api, type Asset, type GenParams, type ModelInfo } from "./api";
 import { useStore } from "./store";
@@ -40,7 +43,7 @@ export async function uploadFiles(files: File[]) {
   }
 }
 
-/** Ajoute une image (générée ou importée) comme référence du prochain message. */
+/** Adds an image (generated or imported) as a reference for the next message. */
 export function addAsReference(asset: Asset) {
   useStore.getState().addReferences([asset]);
   useStore.getState().closeLightbox();
@@ -48,11 +51,11 @@ export function addAsReference(asset: Asset) {
   toast.success("Image ajoutée comme référence", { duration: 1800 });
 }
 
-/** Paramètres effectifs : défauts du modèle + préférences mémorisées. */
+/** Effective params: model defaults plus saved preferences. */
 export function effectiveParams(model: ModelInfo, stored: GenParams | undefined, hasRefs: boolean): GenParams {
   const defaults: GenParams = Object.fromEntries(model.params.map((p) => [p.key, p.default]));
   const merged: GenParams = { ...defaults, megapixels: model.default_megapixels, ...stored };
-  // Avec des références, la définition par défaut est « Origine » (0) : on garde la taille de l'image.
+  // With references the default resolution is "Origine" (0): keep the source image size.
   if (hasRefs && stored?.megapixels === undefined) merged.megapixels = 0;
   if (!merged.aspect || (merged.aspect === "auto" && !hasRefs)) merged.aspect = hasRefs ? "auto" : "1:1";
   return merged;

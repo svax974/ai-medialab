@@ -1,4 +1,7 @@
-"""Catalogue des modèles tel que vu par l'interface : disponibilité, compatibilité mémoire, installation."""
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
+
+"""Model catalog as the UI sees it: availability, memory fit, install state."""
 
 from __future__ import annotations
 
@@ -13,14 +16,14 @@ from .jobs import load_settings
 from .system import get_system, memory_plan
 
 
-# Modèles conseillés pour démarrer, par ordre de préférence (légers d'abord, sous licences permissives d'abord).
+# Suggested first models, in order of preference (light and permissively licensed first).
 STARTER_ORDER = ["z-image-turbo-gguf", "qwen-image-2.1-gguf", "qwen-image-2.1", "sdxl-base", "z-image-turbo"]
-# Audio : Pocket TTS (clonage, français, temps réel sur CPU) puis Kokoro (le plus léger).
+# Audio: Pocket TTS (cloning, French, real time on CPU), then Kokoro (lightest).
 AUDIO_STARTER_ORDER = ["pocket-tts", "kokoro-82m", "qwen3-tts-custom-small"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
-    """Les modèles audio tournent sur CPU ou GPU : seule la mémoire compte pour la faisabilité."""
+    """Audio models run on CPU or GPU, so only memory decides feasibility."""
     ram = system["ram_gb"]
     need = (spec.weights_gb or 0) * 1.6 + 1.5
     if ram < need:
@@ -35,13 +38,13 @@ _QUANT = re.compile(r"(?<![A-Za-z0-9])((?:IQ|Q)\d(?:_[A-Z0-9]+)*|BF16|F16|F32)(?
 
 
 def quant_from_name(name: str) -> str:
-    """« z_image_turbo-Q4_K.gguf » -> « Q4_K »."""
+    """'z_image_turbo-Q4_K.gguf' -> 'Q4_K'."""
     m = _QUANT.search(name.rsplit("/", 1)[-1])
     return m.group(1).upper() if m else ""
 
 
 def precision_of(spec, quantize: int | None) -> str:
-    """Précision des poids telle qu'elle sera utilisée (pour l'affichage)."""
+    """Weight precision as it will be used (display only)."""
     if spec.precision:
         return spec.precision
     if spec.backend == "mlx":
@@ -62,7 +65,7 @@ def _engine_name(spec, engine: dict[str, Any]) -> str:
 
 
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
-    """Ce que l'installation apporte, en clair."""
+    """Plain-language description of what installing brings (UI text)."""
     if spec.backend == "pack":
         return f"environnement Python isolé avec {engine.get('pack_contents') or ''}".rstrip()
     if spec.backend == "sdcpp":
@@ -87,7 +90,7 @@ def describe_models() -> dict[str, Any]:
     for base in MODELS.values():
         spec = resolve(base, chosen)
         if spec.backend == "mlx" and not apple:
-            continue  # MLX n'existe que sur Mac Apple Silicon : inutile de l'afficher ailleurs
+            continue  # MLX only runs on Apple Silicon Macs, no point listing it elsewhere
         m = spec.to_public()
         if spec.backend == "demo":
             engine = {"available": True}
@@ -95,7 +98,7 @@ def describe_models() -> dict[str, Any]:
             engine = audio_packs.engine_info(spec.options["pack"])
         else:
             engine = system["engines"].get(spec.backend, {"available": False, "reason": "Moteur inconnu."})
-        # Un moteur que l'application sait installer n'est pas un obstacle : on proposera de l'installer.
+        # An engine the app can install is not a blocker; the UI offers to install it.
         usable_engine = bool(engine["available"] or engine.get("installable"))
         if not usable_engine:
             plan = {"fits": False, "strategy": "none", "note": engine.get("reason", "")}
@@ -125,7 +128,7 @@ def describe_models() -> dict[str, Any]:
             installed_gb=status["size_gb"],
             download=job.public() if job and job.state in ("running", "error") else None,
             ready=bool(compatible and engine["available"] and status["state"] == "installed"),
-            # Rétro-compatibilité de l'interface : « téléchargé » = prêt à l'emploi.
+            # Kept for older UI code: "downloaded" means installed.
             downloaded=status["state"] == "installed",
         )
         models.append(m)
@@ -136,7 +139,7 @@ def describe_models() -> dict[str, Any]:
         usable = [m for m in mine if m["compatible"]]
         by_id = {m["id"]: m for m in usable}
         starter = next((by_id[i] for i in order if i in by_id), usable[0] if usable else None)
-        # Par défaut : un modèle prêt, sinon un modèle déjà téléchargé, sinon celui qu'on recommande d'installer.
+        # Default: a ready model, else one already downloaded, else the recommended one.
         default = ready[0] if ready else (next((m for m in usable if m["install"] == "installed"), None)
                                           or starter or (mine[0] if mine else None))
         return {"default_model_id": default["id"] if default else None,

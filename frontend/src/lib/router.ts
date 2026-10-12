@@ -1,4 +1,7 @@
-// Routeur minimal (History API) : "/", "/c/:id", "/galerie" (images) ; "/audio", "/audio/voix", "/audio/bibliotheque" (audio).
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Minimal router (History API): "/", "/c/:id", "/galerie" (images) ; "/audio", "/audio/voix", "/audio/bibliotheque" (audio).
 import { useSyncExternalStore } from "react";
 
 export type Route =

@@ -1,8 +1,11 @@
-// AI MediaLab — coque de bureau.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// AI MediaLab desktop shell.
 //
-// Rôle : lancer le serveur Python embarqué (runtime/python + backend), attendre qu'il réponde, puis
-// afficher l'interface dans la fenêtre. À la fermeture, arrêter proprement tout l'arbre de processus
-// (serveur + worker de génération, qui peut tenir des dizaines de Go de mémoire).
+// Starts the bundled Python server (runtime/python + backend), waits until it answers, then shows the UI
+// in the window. On exit it stops the whole process tree (server + generation worker, which can hold
+// tens of GB of memory).
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::{
@@ -31,8 +34,8 @@ const STOP_GRACE: Duration = Duration::from_secs(6);
 
 struct Backend(Mutex<Option<Child>>);
 
-/// Positionné par le gestionnaire de signaux (SIGTERM/SIGINT/SIGHUP) ; surveillé par un thread qui
-/// demande alors une sortie normale — ce qui arrête le serveur et le worker (sinon ils resteraient orphelins).
+/// Set by the signal handler (SIGTERM/SIGINT/SIGHUP). A watcher thread then requests a normal exit, which
+/// stops the server and the worker (otherwise they would be orphaned).
 static SIGNALED: AtomicBool = AtomicBool::new(false);
 
 #[cfg(unix)]
@@ -41,8 +44,8 @@ extern "C" fn on_signal(_sig: libc::c_int) {
 }
 
 fn main() {
-    // Linux : le moteur de rendu DMA-BUF de WebKitGTK affiche une fenêtre vide ou plante avec certains pilotes
-    // NVIDIA propriétaires (cas d'usage principal de cette version). Désactivé sauf demande explicite.
+    // Linux: WebKitGTK's DMA-BUF renderer shows a blank window or crashes with some proprietary NVIDIA
+    // drivers (the main target here). Disabled unless explicitly set.
     #[cfg(target_os = "linux")]
     if env::var_os("WEBKIT_DISABLE_DMABUF_RENDERER").is_none() {
         env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
@@ -59,7 +62,7 @@ fn main() {
 
     #[cfg(not(any(target_os = "android", target_os = "ios")))]
     {
-        // Une seule instance : un second lancement ramène la fenêtre existante au premier plan.
+        // Single instance: a second launch brings the existing window to the front.
         builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(w) = app.get_webview_window("main") {
                 let _ = w.unminimize();
@@ -88,8 +91,8 @@ fn main() {
             });
             let last_destination: Arc<Mutex<String>> = Arc::new(Mutex::new(String::new()));
 
-            // Fenêtre créée ici (et non dans tauri.conf.json) pour pouvoir brancher le gestionnaire de
-            // téléchargements : sans lui, WKWebView ignore les liens <a download>.
+            // Window built here (not in tauri.conf.json) so we can hook the download handler;
+            // without it WKWebView ignores <a download> links.
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
                 .title("AI MediaLab")
                 .inner_size(1440.0, 900.0)
@@ -97,17 +100,17 @@ fn main() {
                 .center()
                 .theme(Some(Theme::Dark))
                 .background_color(Color(13, 11, 10, 255))
-                // Sinon Tauri intercepte les fichiers déposés et le glisser-déposer HTML5 de l'interface ne reçoit rien.
+                // Otherwise Tauri intercepts dropped files and the UI's HTML5 drag and drop receives nothing.
                 .disable_drag_drop_handler()
                 .on_download(move |webview, event| {
                     match event {
                         DownloadEvent::Requested { url, destination } => {
-                            // Destination par défaut de wry : dossier Téléchargements, nom suggéré, sans écrasement.
+                            // wry's default destination: Downloads folder, suggested name, no overwrite.
                             shell_log(&logs_dir, &format!("téléchargement demandé : {url} → {}", destination.display()));
                             *last_destination.lock().unwrap() = destination.display().to_string();
                         }
                         DownloadEvent::Finished { url, path, success } => {
-                            // Sur macOS, l'événement ne renseigne pas toujours le chemin : on retombe sur la destination demandée.
+                            // On macOS the event does not always carry the path: fall back to the requested destination.
                             let shown = path
                                 .map(|p| p.display().to_string())
                                 .unwrap_or_else(|| last_destination.lock().unwrap().clone());
@@ -133,7 +136,7 @@ fn main() {
         });
 }
 
-// --- Journal de la coque et notifications ----------------------------------------------------------
+// --- Shell log and notifications ---
 
 fn shell_log(logs_dir: &Path, line: &str) {
     let _ = fs::create_dir_all(logs_dir);
@@ -142,8 +145,8 @@ fn shell_log(logs_dir: &Path, line: &str) {
     }
 }
 
-/// Notifie la page : événement `cn-download` (l'interface peut l'écouter et poser `window.__cnHandlesDownloads = true`),
-/// sinon petite bulle de secours.
+/// Notifies the page with a `cn-download` event (the UI can listen and set `window.__cnHandlesDownloads = true`),
+/// otherwise shows a small fallback toast.
 fn download_toast_js(path: &str, success: bool) -> String {
     format!(
         r#"(function(p, ok) {{
@@ -163,7 +166,7 @@ fn download_toast_js(path: &str, success: bool) -> String {
     )
 }
 
-// --- Écran de démarrage ----------------------------------------------------------------------------
+// --- Splash screen ---
 
 fn js_str(s: &str) -> String {
     serde_json::to_string(s).unwrap_or_else(|_| "\"\"".into())
@@ -191,15 +194,15 @@ fn splash_error(app: &AppHandle, title: &str, detail: &str, log: &str) {
     );
 }
 
-// --- Démarrage du backend --------------------------------------------------------------------------
+// --- Backend startup ---
 
-/// Dossier contenant backend/, frontend/ et runtime/. `AI_MEDIALAB_RESOURCES` permet de pointer
-/// vers desktop/build/resources en développement (`tauri dev`).
+/// Folder holding backend/, frontend/ and runtime/. `AI_MEDIALAB_RESOURCES` can point to
+/// desktop/build/resources during development (`tauri dev`).
 fn resources_dir(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = env::var_os("AI_MEDIALAB_RESOURCES") {
         return Some(PathBuf::from(p));
     }
-    // Distribution « portable » (Windows/Linux) : backend/, frontend/ et runtime/ sont à côté de l'exécutable.
+    // Portable layout (Windows/Linux): backend/, frontend/ and runtime/ sit next to the executable.
     if let Some(dir) = env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf)) {
         if python_path(&dir).is_file() {
             return Some(dir);
@@ -275,8 +278,8 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
     );
 
     let mut cmd = Command::new(&python);
-    // L'application est volontairement passée en dernier : ainsi un `pkill -f "uvicorn app.main:app"`
-    // lancé pour redémarrer un serveur de développement ne tue pas le serveur embarqué.
+    // The app is passed last on purpose, so a `pkill -f "uvicorn app.main:app"` used to restart a dev
+    // server does not kill the bundled one.
     cmd.args([
         "-m",
         "uvicorn",
@@ -298,7 +301,7 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
     .env("PYTHONDONTWRITEBYTECODE", "1")
     .env("PYTHONIOENCODING", "utf-8")
     .env("IMAGEGEN_DATA_DIR", data_dir)
-    // Permet au serveur de s'arrêter seul si la coque disparaît brutalement (kill -9, plantage).
+    // Lets the server stop by itself if the shell dies abruptly (kill -9, crash).
     .env("IMAGEGEN_PARENT_PID", std::process::id().to_string())
     .stdin(Stdio::null())
     .stdout(Stdio::from(log))
@@ -307,7 +310,7 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
-        cmd.process_group(0); // nouveau groupe : on pourra signaler serveur + worker d'un coup
+        cmd.process_group(0); // new group, so server + worker can be signalled at once
     }
     #[cfg(windows)]
     {
@@ -318,9 +321,9 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
     cmd.spawn().map_err(|e| format!("Lancement du serveur impossible : {e}"))
 }
 
-/// Filet de sécurité (Unix) : processus indépendant qui surveille la coque et, si elle disparaît sans
-/// passer par l'arrêt normal (SIGKILL, plantage), arrête tout le groupe du serveur — y compris le worker de
-/// génération, qui peut tenir des dizaines de Go. Se termine seul quand le groupe n'existe plus.
+/// Safety net (Unix): an independent process watches the shell and, if it vanishes without a normal
+/// shutdown (SIGKILL, crash), stops the whole server group, including the generation worker that can hold
+/// tens of GB. Exits on its own once the group is gone.
 #[cfg(unix)]
 fn spawn_sentinel(shell_pid: u32, backend_pgid: u32) {
     use std::os::unix::process::CommandExt;
@@ -343,9 +346,9 @@ kill -s KILL -- "-$2" 2>/dev/null
         .spawn();
 }
 
-/// Windows : le serveur et le worker de génération (qui peut tenir des dizaines de Go) sont placés dans un
-/// « Job Object » configuré KILL_ON_JOB_CLOSE : si la coque disparaît (plantage, fin de tâche), Windows ferme
-/// le job et tue tout l'arbre — l'équivalent de la sentinelle Unix.
+/// Windows: the server and the generation worker (which can hold tens of GB) go into a Job Object with
+/// KILL_ON_JOB_CLOSE. If the shell dies (crash, task kill) Windows closes the job and kills the whole tree,
+/// the equivalent of the Unix sentinel.
 #[cfg(windows)]
 mod winjob {
     use std::os::windows::io::AsRawHandle;
@@ -358,7 +361,7 @@ mod winjob {
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
     };
 
-    // Conservé pour toute la vie du processus : sa fermeture (par Windows) déclenche l'arrêt de l'arbre.
+    // Kept for the whole process lifetime: Windows closing it triggers the tree shutdown.
     static JOB: AtomicIsize = AtomicIsize::new(0);
 
     pub fn attach(child: &Child) {
@@ -376,7 +379,7 @@ mod winjob {
                 std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32,
             );
             if ok == 0 || AssignProcessToJobObject(job, child.as_raw_handle() as HANDLE) == 0 {
-                return; // pas de job : on se rabat sur taskkill à la fermeture normale
+                return; // no job: fall back to taskkill on normal shutdown
             }
             JOB.store(job as isize, Ordering::SeqCst);
         }
@@ -384,7 +387,7 @@ mod winjob {
 }
 
 fn boot(app: AppHandle) {
-    // Laisse la webview charger l'écran de démarrage avant d'y envoyer des messages.
+    // Let the webview load the splash screen before sending it messages.
     thread::sleep(Duration::from_millis(900));
 
     let Some(res) = resources_dir(&app) else {
@@ -398,7 +401,7 @@ fn boot(app: AppHandle) {
             return;
         }
     };
-    // Migration : avant le renommage en « AI MediaLab », les données vivaient dans le dossier de l'ancien identifiant.
+    // Migration: before the rename to "AI MediaLab", data lived in the old identifier's folder.
     if let Some(parent) = data_dir.parent() {
         let legacy = parent.join("app.chambrenoire.studio");
         if legacy.is_dir() && !data_dir.exists() {
@@ -435,12 +438,12 @@ fn boot(app: AppHandle) {
     loop {
         thread::sleep(Duration::from_millis(250));
 
-        // Le serveur s'est-il arrêté ?
+        // Did the server exit?
         let exited = {
             let state = app.state::<Backend>();
             let mut guard = state.0.lock().unwrap();
             match guard.as_mut() {
-                None => return, // arrêt demandé pendant le démarrage
+                None => return, // shutdown requested during startup
                 Some(c) => c.try_wait().ok().flatten(),
             }
         };
@@ -472,14 +475,14 @@ fn boot(app: AppHandle) {
         }
     }
 
-    // Prêt : on remplace l'écran de démarrage par l'interface.
+    // Ready: replace the splash screen with the UI.
     let splash_url = app
         .get_webview_window("main")
         .and_then(|w| w.url().ok())
         .map(|u| u.to_string());
     eval(&app, format!("window.location.replace({})", js_str(&format!("http://127.0.0.1:{port}/"))));
 
-    // Auto-test des téléchargements (développement) : CN_SELFTEST_DOWNLOAD=1 déclenche un <a download> programmatique.
+    // Download self-test (dev): CN_SELFTEST_DOWNLOAD=1 triggers a programmatic <a download>.
     if env::var_os("CN_SELFTEST_DOWNLOAD").is_some() {
         thread::sleep(Duration::from_secs(4));
         eval(
@@ -489,7 +492,7 @@ fn boot(app: AppHandle) {
         );
     }
 
-    // Surveillance : si le serveur meurt en cours de route, on revient à l'écran de démarrage avec le journal.
+    // Watchdog: if the server dies mid-session, go back to the splash screen with the log.
     loop {
         thread::sleep(Duration::from_secs(1));
         let state = app.state::<Backend>();
@@ -513,7 +516,7 @@ fn boot(app: AppHandle) {
     }
 }
 
-// --- Arrêt -----------------------------------------------------------------------------------------
+// --- Shutdown ---
 
 fn stop_backend(app: &AppHandle) {
     let Some(state) = app.try_state::<Backend>() else { return };
@@ -522,12 +525,12 @@ fn stop_backend(app: &AppHandle) {
 
     #[cfg(unix)]
     {
-        // Signal au groupe entier : serveur + worker de génération.
+        // Signal the whole group: server + generation worker.
         unsafe { libc::kill(-(pid as i32), libc::SIGTERM) };
         let deadline = Instant::now() + STOP_GRACE;
         while Instant::now() < deadline {
             if matches!(child.try_wait(), Ok(Some(_))) {
-                // Le serveur est parti ; on s'assure qu'aucun enfant ne traîne.
+                // The server is gone; make sure no child lingers.
                 unsafe { libc::kill(-(pid as i32), libc::SIGKILL) };
                 return;
             }

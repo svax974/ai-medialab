@@ -2,6 +2,8 @@
   "name": "ai-medialab-ui",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
+  "author": "Stéphane Vaxelaire",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -1,12 +1,13 @@
-"""Packs de moteurs audio : un environnement Python isolé par famille de modèles, installé à la demande.
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Pourquoi isolés : les bibliothèques de synthèse vocale épinglent des versions incompatibles entre elles
-(Qwen3-TTS exige `transformers==4.57.3`, le moteur image `transformers>=5.17`, Chatterbox `==5.2.0`…).
-Un environnement par pack évite tout conflit, et chaque pack ne s'installe que si l'on utilise ses modèles.
+"""Audio engine packs: one isolated Python environment per model family, installed on demand.
 
-Installation : `uv` si disponible (rapide, et capable de récupérer un Python 3.12), sinon `venv` + `pip`
-avec l'interpréteur courant (3.12 requis). Rien n'exige de droits administrateur : tout va dans
-`<données>/engines/audio/<pack>/`.
+Isolated because the TTS libraries pin incompatible versions of each other (Qwen3-TTS needs
+`transformers==4.57.3`, the image engine `transformers>=5.17`, Chatterbox `==5.2.0`...).
+
+Install uses `uv` when available (fast, can fetch a Python 3.12), otherwise `venv` + `pip` with the
+current interpreter (must be 3.12). Everything goes under `<data>/engines/audio/<pack>/`, no admin rights.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ from typing import Any
 from .config import AUDIO_PACKS_DIR, AUDIO_RUNTIME_DIR, ROOT_DIR
 from .events import bus
 
-PYTHON_VERSION = "3.12"  # kokoro exige < 3.13 ; qwen-tts, pocket-tts et chatterbox vivent bien en 3.12
+PYTHON_VERSION = "3.12"  # kokoro needs < 3.13; qwen-tts, pocket-tts and chatterbox are fine on 3.12
 
 
 @dataclass(frozen=True)
@@ -35,15 +36,15 @@ class PackDef:
     id: str
     name: str
     requirements: tuple[str, ...]
-    # Modules à pouvoir importer pour considérer le pack comme sain.
+    # Modules that must import for the pack to count as healthy.
     imports: tuple[str, ...]
     size_mb: int
-    # Paquets PyTorch à installer d'abord depuis l'index du GPU (sinon pip prend la version CPU sous Windows).
+    # PyTorch packages to install first from the GPU index (pip would pick the CPU build on Windows).
     torch_packages: tuple[str, ...] = ("torch",)
     note: str = ""
-    # Ce qu'on installe, en une phrase (affiché avant l'installation).
+    # One-line description of what gets installed (shown before installing).
     contents: str = ""
-    # Nom du moteur d'inférence lui-même (et non de la famille de modèles) : ce qu'on installe vraiment.
+    # Name of the inference engine itself, not the model family.
     engine: str = ""
 
 
@@ -85,7 +86,7 @@ def venv_python(pack_id: str) -> Path:
 
 
 def runtime_dir() -> Path:
-    """Dossier du worker audio (livré avec l'application)."""
+    """Folder of the audio worker scripts, shipped with the app."""
     candidates = [AUDIO_RUNTIME_DIR, ROOT_DIR / "audio_runtime", Path(__file__).resolve().parents[1] / "audio_runtime"]
     return next((c for c in candidates if (c / "worker.py").is_file()), AUDIO_RUNTIME_DIR)
 
@@ -122,7 +123,7 @@ def can_install() -> tuple[bool, str]:
 
 
 def engine_info(pack_id: str) -> dict[str, Any]:
-    """Même forme que les moteurs de `system.py`, pour que le catalogue les traite pareil."""
+    """Same shape as the engines in `system.py`, so the catalog handles them alike."""
     pack = PACKS.get(pack_id)
     if not pack:
         return {"available": False, "reason": f"Pack audio inconnu : {pack_id}"}
@@ -138,10 +139,8 @@ def engine_info(pack_id: str) -> dict[str, Any]:
     return info
 
 
-# --- Installation ---------------------------------------------------------------------------------------
-
 def _torch_index(accelerators: list[dict[str, Any]]) -> str | None:
-    """Index PyTorch adapté au GPU (macOS : roues PyPI, qui incluent Metal)."""
+    """PyTorch index matching the GPU (macOS: PyPI wheels, which include Metal)."""
     if sys.platform == "darwin":
         return None
     vendors = {a["vendor"] for a in accelerators}
@@ -159,7 +158,7 @@ class PackInstallCancelled(Exception):
 
 
 class PackInstaller:
-    """Une installation à la fois ; l'état est diffusé en temps réel (événement `pack.install`)."""
+    """One install at a time; state is broadcast live through the `pack.install` event."""
 
     def __init__(self) -> None:
         self.state: dict[str, Any] = {"state": "idle"}
@@ -192,7 +191,7 @@ class PackInstaller:
             raise RuntimeError(why)
         system = get_system()
         free_mb = system["disk"]["free_gb"] * 1024
-        need_mb = pack.size_mb * 2 + 500  # téléchargement + installation
+        need_mb = pack.size_mb * 2 + 500  # download + unpacked install
         if free_mb < need_mb:
             raise RuntimeError(f"Espace disque insuffisant : ≈ {need_mb} Mo nécessaires, {int(free_mb)} Mo libres.")
         self._cancel.clear()
@@ -210,7 +209,7 @@ class PackInstaller:
             self._proc.terminate()
         return True
 
-    # -- thread ----------------------------------------------------------------------------------------------
+    # Runs in a worker thread.
 
     def _exec(self, cmd: list[str], message: str, env: dict[str, str] | None = None) -> None:
         self._set(message=message)
@@ -225,7 +224,7 @@ class PackInstaller:
             if not line:
                 continue
             tail = (tail + [line])[-12:]
-            if time.time() - last > 0.4:  # ne pas inonder le flux d'événements
+            if time.time() - last > 0.4:  # don't flood the event stream
                 self._set(detail=line[:160])
                 last = time.time()
         code = self._proc.wait()
@@ -273,7 +272,7 @@ class PackInstaller:
     def uninstall(self, pack_id: str) -> None:
         if self.running and self.state.get("pack") == pack_id:
             raise RuntimeError("Une installation est en cours.")
-        shutil.rmtree(pack_dir(pack_id), ignore_errors=True)  # bloquant ; l'appelant publie `models.changed`
+        shutil.rmtree(pack_dir(pack_id), ignore_errors=True)  # blocking; the caller publishes `models.changed`
 
 
 installer = PackInstaller()

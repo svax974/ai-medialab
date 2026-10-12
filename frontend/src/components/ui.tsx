@@ -1,4 +1,7 @@
-// Petits composants d'interface partagés.
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
+// Small shared UI components.
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cx } from "../lib/format";
@@ -98,7 +101,7 @@ export function Spinner({ className }: { className?: string }) {
   );
 }
 
-/** Logo : un objectif / une lumière inactinique. */
+/** Logo: a lens / an actinic-safe light. */
 export function Mark({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden>

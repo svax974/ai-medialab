@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Stéphane Vaxelaire
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -38,7 +41,7 @@ export function ModelsDialog() {
   useEffect(() => {
     if (open) setTab(useStore.getState().modelsSearch ?? mode);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Ouverture depuis « Chercher un modèle » : on amène la recherche à l'écran.
+  // Opened from "Chercher un modèle": scroll the search into view.
   useEffect(() => {
     if (!open || !searchKind) return;
     const t = setTimeout(() => {
@@ -148,7 +151,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   const freeGb = system?.disk.free_gb;
   const noRoom = !installed && !dl && need > 0 && freeGb != null && freeGb < need + 1;
 
-  // Suppression bloquante : on reste en attente tant que les fichiers ne sont pas réellement effacés.
+  // Blocking delete: wait until the files are actually gone.
   const [deleting, setDeleting] = useState(false);
   const refresh = () => Promise.all([
     queryClient.invalidateQueries({ queryKey: keys.models }),
@@ -318,7 +321,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   );
 }
 
-/** Choix de la quantification : seule celle qu'on sélectionne est téléchargée, aucune copie inutile. */
+/** Quantization choice: only the selected one is downloaded, no extra copies. */
 function VariantPicker({ model: m, disabled }: { model: ModelInfo; disabled?: boolean }) {
   const choose = useMutation({
     mutationFn: (key: string) => api.saveSettings({ variant: { [m.id]: key } }),

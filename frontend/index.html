@@ -1,4 +1,9 @@
 <!doctype html>
+<!--
+  Copyright (c) 2026 Stéphane Vaxelaire
+  SPDX-License-Identifier: MIT
+-->
+
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
@@ -8,7 +13,7 @@
     <title>AI MediaLab</title>
     <script>
       try {
-        // Sombre par défaut, quel que soit le réglage du système ; le clair n'est qu'un choix explicite.
+        // Dark by default regardless of the system setting; light is an explicit choice only.
         document.documentElement.dataset.theme = localStorage.getItem("cn-theme") === "light" ? "light" : "dark";
       } catch { document.documentElement.dataset.theme = "dark"; }
     </script>

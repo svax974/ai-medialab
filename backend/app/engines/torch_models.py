@@ -1,7 +1,10 @@
-"""Modèles ouverts exécutés par le moteur PyTorch + diffusers (NVIDIA CUDA, AMD ROCm, Apple MPS).
+# Copyright (c) 2026 Stéphane Vaxelaire
+# SPDX-License-Identifier: MIT
 
-Chaque entrée ne contient que des données : voir `diffusers_engine.py` pour le sens des `options`.
-Seuls des dépôts sans accès restreint (non « gated ») sont proposés : aucun compte Hugging Face requis.
+"""Open models run by the PyTorch + diffusers engine (NVIDIA CUDA, AMD ROCm, Apple MPS).
+
+Entries are pure data; see `diffusers_engine.py` for what `options` mean. Only ungated repos are
+offered, so no Hugging Face account is needed.
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ QWEN21_TORCH = ModelSpec(
     "Édite aussi des images : jusqu'à 10 références (personnes, objets, décors) à combiner par instruction.",
     engine=ENGINE,
     backend="torch",
-    default_quantize=None,  # la quantification MLX ne s'applique pas à PyTorch
+    default_quantize=None,  # MLX quantization doesn't apply to PyTorch
     quantize_options=[],
     reference_mode="multi",
     max_references=10,
@@ -56,7 +59,7 @@ Z_IMAGE_TURBO = ModelSpec(
     "Licence Apache 2.0 (usage commercial permis).",
     engine=ENGINE,
     backend="torch",
-    default_quantize=None,  # la quantification MLX ne s'applique pas à PyTorch
+    default_quantize=None,  # MLX quantization doesn't apply to PyTorch
     quantize_options=[],
     reference_mode="none",
     params=[
@@ -85,7 +88,7 @@ SDXL = ModelSpec(
     "(une image de départ, influence réglable). Pas de rendu fiable du texte dans l'image.",
     engine=ENGINE,
     backend="torch",
-    default_quantize=None,  # la quantification MLX ne s'applique pas à PyTorch
+    default_quantize=None,  # MLX quantization doesn't apply to PyTorch
     quantize_options=[],
     reference_mode="init",
     max_references=1,
@@ -96,7 +99,7 @@ SDXL = ModelSpec(
                   "Part de l'image de départ transformée. Bas = proche de l'original.", requires_references=True),
         ParamSpec("negative_prompt", "Prompt négatif", "text", "", help="Ce que l'image doit éviter.", advanced=True),
     ],
-    size_multiple=64,  # le UNet réduit 3 fois par 2 en latent (÷8) : tout autre multiple strie l'image
+    size_multiple=64,  # the UNet halves 3 times on top of the /8 latent; any other multiple produces stripes
     min_side=512,
     max_side=1536,
     hf_repo="stabilityai/stable-diffusion-xl-base-1.0",

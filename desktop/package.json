@@ -2,6 +2,8 @@
   "name": "ai-medialab-desktop",
   "private": true,
   "version": "0.1.0",
+  "license": "MIT",
+  "author": "Stéphane Vaxelaire",
   "scripts": {
     "tauri": "tauri",
     "runtime": "python3 ../scripts/build_runtime.py --profile mac-arm64 --out build/resources",
