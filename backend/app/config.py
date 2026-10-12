@@ -14,6 +14,9 @@ ENGINES_DIR = DATA_DIR / "engines"
 # The code running inside them (worker, engines) ships with the app.
 AUDIO_PACKS_DIR = ENGINES_DIR / "audio"
 AUDIO_RUNTIME_DIR = ROOT_DIR / "backend" / "audio_runtime"
+# Video engines that cannot share the main environment (pinned dependencies, official code): same mechanism.
+VIDEO_PACKS_DIR = ENGINES_DIR / "video"
+VIDEO_RUNTIME_DIR = ROOT_DIR / "backend" / "video_runtime"
 
 DB_PATH = DATA_DIR / "ai-medialab.db"
 UPLOADS_DIR = DATA_DIR / "uploads"

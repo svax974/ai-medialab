@@ -28,7 +28,7 @@ export function EngineCard() {
           detail: engine.load_started_at ? formatClock(now - engine.load_started_at) : "",
         };
       case "busy":
-        return { dot: "bg-safe animate-breathe shadow-[0_0_8px_var(--safe)]", label: model?.name ?? "Génération", detail: "en cours" };
+        return { dot: "bg-safe animate-breathe shadow-[0_0_8px_var(--safe)]", label: model?.name ?? "Génération", detail: model?.kind === "video" ? "rendu vidéo en cours" : "en cours" };
       case "ready":
         return {
           dot: "bg-ok",

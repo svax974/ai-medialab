@@ -88,15 +88,20 @@ def run_worker(model_id: str, quantize: int | None, options: dict, commands, eve
                 emit("item_start", job_id=job_id, index=index, seed=req.seed, t=time.time())
                 t0 = time.time()
                 result = engine.generate(req, hooks)
-                engine.save(result, output)
-                emit(
-                    "image",
-                    job_id=job_id,
-                    index=index,
-                    path=str(output),
-                    seed=req.seed,
-                    seconds=round(time.time() - t0, 1),
-                )
+                if spec.kind == "video":
+                    info = engine.save(result, output)
+                    emit("video", job_id=job_id, index=index, path=str(output), seed=req.seed,
+                         seconds=round(time.time() - t0, 1), **info)
+                else:
+                    engine.save(result, output)
+                    emit(
+                        "image",
+                        job_id=job_id,
+                        index=index,
+                        path=str(output),
+                        seed=req.seed,
+                        seconds=round(time.time() - t0, 1),
+                    )
                 if cancel_event.is_set():
                     raise GenerationCancelled()
             emit("done", job_id=job_id)

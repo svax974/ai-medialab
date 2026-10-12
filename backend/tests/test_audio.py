@@ -102,3 +102,13 @@ class TestCatalog:
         a = audio_packs._requirements_hash(audio_packs.PACKS["speech"])
         b = audio_packs._requirements_hash(audio_packs.PACKS["qwen3"])
         assert a != b
+
+
+def test_whisper_specs_follow_the_platform():
+    from app import audio_packs
+    from app.engines import audio_specs
+
+    repo = audio_specs.WHISPER_SMALL.options["repo"]
+    assert repo.startswith("mlx-community/") == audio_packs.is_apple_silicon()
+    speech = audio_packs.PACKS["speech"]
+    assert ("mlx-whisper>=0.4" in audio_packs.requirements_for(speech)) == audio_packs.is_apple_silicon()

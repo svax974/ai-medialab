@@ -1,15 +1,16 @@
 // Copyright (c) 2026 Stéphane Vaxelaire
 // SPDX-License-Identifier: MIT
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
-import { ChevronLeft, ChevronRight, Copy, Download, Heart, ImagePlus, MessageSquare, PanelRightClose, PanelRightOpen, Trash2, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, CornerDownRight, Download, Film, Heart, ImagePlus, MessageSquare, PanelRightClose, PanelRightOpen, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { api } from "../lib/api";
 import { addAsReference } from "../lib/composer";
-import { cx, formatDay, formatDuration, formatTime } from "../lib/format";
+import { cx, formatDay, formatDuration, formatSeconds, formatTime } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { navigate, paths } from "../lib/router";
+import { assignVideoAsset, continueFromLastFrame, editAsVideoSource } from "../lib/video";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
 import { copy, download } from "./Message";
@@ -22,6 +23,8 @@ export function Lightbox() {
   const [info, setInfo] = useState(true);
   const [zoom, setZoom] = useState(false);
   const { data } = useModels();
+  const mode = useStore((s) => s.mode);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const items = lightbox?.items ?? [];
   const index = lightbox?.index ?? 0;
@@ -36,6 +39,22 @@ export function Lightbox() {
       if (e.key === "ArrowRight" && index < items.length - 1) setIndex(index + 1);
       if (e.key === "ArrowLeft" && index > 0) setIndex(index - 1);
       if (e.key.toLowerCase() === "i") setInfo((v) => !v);
+      // Player shortcuts (video): space / K play-pause, J / L skip 5 s, M mute, , / . step one frame.
+      const v = videoRef.current;
+      const k = e.key.toLowerCase();
+      if (v && !e.metaKey && !e.ctrlKey && !(e.target as HTMLElement).closest("button")) {
+        if (k === " " || k === "k") {
+          e.preventDefault();
+          if (v.paused) v.play().catch(() => undefined);
+          else v.pause();
+        } else if (k === "j") v.currentTime = Math.max(0, v.currentTime - 5);
+        else if (k === "l") v.currentTime = Math.min(v.duration || 0, v.currentTime + 5);
+        else if (k === "m") v.muted = !v.muted;
+        else if (k === "," || k === ".") {
+          v.pause();
+          v.currentTime = Math.max(0, v.currentTime + (k === "." ? 1 : -1) / 24);
+        }
+      }
       if (e.key.toLowerCase() === "f" && asset) api.patchAsset(asset.id, { favorite: !asset.favorite });
     };
     window.addEventListener("keydown", onKey);
@@ -43,12 +62,13 @@ export function Lightbox() {
   }, [lightbox, index, items.length, setIndex, asset]);
 
   if (!asset) return null;
+  const isVideo = asset.media === "video";
   const meta = asset.meta as { prompt?: string; model_id?: string; steps?: number; guidance?: number; strength?: number; seconds?: number };
   const prompt = meta.prompt ?? asset.prompt ?? null;
   const model = data?.models.find((m) => m.id === (meta.model_id ?? asset.model_id));
 
   const remove = async () => {
-    const ok = await confirm({ title: "Supprimer cette image ?", confirmLabel: "Supprimer", danger: true });
+    const ok = await confirm({ title: isVideo ? "Supprimer cette vidéo ?" : "Supprimer cette image ?", confirmLabel: "Supprimer", danger: true });
     if (!ok) return;
     try {
       await api.deleteAsset(asset.id);
@@ -72,9 +92,27 @@ export function Lightbox() {
                 {index + 1} / {items.length}
               </span>
               <div className="flex-1" />
-              <IconButton label="Utiliser comme référence" tone="glass" onClick={() => addAsReference(asset)}>
-                <ImagePlus className="size-4" />
-              </IconButton>
+              {isVideo ? (
+                <>
+                  <IconButton label="Utiliser comme vidéo source (modifier)" tone="glass" onClick={() => editAsVideoSource(asset)}>
+                    <Film className="size-4" />
+                  </IconButton>
+                  <IconButton label="Dernière image comme départ" tone="glass" onClick={() => continueFromLastFrame(asset)}>
+                    <CornerDownRight className="size-4" />
+                  </IconButton>
+                </>
+              ) : (
+                <IconButton
+                  label={mode === "video" ? "Utiliser comme image de départ" : "Utiliser comme référence"}
+                  tone="glass"
+                  onClick={() => {
+                    if (mode === "video") (close(), assignVideoAsset(asset));
+                    else addAsReference(asset);
+                  }}
+                >
+                  <ImagePlus className="size-4" />
+                </IconButton>
+              )}
               {asset.kind === "generated" && (
                 <IconButton label={asset.favorite ? "Retirer des favoris" : "Favori"} kbd="F" tone="glass" onClick={() => api.patchAsset(asset.id, { favorite: !asset.favorite })}>
                   <Heart className={cx("size-4", asset.favorite && "fill-[var(--safe)] text-[var(--safe)]")} />
@@ -97,6 +135,20 @@ export function Lightbox() {
               className={cx("relative min-h-0 flex-1", zoom ? "overflow-auto" : "grid place-items-center overflow-hidden px-16 pb-8")}
               onClick={(e) => e.target === e.currentTarget && close()}
             >
+              {isVideo ? (
+                <video
+                  key={asset.id}
+                  ref={videoRef}
+                  src={asset.url}
+                  poster={asset.thumb_url}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="max-h-full max-w-full animate-fade rounded-lg bg-black shadow-[0_40px_120px_-30px_rgba(0,0,0,0.9)]"
+                  style={{ maxHeight: "calc(100vh - 7.5rem)" }}
+                />
+              ) : (
               <img
                 key={asset.id}
                 src={asset.url}
@@ -108,6 +160,7 @@ export function Lightbox() {
                 )}
                 style={zoom ? undefined : { maxHeight: "calc(100vh - 7.5rem)" }}
               />
+              )}
               {index > 0 && (
                 <NavArrow side="left" onClick={() => setIndex(index - 1)} />
               )}
@@ -146,13 +199,15 @@ export function Lightbox() {
                 <div className="mb-2 font-mono text-[10.5px] uppercase tracking-[0.14em] text-white/45">Détails</div>
                 <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                   {model && <Row k="Modèle" v={model.name} />}
-                  {asset.kind === "upload" && <Row k="Fichier" v={asset.original_name ?? "image importée"} />}
+                  {asset.kind === "upload" && <Row k="Fichier" v={asset.original_name ?? (isVideo ? "vidéo importée" : "image importée")} />}
+                  {isVideo && asset.duration != null && <Row k="Durée" v={formatSeconds(asset.duration)} mono />}
+                  {isVideo && asset.fps ? <Row k="Cadence" v={`${asset.fps} i/s`} mono /> : null}
                   {asset.width && <Row k="Taille" v={`${asset.width} × ${asset.height} px`} mono />}
                   {asset.seed != null && <Row k="Graine" v={String(asset.seed)} mono copyable />}
                   {meta.steps && <Row k="Étapes" v={String(meta.steps)} mono />}
                   {meta.guidance != null && <Row k="Guidance" v={String(meta.guidance)} mono />}
                   {meta.strength != null && <Row k="Influence" v={String(meta.strength)} mono />}
-                  {meta.seconds && <Row k="Durée" v={formatDuration(meta.seconds)} mono />}
+                  {meta.seconds && !isVideo && <Row k="Durée" v={formatDuration(meta.seconds)} mono />}
                   <Row k="Date" v={`${formatDay(asset.created_at)}, ${formatTime(asset.created_at)}`} />
                 </dl>
               </section>
@@ -171,7 +226,7 @@ export function Lightbox() {
                 )}
                 {asset.kind === "generated" && (
                   <Button variant="danger" onClick={remove}>
-                    <Trash2 className="size-4" /> Supprimer l'image
+                    <Trash2 className="size-4" /> {isVideo ? "Supprimer la vidéo" : "Supprimer l'image"}
                   </Button>
                 )}
               </div>

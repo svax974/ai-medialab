@@ -12,6 +12,9 @@ how to run are accepted:
     sd-diffusers   Stable Diffusion 1.x or XL diffusers repo (PyTorch engine)
     qwen3-tts      Qwen3-TTS variant (preset voices, voice design or cloning)
     whisper-ct2    Whisper converted for faster-whisper (transcription)
+    video-diffusers  Wan 2.x / CogVideoX / HunyuanVideo 1.5 / LTX-2 diffusers repo: runs with the settings of the
+                   matching built-in model (same pipeline family)
+    video-gguf     another 4-bit GGUF of the Wan 2.2 TI2V 5B transformer (text encoder and VAE are kept)
 """
 
 from __future__ import annotations
@@ -22,7 +25,7 @@ import re
 from typing import Any
 
 from .. import db
-from . import audio_specs, gguf_models
+from . import audio_specs, gguf_models, video_specs
 from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
@@ -38,6 +41,31 @@ SD_PIPELINES = {
     "StableDiffusionXLPipeline": ("StableDiffusionXLImg2ImgPipeline", True),
     "StableDiffusionPipeline": ("StableDiffusionImg2ImgPipeline", False),
 }
+
+
+# Video: diffusers pipeline class -> id of the built-in model whose settings are copied.
+VIDEO_TEMPLATES = {
+    "WanPipeline": "wan-2.2-ti2v-5b",
+    "WanImageToVideoPipeline": "wan-2.2-ti2v-5b",
+    "CogVideoXPipeline": "cogvideox-2b",
+    "CogVideoXImageToVideoPipeline": "cogvideox-5b-i2v",
+    "HunyuanVideo15Pipeline": "hunyuan-video-1.5-t2v",
+    "HunyuanVideo15ImageToVideoPipeline": "hunyuan-video-1.5-i2v",
+    "LTX2Pipeline": "ltx-2.3-distilled",
+    "LTX2ImageToVideoPipeline": "ltx-2.3-distilled",
+}
+# Wan 2.2 A14B repos (two experts) have their own settings.
+WAN_A14B_TEMPLATES = {"WanPipeline": "wan-2.2-t2v-a14b", "WanImageToVideoPipeline": "wan-2.2-i2v-a14b"}
+# GGUF repos of a reference video model: Hugging Face base_model -> id of the model whose spec is copied.
+VIDEO_GGUF_TEMPLATES = {"Wan-AI/Wan2.2-TI2V-5B": "wan-2.2-ti2v-5b"}
+I2V_PIPELINES = {"WanImageToVideoPipeline", "CogVideoXImageToVideoPipeline", "HunyuanVideo15ImageToVideoPipeline",
+                 "LTX2ImageToVideoPipeline"}
+
+
+def video_template_id(pipeline: str, files: list[str] | set[str]) -> str:
+    if pipeline in WAN_A14B_TEMPLATES and any(f.startswith("transformer_2/") for f in files):
+        return WAN_A14B_TEMPLATES[pipeline]
+    return VIDEO_TEMPLATES[pipeline]
 
 
 def slug(repo: str, extra: str = "") -> str:
@@ -152,7 +180,61 @@ def _whisper(r: dict[str, Any]) -> ModelSpec:
     )
 
 
-BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper}
+def _video_diffusers(r: dict[str, Any]) -> ModelSpec:
+    base = next(m for m in video_specs.SPECS if m.id == r["template"])
+    spec = copy.deepcopy(base)
+    spec.variants, spec.default_variant, spec.variant = [], "", ""  # a recipe is one specific set of files
+    pipeline, files, size = r["pipeline"], list(r["files"]), float(r["size_gb"])
+    i2v = pipeline in I2V_PIPELINES
+    caps = spec.video
+    spec.options = {k: v for k, v in base.options.items() if k not in ("gguf", "text_encoder_repo")}
+    spec.options["pipeline"] = pipeline
+    if i2v:  # an image → video repo: the start image is mandatory
+        caps.tasks, caps.image_input, caps.video_input = ["i2v"], "required", "none"
+        spec.options.update(i2v_pipeline=None, v2v_pipeline=None)
+    else:
+        animates = bool(spec.options.get("i2v_pipeline"))  # can the template turn a start image into a video?
+        caps.tasks = [t for t in caps.tasks if t != "i2v" or animates] or ["t2v"]
+        caps.image_input = caps.image_input if animates else "none"
+        caps.last_frame = caps.last_frame and animates
+    spec.id, spec.custom, spec.precision = r["id"], True, r["precision"]
+    spec.name = f"{base.family} · {r['name']}"
+    spec.description = (f"Modèle du dépôt {r['repo']} (format diffusers, PyTorch), exécuté avec les réglages de "
+                        f"« {base.name} ». {base.description}")
+    spec.hf_repo = r["repo"]
+    spec.sources = [HfSource(r["repo"], files, [f for f in files if f.endswith(".safetensors")] + ["model_index.json"], size)]
+    spec.download_size_gb = size
+    spec.weights_gb, spec.largest_component_gb = float(r["weights_gb"]), float(r["largest_gb"])
+    spec.license = r.get("license") or "voir le dépôt"
+    spec.memory_hint = f"≈ {spec.weights_gb:.0f} Go de poids ({r['precision']}), {size:.0f} Go à télécharger."
+    spec.tags = [t for t in base.tags if t not in ("Apache 2.0", "licence restreinte")] + ["Hugging Face"]
+    return spec
+
+
+def _video_gguf(r: dict[str, Any]) -> ModelSpec:
+    base = next(m for m in video_specs.SPECS if m.id == r["template"])
+    variant = next(v for v in base.variants if v.options.get("gguf"))  # any 4-bit variant: same diffusers repo
+    spec = copy.deepcopy(base)
+    spec.variants, spec.default_variant, spec.variant = [], "", ""
+    repo, file, size = r["repo"], r["file"], float(r["size_gb"])
+    spec.options = {**base.options, **variant.options}
+    spec.options["gguf"] = {"transformer": (repo, file)}
+    spec.sources = [*variant.sources[:-1], HfSource(repo, [file], [file], size)]
+    spec.download_size_gb = round(sum(s.size_gb or 0 for s in spec.sources), 2)
+    spec.weights_gb = round((variant.weights_gb or 0) - (variant.sources[-1].size_gb or 0) + size, 1)
+    spec.largest_component_gb = variant.largest_component_gb
+    spec.id, spec.custom, spec.precision = r["id"], True, r["precision"]
+    spec.name = f"{base.name} · {r['name']}"
+    spec.description = (f"Variante {r['precision']} du dépôt {repo}, exécutée comme {base.name} (mêmes encodeur de texte "
+                        f"et VAE). {base.description}")
+    spec.license = r.get("license") or "voir le dépôt"
+    spec.memory_hint = f"≈ {spec.weights_gb:.0f} Go de poids ({r['precision']})."
+    spec.tags = [t for t in base.tags if t != "Apache 2.0"] + ["Hugging Face"]
+    return spec
+
+
+BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper,
+            "video-diffusers": _video_diffusers, "video-gguf": _video_gguf}
 
 
 def build(recipe: dict[str, Any]) -> ModelSpec:

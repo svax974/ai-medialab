@@ -21,13 +21,24 @@ const ACTIVE = ["queued", "loading", "running"];
 
 // --- User message ---
 
-export function UserMessage({ message, audio = false }: { message: Message; audio?: boolean }) {
+export function UserMessage({ message, audio = false, video = false }: { message: Message; audio?: boolean; video?: boolean }) {
   const openLightbox = useStore((s) => s.openLightbox);
 
   const reuse = () => {
     const s = useStore.getState();
     if (audio) {
       s.setAudioPrompt(message.prompt);
+      focusComposer(true);
+      return;
+    }
+    if (video) {
+      s.setVideoPrompt(message.prompt);
+      s.clearVideoSlots();
+      const images = message.references.filter((r) => r.media !== "video");
+      if (images[0]) s.setVideoSlot("start", images[0]);
+      if (images[1]) s.setVideoSlot("end", images[1]);
+      const clip = message.references.find((r) => r.media === "video");
+      if (clip) s.setVideoSlot("source", clip);
       focusComposer(true);
       return;
     }
@@ -40,7 +51,7 @@ export function UserMessage({ message, audio = false }: { message: Message; audi
   const remove = async () => {
     const ok = await confirm({
       title: "Supprimer ce message ?",
-      description: audio ? "Le texte et toutes les synthèses qui en découlent seront supprimés." : "Le prompt et toutes les générations qui en découlent seront supprimés.",
+      description: audio ? "Le texte et toutes les synthèses qui en découlent seront supprimés." : video ? "Le prompt et toutes les vidéos qui en découlent seront supprimés." : "Le prompt et toutes les générations qui en découlent seront supprimés.",
       confirmLabel: "Supprimer",
       danger: true,
     });
@@ -58,7 +69,9 @@ export function UserMessage({ message, audio = false }: { message: Message; audi
               className="relative size-20 overflow-hidden rounded-xl ring-1 ring-line-strong transition-transform hover:-translate-y-0.5"
             >
               <img src={r.thumb_url} alt="" className="size-full object-cover" loading="lazy" />
-              <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white/90">{i + 1}</span>
+              <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 font-mono text-[9px] text-white/90">
+                {r.media === "video" ? "vidéo" : i + 1}
+              </span>
             </button>
           ))}
         </div>
@@ -388,9 +401,10 @@ export function copy(text: string) {
 export function download(asset: Asset) {
   const a = document.createElement("a");
   a.href = asset.url;
-  const prompt = String(asset.meta?.prompt ?? asset.original_name ?? "image");
+  const video = asset.media === "video";
+  const prompt = String(asset.meta?.prompt ?? asset.original_name ?? (video ? "video" : "image"));
   const slug = prompt.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, "-").slice(0, 48).replace(/^-|-$/g, "");
-  a.download = `${slug || "image"}-${asset.seed ?? asset.id}.png`;
+  a.download = `${slug || (video ? "video" : "image")}-${asset.seed ?? asset.id}.${video ? "mp4" : "png"}`;
   document.body.appendChild(a);
   a.click();
   a.remove();

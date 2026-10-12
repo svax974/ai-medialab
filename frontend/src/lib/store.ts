@@ -14,6 +14,17 @@ export interface PendingUpload {
   name: string;
 }
 
+/** Where an imported file goes in the video composer. */
+export type VideoSlot = "start" | "end" | "source";
+
+export interface VideoUpload {
+  id: string;
+  slot: VideoSlot;
+  name: string;
+  /** 0..1 */
+  progress: number;
+}
+
 export type Theme = "dark" | "light";
 
 interface LightboxState {
@@ -29,7 +40,7 @@ export interface VoiceStudioState {
 }
 
 interface State {
-  // Mode: image or audio (switch in the left panel)
+  // Mode: image, audio or video (switch in the left panel)
   mode: ModelKind;
   setMode: (m: ModelKind) => void;
 
@@ -56,6 +67,21 @@ interface State {
   closeVoiceStudio: () => void;
   packInstall: PackInstallState;
   setPackInstall: (s: PackInstallState) => void;
+
+  // Video composer
+  videoPrompt: string;
+  videoModelId: string | null;
+  videoCount: number;
+  videoStart: Asset | null;
+  videoEnd: Asset | null;
+  videoSource: Asset | null;
+  videoUploads: VideoUpload[];
+  setVideoPrompt: (p: string) => void;
+  setVideoModel: (id: string) => void;
+  setVideoCount: (n: number) => void;
+  setVideoSlot: (slot: VideoSlot, asset: Asset | null) => void;
+  clearVideoSlots: () => void;
+  updateVideoUploads: (fn: (u: VideoUpload[]) => VideoUpload[]) => void;
 
   // Composer
   prompt: string;
@@ -136,6 +162,21 @@ export const useStore = create<State>()(
       closeVoiceStudio: () => set({ voiceStudio: null }),
       packInstall: { state: "idle" },
       setPackInstall: (packInstall) => set({ packInstall }),
+
+      videoPrompt: "",
+      videoModelId: null,
+      videoCount: 1,
+      videoStart: null,
+      videoEnd: null,
+      videoSource: null,
+      videoUploads: [],
+      setVideoPrompt: (videoPrompt) => set({ videoPrompt }),
+      setVideoModel: (videoModelId) => set({ videoModelId }),
+      setVideoCount: (videoCount) => set({ videoCount }),
+      setVideoSlot: (slot, asset) =>
+        set(slot === "start" ? { videoStart: asset } : slot === "end" ? { videoEnd: asset } : { videoSource: asset }),
+      clearVideoSlots: () => set({ videoStart: null, videoEnd: null, videoSource: null }),
+      updateVideoUploads: (fn) => set((s) => ({ videoUploads: fn(s.videoUploads) })),
 
       prompt: "",
       references: [],
@@ -231,6 +272,9 @@ export const useStore = create<State>()(
         cast: s.cast,
         audioCount: s.audioCount,
         autoplay: s.autoplay,
+        videoPrompt: s.videoPrompt,
+        videoModelId: s.videoModelId,
+        videoCount: s.videoCount,
       }),
     },
   ),

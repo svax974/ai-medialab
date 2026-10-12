@@ -27,7 +27,7 @@ from .config import OUTPUTS_DIR, PREVIEWS_DIR
 from .engines import get_spec
 from .engines.base import GenerationRequest
 from .events import bus
-from .media import asset_path, make_thumb, media_url, resolve_size
+from .media import asset_path, image_size, make_thumb, media_url, probe_video, resolve_size, video_frame_count, video_size, video_thumb
 from .worker import run_worker
 
 DEFAULT_SETTINGS: dict[str, Any] = {
@@ -292,6 +292,10 @@ class JobManager:
                 asset = await asyncio.to_thread(self._register_audio, message_id, plan, evt)
                 bus.publish("job.image", {"message_id": message_id, "conversation_id": plan["conversation_id"],
                                           "asset": asset})
+            elif kind == "video":
+                asset = await asyncio.to_thread(self._register_video, message_id, plan, evt)
+                bus.publish("job.image", {"message_id": message_id, "conversation_id": plan["conversation_id"],
+                                          "asset": asset})
             elif kind == "done":
                 self._finish(message_id, "done")
                 return
@@ -305,8 +309,9 @@ class JobManager:
             elif kind == "exit":
                 self.worker = None
                 self.state = "idle"
-                hint = ("Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite."
-                        if plan.get("kind") != "audio" else "Mémoire insuffisante ? Essayez un modèle plus léger.")
+                hint = {"audio": "Mémoire insuffisante ? Essayez un modèle plus léger.",
+                        "video": "Mémoire insuffisante ? Essayez une variante plus légère ou une durée/définition plus faible.",
+                        }.get(plan.get("kind"), "Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite.")
                 self._finish(message_id, "error", f"Le processus du modèle s'est arrêté (code {evt['code']}). {hint}")
                 return
 
@@ -327,11 +332,13 @@ class JobManager:
         self._publish_status()
 
         spec = get_spec(model_id)
-        if spec.kind == "audio":
+        if spec.backend == "pack":
+            # Audio and video packs share the worker handle; the pack's family picks the worker script.
             token = db.get_settings().get("hf_token")
+            options = {**spec.options, "language": plan["params"].get("language"),
+                       "sources": [{"repo": src.repo, "patterns": src.patterns} for src in spec.all_sources()]}
             self.worker = AudioWorkerHandle(
-                model_id, spec.options["pack"], spec.engine,
-                {**spec.options, "language": plan["params"].get("language")},
+                model_id, spec.options["pack"], spec.engine, options,
                 asyncio.get_running_loop(), env={"HF_TOKEN": token} if token else None,
             )
         else:
@@ -380,6 +387,8 @@ class JobManager:
             raise ValueError(str(exc)) from None
         if spec.kind == "audio":
             return self._build_audio_plan(msg, spec)
+        if spec.kind == "video":
+            return self._build_video_plan(msg, spec)
         params = dict(msg["params"])
 
         with db.connect() as conn:
@@ -489,6 +498,104 @@ class JobManager:
             "items": items, "prompt": msg["prompt"], "voice_label": voice_label,
             "speakers": [s.get("label") for s in segments if s.get("label")],
         }
+
+    def _build_video_plan(self, msg: dict, spec) -> dict:
+        params = dict(msg["params"])
+        caps = spec.video
+        if not msg["prompt"].strip():
+            raise ValueError("Le prompt est vide.")
+        with db.connect() as conn:
+            refs = conn.execute(
+                "SELECT a.kind, a.filename, a.media FROM message_refs r JOIN assets a ON a.id = r.asset_id "
+                "WHERE r.message_id = ? ORDER BY r.position",
+                (msg["parent_id"],),
+            ).fetchall()
+        existing = [(r["media"], asset_path(r["kind"], r["filename"])) for r in refs]
+        images = [p for m, p in existing if m == "image" and p.is_file()]
+        videos = [p for m, p in existing if m == "video" and p.is_file()]
+
+        # Decide the task from what is attached: a source video edits, a start image animates, else text only.
+        if videos and caps.video_input != "none":
+            # A reference image rides along with the edit when the model takes one (Kiwi-Edit, Bernini).
+            task, images = "v2v", (images[:1] if caps.image_input != "none" else [])
+        elif images and caps.image_input != "none":
+            task = "i2v"
+            images = images[: 2 if caps.last_frame else 1]
+        else:
+            task, images = "t2v", []
+        if task != "v2v":
+            videos = []
+        if caps.image_input == "required" and task != "i2v":
+            raise ValueError(f"{spec.name} a besoin d'une image de départ.")
+        if caps.video_input == "required" and task != "v2v":
+            raise ValueError(f"{spec.name} a besoin d'une vidéo source.")
+
+        res = next((r for r in caps.resolutions if r.id == params.get("resolution")),
+                   next((r for r in caps.resolutions if r.id == caps.default_resolution), caps.resolutions[0]))
+        aspect = str(params.get("aspect") or "16:9")
+        ratio = None
+        if aspect not in ("16:9", "9:16", "1:1", "4:3", "3:4"):
+            # "auto" (or anything unknown): follow the start image / source video.
+            ref = images[0] if images else None
+            if ref is not None:
+                w0, h0 = image_size(ref)
+                ratio = w0 / h0
+            elif videos:
+                info = probe_video(videos[0])
+                ratio = info["width"] / info["height"]
+            aspect = "16:9"
+        width, height = video_size(aspect, res.short_side, res.long_side, spec.size_multiple, ratio)
+
+        defaults = spec.default_params()
+        seconds = float(params.get("seconds") or caps.default_seconds)
+        frames = video_frame_count(seconds, caps.fps, caps.frame_step, caps.min_seconds, caps.max_seconds)
+        steps = int(params.get("steps") or defaults.get("steps") or 30)
+        guidance = params.get("guidance", defaults.get("guidance"))
+        strength = params.get("strength", defaults.get("strength")) if task == "v2v" else None
+        negative = params.get("negative_prompt") or None
+        seeds = (params.get("seeds") or [new_seed()])[:2]
+
+        params.update(width=width, height=height, steps=steps, seeds=seeds, frames=frames, fps=caps.fps,
+                      seconds=round(frames / caps.fps, 2), resolution=res.id, aspect=aspect, task=task)
+        if guidance is not None:
+            params["guidance"] = float(guidance)
+        if strength is not None:
+            params["strength"] = float(strength)
+        else:
+            params.pop("strength", None)
+        params["references_used"] = len(images) + len(videos)
+
+        items = []
+        for i, seed in enumerate(seeds):
+            req = GenerationRequest(
+                prompt=msg["prompt"], width=width, height=height, steps=steps, seed=int(seed),
+                guidance=float(guidance) if guidance is not None else None, negative_prompt=negative,
+                references=[str(p) for p in images], strength=float(strength) if strength is not None else None,
+                extra={"task": task, "frames": frames, "fps": caps.fps, "video": str(videos[0]) if videos else None},
+            )
+            items.append({"request": asdict(req), "output": str(OUTPUTS_DIR / f"{msg['id']}_{i}.mp4")})
+        return {"kind": "video", "model_id": spec.id, "conversation_id": msg["conversation_id"], "params": params,
+                "items": items, "prompt": msg["prompt"]}
+
+    def _register_video(self, message_id: str, plan: dict, evt: dict) -> dict:
+        path = Path(evt["path"])
+        asset_id = db.new_id()
+        thumb = video_thumb(path, asset_id)
+        meta = {
+            "model_id": plan["model_id"], "prompt": plan["prompt"], "steps": plan["params"]["steps"],
+            "guidance": plan["params"].get("guidance"), "seconds": evt.get("seconds"), "fps": evt.get("fps"),
+            "frames": evt.get("frames"), "has_audio": evt.get("has_audio"), "video_seconds": evt.get("duration"),
+            "task": plan["params"].get("task"), "strength": plan["params"].get("strength"),
+        }
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO assets (id, kind, media, conversation_id, message_id, filename, thumb, width, height, "
+                "seed, duration, position, meta, created_at) VALUES (?, 'generated', 'video', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (asset_id, plan["conversation_id"], message_id, path.name, thumb, evt.get("width"), evt.get("height"),
+                 evt["seed"], evt.get("duration"), evt["index"], json.dumps(meta), db.now()),
+            )
+            row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
+        return repo.asset_public(row)
 
     def _register_audio(self, message_id: str, plan: dict, evt: dict) -> dict:
         path = Path(evt["path"])

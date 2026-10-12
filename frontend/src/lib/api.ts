@@ -18,7 +18,37 @@ export interface ParamSpec {
   requires_references: boolean;
 }
 
-export type ModelKind = "image" | "audio";
+export type ModelKind = "image" | "audio" | "video";
+
+export interface VideoResolution {
+  id: string;
+  label: string;
+  short_side: number;
+  long_side: number;
+}
+
+export interface VideoCaps {
+  tasks: ("t2v" | "i2v" | "v2v")[];
+  fps: number;
+  /** Frame counts are multiples of this step (plus one). */
+  frame_step: number;
+  default_seconds: number;
+  min_seconds: number;
+  max_seconds: number;
+  resolutions: VideoResolution[];
+  default_resolution: string;
+  /** Start image: not used, optional or required. */
+  image_input: "none" | "optional" | "required";
+  /** The model also accepts an end image. */
+  last_frame: boolean;
+  image_role: "start" | "reference";
+  /** Source video to edit. */
+  video_input: "none" | "optional" | "required";
+  audio_out: boolean;
+  english_only: boolean;
+  /** Non-empty: licence restriction to show prominently. */
+  license_warning: string;
+}
 
 export interface Language {
   code: string;
@@ -52,6 +82,7 @@ export interface ModelInfo {
   id: string;
   kind: ModelKind;
   audio: AudioCaps | null;
+  video?: VideoCaps | null;
   /** Audio engine pack (isolated environment) this model depends on. */
   engine_pack: string | null;
   engine_name: string | null;
@@ -114,9 +145,9 @@ export interface ModelVariant {
 
 export interface HubResult {
   repo: string;
-  family: "gguf-variant" | "sd-diffusers" | "qwen3-tts" | "whisper-ct2";
+  family: "gguf-variant" | "sd-diffusers" | "qwen3-tts" | "whisper-ct2" | (string & {});
   family_label: string;
-  task: "image" | "tts" | "stt";
+  task: "image" | "tts" | "stt" | "video";
   downloads: number;
   likes: number;
   base: string;
@@ -215,9 +246,11 @@ export interface SystemInfo {
 export interface Asset {
   id: string;
   kind: "upload" | "generated";
-  media: "image" | "audio";
-  /** Duration in seconds (audio). */
+  media: "image" | "audio" | "video";
+  /** Duration in seconds (audio, video). */
   duration: number | null;
+  /** Frame rate (video). */
+  fps?: number | null;
   url: string;
   thumb_url: string;
   width: number | null;
@@ -373,6 +406,7 @@ export const api = {
       recommended_model_id: string | null;
       ready: boolean;
       audio: { default_model_id: string | null; recommended_model_id: string | null; ready: boolean };
+      video?: { default_model_id: string | null; recommended_model_id: string | null; ready: boolean };
     }>("/api/models"),
   installPack: (pack: string) => request<PackInstallState>(`/api/engines/pack/${pack}/install`, { method: "POST" }),
   cancelPackInstall: () => request<{ ok: true }>("/api/engines/pack/install", { method: "DELETE" }),
@@ -437,6 +471,28 @@ export const api = {
     files.forEach((f) => form.append("files", f));
     return request<Asset[]>("/api/assets", { method: "POST", body: form });
   },
+  /** Upload with progress (0..1), used for videos which can be large. */
+  uploadWithProgress: (files: File[], onProgress: (fraction: number) => void) =>
+    new Promise<Asset[]>((resolve, reject) => {
+      const form = new FormData();
+      files.forEach((f) => form.append("files", f));
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/assets");
+      xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+      xhr.onerror = () => reject(new ApiError(0, "Serveur injoignable"));
+      xhr.onload = () => {
+        let body: unknown = null;
+        try {
+          body = JSON.parse(xhr.responseText);
+        } catch {
+          /* body is not JSON */
+        }
+        if (xhr.status >= 200 && xhr.status < 300) return resolve(body as Asset[]);
+        const detail = (body as { detail?: unknown } | null)?.detail;
+        reject(new ApiError(xhr.status, typeof detail === "string" ? detail : detail ? JSON.stringify(detail) : xhr.statusText));
+      };
+      xhr.send(form);
+    }),
   assets: (params: { favorites?: boolean; q?: string; before?: number | null; media?: ModelKind }) => {
     const sp = new URLSearchParams({ kind: "generated", limit: "60", media: params.media ?? "image" });
     if (params.favorites) sp.set("favorites", "true");

@@ -38,7 +38,7 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
           >
             <SlidersHorizontal className="size-3.5" />
             {model.kind === "image" && <span className="hidden font-mono text-[11px] md:inline">{params.steps ?? "—"} ét.</span>}
-            {model.kind === "audio" && <span className="hidden text-[13px] md:inline">Réglages</span>}
+            {(model.kind === "audio" || model.kind === "video") && <span className="hidden text-[13px] md:inline">Réglages</span>}
             {seed !== null && <Lock className="size-3 text-safe" />}
             {modified && <span className="absolute -right-0.5 -top-0.5 size-1.5 rounded-full bg-safe" />}
           </button>
@@ -84,7 +84,7 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
                 </Tip>
               </div>
               <p className="mt-1 text-[11px] leading-snug text-faint">
-                {model.kind === "audio" ? "Une graine fixe reproduit la même prise pour le même texte et la même voix." : "Une graine fixe reproduit la même image pour le même prompt."}
+                {model.kind === "audio" ? "Une graine fixe reproduit la même prise pour le même texte et la même voix." : model.kind === "video" ? "Une graine fixe reproduit le même clip pour le même prompt et les mêmes réglages." : "Une graine fixe reproduit la même image pour le même prompt."}
               </p>
             </div>
 

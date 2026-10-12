@@ -290,7 +290,7 @@ def static_check(out: Path, profile: dict) -> None:
         out / "backend" / "app" / "main.py",
         out / "frontend" / "dist" / "index.html",
         site / "fastapi" / "__init__.py", site / "uvicorn" / "__init__.py", site / "PIL" / "__init__.py",
-        site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py",
+        site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py", site / "av" / "__init__.py",
     ]
     if "torch" in profile["extras"]:
         required += [site / "torch" / "__init__.py", site / "diffusers" / "__init__.py", site / "transformers" / "__init__.py"]
@@ -349,10 +349,10 @@ def smoke_test(py: Path, runtime: Path, out: Path, profile: dict) -> None:
     }
     env.pop("VIRTUAL_ENV", None)
     code = (
-        "import app.main, uvicorn, fastapi, PIL, huggingface_hub, psutil;"
+        "import app.main, uvicorn, fastapi, PIL, huggingface_hub, psutil, av;"
         "print('backend importé');"
         + ("import mlx.core, mflux;print('mlx', mlx.core.__version__ if hasattr(mlx.core,'__version__') else 'ok');" if "mlx" in profile["extras"] else "")
-        + ("import torch, diffusers, transformers;print('torch', torch.__version__, 'diffusers', diffusers.__version__);" if "torch" in profile["extras"] else "")
+        + ("import torch, diffusers, transformers, gguf;print('torch', torch.__version__, 'diffusers', diffusers.__version__);" if "torch" in profile["extras"] else "")
     )
     run([py, "-I", "-c", "import sys;sys.path[:0]=%r;exec(%r)" % (env["PYTHONPATH"].split(os.pathsep), code)], env=env)
     shutil.rmtree(out.parent / "smoke-data", ignore_errors=True)

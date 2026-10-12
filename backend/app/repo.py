@@ -22,6 +22,7 @@ def asset_public(row: sqlite3.Row | dict) -> dict[str, Any]:
         "kind": a["kind"],
         "media": a.get("media") or "image",
         "duration": a.get("duration"),
+        "fps": (a.get("meta") or {}).get("fps") if (a.get("media") == "video") else None,
         "url": media_url(folder, a["filename"]),
         "thumb_url": media_url("thumbs", a.get("thumb")) or media_url(folder, a["filename"]),
         "width": a.get("width"),
@@ -60,7 +61,7 @@ def get_message(message_id: str) -> dict[str, Any] | None:
 def conversation_summary(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
     c = dict(row)
     cover = conn.execute(
-        "SELECT * FROM assets WHERE conversation_id = ? AND kind = 'generated' AND media = 'image' ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM assets WHERE conversation_id = ? AND kind = 'generated' AND media IN ('image', 'video') ORDER BY created_at DESC LIMIT 1",
         (c["id"],),
     ).fetchone()
     stats = conn.execute(

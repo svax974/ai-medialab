@@ -14,11 +14,12 @@ import { Button, Spinner } from "./ui";
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 const compact = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)} M` : n >= 1e3 ? `${Math.round(n / 1e3)} k` : String(n));
 
-const TASK_LABEL: Record<HubResult["task"], string> = { image: "image", tts: "synthèse vocale", stt: "transcription" };
+const TASK_LABEL: Record<HubResult["task"], string> = { image: "image", tts: "synthèse vocale", stt: "transcription", video: "vidéo" };
 
 const HELP: Record<ModelKind, string> = {
   image: "Stable Diffusion / SDXL (diffusers) et autres quantifications GGUF de Z-Image et Qwen Image.",
   audio: "Variantes de Qwen3-TTS (voix, création de voix, clonage) et modèles Whisper pour faster-whisper.",
+  video: "Modèles de génération vidéo (texte, image ou vidéo vers vidéo) dans un format que l'application sait exécuter.",
 };
 
 /** Hugging Face search, limited to formats the app can run. */
@@ -43,7 +44,7 @@ export const HubSearch = forwardRef<HTMLInputElement, { kind: ModelKind }>(funct
           ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={kind === "image" ? "ex. sdxl turbo, dreamshaper, z-image…" : "ex. qwen3 tts, whisper large…"}
+          placeholder={kind === "image" ? "ex. sdxl turbo, dreamshaper, z-image…" : kind === "video" ? "ex. wan, ltx video…" : "ex. qwen3 tts, whisper large…"}
           className="h-9 w-full rounded-lg border border-line bg-surface pl-8 pr-9 text-[13.5px] text-ink placeholder:text-faint focus:border-line-strong focus:outline-none"
         />
         {search.isFetching && <Spinner className="absolute right-2.5 top-1/2 size-4 -translate-y-1/2" />}

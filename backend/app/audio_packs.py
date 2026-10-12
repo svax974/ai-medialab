@@ -1,13 +1,15 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Audio engine packs: one isolated Python environment per model family, installed on demand.
+"""Engine packs: one isolated Python environment per model family, installed on demand.
 
-Isolated because the TTS libraries pin incompatible versions of each other (Qwen3-TTS needs
-`transformers==4.57.3`, the image engine `transformers>=5.17`, Chatterbox `==5.2.0`...).
+Isolated because the libraries pin incompatible versions of each other (Qwen3-TTS needs
+`transformers==4.57.3`, the image engine `transformers>=5.17`, Chatterbox `==5.2.0`...). Two families:
+"audio" (TTS, transcription) and "video" (models that need pinned dependencies and the authors' own code).
 
-Install uses `uv` when available (fast, can fetch a Python 3.12), otherwise `venv` + `pip` with the
-current interpreter (must be 3.12). Everything goes under `<data>/engines/audio/<pack>/`, no admin rights.
+Install uses `uv` when available (fast, can fetch the Python version the pack wants), otherwise `venv` + `pip`
+with the current interpreter (must be that exact version). Everything goes under `<data>/engines/<family>/<pack>/`,
+no admin rights.
 """
 
 from __future__ import annotations
@@ -16,19 +18,35 @@ import asyncio
 import hashlib
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import time
+import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .config import AUDIO_PACKS_DIR, AUDIO_RUNTIME_DIR, ROOT_DIR
+from .config import AUDIO_PACKS_DIR, AUDIO_RUNTIME_DIR, ROOT_DIR, VIDEO_PACKS_DIR, VIDEO_RUNTIME_DIR
 from .events import bus
 
-PYTHON_VERSION = "3.12"  # kokoro needs < 3.13; qwen-tts, pocket-tts and chatterbox are fine on 3.12
+PYTHON_VERSION = "3.12"  # default; kokoro needs < 3.13, qwen-tts, pocket-tts and chatterbox are fine on 3.12
+
+FAMILY_DIRS = {"audio": AUDIO_PACKS_DIR, "video": VIDEO_PACKS_DIR}
+FAMILY_RUNTIMES = {"audio": AUDIO_RUNTIME_DIR, "video": VIDEO_RUNTIME_DIR}
+
+
+@dataclass(frozen=True)
+class PackArchive:
+    """Official source code that is not a pip package, fetched from a pinned GitHub commit.
+
+    Only the listed folders are extracted into `<pack>/src/`, which the worker puts on its import path."""
+
+    url: str  # https://github.com/<owner>/<repo>/archive/<commit sha>.tar.gz
+    folders: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -41,11 +59,22 @@ class PackDef:
     size_mb: int
     # PyTorch packages to install first from the GPU index (pip would pick the CPU build on Windows).
     torch_packages: tuple[str, ...] = ("torch",)
+    # Extra libraries installed on Apple Silicon only.
+    apple_requirements: tuple[str, ...] = ()
     note: str = ""
     # One-line description of what gets installed (shown before installing).
     contents: str = ""
     # Name of the inference engine itself, not the model family.
     engine: str = ""
+    # "audio" or "video": picks the install folder and the worker script.
+    family: str = "audio"
+    # Python version of the environment (empty = PYTHON_VERSION).
+    python: str = ""
+    archives: tuple[PackArchive, ...] = ()
+    # Hardware the pack needs: "" (any) or "cuda" (NVIDIA, or AMD on Linux through ROCm).
+    gpu: str = ""
+    # French sentence shown when the machine does not have that hardware.
+    gpu_reason: str = ""
 
 
 PACKS: dict[str, PackDef] = {
@@ -54,6 +83,7 @@ PACKS: dict[str, PackDef] = {
         name="Voix légères (Kokoro, Pocket TTS, Whisper)",
         requirements=("kokoro>=0.9.4", "misaki[en]>=0.9.4", "pocket-tts>=3.3", "faster-whisper>=1.1",
                       "soundfile>=0.12", "numpy>=2", "huggingface_hub>=0.30"),
+        apple_requirements=("mlx-whisper>=0.4",),  # Whisper on Metal; faster-whisper stays for CT2 models
         imports=("kokoro", "pocket_tts", "faster_whisper", "soundfile"),
         size_mb=900,
         engine="PyTorch + CTranslate2",
@@ -69,15 +99,77 @@ PACKS: dict[str, PackDef] = {
         engine="PyTorch",
         contents="la bibliothèque qwen-tts (le calcul passe par le GPU quand il y en a un).",
     ),
+    # Video packs: NVIDIA (or AMD on Linux) only, versions pinned to what the authors tested.
+    "kiwi": PackDef(
+        id="kiwi",
+        name="Kiwi-Edit (montage vidéo)",
+        family="video",
+        python="3.10",  # the authors' environment: Python 3.10, PyTorch 2.7 (CUDA 12.8), transformers 4.57.0
+        torch_packages=("torch==2.7.0", "torchvision==0.22.0"),
+        # The weights repo ships the pipeline code (loaded with trust_remote_code), so no source archive is needed.
+        requirements=("diffusers==0.36.0", "transformers==4.57.0", "accelerate", "einops", "huggingface_hub>=0.30",
+                      "safetensors", "av", "pillow", "numpy", "tqdm", "requests", "packaging"),
+        imports=("torch", "diffusers", "transformers", "accelerate", "einops", "av"),
+        size_mb=4500,
+        gpu="cuda",
+        gpu_reason="Kiwi-Edit demande une carte graphique NVIDIA (CUDA 12.8) ; il ne tourne ni sur Mac Apple Silicon ni sur processeur.",
+        engine="PyTorch 2.7 + diffusers",
+        contents="PyTorch 2.7, diffusers et transformers 4.57.0, aux versions exactes du dépôt officiel (Python 3.10).",
+    ),
+    "bernini": PackDef(
+        id="bernini",
+        name="Bernini (génération et montage vidéo)",
+        family="video",
+        python="3.11",  # the authors' environment: Python 3.11, PyTorch 2.7.1, diffusers 0.35.2, transformers 4.57.3
+        torch_packages=("torch==2.7.1", "torchvision==0.22.1"),
+        requirements=("diffusers==0.35.2", "accelerate==0.34.2", "transformers==4.57.3", "huggingface_hub>=0.30",
+                      "safetensors", "einops", "numpy", "pillow", "tqdm", "ftfy", "scipy", "decord", "imageio",
+                      "imageio-ffmpeg", "av"),
+        # The `bernini` package is not pip-installable (no build config): take it from the pinned commit of the official repo.
+        archives=(PackArchive("https://github.com/bytedance/Bernini/archive/e6c2cf11843470b08491745947abcba9c3c6b079.tar.gz",
+                              ("bernini",)),),
+        imports=("torch", "diffusers", "transformers", "decord", "bernini.pipeline"),
+        size_mb=4800,
+        gpu="cuda",
+        gpu_reason="Bernini demande une carte graphique NVIDIA (CUDA) ; il ne tourne ni sur Mac Apple Silicon ni sur processeur.",
+        engine="PyTorch 2.7 + code officiel Bernini",
+        contents="PyTorch 2.7.1, diffusers 0.35.2, transformers 4.57.3 et le code officiel de Bernini (Python 3.11).",
+    ),
 }
 
 
+def python_of(pack: PackDef) -> str:
+    return pack.python or PYTHON_VERSION
+
+
+def is_apple_silicon() -> bool:
+    return sys.platform == "darwin" and platform.machine() == "arm64"
+
+
+def requirements_for(pack: PackDef) -> tuple[str, ...]:
+    return pack.requirements + (pack.apple_requirements if is_apple_silicon() else ())
+
+
 def _requirements_hash(pack: PackDef) -> str:
-    return hashlib.sha256(json.dumps([PYTHON_VERSION, *pack.requirements, *pack.torch_packages]).encode()).hexdigest()[:16]
+    parts = [python_of(pack), *requirements_for(pack), *pack.torch_packages]
+    parts += [f"{a.url}|{','.join(a.folders)}" for a in pack.archives]  # absent for audio packs: their hash is unchanged
+    return hashlib.sha256(json.dumps(parts).encode()).hexdigest()[:16]
 
 
 def pack_dir(pack_id: str) -> Path:
-    return AUDIO_PACKS_DIR / pack_id
+    pack = PACKS.get(pack_id)
+    return FAMILY_DIRS[pack.family if pack else "audio"] / pack_id
+
+
+def code_dir(pack_id: str) -> Path:
+    """Where a pack's official source code (see `PackArchive`) is extracted."""
+    return pack_dir(pack_id) / "src"
+
+
+def pack_env(pack_id: str) -> dict[str, str]:
+    """Extra environment of a pack's worker: its extracted source code on the import path."""
+    src = code_dir(pack_id)
+    return {"PYTHONPATH": str(src)} if src.is_dir() else {}
 
 
 def venv_python(pack_id: str) -> Path:
@@ -85,10 +177,13 @@ def venv_python(pack_id: str) -> Path:
     return base / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
 
 
-def runtime_dir() -> Path:
-    """Folder of the audio worker scripts, shipped with the app."""
-    candidates = [AUDIO_RUNTIME_DIR, ROOT_DIR / "audio_runtime", Path(__file__).resolve().parents[1] / "audio_runtime"]
-    return next((c for c in candidates if (c / "worker.py").is_file()), AUDIO_RUNTIME_DIR)
+def runtime_dir(pack_id: str | None = None) -> Path:
+    """Folder of the worker scripts of a pack's family (audio by default), shipped with the app."""
+    pack = PACKS.get(pack_id or "")
+    family = pack.family if pack else "audio"
+    default, name = FAMILY_RUNTIMES[family], f"{family}_runtime"
+    candidates = [default, ROOT_DIR / name, Path(__file__).resolve().parents[1] / name]
+    return next((c for c in candidates if (c / "worker.py").is_file()), default)
 
 
 def find_uv() -> str | None:
@@ -113,13 +208,29 @@ def is_installed(pack_id: str) -> bool:
         return False
 
 
-def can_install() -> tuple[bool, str]:
+def can_install(python: str = PYTHON_VERSION) -> tuple[bool, str]:
     if find_uv():
         return True, ""
-    if sys.version_info[:2] == (3, 12):
+    if f"{sys.version_info.major}.{sys.version_info.minor}" == python:
         return True, ""
-    return False, (f"Installation impossible : ni « uv » ni Python {PYTHON_VERSION} ne sont disponibles "
-                   f"(Python {sys.version_info.major}.{sys.version_info.minor} ici).")
+    return False, (f"Installation impossible : l'outil « uv » est introuvable et Python {python} n'est pas disponible "
+                   f"(Python {sys.version_info.major}.{sys.version_info.minor} ici). Installez uv (docs.astral.sh/uv) : "
+                   f"il télécharge lui-même la bonne version de Python.")
+
+
+def _gpu_vendors(system: dict[str, Any]) -> set[str]:
+    """GPU makers the machine has, even when the main runtime's PyTorch cannot use them (the pack ships its own)."""
+    return {a["vendor"] for a in system.get("accelerators", [])} | {g["vendor"] for g in system.get("unusable_gpus", [])}
+
+
+def unsupported_reason(pack: PackDef, system: dict[str, Any]) -> str | None:
+    """Why this machine cannot run the pack at all (French), or None."""
+    if pack.gpu != "cuda":
+        return None
+    vendors = _gpu_vendors(system)
+    if "nvidia" in vendors or ("amd" in vendors and system.get("os") == "Linux"):
+        return None
+    return pack.gpu_reason or "Ce moteur demande une carte graphique NVIDIA (CUDA)."
 
 
 def engine_info(pack_id: str) -> dict[str, Any]:
@@ -129,7 +240,13 @@ def engine_info(pack_id: str) -> dict[str, Any]:
         return {"available": False, "reason": f"Pack audio inconnu : {pack_id}"}
     if is_installed(pack_id):
         return {"available": True, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents, "pack_engine": pack.engine}
-    ok, why = can_install()
+    from .system import get_system
+
+    blocked = unsupported_reason(pack, get_system())
+    if blocked:  # listed with its description, but no install is offered
+        return {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents,
+                "pack_engine": pack.engine, "reason": blocked}
+    ok, why = can_install(python_of(pack))
     info: dict[str, Any] = {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents, "pack_engine": pack.engine,
                             "reason": f"Le moteur « {pack.name} » n'est pas installé."}
     if ok:
@@ -186,10 +303,13 @@ class PackInstaller:
             if self.state.get("pack") == pack_id:
                 return self.public()
             raise RuntimeError("Une autre installation de moteur audio est déjà en cours.")
-        ok, why = can_install()
+        system = get_system()
+        blocked = unsupported_reason(pack, system)
+        if blocked:
+            raise RuntimeError(blocked)
+        ok, why = can_install(python_of(pack))
         if not ok:
             raise RuntimeError(why)
-        system = get_system()
         free_mb = system["disk"]["free_gb"] * 1024
         need_mb = pack.size_mb * 2 + 500  # download + unpacked install
         if free_mb < need_mb:
@@ -198,6 +318,8 @@ class PackInstaller:
         self._set(state="running", pack=pack_id, name=pack.name, message="Préparation…", error=None,
                   started_at=time.time(), size_mb=pack.size_mb)
         accelerators = system["accelerators"]
+        if pack.gpu:  # the pack brings its own PyTorch: use the GPU the OS sees even if the main runtime's one can't
+            accelerators = accelerators + system.get("unusable_gpus", [])
         asyncio.create_task(asyncio.to_thread(self._run, pack, accelerators))
         return self.public()
 
@@ -233,6 +355,28 @@ class PackInstaller:
         if code != 0:
             raise RuntimeError(f"{message} — échec (code {code}) : {' / '.join(tail[-4:])}")
 
+    def _fetch_archive(self, archive: PackArchive, dest: Path) -> None:
+        """Stream a pinned GitHub tarball and keep only `archive.folders` (regular files, no path escaping)."""
+        self._set(message="Téléchargement du code officiel…", detail=archive.url.rsplit("/", 1)[-1][:60])
+        dest.mkdir(parents=True, exist_ok=True)
+        wanted = tuple(f.strip("/") + "/" for f in archive.folders)
+        kept = 0
+        with urllib.request.urlopen(archive.url, timeout=60) as resp, tarfile.open(fileobj=resp, mode="r|gz") as tar:
+            for member in tar:
+                if self._cancel.is_set():
+                    raise PackInstallCancelled()
+                rel = member.name.split("/", 1)[1] if "/" in member.name else ""  # drop the "<repo>-<sha>/" prefix
+                if not member.isfile() or not rel.startswith(wanted) or ".." in Path(rel).parts:
+                    continue
+                target = dest / rel
+                target.parent.mkdir(parents=True, exist_ok=True)
+                src = tar.extractfile(member)
+                if src is not None:
+                    target.write_bytes(src.read())
+                    kept += 1
+        if not kept:
+            raise RuntimeError("Le code officiel téléchargé ne contient pas les dossiers attendus.")
+
     def _run(self, pack: PackDef, accelerators: list[dict[str, Any]]) -> None:
         target = pack_dir(pack.id)
         venv = target / "venv"
@@ -241,7 +385,7 @@ class PackInstaller:
             target.mkdir(parents=True, exist_ok=True)
             uv = find_uv()
             if uv:
-                self._exec([uv, "venv", "--python", PYTHON_VERSION, str(venv)], "Création de l'environnement Python…")
+                self._exec([uv, "venv", "--python", python_of(pack), str(venv)], "Création de l'environnement Python…")
                 install = [uv, "pip", "install", "--python", str(venv_python(pack.id))]
             else:
                 self._exec([sys.executable, "-m", "venv", str(venv)], "Création de l'environnement Python…")
@@ -251,13 +395,17 @@ class PackInstaller:
             if index and pack.torch_packages:
                 self._exec([*install, *pack.torch_packages, "--index-url", index],
                            f"Installation de PyTorch ({'GPU' if 'cu' in index or 'rocm' in index else 'CPU'})…")
-            self._exec([*install, *pack.requirements], f"Installation des bibliothèques ({pack.name})…")
+            self._exec([*install, *requirements_for(pack)], f"Installation des bibliothèques ({pack.name})…")
+            if pack.archives:
+                shutil.rmtree(code_dir(pack.id), ignore_errors=True)
+                for archive in pack.archives:
+                    self._fetch_archive(archive, code_dir(pack.id))
 
             self._set(message="Vérification…", detail="")
             check = "import " + ", ".join(pack.imports)
-            self._exec([str(venv_python(pack.id)), "-c", check], "Vérification de l'installation…")
+            self._exec([str(venv_python(pack.id)), "-c", check], "Vérification de l'installation…", env=pack_env(pack.id))
             (target / "ready.json").write_text(json.dumps(
-                {"hash": _requirements_hash(pack), "installed_at": time.time(), "python": PYTHON_VERSION}))
+                {"hash": _requirements_hash(pack), "installed_at": time.time(), "python": python_of(pack)}))
             self._set(state="done", message="Installé", detail="")
             bus.publish("models.changed", {})
         except PackInstallCancelled:

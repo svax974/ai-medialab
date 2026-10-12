@@ -10,6 +10,9 @@ runtime, not in the server.
 
 from __future__ import annotations
 
+import platform
+import sys
+
 from .base import AudioCaps, HfSource, Language, ModelSpec, ParamSpec, PresetVoice
 
 F, M = "f", "m"
@@ -234,26 +237,36 @@ QWEN_CLONE_SMALL = _qwen(
 
 # Transcription (of a reference voice sample)
 
-WHISPER_SMALL = ModelSpec(
-    id="whisper-small", name="Whisper Small", family="Whisper", kind="audio",
-    description="Transcrit l'extrait d'une voix à cloner (la transcription améliore la fidélité du clonage). "
-                "Rapide sur processeur, multilingue.",
-    engine="", backend="pack", options={"pack": "speech", "repo": "Systran/faster-whisper-small"},
-    text_to_image=False,
-    sources=[HfSource("Systran/faster-whisper-small", None, ["model.bin", "config.json", "tokenizer.json"], 0.49)],
-    download_size_gb=0.49, weights_gb=0.5, license="MIT", tags=["transcription", "CPU"], precision="fp16",
-    audio=AudioCaps(task="stt", languages=[]),
-)
-WHISPER_TURBO = ModelSpec(
-    id="whisper-large-v3-turbo", name="Whisper Large v3 Turbo", family="Whisper", kind="audio",
-    description="Transcription de haute précision, plus lente et plus gourmande que Whisper Small.",
-    engine="", backend="pack", options={"pack": "speech", "repo": "deepdml/faster-whisper-large-v3-turbo-ct2"},
-    text_to_image=False,
-    sources=[HfSource("deepdml/faster-whisper-large-v3-turbo-ct2", None,
-                      ["model.bin", "config.json", "tokenizer.json"], 1.62)],
-    download_size_gb=1.62, weights_gb=1.7, license="MIT", tags=["transcription"], precision="fp16",
-    audio=AudioCaps(task="stt", languages=[]),
-)
+# On Apple Silicon Whisper runs on Metal through mlx-whisper (mlx-community conversions); elsewhere
+# through faster-whisper / CTranslate2 on the CPU.
+_APPLE = sys.platform == "darwin" and platform.machine() == "arm64"
+_WHISPER_REPOS = {
+    "whisper-small": ("mlx-community/whisper-small-mlx", ["weights.npz", "config.json"], 0.48)
+    if _APPLE else ("Systran/faster-whisper-small", ["model.bin", "config.json", "tokenizer.json"], 0.49),
+    "whisper-large-v3-turbo": ("mlx-community/whisper-large-v3-turbo", ["weights.safetensors", "config.json"], 1.61)
+    if _APPLE else ("deepdml/faster-whisper-large-v3-turbo-ct2", ["model.bin", "config.json", "tokenizer.json"], 1.62),
+}
+
+
+def _whisper(id: str, name: str, description: str, weights_gb: float, tags: list[str]) -> ModelSpec:
+    repo, check, size = _WHISPER_REPOS[id]
+    return ModelSpec(
+        id=id, name=name, family="Whisper", kind="audio", description=description,
+        engine="", backend="pack", options={"pack": "speech", "repo": repo}, text_to_image=False,
+        sources=[HfSource(repo, None, check, size)],
+        download_size_gb=size, weights_gb=weights_gb, license="MIT",
+        tags=tags + (["Metal"] if _APPLE else []), precision="fp16",
+        audio=AudioCaps(task="stt", languages=[]),
+    )
+
+
+WHISPER_SMALL = _whisper(
+    "whisper-small", "Whisper Small",
+    "Transcrit l'extrait d'une voix à cloner (la transcription améliore la fidélité du clonage). "
+    "Rapide, multilingue.", 0.5, ["transcription"] + ([] if _APPLE else ["CPU"]))
+WHISPER_TURBO = _whisper(
+    "whisper-large-v3-turbo", "Whisper Large v3 Turbo",
+    "Transcription de haute précision, plus lente et plus gourmande que Whisper Small.", 1.7, ["transcription"])
 
 SPECS: list[ModelSpec] = [
     KOKORO, POCKET, POCKET_INTL, QWEN_CUSTOM, QWEN_DESIGN, QWEN_CLONE, QWEN_CUSTOM_SMALL, QWEN_CLONE_SMALL,

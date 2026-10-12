@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  AudioLines, Boxes, Ellipsis, Image as ImageIcon, Images, Library, Mic, Moon, PanelLeftClose, Pencil, Pin, PinOff, Search,
+  AudioLines, Boxes, Clapperboard, Ellipsis, Image as ImageIcon, Images, Library, Mic, Moon, PanelLeftClose, Pencil, Pin, PinOff, Search,
   Settings2, SquarePen, Sun, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -91,6 +91,22 @@ export function Sidebar() {
               label="Galerie"
             />
           </>
+        ) : mode === "video" ? (
+          <>
+            <NavButton
+              active={route.name === "video-home"}
+              onClick={() => navigate(paths.videoHome)}
+              icon={<SquarePen className="size-4" />}
+              label="Nouvelle vidéo"
+              kbd="⌘⇧O"
+            />
+            <NavButton
+              active={route.name === "video-gallery"}
+              onClick={() => navigate(paths.videoGallery)}
+              icon={<Library className="size-4" />}
+              label="Bibliothèque"
+            />
+          </>
         ) : (
           <>
             <NavButton
@@ -141,7 +157,7 @@ export function Sidebar() {
         {isLoading && <div className="px-3 py-6 text-sm text-faint">Chargement…</div>}
         {!isLoading && conversations.length === 0 && (
           <div className="px-3 py-8 text-center text-sm leading-relaxed text-faint">
-            {debounced ? "Aucun résultat." : mode === "audio" ? "Vos créations audio apparaîtront ici." : "Vos créations apparaîtront ici."}
+            {debounced ? "Aucun résultat." : mode === "audio" ? "Vos créations audio apparaîtront ici." : mode === "video" ? "Vos vidéos apparaîtront ici." : "Vos créations apparaîtront ici."}
           </div>
         )}
         {groups.map((g) => (
@@ -182,7 +198,7 @@ export function Sidebar() {
 }
 
 /** Last page visited in each mode, so switching modes returns you where you were. */
-export const lastPathByMode: Record<ModelKind, string> = { image: "/", audio: "/audio" };
+export const lastPathByMode: Record<ModelKind, string> = { image: "/", audio: "/audio", video: "/video" };
 
 function ModeSwitch() {
   const mode = useStore((s) => s.mode);
@@ -190,19 +206,20 @@ function ModeSwitch() {
   const options: { id: ModelKind; label: string; icon: React.ReactNode }[] = [
     { id: "image", label: "Image", icon: <ImageIcon className="size-4" /> },
     { id: "audio", label: "Audio", icon: <AudioLines className="size-4" /> },
+    { id: "video", label: "Vidéo", icon: <Clapperboard className="size-4" /> },
   ];
   const go = (target: ModelKind) => {
     if (target === mode) return;
     setMode(target);
-    navigate(lastPathByMode[target] ?? (target === "audio" ? paths.audioHome : paths.home));
+    navigate(lastPathByMode[target] ?? (target === "audio" ? paths.audioHome : target === "video" ? paths.videoHome : paths.home));
   };
   return (
     <div className="px-3 pb-3 pt-0.5">
-      <div role="tablist" aria-label="Type de création" className="relative grid grid-cols-2 rounded-xl bg-surface p-1 ring-1 ring-line">
+      <div role="tablist" aria-label="Type de création" className="relative grid grid-cols-3 rounded-xl bg-surface p-1 ring-1 ring-line">
         <span
           aria-hidden
-          className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-surface-3 shadow-sm ring-1 ring-line-strong transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
-          style={{ transform: mode === "audio" ? "translateX(100%)" : "none" }}
+          className="absolute inset-y-1 left-1 w-[calc(33.333%-2.667px)] rounded-lg bg-surface-3 shadow-sm ring-1 ring-line-strong transition-transform duration-300 ease-[cubic-bezier(0.2,0.7,0.2,1)]"
+          style={{ transform: `translateX(${mode === "audio" ? 100 : mode === "video" ? 200 : 0}%)` }}
         />
         {options.map((o) => (
           <button
@@ -259,14 +276,14 @@ function ConversationItem({ conv, active }: { conv: ConversationSummary; active:
   const remove = async () => {
     const ok = await confirm({
       title: "Supprimer la conversation ?",
-      description: `« ${conv.title} » et ses ${conv.generation_count} génération(s) seront définitivement supprimées, images comprises.`,
+      description: `« ${conv.title} » et ses ${conv.generation_count} génération(s) seront définitivement supprimées, ${conv.mode === "video" ? "vidéos" : conv.mode === "audio" ? "fichiers audio" : "images"} comprises.`,
       confirmLabel: "Supprimer",
       danger: true,
     });
     if (!ok) return;
     try {
       await api.deleteConversation(conv.id);
-      if (active) navigate(paths.home, { replace: true });
+      if (active) navigate(conv.mode === "video" ? paths.videoHome : conv.mode === "audio" ? paths.audioHome : paths.home, { replace: true });
       qc.invalidateQueries({ queryKey: ["conversations"] });
     } catch (e) {
       toast.error((e as Error).message);
@@ -292,6 +309,7 @@ function ConversationItem({ conv, active }: { conv: ConversationSummary; active:
         ) : (
           <div className="tray grid size-full place-items-center">
             {conv.mode === "audio" && <AudioLines className="size-4 text-safe/80" />}
+            {conv.mode === "video" && <Clapperboard className="size-4 text-safe/80" />}
           </div>
         )}
         {conv.busy && (
@@ -317,7 +335,7 @@ function ConversationItem({ conv, active }: { conv: ConversationSummary; active:
           <div className={cx("truncate text-[13.5px]", active ? "text-ink" : "text-ink-2")}>{conv.title}</div>
         )}
         <div className="truncate font-mono text-[10.5px] text-faint">
-          {conv.generation_count} {conv.mode === "audio" ? "prise(s)" : "gén."} · {formatTime(conv.updated_at)}
+          {conv.generation_count} {conv.mode === "audio" ? "prise(s)" : conv.mode === "video" ? "clip(s)" : "gén."} · {formatTime(conv.updated_at)}
         </div>
       </div>
       <DropdownMenu.Root>

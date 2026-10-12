@@ -7,15 +7,18 @@ import type { ModelInfo } from "../lib/api";
 import { cx, formatModelSize, installedFirst } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
+import { LicenseWarning, VideoBadges } from "./VideoInfo";
 
 const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", pack: "audio", demo: "démo" };
+const backendOf = (m: ModelInfo) => (m.backend === "pack" && m.kind === "video" ? "vidéo" : BACKEND[m.backend]);
 
 export function ModelPicker({ model }: { model: ModelInfo }) {
   const { data } = useModels();
   const engine = useStore((s) => s.engine);
   const setImageModel = useStore((s) => s.setModel);
   const setAudioModel = useStore((s) => s.setAudioModel);
-  const setModel = model.kind === "audio" ? setAudioModel : setImageModel;
+  const setVideoModel = useStore((s) => s.setVideoModel);
+  const setModel = model.kind === "audio" ? setAudioModel : model.kind === "video" ? setVideoModel : setImageModel;
   const setModelsOpen = useStore((s) => s.setModelsOpen);
   const openModelSearch = useStore((s) => s.openModelSearch);
 
@@ -25,7 +28,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
         <button className="flex h-8 max-w-60 items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 text-[13px] text-ink-2 transition-colors hover:border-line-strong hover:text-ink data-[state=open]:border-line-strong data-[state=open]:text-ink">
           <Cpu className="size-3.5 shrink-0 text-safe" />
           <span className="truncate">{model.name}</span>
-          <span className="shrink-0 font-mono text-[10px] text-faint">{BACKEND[model.backend]}{model.precision ? ` · ${model.precision}` : ""}</span>
+          <span className="shrink-0 font-mono text-[10px] text-faint">{backendOf(model)}{model.precision ? ` · ${model.precision}` : ""}</span>
           <ChevronDown className="size-3.5 shrink-0 opacity-60" />
         </button>
       </DropdownMenu.Trigger>
@@ -46,12 +49,18 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{m.name}</span>
-                    <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line">{BACKEND[m.backend]}</span>
+                    <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line">{backendOf(m)}</span>
                     {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
                     {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
                     {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-muted">{m.description}</p>
+                  {m.kind === "video" && (
+                    <div className="mt-1">
+                      <VideoBadges model={m} />
+                    </div>
+                  )}
+                  {m.kind === "video" && <LicenseWarning model={m} className="mt-1.5 !px-2.5 !py-1.5 !text-[11.5px]" />}
                   {m.tags.length > 0 && (
                     <div className="mt-1 flex flex-wrap gap-1">
                       {m.tags.map((t) => (

@@ -17,6 +17,8 @@ dependencies = [
     "psutil>=6.0",
     "numpy>=2.0",
     "soundfile>=0.12",  # read/write voice references and audio output
+    "starlette>=0.39",  # HTTP Range on static files (video seeking)
+    "av>=14",  # PyAV: decode uploaded videos, encode generated ones (H.264 + AAC), bundles ffmpeg
 ]
 
 [project.optional-dependencies]
@@ -27,7 +29,8 @@ mlx = ["mflux==0.20.0; sys_platform == 'darwin' and platform_machine == 'arm64'"
 torch = [
     "torch>=2.4",
     "torchvision",  # needed by the Qwen3-VL image processor (transformers 5)
-    "diffusers>=0.41",
+    "diffusers>=0.41",  # LTX-2.3 needs >= 0.38
+    "gguf>=0.10",  # quantized (GGUF) transformers loaded by diffusers
     "transformers>=5.17",
     "accelerate>=1.0",
     "sentencepiece",

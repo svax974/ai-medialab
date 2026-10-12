@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Server side of an audio worker: a subprocess (the pack's interpreter) bridged to the asyncio loop.
+"""Server side of a pack worker (audio or video): a subprocess (the pack's interpreter) bridged to the asyncio loop.
 
 Exposes the same interface as `jobs.WorkerHandle` (image process) so `JobManager` has a single code path:
 `model_id`, `quantize`, `alive`, `events`, `send`, `cancel_event`, `stop`.
@@ -45,9 +45,10 @@ class AudioWorkerHandle:
         self.stderr_tail: deque[str] = deque(maxlen=40)
         self._write_lock = threading.Lock()
         self.process = subprocess.Popen(
-            [str(audio_packs.venv_python(pack)), str(audio_packs.runtime_dir() / "worker.py"), engine, json.dumps(options)],
+            [str(audio_packs.venv_python(pack)), str(audio_packs.runtime_dir(pack) / "worker.py"), engine, json.dumps(options)],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, bufsize=1,
-            encoding="utf-8", env=_worker_env(env), cwd=str(audio_packs.runtime_dir()),
+            encoding="utf-8", env=_worker_env({**(env or {}), **audio_packs.pack_env(pack)}),
+            cwd=str(audio_packs.runtime_dir(pack)),
         )
         threading.Thread(target=self._read, daemon=True, name=f"audio-{model_id}").start()
         threading.Thread(target=self._read_stderr, daemon=True, name=f"audio-{model_id}-err").start()

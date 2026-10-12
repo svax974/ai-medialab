@@ -10,6 +10,8 @@ import { navigate, paths } from "../lib/router";
 import { AudioComposer } from "./AudioComposer";
 import { AudioAssistantMessage } from "./AudioMessage";
 import { Composer } from "./Composer";
+import { VideoComposer } from "./VideoComposer";
+import { VideoAssistantMessage } from "./VideoMessage";
 import { AssistantMessage, UserMessage } from "./Message";
 import { Spinner } from "./ui";
 
@@ -59,12 +61,13 @@ export function ConversationView({ id }: { id: string }) {
   }
 
   const audio = conv.mode === "audio";
+  const video = conv.mode === "video";
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line/60 px-5 pl-14 md:pl-5">
         <TitleEditor id={conv.id} title={conv.title} />
         {conv.pinned && <Pin className="size-3.5 text-faint" />}
-        <span className="ml-auto font-mono text-[11px] text-faint">{conv.generation_count} {audio ? "synthèse(s)" : "génération(s)"}</span>
+        <span className="ml-auto font-mono text-[11px] text-faint">{conv.generation_count} {audio ? "synthèse(s)" : video ? "clip(s)" : "génération(s)"}</span>
       </header>
 
       <div
@@ -78,7 +81,9 @@ export function ConversationView({ id }: { id: string }) {
         <div className="mx-auto w-full max-w-[880px] space-y-7 px-5 pb-48 pt-8">
           {conv.messages.map((m) =>
             m.role === "user" ? (
-              <UserMessage key={m.id} message={m} audio={audio} />
+              <UserMessage key={m.id} message={m} audio={audio} video={video} />
+            ) : video ? (
+              <VideoAssistantMessage key={m.id} message={m} />
             ) : audio ? (
               <AudioAssistantMessage key={m.id} message={m} />
             ) : (
@@ -87,7 +92,7 @@ export function ConversationView({ id }: { id: string }) {
           )}
           {conv.messages.length === 0 && (
             <p className="py-20 text-center text-sm text-faint">
-              {audio ? "Conversation vide. Écrivez un premier texte ci-dessous." : "Conversation vide. Décrivez une première image ci-dessous."}
+              {audio ? "Conversation vide. Écrivez un premier texte ci-dessous." : video ? "Conversation vide. Décrivez un premier plan ci-dessous." : "Conversation vide. Décrivez une première image ci-dessous."}
             </p>
           )}
         </div>
@@ -104,7 +109,7 @@ export function ConversationView({ id }: { id: string }) {
               <ArrowDown className="size-4" />
             </button>
           )}
-          {audio ? <AudioComposer conversationId={conv.id} /> : <Composer conversationId={conv.id} />}
+          {audio ? <AudioComposer conversationId={conv.id} /> : video ? <VideoComposer conversationId={conv.id} /> : <Composer conversationId={conv.id} />}
         </div>
       </div>
     </div>

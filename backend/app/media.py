@@ -122,3 +122,129 @@ def resolve_size(
     # Enforce the max side without distorting the ratio.
     scale = min(1.0, max_side / max(w, h))
     return snap(w * scale, multiple, min_side, max_side), snap(h * scale, multiple, min_side, max_side)
+
+
+# Video
+
+VIDEO_EXTENSIONS = (".mp4", ".mov", ".webm", ".mkv", ".m4v")
+MAX_VIDEO_UPLOAD = 500 * 1024 * 1024
+
+
+def is_video_upload(filename: str | None, content_type: str | None) -> bool:
+    return bool((filename or "").lower().endswith(VIDEO_EXTENSIONS) or (content_type or "").startswith("video/"))
+
+
+def video_frame_count(seconds: float, fps: int, step: int, min_seconds: float, max_seconds: float) -> int:
+    """Frames for a duration, in the n * step + 1 form video models require."""
+    seconds = max(min_seconds, min(max_seconds, seconds))
+    n = max(1, round(seconds * fps / step))
+    return n * step + 1
+
+
+def video_size(aspect: str, short_side: int, long_side: int, multiple: int, ratio: float | None = None) -> tuple[int, int]:
+    """(width, height) for an aspect ratio at a given definition.
+
+    The shorter side gets `short_side`; the longer one follows the ratio but never exceeds `long_side`."""
+    ratio = ratio or parse_aspect(aspect) or 16 / 9
+    if ratio >= 1:
+        w, h = short_side * ratio, float(short_side)
+        if w > long_side:
+            w, h = float(long_side), long_side / ratio
+    else:
+        w, h = float(short_side), short_side / ratio
+        if h > long_side:
+            w, h = long_side * ratio, float(long_side)
+    return snap(w, multiple, multiple, 4096), snap(h, multiple, multiple, 4096)
+
+
+def fit_image(img: Image.Image, width: int, height: int) -> Image.Image:
+    """Center-crop and resize to the exact target size (no stretching)."""
+    return ImageOps.fit(img, (width, height), Image.Resampling.LANCZOS)
+
+
+def probe_video(path: Path) -> dict:
+    """Width, height, duration (s) and fps of a video file; raises on unreadable files."""
+    import av
+
+    with av.open(str(path)) as container:
+        stream = next((s for s in container.streams if s.type == "video"), None)
+        if stream is None:
+            raise ValueError("Aucune piste vidéo.")
+        ctx = stream.codec_context
+        fps = float(stream.average_rate or stream.guessed_rate or 0)
+        if container.duration:
+            duration = container.duration / 1_000_000
+        elif stream.duration and stream.time_base:
+            duration = float(stream.duration * stream.time_base)
+        else:
+            duration = 0.0
+        return {"width": ctx.width, "height": ctx.height, "duration": round(duration, 3), "fps": round(fps, 3),
+                "has_audio": any(s.type == "audio" for s in container.streams)}
+
+
+def read_frames(path: Path, max_frames: int, size: tuple[int, int] | None = None) -> list[Image.Image]:
+    """First `max_frames` frames as RGB images (fitted to `size` when given)."""
+    import av
+
+    frames: list[Image.Image] = []
+    with av.open(str(path)) as container:
+        for frame in container.decode(video=0):
+            img = frame.to_image().convert("RGB")
+            frames.append(fit_image(img, *size) if size else img)
+            if len(frames) >= max_frames:
+                break
+    if not frames:
+        raise ValueError("Vidéo vide ou illisible.")
+    return frames
+
+
+def video_thumb(src: Path, asset_id: str) -> str:
+    """WebP thumbnail of the first frame."""
+    filename = f"{asset_id}.webp"
+    img = read_frames(src, 1)[0]
+    img.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.Resampling.LANCZOS)
+    img.save(THUMBS_DIR / filename, quality=86)
+    return filename
+
+
+def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None = None) -> None:
+    """Write H.264 (yuv420p) frames, with an optional AAC track, as a web-friendly MP4.
+
+    `frames`: uint8 array [F, H, W, 3]. `audio`: float array [channels, samples] in [-1, 1]."""
+    import av
+    import numpy as np
+
+    frames = np.asarray(frames)
+    _, height, width, _ = frames.shape
+    container = av.open(str(path), mode="w", options={"movflags": "+faststart"})
+    try:
+        stream = container.add_stream("libx264", rate=int(fps))
+        stream.width, stream.height, stream.pix_fmt = width, height, "yuv420p"
+        stream.options = {"crf": "18", "preset": "medium"}
+        astream = None
+        if audio is not None and sample_rate:
+            astream = container.add_stream("aac", rate=int(sample_rate))
+            astream.layout = "stereo"
+        for arr in frames:
+            for packet in stream.encode(av.VideoFrame.from_ndarray(arr, format="rgb24")):
+                container.mux(packet)
+        for packet in stream.encode():
+            container.mux(packet)
+        if astream is not None:
+            samples = np.asarray(audio, dtype=np.float32)
+            if samples.ndim == 1:
+                samples = samples[None]
+            if samples.shape[0] == 1:
+                samples = np.repeat(samples, 2, axis=0)
+            samples = samples[:2]
+            pcm = (np.clip(samples, -1.0, 1.0) * 32767).astype(np.int16).T.reshape(1, -1)  # interleaved L R
+            aframe = av.AudioFrame.from_ndarray(np.ascontiguousarray(pcm), format="s16", layout="stereo")
+            aframe.sample_rate = int(sample_rate)
+            resampler = av.audio.resampler.AudioResampler(format="fltp", layout="stereo", rate=int(sample_rate))
+            for rframe in resampler.resample(aframe):
+                for packet in astream.encode(rframe):
+                    container.mux(packet)
+            for packet in astream.encode():
+                container.mux(packet)
+    finally:
+        container.close()

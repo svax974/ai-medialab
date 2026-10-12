@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Stéphane Vaxelaire
 // SPDX-License-Identifier: MIT
 
-// Minimal router (History API): "/", "/c/:id", "/galerie" (images) ; "/audio", "/audio/voix", "/audio/bibliotheque" (audio).
+// Minimal router (History API): "/", "/c/:id", "/galerie" (images) ; "/audio", "/audio/voix", "/audio/bibliotheque" (audio) ; "/video", "/video/bibliotheque" (video).
 import { useSyncExternalStore } from "react";
 
 export type Route =
@@ -10,7 +10,9 @@ export type Route =
   | { name: "gallery" }
   | { name: "audio-home" }
   | { name: "voices" }
-  | { name: "audio-gallery" };
+  | { name: "audio-gallery" }
+  | { name: "video-home" }
+  | { name: "video-gallery" };
 
 function parse(pathname: string): Route {
   const conv = pathname.match(/^\/c\/([\w-]+)\/?$/);
@@ -19,6 +21,8 @@ function parse(pathname: string): Route {
   if (/^\/audio\/?$/.test(pathname)) return { name: "audio-home" };
   if (/^\/audio\/voix\/?$/.test(pathname)) return { name: "voices" };
   if (/^\/audio\/bibliotheque\/?$/.test(pathname)) return { name: "audio-gallery" };
+  if (/^\/video\/?$/.test(pathname)) return { name: "video-home" };
+  if (/^\/video\/bibliotheque\/?$/.test(pathname)) return { name: "video-gallery" };
   return { name: "home" };
 }
 
@@ -56,4 +60,6 @@ export const paths = {
   audioHome: "/audio",
   voices: "/audio/voix",
   audioGallery: "/audio/bibliotheque",
+  videoHome: "/video",
+  videoGallery: "/video/bibliotheque",
 };

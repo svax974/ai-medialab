@@ -10,6 +10,7 @@ import { focusComposer, uploadFiles, addAsReference } from "./lib/composer";
 import { useConversation, useServerEvents } from "./lib/queries";
 import { navigate, paths, useRoute } from "./lib/router";
 import { useStore } from "./lib/store";
+import { dropIntoVideo } from "./lib/video";
 import { AudioGallery } from "./components/AudioGallery";
 import { AudioHome } from "./components/AudioHome";
 import { ConfirmHost } from "./components/Confirm";
@@ -21,11 +22,13 @@ import { ModelsDialog } from "./components/ModelsDialog";
 import { SettingsDialog } from "./components/SettingsDialog";
 import { SetupController } from "./components/Setup";
 import { Sidebar, lastPathByMode } from "./components/Sidebar";
+import { VideoGallery } from "./components/VideoGallery";
+import { VideoHome } from "./components/VideoHome";
 import { VoiceStudio } from "./components/VoiceStudio";
 import { VoicesPage } from "./components/VoicesPage";
 import { IconButton } from "./components/ui";
 
-/** The mode (image / audio) follows the current page; the last page of each mode is remembered for the mode switch. */
+/** The mode (image / audio / video) follows the current page; the last page of each mode is remembered for the mode switch. */
 function useModeSync() {
   const route = useRoute();
   const setMode = useStore((s) => s.setMode);
@@ -40,6 +43,9 @@ function useModeSync() {
     } else if (route.name === "audio-home" || route.name === "voices" || route.name === "audio-gallery") {
       setMode("audio");
       lastPathByMode.audio = path;
+    } else if (route.name === "video-home" || route.name === "video-gallery") {
+      setMode("video");
+      lastPathByMode.video = path;
     } else if (conv) {
       setMode(conv.mode);
       lastPathByMode[conv.mode] = path;
@@ -66,7 +72,8 @@ export default function App() {
         toggleSidebar();
       } else if (mod && e.shiftKey && e.key.toLowerCase() === "o") {
         e.preventDefault();
-        navigate(useStore.getState().mode === "audio" ? paths.audioHome : paths.home);
+        const m = useStore.getState().mode;
+        navigate(m === "audio" ? paths.audioHome : m === "video" ? paths.videoHome : paths.home);
         focusComposer();
       } else if (e.key === "/" && !typing && !useStore.getState().lightbox) {
         e.preventDefault();
@@ -95,6 +102,8 @@ export default function App() {
           {route.name === "audio-home" && <AudioHome />}
           {route.name === "voices" && <VoicesPage />}
           {route.name === "audio-gallery" && <AudioGallery />}
+          {route.name === "video-home" && <VideoHome />}
+          {route.name === "video-gallery" && <VideoGallery />}
         </main>
       </div>
 
@@ -102,9 +111,15 @@ export default function App() {
         <div className="pointer-events-none fixed inset-0 z-[90] grid place-items-center bg-bg/70 backdrop-blur-sm animate-fade">
           <div className="flex flex-col items-center gap-3 rounded-3xl border-2 border-dashed border-safe/60 bg-surface/80 px-14 py-10 shadow-[0_0_80px_-20px_var(--safe-glow)]">
             <Upload className="size-8 text-safe" />
-            <div className="font-display text-3xl text-ink">{mode === "audio" ? "Déposez un enregistrement" : "Déposez vos images"}</div>
+            <div className="font-display text-3xl text-ink">
+              {mode === "audio" ? "Déposez un enregistrement" : mode === "video" ? "Déposez une image ou une vidéo" : "Déposez vos images"}
+            </div>
             <div className="text-sm text-muted">
-              {mode === "audio" ? "Il servira à cloner une voix, avec quelques secondes de parole." : "Elles serviront de références pour la prochaine génération."}
+              {mode === "audio"
+                ? "Il servira à cloner une voix, avec quelques secondes de parole."
+                : mode === "video"
+                  ? "Une image sert de départ au clip ; une vidéo devient la source à modifier."
+                  : "Elles serviront de références pour la prochaine génération."}
             </div>
           </div>
         </div>
@@ -162,6 +177,11 @@ function useFileDrop() {
         const audio = files.find((f) => f.type.startsWith("audio/") || /\.(wav|mp3|m4a|flac|ogg|opus|aac|webm|mp4)$/i.test(f.name));
         if (audio) useStore.getState().openVoiceStudio({ file: audio });
         else if (files.length) toast.warning("Déposez un fichier audio (WAV, MP3, M4A, FLAC, OGG…).");
+        return;
+      }
+      if (useStore.getState().mode === "video") {
+        if (files.some((f) => f.type.startsWith("video/") || f.type.startsWith("image/") || /\.(mp4|mov|webm|mkv|m4v|png|jpe?g|webp|gif|bmp|heic|avif)$/i.test(f.name))) dropIntoVideo(files);
+        else if (files.length) toast.warning("Déposez une image ou une vidéo (MP4, MOV, WebM, MKV, PNG, JPEG…).");
         return;
       }
       if (files.length) uploadFiles(files);

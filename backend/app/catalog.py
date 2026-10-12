@@ -20,10 +20,14 @@ from .system import get_system, memory_plan
 STARTER_ORDER = ["z-image-turbo-gguf", "qwen-image-2.1-gguf", "qwen-image-2.1", "sdxl-base", "z-image-turbo"]
 # Audio: Pocket TTS (cloning, French, real time on CPU), then Kokoro (lightest).
 AUDIO_STARTER_ORDER = ["pocket-tts", "kokoro-82m", "qwen3-tts-custom-small"]
+# Video: the lightest first (CogVideoX 2B), then Wan 2.2 TI2V 5B. HunyuanVideo (restrictive licence) is never suggested.
+VIDEO_STARTER_ORDER = ["cogvideox-2b", "wan-2.2-ti2v-5b"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
-    """Audio models run on CPU or GPU, so only memory decides feasibility."""
+    """Audio models run on CPU or GPU, so only memory decides feasibility; video packs also need enough video memory."""
+    if spec.kind == "video":
+        return _video_pack_plan(spec, system)
     ram = system["ram_gb"]
     need = (spec.weights_gb or 0) * 1.6 + 1.5
     if ram < need:
@@ -32,6 +36,22 @@ def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
     if gpu_tagged and not system["accelerators"]:
         return {"fits": True, "strategy": "full", "note": "Aucun GPU détecté : ce modèle sera très lent sur processeur."}
     return {"fits": True, "strategy": "full", "note": ""}
+
+
+def _video_pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
+    """Video packs load their weights unquantized: compare with the video memory and RAM the spec asks for."""
+    need_ram, need_vram = spec.options.get("min_ram_gb"), spec.options.get("min_vram_gb")
+    if need_ram and system["ram_gb"] < need_ram:
+        return {"fits": False, "strategy": "none",
+                "note": f"Il faut ≈ {need_ram:.0f} Go de mémoire vive ({system['ram_gb']:.0f} Go ici)."}
+    vram = max((a.get("memory_gb") or 0 for a in system["accelerators"] if a["backend"] in ("cuda", "rocm")), default=0)
+    if need_vram and vram and vram < need_vram:
+        return {"fits": False, "strategy": "none",
+                "note": f"Il faut ≈ {need_vram:.0f} Go de mémoire vidéo ({vram:.0f} Go ici)."}
+    note = ""
+    if need_vram and not vram:
+        note = f"Mémoire de la carte graphique non détectée : vérifiez qu'elle atteint ≈ {need_vram:.0f} Go."
+    return {"fits": True, "strategy": "full", "note": note}
 
 
 _QUANT = re.compile(r"(?<![A-Za-z0-9])((?:IQ|Q)\d(?:_[A-Z0-9]+)*|BF16|F16|F32)(?![A-Za-z0-9])", re.I)
@@ -147,4 +167,5 @@ def describe_models() -> dict[str, Any]:
 
     image = pick("image", STARTER_ORDER)
     audio = pick("audio", AUDIO_STARTER_ORDER)
-    return {"models": models, **image, "audio": audio}
+    video = pick("video", VIDEO_STARTER_ORDER)
+    return {"models": models, **image, "audio": audio, "video": video}

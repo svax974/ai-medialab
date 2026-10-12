@@ -203,7 +203,7 @@ function Steps({ needEngine, engineState, needModel }: { needEngine: boolean; en
 export function useWelcomeModel(kind: ModelKind = "image"): ModelInfo | null {
   const { data } = useModels();
   const active = useActiveModel(kind);
-  const scope = kind === "audio" ? data?.audio : data;
+  const scope = kind === "audio" ? data?.audio : kind === "video" ? data?.video : data;
   if (!data || !scope || scope.ready || !active || active.id !== scope.recommended_model_id) return null;
   return active;
 }

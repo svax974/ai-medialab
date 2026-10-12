@@ -1,6 +1,6 @@
 # AI MediaLab
 
-Studio local de création d'images et d'audio (synthèse vocale, clonage de voix), sous forme de chat. Les modèles ouverts tournent sur la
+Studio local de création d'images, d'audio (synthèse vocale, clonage de voix) et de vidéo (génération et édition), sous forme de chat. Les modèles ouverts tournent sur la
 machine — Metal (Apple Silicon), NVIDIA (CUDA) ou AMD (ROCm) — sans service externe. L'application embarque
 le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hugging Face).
 
@@ -137,7 +137,7 @@ téléchargements, file d'attente et mémoire sont partagés (un seul modèle ch
 | Qwen3-TTS Voix & style 1.7B / 0.6B | non (9 voix + consigne de style) | 10 | 4,5 / 2,5 Go | Apache-2.0 | 0.6B oui (MPS, bfloat16) |
 | Qwen3-TTS Création de voix 1.7B | voix décrite | 10 | 4,5 Go | Apache-2.0 | oui |
 | Qwen3-TTS Clonage 1.7B / 0.6B | oui | 10 | 4,5 / 2,5 Go | Apache-2.0 | 0.6B oui |
-| Whisper Small / Large v3 Turbo | — (transcription) | multi | 0,5 / 1,6 Go | MIT | Small oui |
+| Whisper Small / Large v3 Turbo | — (transcription) | multi | 0,5 / 1,6 Go | MIT | Small oui (Metal via mlx-whisper sur Mac ; faster-whisper sur CPU ailleurs) |
 
 Les sorties ont été vérifiées en les retranscrivant avec Whisper. Non testés : CUDA / ROCm / Vulkan pour l'audio
 (les installations de PyTorch ciblent `cu128` / `rocm6.4` / CPU, jamais exécutées ici), Windows et Linux.
@@ -149,6 +149,43 @@ et piloté par `backend/audio_runtime/worker.py` (protocole JSON ligne à ligne)
 `audio_runtime/engines/` + une spec dans `app/engines/audio_specs.py` (+ un pack si les dépendances diffèrent).
 Piège rencontré : eSpeak-ng (phonémiseur de Kokoro) tronque son chemin de données à 160 caractères ; le moteur copie les
 données sous un chemin court quand le venv est profond.
+
+## Vidéo : génération et édition
+
+Le commutateur **Image / Audio / Vidéo** ouvre le studio vidéo, construit comme le studio image : conversations, file
+d'attente, progression et annulation, galerie, téléchargements et mémoire partagés (un seul modèle chargé à la fois).
+
+- **Composer** : prompt, image de départ (et image de fin pour les modèles qui la gèrent), vidéo source à modifier,
+  durée, format, définition, étapes, graine, nombre de clips (1–2). Le nombre d'images est arrondi à ce que le modèle accepte.
+- **Résultats** : lecteur intégré (avec le son quand le modèle en produit), varier, relancer, reprendre les réglages,
+  utiliser un clip comme vidéo source, **dernière image comme départ** pour enchaîner un plan, favoris, téléchargement MP4.
+- **Modèles Hugging Face** : la recherche du gestionnaire de modèles propose aussi les dépôts vidéo au format
+  diffusers (Wan, CogVideoX, HunyuanVideo 1.5, LTX-2) et les quantifications GGUF de Wan 2.2 TI2V 5B.
+
+| Modèle | Spécialité | Tâches | Téléchargement | Licence |
+|---|---|---|---|---|
+| **CogVideoX 2B** (5B, 5B I2V) | Léger, clips courts 480p | texte → vidéo (5B : édition ; I2V : image → vidéo) | 14 Go (5B : 22 Go) | Apache 2.0 (5B : licence CogVideoX) |
+| **Wan 2.2 TI2V 5B** | Polyvalent, la meilleure qualité ouverte | texte → vidéo, image → vidéo | 18 Go (Q4_K_M) | Apache 2.0 |
+| **Wan 2.2 14B** (T2V, I2V) | Qualité maximale, début et fin au choix (I2V) | texte → vidéo, image → vidéo | 29 Go (Q4_K_S, deux experts) | Apache 2.0 |
+| **LTX-2.3 Distilled** | Rapide, haute définition, son synchronisé | texte → vidéo, image → vidéo | 46 Go (Q4_K_S) | licence LTX |
+| **HunyuanVideo 1.5** (T2V, I2V distillé) | Réalisme et mouvement soignés, 480p | texte → vidéo, image → vidéo | 53 / 35 Go | Tencent Hunyuan : **exclue dans l'UE, au Royaume-Uni et en Corée du Sud** (avertissement dans l'interface) |
+| **Kiwi-Edit 5B** | Édition de vidéo par instruction (+ image de référence) | édition | 20 Go | MIT (code) ; poids sans licence déclarée |
+| **Bernini-R 1.3B** | Génération et édition guidées par un planificateur multimodal | texte → vidéo, édition, référence | 29 Go | Apache 2.0 |
+
+Seules les variantes les plus légères sont proposées, quantifiées en 4 bits (GGUF) quand diffusers sait les charger
+(Wan, LTX-2) ; CogVideoX et HunyuanVideo 1.5 restent en pleine précision. Le planificateur mémoire refuse un modèle qui
+ne tient pas dans la mémoire de la machine (sur Mac, GPU et processeur partagent la même mémoire : pas de déchargement
+« gratuit »). Les poids de LTX-2.3 dépassent 60 Go de mémoire, donc plutôt un Mac de 64 Go ou une carte NVIDIA.
+
+**Matériel.** Wan, LTX, CogVideoX et HunyuanVideo passent par PyTorch + diffusers (CUDA, ROCm, MPS) ; pas de Vulkan pour la
+vidéo. Sur Mac, seuls CogVideoX et Wan 2.2 TI2V 5B sont raisonnables (32 Go ou plus). **Kiwi-Edit et Bernini** ont besoin du code
+officiel et de dépendances épinglées : ils tournent dans un **environnement Python isolé** (« pack », créé à la demande dans
+`<données>/engines/video/`) et exigent une carte NVIDIA (ou AMD sous Linux) ; sinon ils sont listés comme incompatibles avec la raison.
+
+**Non vérifié.** Aucune génération réelle n'a été lancée (pas de GPU adapté ni assez de mémoire ici) : le moteur, le chargement
+des poids GGUF et les deux packs reposent sur la lecture du code des bibliothèques et sur des tests avec moteur simulé. Les tailles viennent
+de l'API Hugging Face ; les besoins en mémoire des packs sont des estimations. Pour LTX-2.3, l'encodeur de texte est pris dans la copie
+bf16 `Lightricks/gemma-3-12b-it-qat-q4_0-unquantized` (24 Go) au lieu des 49 Go fp32 du dépôt diffusers, en supposant des poids identiques.
 
 ## Architecture
 

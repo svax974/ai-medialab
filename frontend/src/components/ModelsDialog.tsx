@@ -17,6 +17,7 @@ import { IndeterminateBar, ProgressBar, startSetup } from "./Setup";
 import { navigate, paths } from "../lib/router";
 import { Button, IconButton, Spinner } from "./ui";
 import { HubSearch } from "./HubSearch";
+import { LicenseWarning, VideoBadges } from "./VideoInfo";
 
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 
@@ -24,6 +25,7 @@ const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyT
 const SDCPP_DEVICE: Record<string, string> = { metal: "Metal", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan", cpu: "CPU" };
 
 function backendLabel(m: ModelInfo, system?: SystemInfo) {
+  if (m.backend === "pack" && m.kind === "video") return "Vidéo";
   if (m.backend === "sdcpp") return `GGUF · ${SDCPP_DEVICE[system?.engines.sdcpp?.device ?? ""] ?? "GPU"}`;
   if (m.backend !== "torch") return BACKEND_LABEL[m.backend];
   const dev = system?.engines.torch?.device;
@@ -77,7 +79,7 @@ export function ModelsDialog() {
             {system && <MachineCard system={system} />}
             <KindTabs value={tab} onChange={setTab} />
             {system && tab === "image" && <EnginesCard system={system} />}
-            {system && tab === "audio" && <PacksCard system={system} />}
+            {system && (tab === "audio" || tab === "video") && <PacksCard system={system} kind={tab} models={data?.models ?? []} />}
             <div className="space-y-3">
               {generators.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
               {!data && <div className="grid h-24 place-items-center text-muted"><Spinner /></div>}
@@ -144,6 +146,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   const error = live?.state === "error" ? live.error : m.download?.state === "error" ? m.download.error : null;
   const setImageModel = useStore((s) => s.setModel);
   const setAudioModel = useStore((s) => s.setAudioModel);
+  const setVideoModel = useStore((s) => s.setVideoModel);
   const setOpen = useStore((s) => s.setModelsOpen);
   const loaded = useStore((s) => s.engine?.model_id === m.id);
   const installed = m.install === "installed";
@@ -219,6 +222,12 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         {m.install === "partial" && !dl && <span className="font-mono text-[10.5px] text-warn">incomplet · {gb(m.installed_gb)} Go présents</span>}
       </div>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">{m.description}</p>
+      {m.kind === "video" && (
+        <div className="mt-2">
+          <VideoBadges model={m} />
+        </div>
+      )}
+      {m.kind === "video" && <LicenseWarning model={m} className="mt-2.5" />}
       <div className="mt-2 flex flex-wrap items-center gap-1">
         {m.tags.map((t) => (
           <span key={t} className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{t}</span>
@@ -283,6 +292,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
                 disabled={!m.compatible}
                 onClick={() => {
                   if (m.kind === "audio") (setAudioModel(m.id), navigate(paths.audioHome));
+                  else if (m.kind === "video") (setVideoModel(m.id), navigate(paths.videoHome));
                   else (setImageModel(m.id), navigate(paths.home));
                   setOpen(false);
                 }}
@@ -451,8 +461,8 @@ function EnginesCard({ system }: { system: SystemInfo }) {
 
 function KindTabs({ value, onChange }: { value: ModelKind; onChange: (k: ModelKind) => void }) {
   return (
-    <div role="tablist" className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1 ring-1 ring-line">
-      {([["image", "Modèles d'image"], ["audio", "Modèles audio"]] as const).map(([id, label]) => (
+    <div role="tablist" className="grid grid-cols-3 gap-1 rounded-xl bg-surface p-1 ring-1 ring-line">
+      {([["image", "Modèles d'image"], ["audio", "Modèles audio"], ["video", "Modèles vidéo"]] as const).map(([id, label]) => (
         <button
           key={id}
           role="tab"
@@ -467,19 +477,23 @@ function KindTabs({ value, onChange }: { value: ModelKind; onChange: (k: ModelKi
   );
 }
 
-function PacksCard({ system }: { system: SystemInfo }) {
+function PacksCard({ system, kind, models }: { system: SystemInfo; kind: "audio" | "video"; models: ModelInfo[] }) {
   const [uninstalling, setUninstalling] = useState<string | null>(null);
   const live = useStore((s) => s.packInstall);
   const install = live.state !== "idle" ? live : system.pack_install;
   const running = install?.state === "running";
   return (
     <section className="rounded-2xl border border-line bg-surface-2/50 p-4">
-      <div className="eyebrow mb-1">Moteurs audio</div>
+      <div className="eyebrow mb-1">{kind === "video" ? "Moteurs vidéo" : "Moteurs audio"}</div>
       <p className="mb-3 text-[12px] leading-snug text-faint">
         Chaque famille de modèles a son propre environnement, installé à la demande : aucun conflit, rien d'inutile sur le disque.
       </p>
       <div className="space-y-2.5">
-        {Object.entries(system.packs ?? {}).map(([id, p]) => {
+        {Object.entries(system.packs ?? {}).filter(([id]) => {
+          // A pack belongs to the kind of the models that use it; unused packs stay with audio.
+          const used = (k: string) => models.some((m) => m.kind === k && m.engine_pack === id);
+          return kind === "video" ? used("video") : !used("video") || used("audio");
+        }).map(([id, p]) => {
           const mine = running && install.pack === id;
           return (
             <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1">

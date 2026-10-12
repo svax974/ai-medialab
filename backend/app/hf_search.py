@@ -18,15 +18,19 @@ from typing import Any
 from . import db
 from .catalog import quant_from_name
 from .engines import MODELS
-from .engines.custom import GGUF_TEMPLATES, SD_PIPELINES, _title, slug
+from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, slug,
+                             video_template_id)
 
 FAMILY_LABEL = {
     "gguf-variant": "GGUF",
     "sd-diffusers": "Stable Diffusion",
     "qwen3-tts": "Qwen3-TTS",
     "whisper-ct2": "Whisper",
+    "video-diffusers": "Vidéo",
+    "video-gguf": "Vidéo GGUF",
 }
-TASK = {"gguf-variant": "image", "sd-diffusers": "image", "qwen3-tts": "tts", "whisper-ct2": "stt"}
+TASK = {"gguf-variant": "image", "sd-diffusers": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
+        "video-diffusers": "video", "video-gguf": "video"}
 # Repos quantized in a format the Python Qwen3-TTS engine can't load.
 _NOT_TORCH = re.compile(r"gguf|mlx|onnx|gptq|awq|bnb|[-_ ](?:4|8)-?bit|int[48]|fp8", re.I)
 
@@ -51,11 +55,16 @@ def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
     for pipe in SD_PIPELINES:
         if f"diffusers:{pipe}" in ts:
             return "sd-diffusers", {"pipeline": pipe}
+    for pipe in VIDEO_TEMPLATES:
+        if f"diffusers:{pipe}" in ts:
+            return "video-diffusers", {"pipeline": pipe}
     if "gguf" in ts:
         bases = _tag_values(tags, "base_model:quantized:") or _tag_values(tags, "base_model:")
         for b in bases:
             if b in GGUF_TEMPLATES:
                 return "gguf-variant", {"template": GGUF_TEMPLATES[b], "base": b}
+            if b in VIDEO_GGUF_TEMPLATES:
+                return "video-gguf", {"template": VIDEO_GGUF_TEMPLATES[b], "base": b}
     if "qwen3_tts" in ts and not _NOT_TORCH.search(repo) and not (ts & {"gguf", "mlx", "onnx"}):
         return "qwen3-tts", {}
     if "ctranslate2" in ts and "whisper" in repo.lower() and not _NOT_TORCH.search(repo):
@@ -80,6 +89,10 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
         qs = [{**base, "filter": f"diffusers:{p}", "pipeline_tag": "text-to-image"} for p in SD_PIPELINES]
         qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": "text-to-image"}
                 for b in GGUF_TEMPLATES]
+    elif kind == "video":
+        qs = [{**base, "filter": f"diffusers:{p}"} for p in VIDEO_TEMPLATES]
+        qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": tag}
+               for b in VIDEO_GGUF_TEMPLATES for tag in ("text-to-video", "image-to-video")]
     else:
         qs = [{**base, "filter": "qwen3_tts"},
               {**base, "filter": "ctranslate2", "search": f"{q} whisper".strip()}]
@@ -87,7 +100,7 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
 
 
 def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
-    if kind not in ("image", "audio"):
+    if kind not in ("image", "audio", "video"):
         raise HubError("Type de modèle inconnu.")
     api = _api()
 
@@ -95,7 +108,7 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
         return list(api.list_models(**kwargs))
 
     try:
-        with ThreadPoolExecutor(max_workers=5) as pool:
+        with ThreadPoolExecutor(max_workers=8) as pool:
             batches = list(pool.map(run, _queries(kind, q)))
     except Exception as exc:  # noqa: BLE001
         raise HubError(f"Hugging Face est injoignable ({type(exc).__name__}). Vérifiez la connexion.") from None
@@ -171,8 +184,8 @@ def inspect(repo: str) -> dict[str, Any]:
     cls = classify(repo, tags)
     if cls is None:
         raise HubError("Format non pris en charge : seuls les modèles Stable Diffusion/SDXL (diffusers), les "
-                       "quantifications GGUF de Z-Image / Qwen Image, Qwen3-TTS et Whisper (faster-whisper) "
-                       "peuvent être ajoutés.")
+                       "quantifications GGUF de Z-Image / Qwen Image, les modèles vidéo diffusers (Wan, CogVideoX, HunyuanVideo 1.5, "
+                       "LTX-2) et GGUF de Wan 2.2 TI2V 5B, Qwen3-TTS et Whisper (faster-whisper) peuvent être ajoutés.")
     family, details = cls
     files = {s.rfilename: (s.size or 0) for s in info.siblings or []}
     license_ = _license(tags)
@@ -199,6 +212,33 @@ def inspect(repo: str) -> dict[str, Any]:
         out["options"].append({"key": "default", "label": sel["precision"], "precision": sel["precision"],
                                "size_gb": sel["size_gb"]})
         out["notes"].append("Format diffusers (PyTorch) : nécessite le moteur PyTorch et un GPU.")
+        return out
+
+    if family == "video-diffusers":
+        pipeline = details["pipeline"]
+        tpl = video_template_id(pipeline, files)
+        sel = _select_diffusers(repo, files, pipeline, VIDEO_TEMPLATES)
+        template = next(m for m in MODELS.values() if m.id == tpl)
+        out["template"] = {"id": tpl, "name": template.name}
+        out["options"].append({"key": "default", "label": sel["precision"], "precision": sel["precision"],
+                               "size_gb": sel["size_gb"]})
+        out["notes"].append(f"Format diffusers (PyTorch) : exécuté avec les réglages de « {template.name} », nécessite "
+                            "le moteur PyTorch, un GPU et beaucoup de mémoire.")
+        return out
+
+    if family == "video-gguf":
+        template = next(m for m in MODELS.values() if m.id == details["template"])
+        out["template"] = {"id": template.id, "name": template.name}
+        if info.pipeline_tag not in ("text-to-video", "image-to-video"):
+            raise HubError("Ce dépôt n'est pas un modèle de vidéo (encodeur de texte, VAE ou autre composant).")
+        ggufs = {f: n for f, n in files.items() if f.endswith(".gguf") and "/" not in f and "mmproj" not in f.lower()}
+        if not ggufs:
+            raise HubError("Aucun fichier GGUF de diffusion à la racine de ce dépôt.")
+        for f, n in sorted(ggufs.items(), key=lambda kv: kv[1]):
+            q = quant_from_name(f) or "GGUF"
+            out["options"].append({"key": f, "label": q, "precision": q, "file": f, "size_gb": _size_gb(n)})
+        out["notes"].append(f"Exécuté comme « {template.name} » : l'encodeur de texte et le VAE du modèle de référence "
+                            "sont réutilisés.")
         return out
 
     if family == "qwen3-tts":
@@ -230,9 +270,9 @@ def inspect(repo: str) -> dict[str, Any]:
     return out
 
 
-def _select_diffusers(repo: str, files: dict[str, int], pipeline: str) -> dict[str, Any]:
+def _select_diffusers(repo: str, files: dict[str, int], pipeline: str, allowed=SD_PIPELINES) -> dict[str, Any]:
     index = _json(repo, "model_index.json")
-    if index.get("_class_name") not in SD_PIPELINES:
+    if index.get("_class_name") not in allowed:
         raise HubError(f"Pipeline non pris en charge : {index.get('_class_name')}.")
     comps = [k for k, v in index.items()
              if not k.startswith("_") and isinstance(v, list) and v and v[0] and k != "safety_checker"]
@@ -273,7 +313,7 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
     family = info["family"]
     base = {"family": family, "repo": repo, "license": info["license"], "precision": opt["precision"],
             "size_gb": opt["size_gb"], "name": _title(repo)}
-    if family == "gguf-variant":
+    if family in ("gguf-variant", "video-gguf"):
         tpl = info["template"]["name"].lower().replace("-", " ").split()
         words = [w for w in _title(repo).split() if w.lower() not in tpl and w.lower() not in ("gguf", "image", "turbo")]
         who = " ".join(words) or repo.split("/")[0]
@@ -289,6 +329,11 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
         return {**base, "id": slug(repo), "pipeline": pipe, "files": sel["files"], "fp16": sel["fp16"],
                 "weights_gb": sel["weights_gb"], "largest_gb": sel["largest_gb"],
                 "steps": 4 if fast else 30, "guidance": 0.0 if fast else (6.0 if pipe.endswith("XLPipeline") else 7.5)}
+    if family == "video-diffusers":
+        pipe = classify(repo, api_info.tags or [])[1]["pipeline"]  # type: ignore[index]
+        sel = _select_diffusers(repo, files, pipe, VIDEO_TEMPLATES)
+        return {**base, "id": slug(repo), "pipeline": pipe, "template": info["template"]["id"], "files": sel["files"],
+                "weights_gb": sel["weights_gb"], "largest_gb": sel["largest_gb"]}
     if family == "qwen3-tts":
         cfg = _json(repo, "config.json")
         return {**base, "id": slug(repo), "variant": cfg["tts_model_type"],

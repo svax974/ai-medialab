@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -23,13 +24,14 @@ from .. import hf_search
 from ..engines import MODELS, custom, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings, new_seed
-from ..media import make_thumb, save_upload
+from ..media import (MAX_VIDEO_UPLOAD, VIDEO_EXTENSIONS, is_video_upload, make_thumb, probe_video, save_upload, video_thumb)
 from ..system import get_system
 from ..config import UPLOADS_DIR
 
 router = APIRouter(prefix="/api")
 
 MAX_COUNT = 4
+MAX_VIDEO_COUNT = 2  # a video takes minutes to hours, so batches stay small
 
 
 # Models, engines, settings
@@ -253,7 +255,7 @@ async def put_settings(patch: SettingsPatch) -> dict[str, Any]:
 
 @router.get("/conversations")
 def list_conversations(q: str | None = None, mode: str | None = None) -> list[dict[str, Any]]:
-    return repo.list_conversations(q.strip() if q else None, mode if mode in ("image", "audio") else None)
+    return repo.list_conversations(q.strip() if q else None, mode if mode in ("image", "audio", "video") else None)
 
 
 class ConversationCreate(BaseModel):
@@ -268,7 +270,7 @@ def create_conversation(body: ConversationCreate) -> dict[str, Any]:
     with db.connect() as conn:
         conn.execute(
             "INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
-            (cid, body.title.strip() or "Nouvelle création", "audio" if body.mode == "audio" else "image", ts, ts),
+            (cid, body.title.strip() or "Nouvelle création", body.mode if body.mode in ("audio", "video") else "image", ts, ts),
         )
     conv = repo.get_conversation(cid)
     bus.publish("conversation.updated", _summary(cid))
@@ -367,6 +369,7 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
     if spec.kind == "audio" and spec.audio.task != "tts":
         raise HTTPException(422, f"{spec.name} ne synthétise pas de voix.")
 
+    count = min(body.count, MAX_VIDEO_COUNT) if spec.kind == "video" else body.count
     ts = db.now()
     with db.connect() as conn:
         cid = body.conversation_id
@@ -401,8 +404,10 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
             if asset["conversation_id"] is None:
                 conn.execute("UPDATE assets SET conversation_id = ? WHERE id = ?", (cid, asset_id))
 
-        params = {**spec.default_params(), **body.params, "count": body.count}
-        params["seeds"] = _seeds(params, body.count)
+        if spec.kind == "video":
+            _check_video_refs(conn, spec, body.reference_ids)
+        params = {**spec.default_params(), **body.params, "count": count}
+        params["seeds"] = _seeds(params, count)
         assistant_id = _insert_assistant(conn, cid, user_id, prompt, spec.id, params)
         repo.touch_conversation(conn, cid)
 
@@ -410,6 +415,16 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
     user_msg, assistant_msg = repo.get_message(user_id), repo.get_message(assistant_id)
     bus.publish("conversation.updated", _summary(cid))
     return {"conversation_id": cid, "user_message": user_msg, "assistant_message": assistant_msg}
+
+
+def _check_video_refs(conn, spec, reference_ids: list[str]) -> None:
+    caps = spec.video
+    media = [conn.execute("SELECT media FROM assets WHERE id = ?", (i,)).fetchone() for i in dict.fromkeys(reference_ids)]
+    kinds = [m["media"] for m in media if m]
+    if caps.image_input == "required" and "image" not in kinds:
+        raise HTTPException(422, f"{spec.name} a besoin d'une image de départ.")
+    if caps.video_input == "required" and "video" not in kinds:
+        raise HTTPException(422, f"{spec.name} a besoin d'une vidéo source.")
 
 
 def _insert_assistant(conn, cid: str, parent_id: str, prompt: str, model_id: str, params: dict) -> str:
@@ -491,8 +506,11 @@ async def delete_message(message_id: str) -> dict[str, Any]:
 async def upload_assets(files: list[UploadFile] = File(...)) -> list[dict[str, Any]]:
     created = []
     for f in files:
-        data = await f.read()
         asset_id = db.new_id()
+        if is_video_upload(f.filename, f.content_type):
+            created.append(await _upload_video(f, asset_id))
+            continue
+        data = await f.read()
         try:
             filename, w, h = await asyncio.to_thread(save_upload, asset_id, data)
         except Exception:
@@ -507,6 +525,39 @@ async def upload_assets(files: list[UploadFile] = File(...)) -> list[dict[str, A
             row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
         created.append(repo.asset_public(row))
     return created
+
+
+async def _upload_video(f: UploadFile, asset_id: str) -> dict[str, Any]:
+    """Store a video as given (the browser plays MP4/WebM), read its size and duration, make a thumbnail."""
+    ext = Path(f.filename or "").suffix.lower()
+    ext = ext if ext in VIDEO_EXTENSIONS else ".mp4"
+    filename = f"{asset_id}{ext}"
+    path = UPLOADS_DIR / filename
+    size = 0
+    try:
+        with path.open("wb") as out:
+            while chunk := await f.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_VIDEO_UPLOAD:
+                    raise HTTPException(413, f"Vidéo trop lourde (500 Mo maximum) : {f.filename}")
+                out.write(chunk)
+        try:
+            info = await asyncio.to_thread(probe_video, path)
+            thumb = await asyncio.to_thread(video_thumb, path, asset_id)
+        except Exception:
+            raise HTTPException(422, f"Vidéo illisible : {f.filename}") from None
+    except BaseException:
+        path.unlink(missing_ok=True)
+        raise
+    with db.connect() as conn:
+        conn.execute(
+            "INSERT INTO assets (id, kind, media, filename, thumb, original_name, width, height, duration, meta, "
+            "created_at) VALUES (?, 'upload', 'video', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (asset_id, filename, thumb, f.filename, info["width"], info["height"], info["duration"],
+             json.dumps({"fps": info["fps"], "has_audio": info["has_audio"]}), db.now()),
+        )
+        row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
+    return repo.asset_public(row)
 
 
 @router.get("/assets")
@@ -524,7 +575,7 @@ def list_assets(
         "LEFT JOIN messages m ON m.id = a.message_id WHERE a.kind = ?"
     )
     args: list[Any] = [kind]
-    if media in ("image", "audio"):
+    if media in ("image", "audio", "video"):
         sql += " AND a.media = ?"
         args.append(media)
     if favorites:

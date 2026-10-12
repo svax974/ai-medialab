@@ -8,10 +8,11 @@ from __future__ import annotations
 import importlib
 
 from ..config import DEMO_MODE
-from . import audio_specs, custom, demo, gguf_models, qwen21, qwen_edit, torch_models
+from . import audio_specs, custom, demo, gguf_models, qwen21, qwen_edit, torch_models, video_specs
 from .base import Engine, ModelSpec, with_variant
 
-_SPECS: list[ModelSpec] = [qwen21.SPEC, *gguf_models.SPECS, *torch_models.SPECS, qwen_edit.SPEC, *audio_specs.SPECS]
+_SPECS: list[ModelSpec] = [qwen21.SPEC, *gguf_models.SPECS, *torch_models.SPECS, qwen_edit.SPEC, *audio_specs.SPECS,
+                     *video_specs.SPECS, *video_specs.PACK_SPECS]
 if DEMO_MODE:
     _SPECS.append(demo.SPEC)
 

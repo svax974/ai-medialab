@@ -52,12 +52,7 @@ class DiffusersEngine(Engine):
         self.strategy = plan["strategy"]
 
         pipe = cls.from_pretrained(self.spec.hf_repo, torch_dtype=self.dtype, **load_kwargs)
-        if self.strategy == "full":
-            pipe.to(self.device)
-        elif self.strategy == "model_offload":
-            pipe.enable_model_cpu_offload()
-        else:
-            pipe.enable_sequential_cpu_offload()
+        place_pipeline(pipe, self.strategy, self.device)
         if hasattr(pipe, "set_progress_bar_config"):
             pipe.set_progress_bar_config(disable=True)
         self.pipe = pipe
@@ -146,12 +141,26 @@ class DiffusersEngine(Engine):
         return self.i2i
 
     def _empty_cache(self) -> None:
-        import torch
+        empty_cache(self.device)
 
-        if self.device == "cuda":
-            torch.cuda.empty_cache()
-        elif self.device == "mps":
-            torch.mps.empty_cache()
+
+def place_pipeline(pipe, strategy: str, device: str) -> None:
+    """Apply a memory plan (see system.memory_plan) to a loaded pipeline."""
+    if strategy == "full":
+        pipe.to(device)
+    elif strategy == "model_offload":
+        pipe.enable_model_cpu_offload()
+    else:
+        pipe.enable_sequential_cpu_offload()
+
+
+def empty_cache(device: str) -> None:
+    import torch
+
+    if device == "cuda":
+        torch.cuda.empty_cache()
+    elif device == "mps":
+        torch.mps.empty_cache()
 
 
 def _load(path: str) -> Image.Image:

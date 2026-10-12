@@ -37,7 +37,7 @@ class ParamSpec:
 
 
 Backend = Literal["mlx", "torch", "sdcpp", "pack", "demo"]
-Kind = Literal["image", "audio"]
+Kind = Literal["image", "audio", "video"]
 
 
 @dataclass
@@ -76,6 +76,36 @@ class AudioCaps:
     tags: list[str] = field(default_factory=list)
     max_chars: int = 600
     sample_rate: int = 24000
+
+
+@dataclass
+class VideoResolution:
+    id: str  # "480p"
+    label: str
+    short_side: int  # pixels of the shorter side at this definition
+    long_side: int  # the longer side never exceeds this (keeps tall/wide aspects within what the model handles)
+
+
+@dataclass
+class VideoCaps:
+    """What the UI can offer for a video model."""
+
+    tasks: list[Literal["t2v", "i2v", "v2v"]] = field(default_factory=lambda: ["t2v"])
+    fps: int = 24
+    frame_step: int = 4  # frames = n * frame_step + 1
+    default_seconds: float = 5.0
+    min_seconds: float = 1.0
+    max_seconds: float = 5.0
+    resolutions: list[VideoResolution] = field(default_factory=list)
+    default_resolution: str = ""
+    image_input: Literal["none", "optional", "required"] = "none"  # start image
+    last_frame: bool = False  # accepts an end image too
+    # What the image input is: the first frame ("start") or a subject / style to follow ("reference").
+    image_role: Literal["start", "reference"] = "start"
+    video_input: Literal["none", "optional", "required"] = "none"  # source video to edit
+    audio_out: bool = False
+    english_only: bool = False
+    license_warning: str = ""  # shown prominently when not empty
 
 
 @dataclass
@@ -143,9 +173,10 @@ class ModelSpec:
     precision: str = ""
     # Added by the user from Hugging Face (see engines/custom.py).
     custom: bool = False
-    # "image" (image generation) or "audio" (TTS, transcription).
+    # "image" (image generation), "audio" (TTS, transcription) or "video".
     kind: Kind = "image"
     audio: AudioCaps | None = None
+    video: VideoCaps | None = None
     # Engine-specific options (pipeline class, argument names...).
     options: dict[str, Any] = field(default_factory=dict)
     # Models spread over several repos (e.g. GGUF + encoder + VAE); takes precedence over hf_repo.
