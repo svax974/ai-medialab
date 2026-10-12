@@ -15,7 +15,8 @@ import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
 import { IndeterminateBar, ProgressBar, startSetup } from "./Setup";
 import { navigate, paths } from "../lib/router";
-import { Button, IconButton, Spinner } from "./ui";
+import { HELP } from "../lib/help";
+import { Button, HelpBody, IconButton, InfoTip, Spinner, Tip } from "./ui";
 import { HubSearch } from "./HubSearch";
 import { GatedNotice, LicenseWarning, VideoBadges } from "./VideoInfo";
 
@@ -214,7 +215,11 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <h3 className="text-[15px] font-medium text-ink">{m.name}</h3>
         <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{backendLabel(m, system)}</span>
-        {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
+        {m.precision && (
+          <Tip wide label={<HelpBody {...HELP.quantize} />}>
+            <span className="cursor-help rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line">{m.precision}</span>
+          </Tip>
+        )}
         {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
         {m.custom && <span className="rounded-md bg-safe-soft px-1.5 py-px font-mono text-[10px] text-ink-2">Hugging Face</span>}
         {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
@@ -313,7 +318,9 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         {m.custom && !dl && !deleting && <Button variant="ghost" onClick={retire} disabled={loaded}><Trash2 className="size-4" /> Retirer de la liste</Button>}
         {installed && !deleting && m.backend === "mlx" && m.quantize_options.length > 0 && (
           <div className="ml-auto flex items-center gap-2">
-            <span className="text-[11.5px] text-faint">Précision</span>
+            <span className="inline-flex items-center gap-1 text-[11.5px] text-faint">
+              Précision <InfoTip {...HELP.quantize} side="left" />
+            </span>
             <div className="flex rounded-lg bg-surface p-0.5 ring-1 ring-line">
               {[...m.quantize_options.filter((q) => [4, 6, 8].includes(q)), null].map((q) => (
                 <button
@@ -344,7 +351,9 @@ function VariantPicker({ model: m, disabled }: { model: ModelInfo; disabled?: bo
   return (
     <div className="mt-3">
       <div className="mb-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-[11.5px] text-muted">Quantification</span>
+        <span className="inline-flex items-center gap-1 text-[11.5px] text-muted">
+          Quantification <InfoTip {...HELP.variant} />
+        </span>
         <span className="text-[11px] text-faint">seule celle choisie est téléchargée</span>
       </div>
       <div className="flex flex-wrap gap-1">

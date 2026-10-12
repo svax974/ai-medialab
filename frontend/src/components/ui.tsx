@@ -2,25 +2,103 @@
 // SPDX-License-Identifier: MIT
 
 // Small shared UI components.
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, useState, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { CircleHelp } from "lucide-react";
 import * as TooltipPrimitive from "@radix-ui/react-tooltip";
 import { cx } from "../lib/format";
 
-export function Tip({ label, children, side = "top", kbd }: { label: ReactNode; children: ReactNode; side?: "top" | "bottom" | "left" | "right"; kbd?: string }) {
+/** Tooltip around its child. `wide` lets the content wrap (use it with HelpBody for explanations). */
+export function Tip({ label, children, side = "top", kbd, wide = false }: { label: ReactNode; children: ReactNode; side?: "top" | "bottom" | "left" | "right"; kbd?: string; wide?: boolean }) {
   return (
-    <TooltipPrimitive.Root delayDuration={350}>
+    <TooltipPrimitive.Root delayDuration={wide ? 250 : 350}>
       <TooltipPrimitive.Trigger asChild>{children}</TooltipPrimitive.Trigger>
       <TooltipPrimitive.Portal>
         <TooltipPrimitive.Content
           side={side}
           sideOffset={6}
-          className="z-[70] flex items-center gap-2 rounded-lg border border-line-strong bg-surface-3 px-2.5 py-1.5 text-xs text-ink shadow-xl animate-fade"
+          collisionPadding={12}
+          className={cx(
+            "z-[80] rounded-lg border border-line-strong bg-surface-3 text-xs text-ink shadow-xl animate-fade",
+            wide ? "block max-w-[min(19rem,calc(100vw-24px))] px-3 py-2.5 leading-relaxed" : "flex items-center gap-2 px-2.5 py-1.5",
+          )}
         >
           {label}
           {kbd && <Kbd>{kbd}</Kbd>}
         </TooltipPrimitive.Content>
       </TooltipPrimitive.Portal>
     </TooltipPrimitive.Root>
+  );
+}
+
+/** Explanation shown in a tooltip: short title, body, optional advice line. */
+export interface Help {
+  title?: string;
+  body: ReactNode;
+  /** Practical advice, shown after "Conseil :". */
+  tip?: string;
+}
+
+export function HelpBody({ title, body, tip }: Help) {
+  return (
+    <div className="space-y-1.5">
+      {title && <div className="text-[12.5px] font-medium text-ink">{title}</div>}
+      <div className="whitespace-pre-line text-ink-2">{body}</div>
+      {tip && (
+        <div className="border-t border-line pt-1.5 text-ink-2">
+          <b className="font-medium text-safe">Conseil :</b> {tip}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Discreet "?" button next to a label. The tooltip opens on hover, on keyboard focus and on tap.
+ * It never takes space from the control it describes (fixed 16 px box).
+ */
+export function InfoTip({ title, body, tip, label, side = "top", className }: Help & { label?: string; side?: "top" | "bottom" | "left" | "right"; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <TooltipPrimitive.Root delayDuration={200} open={open} onOpenChange={setOpen}>
+      <TooltipPrimitive.Trigger asChild>
+        <button
+          type="button"
+          aria-label={label ?? `Aide : ${title ?? "ce réglage"}`}
+          // Touch devices never fire hover: a click (tap) opens it explicitly.
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          className={cx(
+            "inline-grid size-4 shrink-0 place-items-center rounded-full text-faint transition-colors hover:text-ink focus-visible:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-safe-soft data-[state=delayed-open]:text-ink data-[state=instant-open]:text-ink",
+            className,
+          )}
+        >
+          <CircleHelp className="size-3.5" aria-hidden />
+        </button>
+      </TooltipPrimitive.Trigger>
+      <TooltipPrimitive.Portal>
+        <TooltipPrimitive.Content
+          side={side}
+          sideOffset={6}
+          collisionPadding={12}
+          className="z-[80] block max-w-[min(19rem,calc(100vw-24px))] rounded-lg border border-line-strong bg-surface-3 px-3 py-2.5 text-xs leading-relaxed text-ink shadow-xl animate-fade"
+        >
+          <HelpBody title={title} body={body} tip={tip} />
+        </TooltipPrimitive.Content>
+      </TooltipPrimitive.Portal>
+    </TooltipPrimitive.Root>
+  );
+}
+
+/** A label followed by its InfoTip. */
+export function LabelWithTip({ children, help, className }: { children: ReactNode; help?: Help; className?: string }) {
+  return (
+    <span className={cx("inline-flex items-center gap-1", className)}>
+      {children}
+      {help && <InfoTip {...help} />}
+    </span>
   );
 }
 
@@ -37,10 +115,12 @@ type IconButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: "sm" | "md";
   active?: boolean;
   tipSide?: "top" | "bottom" | "left" | "right";
+  /** Longer explanation: the tooltip then wraps and shows it under the label. */
+  hint?: string;
 };
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
-  { label, kbd, tone = "ghost", size = "md", active, className, children, tipSide, ...rest },
+  { label, kbd, tone = "ghost", size = "md", active, className, children, tipSide, hint, ...rest },
   ref,
 ) {
   const button = (
@@ -63,7 +143,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     </button>
   );
   return (
-    <Tip label={label} kbd={kbd} side={tipSide}>
+    <Tip label={hint ? <HelpBody title={label} body={hint} /> : label} kbd={kbd} side={tipSide} wide={!!hint}>
       {button}
     </Tip>
   );

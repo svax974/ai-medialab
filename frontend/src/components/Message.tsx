@@ -15,7 +15,7 @@ import { ratioOf } from "../lib/size";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
 import { useNow } from "./EngineCard";
-import { IconButton, Mark, Spinner, Tip } from "./ui";
+import { HelpBody, IconButton, Mark, Spinner, Tip } from "./ui";
 
 const ACTIVE = ["queued", "loading", "running"];
 
@@ -260,7 +260,7 @@ function MessageFooter({ message, active }: { message: Message; active: boolean 
 
   return (
     <div className="mt-2 flex items-center gap-0.5 opacity-60 transition-opacity group-hover/msg:opacity-100 focus-within:opacity-100">
-      <Tip label="Nouvelles variantes (graines aléatoires)">
+      <Tip wide label={<HelpBody title="Nouvelles variantes (graines aléatoires)" body="Relance le même prompt avec de nouvelles graines aléatoires : chaque essai donne un résultat différent. Les images précédentes sont conservées." />}>
         <button
           onClick={run(() => api.retry(message.id))}
           disabled={busy}
@@ -269,7 +269,7 @@ function MessageFooter({ message, active }: { message: Message; active: boolean 
           <RefreshCw className="size-3.5" /> Varier
         </button>
       </Tip>
-      <IconButton label="Relancer avec les mêmes graines" size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
+      <IconButton label="Relancer avec les mêmes graines" hint="Relance avec exactement les mêmes graines : redonne le même résultat. Utile après avoir changé un réglage pour juger son seul effet." size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
         <Repeat className="size-3.5" />
       </IconButton>
       <DropdownMenu.Root>

@@ -12,7 +12,8 @@ import { cx } from "../lib/format";
 import { keys, queryClient, useModels, useVoices } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { Waveform } from "./Waveform";
-import { Button, IconButton, Spinner } from "./ui";
+import { HELP } from "../lib/help";
+import { Button, IconButton, InfoTip, Spinner, type Help } from "./ui";
 
 const LANGS = [
   ["fr", "Français"], ["en", "English"], ["de", "Deutsch"], ["es", "Español"], ["it", "Italiano"], ["pt", "Português"],
@@ -195,7 +196,12 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
               </div>
             )}
             {recorder.state !== "recording" && (
-              <ul className="space-y-1.5 text-[12.5px] leading-relaxed text-muted">
+              <div className="flex items-center gap-1 text-[12.5px] text-ink-2">
+                Extrait de référence <InfoTip {...HELP.clone_sample} />
+              </div>
+            )}
+            {recorder.state !== "recording" && (
+              <ul className="-mt-2 space-y-1.5 text-[12.5px] leading-relaxed text-muted">
                 <li>· 10 à 30 secondes d'une seule voix, sans musique ni écho, à distance constante du micro.</li>
                 <li>· Une voix claire, au ton que vous voulez retrouver : le modèle imite aussi l'émotion et le rythme de l'extrait.</li>
                 <li>· Ne clonez que votre propre voix, ou celle d'une personne qui y a consenti.</li>
@@ -218,7 +224,10 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
               <Field label="Nom">
                 <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ma voix" maxLength={80} className={inputCls} />
               </Field>
-              <Field label="Langue parlée">
+              <Field
+                label="Langue parlée"
+                help={{ title: "Langue parlée", body: "Langue de l'extrait. Elle sert à retrouver la voix par langue et à guider la transcription automatique ; le modèle sait ensuite faire parler cette voix dans d'autres langues (avec un accent possible)." }}
+              >
                 <select value={language} onChange={(e) => setLanguage(e.target.value)} className={cx(inputCls, "pr-2")}>
                   {LANGS.map(([c, l]) => <option key={c} value={c}>{l}</option>)}
                 </select>
@@ -227,7 +236,8 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
 
             <Field
               label="Transcription de l'extrait"
-              hint="Facultative, mais elle améliore nettement la fidélité du clonage avec Qwen3. Elle doit correspondre mot pour mot à ce qui est dit."
+              hint="Facultative ; améliore le clonage."
+              help={HELP.transcript}
               action={
                 whisperReady ? (
                   <button onClick={transcribe} disabled={!!busy} className="flex items-center gap-1.5 text-[12px] text-safe hover:brightness-125 disabled:opacity-50">
@@ -258,11 +268,13 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
 const inputCls =
   "h-9 w-full rounded-lg border border-line bg-surface px-2.5 text-sm text-ink placeholder:text-faint focus:border-line-strong focus:outline-none";
 
-function Field({ label, hint, action, children }: { label: string; hint?: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Field({ label, hint, help, action, children }: { label: string; hint?: string; help?: Help; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <span className="text-[12.5px] text-ink-2">{label}</span>
+        <span className="inline-flex items-center gap-1 text-[12.5px] text-ink-2">
+          {label} {help && <InfoTip {...help} />}
+        </span>
         {action}
       </div>
       {children}

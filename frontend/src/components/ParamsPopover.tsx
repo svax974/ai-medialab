@@ -6,10 +6,11 @@ import * as Popover from "@radix-ui/react-popover";
 import * as Slider from "@radix-ui/react-slider";
 import * as Switch from "@radix-ui/react-switch";
 import { ChevronRight, Dices, Lock, RotateCcw, SlidersHorizontal } from "lucide-react";
-import type { GenParams, ModelInfo, ParamSpec } from "../lib/api";
+import type { GenParams, ModelInfo, ModelKind, ParamSpec } from "../lib/api";
 import { cx } from "../lib/format";
 import { useStore } from "../lib/store";
-import { Tip } from "./ui";
+import { HELP, paramHelp } from "../lib/help";
+import { InfoTip, Tip } from "./ui";
 
 interface Props {
   model: ModelInfo;
@@ -59,12 +60,14 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
 
           <div className="space-y-4">
             {basic.map((p) => (
-              <ParamControl key={p.key} spec={p} value={params[p.key]} onChange={(v) => onChange({ [p.key]: v })} />
+              <ParamControl key={p.key} spec={p} kind={model.kind} value={params[p.key]} onChange={(v) => onChange({ [p.key]: v })} />
             ))}
 
             <div>
               <div className="mb-1.5 flex items-center justify-between text-[12.5px]">
-                <span className="text-ink-2">Graine (seed)</span>
+                <span className="inline-flex items-center gap-1 text-ink-2">
+                  Graine (seed) <InfoTip {...HELP.seed} />
+                </span>
                 <span className="text-[11px] text-faint">{seed === null ? "aléatoire" : "fixe"}</span>
               </div>
               <div className="flex gap-1.5">
@@ -84,9 +87,6 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
                   </button>
                 </Tip>
               </div>
-              <p className="mt-1 text-[11px] leading-snug text-faint">
-                {model.kind === "audio" ? "Une graine fixe reproduit la même prise pour le même texte et la même voix." : model.kind === "video" ? "Une graine fixe reproduit le même clip pour le même prompt et les mêmes réglages." : "Une graine fixe reproduit la même image pour le même prompt."}
-              </p>
             </div>
 
             {extra.length > 0 && (
@@ -98,7 +98,7 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
                 {advanced && (
                   <div className="mt-3 space-y-4">
                     {extra.map((p) => (
-                      <ParamControl key={p.key} spec={p} value={params[p.key]} onChange={(v) => onChange({ [p.key]: v })} />
+                      <ParamControl key={p.key} spec={p} kind={model.kind} value={params[p.key]} onChange={(v) => onChange({ [p.key]: v })} />
                     ))}
                   </div>
                 )}
@@ -111,13 +111,18 @@ export function ParamsPopover({ model, params, hasRefs, onChange }: Props) {
   );
 }
 
-function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unknown; onChange: (v: number | string | boolean) => void }) {
+function ParamControl({ spec, kind, value, onChange }: { spec: ParamSpec; kind: ModelKind; value: unknown; onChange: (v: number | string | boolean) => void }) {
+  const help = paramHelp(spec, kind);
+  const labelNode = (
+    <span className="inline-flex items-center gap-1 text-ink-2">
+      {spec.label} <InfoTip {...help} />
+    </span>
+  );
   if (spec.type === "bool") {
     return (
       <div className="flex items-start justify-between gap-3">
         <div>
-          <span className="block text-[12.5px] text-ink-2">{spec.label}</span>
-          {spec.help && <p className="mt-1 text-[11px] leading-snug text-faint">{spec.help}</p>}
+          <span className="block text-[12.5px]">{labelNode}</span>
         </div>
         <Switch.Root
           aria-label={spec.label}
@@ -132,16 +137,17 @@ function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unkno
   }
   if (spec.type === "text") {
     return (
-      <label className="block">
-        <span className="mb-1.5 block text-[12.5px] text-ink-2">{spec.label}</span>
+      <div className="block">
+        <span className="mb-1.5 block text-[12.5px]">{labelNode}</span>
         <textarea
+          aria-label={spec.label}
           rows={2}
           value={(value as string) ?? ""}
           onChange={(e) => onChange(e.target.value)}
           placeholder={spec.help}
           className="w-full resize-none rounded-lg border border-line bg-surface px-2.5 py-2 text-[13px] text-ink placeholder:text-faint focus:border-line-strong focus:outline-none"
         />
-      </label>
+      </div>
     );
   }
   const num = typeof value === "number" ? value : Number(spec.default);
@@ -149,7 +155,7 @@ function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unkno
   return (
     <div>
       <div className="mb-2 flex items-center justify-between text-[12.5px]">
-        <span className="text-ink-2">{spec.label}</span>
+        {labelNode}
         <span className="font-mono text-[12px] text-ink">{num.toFixed(decimals)}</span>
       </div>
       <Slider.Root
@@ -168,7 +174,6 @@ function ParamControl({ spec, value, onChange }: { spec: ParamSpec; value: unkno
           className="block size-3.5 rounded-full border-2 border-safe bg-surface shadow transition-transform hover:scale-110 focus:outline-none focus-visible:ring-4 focus-visible:ring-safe-soft"
         />
       </Slider.Root>
-      {spec.help && <p className="mt-1.5 text-[11px] leading-snug text-faint">{spec.help}</p>}
     </div>
   );
 }

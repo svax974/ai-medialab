@@ -20,7 +20,8 @@ import { ModelPicker } from "./ModelPicker";
 import { ParamsPopover } from "./ParamsPopover";
 import { SetupPrompt, useWelcomeModel } from "./Setup";
 import { GatedNotice, LicenseWarning } from "./VideoInfo";
-import { Spinner, Tip } from "./ui";
+import { HELP, slotHelp } from "../lib/help";
+import { type Help, HelpBody, InfoTip, Spinner, Tip } from "./ui";
 
 export function VideoComposer({ conversationId, hero = false }: { conversationId: string | null; hero?: boolean }) {
   const model = useActiveModel("video");
@@ -82,7 +83,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
   const blocked = needStart || needSource || endWithoutStart || notReady || !model.compatible;
   const canSend = prompt.trim().length > 0 && !blocked && uploads.length === 0 && !sending;
 
-  const notices: { tone: "warn" | "info"; text: string }[] = [];
+  const notices: { tone: "warn" | "info"; text: string; help?: Help }[] = [];
   if (!model.compatible) notices.push({ tone: "warn", text: model.engine_reason || model.plan.note || `${model.name} ne peut pas tourner sur cette machine.` });
   else if (model.plan.note) notices.push({ tone: "info", text: model.plan.note });
   if (needSource) notices.push({ tone: "warn", text: `${model.name} modifie une vidéo existante : ajoutez la vidéo source à modifier.` });
@@ -91,7 +92,8 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
   if (start && caps.image_input === "none") notices.push({ tone: "warn", text: `${model.name} n'utilise pas d'image de départ : elle sera ignorée.` });
   if (end && !caps.last_frame) notices.push({ tone: "warn", text: `${model.name} n'utilise pas d'image de fin : elle sera ignorée.` });
   if (source && caps.video_input === "none") notices.push({ tone: "warn", text: `${model.name} ne sait pas monter une vidéo : la vidéo source sera ignorée.` });
-  if (caps.english_only) notices.push({ tone: "info", text: `${model.name} comprend surtout l'anglais : rédigez le prompt en anglais pour un meilleur résultat.` });
+  if (caps.english_only) notices.push({ tone: "info", text: `${model.name} comprend surtout l'anglais : rédigez le prompt en anglais pour un meilleur résultat.`, help: HELP.english_only });
+  if (caps.audio_out) notices.push({ tone: "info", text: `${model.name} génère aussi une bande son.`, help: HELP.audio_out });
 
   const send = async () => {
     if (!canSend) return;
@@ -145,13 +147,13 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
       {(showStart || showEnd || showSource) && (
         <div className="flex gap-2.5 overflow-x-auto px-3.5 pt-3.5">
           {showSource && (
-            <SlotTile slot="source" label="Vidéo source" short="source" required={caps.video_input === "required"} asset={source} upload={upload("source")} unused={caps.video_input === "none"} />
+            <SlotTile slot="source" help={slotHelp("source", caps)} label="Vidéo source" short="source" required={caps.video_input === "required"} asset={source} upload={upload("source")} unused={caps.video_input === "none"} />
           )}
           {showStart && (
-            <SlotTile slot="start" label={reference ? "Image de référence" : "Image de départ"} short={reference ? "réf." : "départ"} required={caps.image_input === "required" && !source} asset={start} upload={upload("start")} unused={caps.image_input === "none"} />
+            <SlotTile slot="start" help={slotHelp("start", caps)} label={reference ? "Image de référence" : "Image de départ"} short={reference ? "réf." : "départ"} required={caps.image_input === "required" && !source} asset={start} upload={upload("start")} unused={caps.image_input === "none"} />
           )}
           {showEnd && (
-            <SlotTile slot="end" label="Image de fin" short="fin" required={false} asset={end} upload={upload("end")} unused={!caps.last_frame} />
+            <SlotTile slot="end" help={slotHelp("end", caps)} label="Image de fin" short="fin" required={false} asset={end} upload={upload("end")} unused={!caps.last_frame} />
           )}
         </div>
       )}
@@ -189,13 +191,14 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
             <div key={n.text} className={cx("flex items-start gap-1.5 text-[12px] leading-snug", n.tone === "warn" ? "text-warn" : "text-muted")}>
               {n.tone === "warn" ? <TriangleAlert className="mt-px size-3.5 shrink-0" /> : <Info className="mt-px size-3.5 shrink-0" />}
               <span className="min-w-0 flex-1">{n.text}</span>
+              {n.help && <InfoTip {...n.help} />}
             </div>
           ))}
         </div>
       )}
 
       <div className="flex flex-wrap items-center gap-1.5 px-2.5 pb-2.5 pt-1.5">
-        <Tip label="Joindre une image ou une vidéo (ou glisser-déposer, ou coller)">
+        <Tip wide label={<HelpBody title="Joindre une image ou une vidéo" body="Clic, glisser-déposer ou coller (⌘V). Les emplacements au-dessus du prompt indiquent ce que le modèle accepte : image de départ, image de fin, vidéo source. Un fichier déposé sur un emplacement précis y est rangé ; sinon il est rangé automatiquement." />}>
           <button
             onClick={() => fileRef.current?.click()}
             className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-3 hover:text-ink"
@@ -259,8 +262,8 @@ const ACCEPT: Record<VideoSlot, string> = {
 };
 
 function SlotTile({
-  slot, label, short, required, asset, upload, unused,
-}: { slot: VideoSlot; label: string; short: string; required: boolean; asset: Asset | null; upload?: VideoUpload; unused: boolean }) {
+  slot, help, label, short, required, asset, upload, unused,
+}: { slot: VideoSlot; help: Help; label: string; short: string; required: boolean; asset: Asset | null; upload?: VideoUpload; unused: boolean }) {
   const setSlot = useStore((s) => s.setVideoSlot);
   const openLightbox = useStore((s) => s.openLightbox);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -320,7 +323,7 @@ function SlotTile({
 
   return (
     <>
-      <Tip label={`${label}${required ? " (requise)" : " (facultative)"} — cliquer, glisser-déposer ou coller`}>
+      <Tip wide label={<HelpBody {...help} title={`${label}${required ? " (requise)" : " (facultative)"}`} tip={help.tip ?? "cliquez, glissez-déposez ou collez un fichier."} />}>
         <button
           onClick={() => fileRef.current?.click()}
           {...drag}
@@ -354,11 +357,10 @@ function SlotTile({
 function DurationPicker({ model, seconds, onChange }: { model: ModelInfo; seconds: number; onChange: (s: number) => void }) {
   const caps = model.video!;
   const frames = frameCount(seconds, caps);
-  const range = caps.max_seconds - caps.min_seconds;
   const note = frames / caps.fps;
   return (
     <Popover.Root>
-      <Tip label="Durée du clip">
+      <Tip wide label={<HelpBody {...HELP.seconds} />}>
         <Popover.Trigger asChild>
           <button
             aria-label="Durée du clip"
@@ -371,7 +373,7 @@ function DurationPicker({ model, seconds, onChange }: { model: ModelInfo; second
       </Tip>
       <Popover.Portal>
         <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[320px] p-3.5">
-          <div className="eyebrow mb-3">Durée</div>
+          <div className="eyebrow mb-3 flex items-center gap-1.5">Durée <InfoTip {...HELP.seconds} /></div>
           <div className="mb-2 flex items-baseline justify-between">
             <span className="font-mono text-[22px] text-ink">{formatSeconds(seconds)}</span>
             <span className="font-mono text-[11px] text-faint">{frames} images · {caps.fps} i/s</span>
@@ -396,10 +398,9 @@ function DurationPicker({ model, seconds, onChange }: { model: ModelInfo; second
             <span>{formatSeconds(caps.min_seconds)}</span>
             <span>{formatSeconds(caps.max_seconds)}</span>
           </div>
-          <p className="mt-2 text-[11px] leading-snug text-faint">
-            {range > 0 && "Plus le clip est long, plus la génération est longue et gourmande en mémoire. "}
-            {Math.abs(note - seconds) > 0.05 && `Le modèle calcule des clips par paliers : durée réelle ≈ ${formatSeconds(note)}.`}
-          </p>
+          {Math.abs(note - seconds) > 0.05 && (
+            <p className="mt-2 text-[11px] leading-snug text-faint">Le modèle calcule des clips par paliers : durée réelle ≈ {formatSeconds(note)}.</p>
+          )}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
@@ -424,6 +425,7 @@ function FormatPicker({
   const size = videoSize(aspect, res);
   return (
     <Popover.Root>
+      <Tip wide label={<HelpBody {...HELP.resolution} title="Format et définition" />}>
       <Popover.Trigger asChild>
         <button
           aria-label="Format et définition"
@@ -434,9 +436,10 @@ function FormatPicker({
           {res && <span className="hidden font-mono text-[11px] text-faint sm:inline">{res.label}</span>}
         </button>
       </Popover.Trigger>
+      </Tip>
       <Popover.Portal>
         <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[340px] p-3">
-          <div className="eyebrow mb-2">Format</div>
+          <div className="eyebrow mb-2 flex items-center gap-1.5">Format <InfoTip {...HELP.video_aspect} /></div>
           <div className="grid grid-cols-5 gap-1.5">
             {VIDEO_ASPECTS.map((a) => (
               <button
@@ -454,7 +457,13 @@ function FormatPicker({
             ))}
           </div>
 
-          <div className="eyebrow mb-2 mt-4">Définition</div>
+          <div className="eyebrow mb-2 mt-4 flex items-center gap-1.5">
+            Définition
+            <InfoTip
+              {...HELP.resolution}
+              body={`${HELP.resolution.body}\n\nCe modèle : ${caps.resolutions.map((r) => `${r.label} ≈ ${r.long_side}×${r.short_side}`).join(" · ")} (format paysage).`}
+            />
+          </div>
           <div className="flex gap-1 rounded-xl bg-surface p-1 ring-1 ring-line">
             {caps.resolutions.map((r) => (
               <button
@@ -483,8 +492,8 @@ function FormatPicker({
 
 function CountPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
-    <Tip label="Nombre de clips">
-      <div className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
+    <Tip wide label={<HelpBody {...HELP.count_clips} />}>
+      <div role="group" aria-label="Nombre de clips" className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
         {[1, 2].map((n) => (
           <button
             key={n}

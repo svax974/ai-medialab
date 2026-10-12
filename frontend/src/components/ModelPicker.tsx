@@ -7,6 +7,8 @@ import type { ModelInfo } from "../lib/api";
 import { cx, formatModelSize, installedFirst } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
+import { HELP } from "../lib/help";
+import { HelpBody, Tip } from "./ui";
 import { GatedNotice, LicenseWarning, VideoBadges } from "./VideoInfo";
 
 const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", pack: "audio", demo: "démo" };
@@ -50,7 +52,11 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{m.name}</span>
                     <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line">{backendOf(m)}</span>
-                    {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
+                    {m.precision && (
+                      <Tip wide side="bottom" label={<HelpBody {...HELP.quantize} />}>
+                        <span className="cursor-help rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line">{m.precision}</span>
+                      </Tip>
+                    )}
                     {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
                     {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
                   </div>

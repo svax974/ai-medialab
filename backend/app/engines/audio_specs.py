@@ -25,7 +25,7 @@ def _langs(*pairs: tuple[str, str]) -> list[Language]:
 FR, EN, DE, ES, IT, PT, NL = ("fr", "Français"), ("en", "English"), ("de", "Deutsch"), ("es", "Español"), \
     ("it", "Italiano"), ("pt", "Português"), ("nl", "Nederlands")
 
-SPEED = ParamSpec("speed", "Vitesse de parole", "float", 1.0, 0.6, 1.5, 0.05, "1 = vitesse naturelle.")
+SPEED = ParamSpec("speed", "Vitesse de parole", "float", 1.0, 0.6, 1.5, 0.05, "1 = vitesse naturelle. Les valeurs extrêmes sonnent moins naturelles.")
 
 # Kokoro
 

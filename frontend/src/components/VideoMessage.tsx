@@ -18,7 +18,7 @@ import { continueFromLastFrame, editAsVideoSource } from "../lib/video";
 import { confirm } from "./Confirm";
 import { useNow } from "./EngineCard";
 import { copy, download } from "./Message";
-import { IconButton, Spinner, Tip } from "./ui";
+import { HelpBody, IconButton, Spinner, Tip } from "./ui";
 
 const ACTIVE = ["queued", "loading", "running"];
 
@@ -280,7 +280,7 @@ function Footer({ message, active }: { message: Message; active: boolean }) {
   const outputs = message.outputs;
   return (
     <div className="mt-2 flex items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover/msg:opacity-100">
-      <Tip label="Nouvelles variantes (graines aléatoires)">
+      <Tip wide label={<HelpBody title="Nouvelles variantes (graines aléatoires)" body="Relance le même prompt avec de nouvelles graines aléatoires : chaque essai donne un clip différent." />}>
         <button
           onClick={run(() => api.retry(message.id))}
           disabled={busy}
@@ -289,7 +289,7 @@ function Footer({ message, active }: { message: Message; active: boolean }) {
           <RefreshCw className="size-3.5" /> Varier
         </button>
       </Tip>
-      <IconButton label="Relancer avec les mêmes graines" size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
+      <IconButton label="Relancer avec les mêmes graines" hint="Relance avec les mêmes graines : redonne le même clip. Utile après avoir changé un réglage pour juger son seul effet." size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
         <Repeat className="size-3.5" />
       </IconButton>
       <IconButton label="Reprendre ces réglages dans le composer" size="sm" onClick={reuseSettings}>

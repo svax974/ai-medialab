@@ -5,7 +5,15 @@
 import { KeyRound, TriangleAlert, Volume2 } from "lucide-react";
 import type { ModelInfo } from "../lib/api";
 import { cx, formatSeconds } from "../lib/format";
+import { HELP } from "../lib/help";
 import { TASK_LABEL } from "../lib/video";
+import { HelpBody, InfoTip, Tip } from "./ui";
+
+const TASK_HELP = {
+  t2v: "Texte → vidéo : le modèle invente le clip à partir de votre description seule.",
+  i2v: "Image → vidéo : le modèle anime une image de départ (et parfois d'arrivée) en suivant votre prompt.",
+  v2v: "Montage vidéo : le modèle modifie une vidéo existante selon votre prompt, en gardant son mouvement.",
+} as const;
 
 const chip = "rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line";
 
@@ -16,16 +24,30 @@ export function VideoBadges({ model }: { model: ModelInfo }) {
   return (
     <div className="flex flex-wrap items-center gap-1">
       {v.tasks.map((t) => (
-        <span key={t} className={chip}>{TASK_LABEL[t]}</span>
+        <Tip key={t} wide label={TASK_HELP[t]}>
+          <span className={cx(chip, "cursor-help")}>{TASK_LABEL[t]}</span>
+        </Tip>
       ))}
-      <span className={chip} title="Durée maximale d'un clip">jusqu'à {formatSeconds(v.max_seconds)}</span>
-      {v.resolutions.length > 0 && <span className={chip}>{v.resolutions.map((r) => r.label).join(" · ")}</span>}
-      {v.audio_out && (
-        <span className={cx(chip, "flex items-center gap-1")} title="Génère aussi une bande son">
-          <Volume2 className="size-3" /> avec son
-        </span>
+      <Tip wide label={<HelpBody {...HELP.seconds} title="Durée maximale d'un clip" />}>
+        <span className={cx(chip, "cursor-help")}>jusqu'à {formatSeconds(v.max_seconds)}</span>
+      </Tip>
+      {v.resolutions.length > 0 && (
+        <Tip wide label={<HelpBody {...HELP.resolution} title="Définitions proposées" />}>
+          <span className={cx(chip, "cursor-help")}>{v.resolutions.map((r) => r.label).join(" · ")}</span>
+        </Tip>
       )}
-      {v.english_only && <span className={chip} title="Les prompts doivent être rédigés en anglais">anglais</span>}
+      {v.audio_out && (
+        <Tip wide label={<HelpBody {...HELP.audio_out} />}>
+          <span className={cx(chip, "flex cursor-help items-center gap-1")}>
+            <Volume2 className="size-3" /> avec son
+          </span>
+        </Tip>
+      )}
+      {v.english_only && (
+        <Tip wide label={<HelpBody {...HELP.english_only} />}>
+          <span className={cx(chip, "cursor-help")}>anglais</span>
+        </Tip>
+      )}
     </div>
   );
 }
@@ -40,6 +62,7 @@ export function LicenseWarning({ model, className }: { model: ModelInfo; classNa
       <span className="min-w-0 flex-1">
         <b className="font-medium text-warn">Licence :</b> {text}
       </span>
+      <InfoTip {...HELP.license} />
     </div>
   );
 }

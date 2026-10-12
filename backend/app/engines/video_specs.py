@@ -34,7 +34,7 @@ def _steps(default: int, lo: int = 4, hi: int = 80) -> ParamSpec:
 
 
 def _guidance(default: float, hi: float = 12.0) -> ParamSpec:
-    return ParamSpec("guidance", "Guidance", "float", default, 1.0, hi, 0.5, "Fidélité au prompt.")
+    return ParamSpec("guidance", "Guidance", "float", default, 1.0, hi, 0.5, "Fidélité au prompt ; trop haut, l'image sature et le mouvement se raidit.")
 
 
 def _res(rid: str, short: int, long: int) -> VideoResolution:

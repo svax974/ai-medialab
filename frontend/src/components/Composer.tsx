@@ -14,7 +14,8 @@ import { AspectPicker } from "./AspectPicker";
 import { ModelPicker } from "./ModelPicker";
 import { SetupPrompt, useWelcomeModel } from "./Setup";
 import { ParamsPopover } from "./ParamsPopover";
-import { Spinner, Tip } from "./ui";
+import { HELP } from "../lib/help";
+import { HelpBody, Spinner, Tip } from "./ui";
 
 export function Composer({ conversationId, hero = false }: { conversationId: string | null; hero?: boolean }) {
   const model = useActiveModel();
@@ -130,6 +131,12 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
     return i < model.max_references ? `image ${i + 1}` : "ignorée";
   };
 
+  const refNoteHelp = (m: ModelInfo, i: number) => {
+    if (m.reference_mode === "none") return `${m.name} n'utilise pas les images de référence : celle-ci n'aura aucun effet.`;
+    if (m.reference_mode === "init") return i === 0 ? "Image de départ : le modèle la transforme selon votre prompt (img2img)." : "Ignorée : ce modèle ne part que d'une seule image, la 1re.";
+    return i < m.max_references ? `Image ${i + 1} : désignez-la ainsi dans le prompt.` : `Ignorée : ce modèle accepte ${m.max_references} images au plus.`;
+  };
+
   return (
     <div
       className={cx(
@@ -140,7 +147,7 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
       {(references.length > 0 || uploading.length > 0) && (
         <div className="flex gap-2.5 overflow-x-auto px-3.5 pt-3.5">
           {references.map((r, i) => (
-            <RefThumb key={r.id} asset={r} note={refIndexNote(i)} dimmed={refIndexNote(i) === "ignorée"} onRemove={() => removeReference(r.id)} />
+            <RefThumb key={r.id} asset={r} note={refIndexNote(i)} help={refNoteHelp(model, i)} dimmed={refIndexNote(i) === "ignorée"} onRemove={() => removeReference(r.id)} />
           ))}
           {uploading.map((u) => (
             <div key={u.tempId} className="relative size-[72px] shrink-0 overflow-hidden rounded-xl ring-1 ring-line">
@@ -201,7 +208,10 @@ function ComposerInner({ model, conversationId, hero }: { model: ModelInfo; conv
       )}
 
       <div className="flex flex-wrap items-center gap-1.5 px-2.5 pb-2.5 pt-1.5">
-        <Tip label="Joindre des images (ou glisser-déposer, ou coller)">
+        <Tip
+          wide
+          label={<HelpBody title="Joindre des images" body={`Clic, glisser-déposer ou coller (⌘V).\n\n${HELP.reference_images.body}`} tip={HELP.reference_images.tip} />}
+        >
           <button
             onClick={() => fileRef.current?.click()}
             className="grid size-8 place-items-center rounded-lg text-muted transition-colors hover:bg-surface-3 hover:text-ink"
@@ -259,15 +269,17 @@ function placeholderFor(model: ModelInfo, hasRefs: boolean) {
   return "Décrivez l'image à révéler…";
 }
 
-function RefThumb({ asset, note, dimmed, onRemove }: { asset: Asset; note: string; dimmed: boolean; onRemove: () => void }) {
+function RefThumb({ asset, note, help, dimmed, onRemove }: { asset: Asset; note: string; help: string; dimmed: boolean; onRemove: () => void }) {
   return (
     <div className="group/ref relative shrink-0 animate-rise">
       <div className={cx("size-[72px] overflow-hidden rounded-xl ring-1 ring-line-strong", dimmed && "opacity-35 grayscale")}>
         <img src={asset.thumb_url} alt={asset.original_name ?? ""} className="size-full object-cover" />
       </div>
-      <span className="absolute bottom-1 left-1 rounded-md bg-black/65 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wide text-white/90 backdrop-blur">
-        {note}
-      </span>
+      <Tip wide label={help}>
+        <span className="absolute bottom-1 left-1 cursor-help rounded-md bg-black/65 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wide text-white/90 backdrop-blur">
+          {note}
+        </span>
+      </Tip>
       <button
         onClick={onRemove}
         aria-label="Retirer l'image"
@@ -281,8 +293,8 @@ function RefThumb({ asset, note, dimmed, onRemove }: { asset: Asset; note: strin
 
 function CountPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
-    <Tip label="Nombre d'images">
-      <div className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
+    <Tip wide label={<HelpBody {...HELP.count_images} />}>
+      <div role="group" aria-label="Nombre d'images" className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
         {[1, 2, 3, 4].map((n) => (
           <button
             key={n}

@@ -10,7 +10,8 @@ import { api, type Settings } from "../lib/api";
 import { cx } from "../lib/format";
 import { keys, queryClient } from "../lib/queries";
 import { useStore } from "../lib/store";
-import { IconButton } from "./ui";
+import { HELP } from "../lib/help";
+import { IconButton, InfoTip } from "./ui";
 
 const KEEP_ALIVE = [
   { v: 0, label: "Aussitôt" },
@@ -54,7 +55,7 @@ export function SettingsDialog() {
           {settings && (
             <div className="space-y-7 overflow-y-auto px-6 pb-6 pt-2">
               <section>
-                <h3 className="eyebrow mb-1">Mémoire</h3>
+                <h3 className="eyebrow mb-1 flex items-center gap-1.5">Mémoire <InfoTip {...HELP.keep_alive} /></h3>
                 <p className="mb-3 text-[13px] leading-relaxed text-muted">
                   Un modèle chargé reste en mémoire pour enchaîner les générations sans attendre. Délai avant de le décharger :
                 </p>
@@ -76,7 +77,7 @@ export function SettingsDialog() {
 
               <section className="flex items-start justify-between gap-6">
                 <div>
-                  <h3 className="eyebrow mb-1">Aperçus pendant la génération</h3>
+                  <h3 className="eyebrow mb-1 flex items-center gap-1.5">Aperçus pendant la génération <InfoTip {...HELP.previews} /></h3>
                   <p className="text-[13px] leading-relaxed text-muted">
                     Montre l'image se former quelques fois en cours de calcul. Coûte un peu de temps et de mémoire.
                   </p>
@@ -92,7 +93,7 @@ export function SettingsDialog() {
 
               <section className="flex items-start justify-between gap-6">
                 <div>
-                  <h3 className="eyebrow mb-1">Économie de mémoire</h3>
+                  <h3 className="eyebrow mb-1 flex items-center gap-1.5">Économie de mémoire <InfoTip {...HELP.low_memory} /></h3>
                   <p className="text-[13px] leading-relaxed text-muted">
                     Libère l'encodeur de texte (17 Go) dès que le prompt est encodé : le calcul tient dans ~9 Go au lieu de ~26 Go, et évite le swap
                     qui fait expirer le GPU. Un nouveau prompt recharge l'encodeur depuis le disque (quelques secondes).

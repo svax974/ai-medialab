@@ -14,7 +14,8 @@ import { assignVideoAsset, continueFromLastFrame, editAsVideoSource } from "../l
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
 import { copy, download } from "./Message";
-import { Button, IconButton } from "./ui";
+import { HELP } from "../lib/help";
+import { Button, IconButton, InfoTip, type Help } from "./ui";
 
 export function Lightbox() {
   const lightbox = useStore((s) => s.lightbox);
@@ -203,10 +204,10 @@ export function Lightbox() {
                   {isVideo && asset.duration != null && <Row k="Durée" v={formatSeconds(asset.duration)} mono />}
                   {isVideo && asset.fps ? <Row k="Cadence" v={`${asset.fps} i/s`} mono /> : null}
                   {asset.width && <Row k="Taille" v={`${asset.width} × ${asset.height} px`} mono />}
-                  {asset.seed != null && <Row k="Graine" v={String(asset.seed)} mono copyable />}
-                  {meta.steps && <Row k="Étapes" v={String(meta.steps)} mono />}
-                  {meta.guidance != null && <Row k="Guidance" v={String(meta.guidance)} mono />}
-                  {meta.strength != null && <Row k="Influence" v={String(meta.strength)} mono />}
+                  {asset.seed != null && <Row k="Graine" v={String(asset.seed)} mono copyable help={HELP.seed} />}
+                  {meta.steps && <Row k="Étapes" v={String(meta.steps)} mono help={HELP.steps} />}
+                  {meta.guidance != null && <Row k="Guidance" v={String(meta.guidance)} mono help={HELP.guidance} />}
+                  {meta.strength != null && <Row k="Influence" v={String(meta.strength)} mono help={isVideo ? HELP.strength_video : HELP.strength} />}
                   {meta.seconds && !isVideo && <Row k="Durée" v={formatDuration(meta.seconds)} mono />}
                   <Row k="Date" v={`${formatDay(asset.created_at)}, ${formatTime(asset.created_at)}`} />
                 </dl>
@@ -238,10 +239,10 @@ export function Lightbox() {
   );
 }
 
-function Row({ k, v, mono, copyable }: { k: string; v: string; mono?: boolean; copyable?: boolean }) {
+function Row({ k, v, mono, copyable, help }: { k: string; v: string; mono?: boolean; copyable?: boolean; help?: Help }) {
   return (
     <>
-      <dt className="text-white/45">{k}</dt>
+      <dt className="flex items-center gap-1 text-white/45">{k}{help && <InfoTip {...help} side="left" className="text-white/40 hover:text-white" />}</dt>
       <dd className={cx("min-w-0 truncate text-white/90", mono && "font-mono text-[12.5px]")}>
         {copyable ? (
           <button onClick={() => copy(v)} className="hover:text-[var(--safe)]" title="Copier">

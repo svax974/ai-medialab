@@ -5,6 +5,8 @@ import * as Popover from "@radix-ui/react-popover";
 import { ImageIcon, Ratio } from "lucide-react";
 import type { Asset, GenParams, ModelInfo } from "../lib/api";
 import { cx } from "../lib/format";
+import { HELP } from "../lib/help";
+import { InfoTip, Tip } from "./ui";
 import { ASPECTS, QUALITIES, ratioOf, resolveSize } from "../lib/size";
 
 interface Props {
@@ -34,6 +36,7 @@ export function AspectPicker({ model, params, reference, onChange }: Props) {
 
   return (
     <Popover.Root>
+      <Tip label="Format et définition de l'image">
       <Popover.Trigger asChild>
         <button className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 text-[13px] text-ink-2 transition-colors hover:border-line-strong hover:text-ink data-[state=open]:border-line-strong data-[state=open]:text-ink">
           <Ratio className="size-3.5" />
@@ -43,9 +46,10 @@ export function AspectPicker({ model, params, reference, onChange }: Props) {
           </span>
         </button>
       </Popover.Trigger>
+      </Tip>
       <Popover.Portal>
         <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[340px] p-3">
-          <div className="eyebrow mb-2">Format</div>
+          <div className="eyebrow mb-2 flex items-center gap-1.5">Format <InfoTip {...HELP.aspect} /></div>
           <div className="grid grid-cols-4 gap-1.5">
             {reference && (
               <AspectTile active={aspect === "auto"} onClick={() => onChange({ aspect: "auto" })} label="Auto" sub="image">
@@ -74,13 +78,14 @@ export function AspectPicker({ model, params, reference, onChange }: Props) {
               <span className="pt-4 text-faint">×</span>
               <DimInput label="Hauteur" value={params.height ?? size.height} onChange={(height) => onChange({ height })} model={model} />
             </div>
-            <p className="mt-1.5 text-[11px] leading-snug text-faint">
-              Arrondi au multiple de {model.size_multiple} px · de {model.min_side} à {model.max_side} px par côté.
+            <p className="mt-1.5 flex items-center gap-1 text-[11px] leading-snug text-faint">
+              <span>Arrondi au multiple de {model.size_multiple} px · de {model.min_side} à {model.max_side} px par côté.</span>
+              <InfoTip {...HELP.size_custom} />
             </p>
             </>
           ) : (
             <>
-              <div className="eyebrow mb-2 mt-4">Définition</div>
+              <div className="eyebrow mb-2 mt-4 flex items-center gap-1.5">Définition <InfoTip {...HELP.megapixels} /></div>
               <div className={cx("grid gap-1 rounded-xl bg-surface p-1 ring-1 ring-line", reference && aspect === "auto" ? "grid-cols-5" : "grid-cols-4")}>
                 {QUALITIES.filter((q) => !("needsReference" in q) || (reference && aspect === "auto")).map((q) => {
                   const active = Math.abs((params.megapixels ?? model.default_megapixels) - q.mp) < 0.01;

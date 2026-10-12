@@ -10,7 +10,9 @@ import { clock } from "../lib/audio";
 import { cx } from "../lib/format";
 import { useVoices } from "../lib/queries";
 import { useStore } from "../lib/store";
+import { HELP } from "../lib/help";
 import { Waveform } from "./Waveform";
+import { HelpBody, Tip } from "./ui";
 
 /** Voice actually shown: the selection if valid for the language, else the model's first voice. */
 export function effectiveVoice(
@@ -88,14 +90,17 @@ export function VoicePicker({ model, language, value, onChange, compact = false,
 
   if (caps.design) {
     return (
-      <span className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 text-[13px] text-ink-2">
-        <Sparkles className="size-3.5 text-safe" /> Voix décrite ci-dessus
-      </span>
+      <Tip wide label={<HelpBody {...HELP.instruct_design} />}>
+        <span tabIndex={0} className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 text-[13px] text-ink-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-safe-soft">
+          <Sparkles className="size-3.5 text-safe" /> Voix décrite ci-dessus
+        </span>
+      </Tip>
     );
   }
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
+      <Tip wide label={<HelpBody {...HELP.voice} />}>
       <Popover.Trigger asChild>
         <button
           className={cx(
@@ -109,6 +114,7 @@ export function VoicePicker({ model, language, value, onChange, compact = false,
           <ChevronDown className="size-3.5 shrink-0 opacity-60" />
         </button>
       </Popover.Trigger>
+      </Tip>
       <Popover.Portal>
         <Popover.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[390px] p-0">
           <div className="flex gap-1 border-b border-line p-2">
@@ -240,6 +246,7 @@ export function LanguagePicker({ caps, value, onChange }: { caps: AudioCaps; val
   const current = caps.languages.find((l) => l.code === value) ?? caps.languages[0];
   return (
     <DropdownMenu.Root>
+      <Tip wide label={<HelpBody {...HELP.language} />}>
       <DropdownMenu.Trigger asChild>
         <button className="flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface-2 px-2.5 text-[13px] text-ink-2 transition-colors hover:border-line-strong hover:text-ink data-[state=open]:border-line-strong data-[state=open]:text-ink">
           <Globe className="size-3.5" />
@@ -247,6 +254,7 @@ export function LanguagePicker({ caps, value, onChange }: { caps: AudioCaps; val
           <ChevronDown className="size-3.5 opacity-60" />
         </button>
       </DropdownMenu.Trigger>
+      </Tip>
       <DropdownMenu.Portal>
         <DropdownMenu.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu min-w-44">
           <div className="eyebrow px-2.5 pb-1 pt-1.5">Langue du texte</div>

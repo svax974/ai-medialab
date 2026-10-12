@@ -93,7 +93,7 @@ SDXL = ModelSpec(
     reference_mode="init",
     max_references=1,
     params=[
-        ParamSpec("steps", "Étapes", "int", 30, 10, 60, 1),
+        ParamSpec("steps", "Étapes", "int", 30, 10, 60, 1, "25 à 35 étapes suffisent en général."),
         ParamSpec("guidance", "Guidance", "float", 6.0, 1.0, 14.0, 0.5, "Fidélité au prompt (5–8 conseillé)."),
         ParamSpec("strength", "Influence de l'image", "float", 0.6, 0.1, 0.95, 0.05,
                   "Part de l'image de départ transformée. Bas = proche de l'original.", requires_references=True),

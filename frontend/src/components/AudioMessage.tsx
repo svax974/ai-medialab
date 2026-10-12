@@ -17,7 +17,7 @@ import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
 import { useNow } from "./EngineCard";
 import { copy } from "./Message";
-import { IconButton, Spinner, Tip } from "./ui";
+import { HelpBody, IconButton, Spinner, Tip } from "./ui";
 import { Waveform, WaveformPending } from "./Waveform";
 
 const ACTIVE = ["queued", "loading", "running"];
@@ -361,7 +361,7 @@ function Footer({ message, active }: { message: Message; active: boolean }) {
 
   return (
     <div className="mt-2 flex items-center gap-0.5 opacity-60 transition-opacity focus-within:opacity-100 group-hover/msg:opacity-100">
-      <Tip label="Nouvelles prises (graines aléatoires)">
+      <Tip wide label={<HelpBody title="Nouvelles prises (graines aléatoires)" body="Relit le même texte avec de nouvelles graines aléatoires : l'intonation et le rythme changent à chaque prise." />}>
         <button
           onClick={run(() => api.retry(message.id))}
           disabled={busy}
@@ -370,7 +370,7 @@ function Footer({ message, active }: { message: Message; active: boolean }) {
           <RefreshCw className="size-3.5" /> Refaire
         </button>
       </Tip>
-      <IconButton label="Relancer avec les mêmes graines" size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
+      <IconButton label="Relancer avec les mêmes graines" hint="Relance avec les mêmes graines : redonne la même prise. Utile après avoir changé la vitesse ou la variabilité pour juger leur seul effet." size="sm" onClick={run(() => api.retry(message.id, { keep_seed: true }))}>
         <Repeat className="size-3.5" />
       </IconButton>
       <IconButton label="Reprendre texte et réglages dans le composer" size="sm" onClick={reuse}>

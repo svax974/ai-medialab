@@ -15,7 +15,8 @@ import { ModelPicker } from "./ModelPicker";
 import { ParamsPopover } from "./ParamsPopover";
 import { SetupPrompt, useWelcomeModel } from "./Setup";
 import { LanguagePicker, VoicePicker, defaultLanguage, effectiveVoice, presetsFor } from "./VoicePicker";
-import { Spinner, Tip } from "./ui";
+import { HELP } from "../lib/help";
+import { HelpBody, InfoTip, Spinner, Tip } from "./ui";
 
 export function AudioComposer({ conversationId, hero = false }: { conversationId: string | null; hero?: boolean }) {
   const model = useActiveModel("audio");
@@ -153,6 +154,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
         <label className="flex items-start gap-2.5 border-b border-line/70 px-4.5 pb-2.5 pt-3.5">
           <span className="mt-[3px] flex shrink-0 items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.14em] text-safe">
             <Sparkles className="size-3.5" /> {instructLabel}
+            <InfoTip {...(caps.design ? HELP.instruct_design : HELP.instruct)} className="-ml-0.5" />
           </span>
           <textarea
             rows={1}
@@ -183,6 +185,14 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
       <div className="flex items-center gap-3 px-4.5 pb-1.5 font-mono text-[10.5px] text-faint">
         <span>{prompt.length.toLocaleString("fr-FR")} caractères</span>
         {prompt.trim() && <span>· {approxDuration(seconds)} d'audio</span>}
+        <span className="ml-auto flex items-center gap-1">
+          <InfoTip
+            {...HELP.max_chars}
+            body={`Ce modèle lit environ ${caps.max_chars} caractères d'un seul tenant (8 000 au maximum par demande). ${HELP.max_chars.body}`}
+            label="Aide : longueur du texte"
+          />
+          <InfoTip {...HELP.script} label="Aide : dialogue à plusieurs voix (Nom : texte)" />
+        </span>
       </div>
 
       {scriptActive && (
@@ -190,6 +200,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
           <div className="mb-2 flex items-center gap-2 text-[12px] text-ink-2">
             <Users className="size-3.5 text-safe" />
             <span className="font-medium text-ink">Scénario à {speakers.length} voix</span>
+            <InfoTip {...HELP.script} />
             <button onClick={() => setScriptMode(false)} className="ml-auto text-[11.5px] text-faint hover:text-ink">
               C'est un simple texte
             </button>
@@ -211,7 +222,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
       )}
       {!scriptMode && speakers.length >= 2 && (
         <div className="mx-4.5 mb-2 text-[11.5px] text-faint">
-          Dialogue détecté.{" "}
+          Dialogue détecté. <InfoTip {...HELP.script} className="align-middle" />{" "}
           <button onClick={() => setScriptMode(true)} className="underline-offset-2 hover:text-ink hover:underline">
             Attribuer une voix à chaque personnage
           </button>
@@ -237,7 +248,7 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
         <LanguagePicker caps={caps} value={language} onChange={(l) => setLanguage(model.id, l)} />
         <ParamsPopover model={model} params={params} hasRefs={false} onChange={(p) => setParams(model.id, p)} />
         <TakesPicker value={count} onChange={setCount} />
-        <Tip label={autoplay ? "Lecture automatique activée" : "Lecture automatique désactivée"}>
+        <Tip wide label={<HelpBody title={autoplay ? "Lecture automatique activée" : "Lecture automatique désactivée"} body={HELP.autoplay.body} />}>
           <button
             onClick={() => setAutoplay(!autoplay)}
             aria-label="Lecture automatique"
@@ -275,8 +286,8 @@ function Inner({ model, conversationId, hero }: { model: ModelInfo; conversation
 
 function TakesPicker({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   return (
-    <Tip label="Nombre de prises (variantes)">
-      <div className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
+    <Tip wide label={<HelpBody {...HELP.count_takes} />}>
+      <div role="group" aria-label="Nombre de prises" className="flex h-8 items-center rounded-lg border border-line bg-surface-2 p-0.5">
         {[1, 2, 3, 4].map((n) => (
           <button
             key={n}

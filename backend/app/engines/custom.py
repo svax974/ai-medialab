@@ -120,7 +120,8 @@ def _sd_diffusers(r: dict[str, Any]) -> ModelSpec:
         engine="app.engines.diffusers_engine:DiffusersEngine", backend="torch",
         default_quantize=None, quantize_options=[], reference_mode="init", max_references=1,
         params=[
-            ParamSpec("steps", "Étapes", "int", r.get("steps", 30), 1, 60, 1),
+            ParamSpec("steps", "Étapes", "int", r.get("steps", 30), 1, 60, 1,
+                      "25 à 35 étapes suffisent en général ; 1 à 8 pour les modèles « turbo » / « lightning »."),
             ParamSpec("guidance", "Guidance", "float", r.get("guidance", 6.0 if xl else 7.5), 0.0, 14.0, 0.5,
                       "Fidélité au prompt (5–8 conseillé ; 0–1 pour les modèles « turbo » / « lightning »)."),
             ParamSpec("strength", "Influence de l'image", "float", 0.6, 0.1, 0.95, 0.05,
