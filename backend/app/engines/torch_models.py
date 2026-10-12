@@ -44,6 +44,7 @@ QWEN21_TORCH = ModelSpec(
     memory_hint="Poids bf16 de 32 Go. Carte 40 Go+ : tout sur le GPU ; 24 Go : composants chargés un à un "
     "(plus lent, 32 Go de RAM requis).",
     tags=["texte→image", "édition", "multi-références", "RGBA"],
+    precision="bf16",
     options={"pipeline": "QwenImage21Pipeline", "guidance_arg": "true_cfg_scale", "image_arg": "image"},
 )
 
@@ -72,6 +73,7 @@ Z_IMAGE_TURBO = ModelSpec(
     largest_component_gb=12.3,
     memory_hint="Environ 21 Go une fois chargé en bf16 (le dépôt stocke les poids en fp32 : 33 Go à télécharger).",
     tags=["texte→image", "rapide", "Apache 2.0"],
+    precision="bf16",
     options={"pipeline": "ZImagePipeline", "guidance_arg": "guidance_scale", "call_kwargs": {"guidance_scale": 0.0}},
 )
 
@@ -113,6 +115,7 @@ SDXL = ModelSpec(
     largest_component_gb=5.1,
     memory_hint="≈ 8 Go de VRAM en fp16.",
     tags=["texte→image", "img2img", "léger"],
+    precision="fp16",
     options={
         "pipeline": "StableDiffusionXLPipeline",
         "img2img": "StableDiffusionXLImg2ImgPipeline",

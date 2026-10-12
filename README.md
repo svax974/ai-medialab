@@ -213,6 +213,24 @@ ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx taur
   (la coque utilise alors ces ressources au lieu de celles du `.app`).
 - Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
 
+## Ajouter un modèle depuis Hugging Face
+
+*Modèles → Chercher sur Hugging Face* (ou « Chercher un modèle… » en bas du sélecteur de modèle) : la recherche ne
+propose que des formats que l'application sait exécuter, et relit le dépôt avant de l'ajouter.
+
+| Famille | Ce qui est accepté | Exécuté par |
+|---|---|---|
+| Image · GGUF | autres quantifications ou fine-tunes de Z-Image Turbo, Qwen Image 2.1, Qwen Image Edit (au choix : Q2_K … Q8_0) | stable-diffusion.cpp |
+| Image · diffusers | Stable Diffusion 1.x et XL en safetensors (fp16 de préférence) | PyTorch |
+| Audio · Qwen3-TTS | variantes bf16 voix & style, création de voix, clonage | pack `qwen3` |
+| Audio · Whisper | modèles faster-whisper (CTranslate2) | pack `speech` |
+
+Refusés avec une explication : dépôts à accès restreint, formats `.bin`/`.ckpt`, modèles quantifiés non chargeables
+(GGUF/MLX/ONNX de Qwen3-TTS), architectures non gérées (Flux, SD3…). Une « recette » (dépôt, fichier, famille) est
+enregistrée dans les réglages ; le modèle apparaît dans les listes avec la mention *Hugging Face* et peut être retiré.
+La **précision** affichée (Q4_K, bf16, fp16…) vient du nom du fichier GGUF ou de l'en-tête safetensors, lu à distance
+sans télécharger le fichier.
+
 ## Licence
 
 Code sous [licence MIT](LICENSE). Les modèles téléchargés gardent leur propre licence : voir [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

@@ -95,6 +95,10 @@ interface State {
   settingsOpen: boolean;
   modelsOpen: boolean;
   setModelsOpen: (open: boolean) => void;
+  /** Ouvre « Modèles » directement sur la recherche Hugging Face. */
+  modelsSearch: ModelKind | null;
+  openModelSearch: (kind: ModelKind) => void;
+  clearModelSearch: () => void;
   setTheme: (t: Theme) => void;
   toggleSidebar: () => void;
   openLightbox: (items: Asset[], index: number) => void;
@@ -189,6 +193,9 @@ export const useStore = create<State>()(
       settingsOpen: false,
       modelsOpen: false,
       setModelsOpen: (modelsOpen) => set({ modelsOpen }),
+      modelsSearch: null,
+      openModelSearch: (kind) => set({ modelsOpen: true, modelsSearch: kind }),
+      clearModelSearch: () => set({ modelsSearch: null }),
       setTheme: (theme) => {
         document.documentElement.dataset.theme = theme;
         try {

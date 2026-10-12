@@ -16,7 +16,8 @@ from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
 from ..engine_install import installer
-from ..engines import MODELS, get_spec
+from .. import hf_search
+from ..engines import MODELS, custom, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings, new_seed
 from ..media import make_thumb, save_upload
@@ -123,6 +124,60 @@ async def delete_model(model_id: str) -> dict[str, Any]:
         raise HTTPException(404, str(exc)) from None
     except (ValueError, RuntimeError) as exc:
         raise HTTPException(409, str(exc)) from None
+
+
+# --- Modèles Hugging Face ajoutés par l'utilisateur ------------------------------------------------
+
+@router.get("/hf/search")
+async def hf_search_models(kind: str = "image", q: str = "") -> dict[str, Any]:
+    try:
+        return {"results": await asyncio.to_thread(hf_search.search, kind, q)}
+    except hf_search.HubError as exc:
+        raise HTTPException(502, str(exc)) from None
+
+
+@router.get("/hf/inspect")
+async def hf_inspect(repo: str) -> dict[str, Any]:
+    try:
+        return await asyncio.to_thread(hf_search.inspect, repo)
+    except hf_search.HubError as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
+class CustomModelBody(BaseModel):
+    repo: str
+    option: str = "default"
+
+
+@router.post("/models/custom")
+async def add_custom_model(body: CustomModelBody) -> dict[str, Any]:
+    try:
+        recipe = await asyncio.to_thread(hf_search.make_recipe, body.repo.strip(), body.option)
+    except hf_search.HubError as exc:
+        raise HTTPException(422, str(exc)) from None
+    spec = custom.add(MODELS, recipe)
+    downloads.invalidate()
+    bus.publish("models.changed", {})
+    return {"model_id": spec.id}
+
+
+@router.delete("/models/{model_id}/custom")
+async def remove_custom_model(model_id: str) -> dict[str, Any]:
+    spec = MODELS.get(model_id)
+    if spec is None or not spec.custom:
+        raise HTTPException(404, "Ce n'est pas un modèle ajouté depuis Hugging Face.")
+    if jobs.worker and jobs.worker.model_id == model_id:
+        raise HTTPException(409, "Ce modèle est chargé en mémoire : déchargez-le d'abord.")
+    freed = 0.0
+    try:
+        if downloads.status(spec)["size_gb"] > 0:
+            freed = downloads.delete(model_id)["freed_gb"]
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(409, str(exc)) from None
+    custom.remove(MODELS, model_id)
+    downloads.invalidate()
+    bus.publish("models.changed", {})
+    return {"freed_gb": freed}
 
 
 @router.get("/status")
@@ -611,7 +666,8 @@ async def transcribe_voice(voice_id: str, body: TranscribeBody) -> dict[str, Any
     voice = voices.get_voice(voice_id)
     if not voice:
         raise HTTPException(404, "Voix introuvable.")
-    candidates = [body.model_id] if body.model_id else ["whisper-small", "whisper-large-v3-turbo"]
+    stt = [m.id for m in MODELS.values() if m.audio and m.audio.task == "stt"]
+    candidates = [body.model_id] if body.model_id else sorted(stt, key=lambda i: (i not in ("whisper-small", "whisper-large-v3-turbo"), i))
     spec = next((MODELS[m] for m in candidates if m in MODELS and dl.status(MODELS[m])["state"] == "installed"), None)
     if spec is None:
         raise HTTPException(409, "Aucun modèle de transcription n'est téléchargé : installez « Whisper Small » "

@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 
 from ..config import DEMO_MODE
-from . import audio_specs, demo, gguf_models, qwen21, qwen_edit, torch_models
+from . import audio_specs, custom, demo, gguf_models, qwen21, qwen_edit, torch_models
 from .base import Engine, ModelSpec
 
 _SPECS: list[ModelSpec] = [qwen21.SPEC, *gguf_models.SPECS, *torch_models.SPECS, qwen_edit.SPEC, *audio_specs.SPECS]
@@ -13,6 +13,7 @@ if DEMO_MODE:
     _SPECS.append(demo.SPEC)
 
 MODELS: dict[str, ModelSpec] = {s.id: s for s in _SPECS}
+custom.register_all(MODELS)  # modèles ajoutés depuis Hugging Face
 DEFAULT_MODEL_ID = qwen21.SPEC.id
 
 

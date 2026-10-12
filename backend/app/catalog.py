@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from . import audio_packs
@@ -27,6 +28,27 @@ def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
     if gpu_tagged and not system["accelerators"]:
         return {"fits": True, "strategy": "full", "note": "Aucun GPU détecté : ce modèle sera très lent sur processeur."}
     return {"fits": True, "strategy": "full", "note": ""}
+
+
+_QUANT = re.compile(r"(?<![A-Za-z0-9])((?:IQ|Q)\d(?:_[A-Z0-9]+)*|BF16|F16|F32)(?![A-Za-z0-9])", re.I)
+
+
+def quant_from_name(name: str) -> str:
+    """« z_image_turbo-Q4_K.gguf » -> « Q4_K »."""
+    m = _QUANT.search(name.rsplit("/", 1)[-1])
+    return m.group(1).upper() if m else ""
+
+
+def precision_of(spec, quantize: int | None) -> str:
+    """Précision des poids telle qu'elle sera utilisée (pour l'affichage)."""
+    if spec.backend == "mlx":
+        return f"{quantize} bits" if quantize else "bf16"
+    if spec.precision:
+        return spec.precision
+    if spec.backend == "sdcpp":
+        diffusion = spec.options.get("files", {}).get("diffusion-model") or spec.options.get("files", {}).get("model")
+        return quant_from_name(diffusion[1]) if diffusion else ""
+    return ""
 
 
 def describe_models() -> dict[str, Any]:
@@ -55,8 +77,10 @@ def describe_models() -> dict[str, Any]:
         status = downloads.status(spec)
         job = downloads.job(spec.id)
         compatible = bool(usable_engine and plan["fits"])
+        quantize = settings["quantize"].get(spec.id, spec.default_quantize)
         m.update(
-            quantize=settings["quantize"].get(spec.id, spec.default_quantize),
+            quantize=quantize,
+            precision=precision_of(spec, quantize),
             engine_available=engine["available"],
             engine_reason=engine.get("reason") if not engine.get("installable") else None,
             needs_engine_install=bool(engine.get("installable") and not engine["available"]),

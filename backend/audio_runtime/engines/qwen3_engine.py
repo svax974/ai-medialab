@@ -30,7 +30,8 @@ class Qwen3Engine(Engine):
         from qwen_tts import Qwen3TTSModel
 
         repo = self.options["repo"]
-        self.variant = "base" if repo.endswith("Base") else "design" if repo.endswith("VoiceDesign") else "custom"
+        kind = str(self.options.get("variant") or repo.rsplit("-", 1)[-1]).lower()
+        self.variant = "base" if kind.endswith("base") else "design" if "design" in kind else "custom"
         device = pick_device(self.options.get("device"))
         # float16 donne des NaN sur ce modèle (probabilités invalides) ; bfloat16 sur GPU, float32 sur CPU.
         dtype = torch.float32 if device == "cpu" else torch.bfloat16

@@ -71,6 +71,7 @@ KOKORO = ModelSpec(
     weights_gb=0.4,
     license="Apache-2.0",
     tags=["rapide", "léger", "CPU"],
+    precision="fp32",
     audio=AudioCaps(
         languages=_langs(FR, EN, ES, IT, PT),
         voices=_KOKORO_VOICES,
@@ -122,6 +123,7 @@ POCKET = ModelSpec(
     weights_gb=0.6,
     license="CC-BY-4.0",
     tags=["clonage", "rapide", "CPU"],
+    precision="bf16",
     audio=AudioCaps(
         languages=_langs(FR, EN),
         voices=[*_pocket_voices("en"), *_pocket_voices("fr", [PresetVoice("estelle", "Estelle", "fr", F, "Voix d'assistante")])],
@@ -145,6 +147,7 @@ POCKET_INTL = ModelSpec(
     weights_gb=0.6,
     license="CC-BY-4.0",
     tags=["clonage", "multilingue", "CPU"],
+    precision="bf16",
     audio=AudioCaps(
         languages=_langs(DE, ES, IT, PT, NL),
         voices=[v for l in ("de", "es", "it", "pt", "nl") for v in _pocket_voices(l)],
@@ -182,7 +185,7 @@ def _qwen(id: str, name: str, repo: str, gb: float, caps: AudioCaps, description
         engine="qwen3_engine:Qwen3Engine", backend="pack",
         options={"pack": "qwen3", "variant": repo.split("-")[-1].lower(), "repo": f"Qwen/Qwen3-TTS-12Hz-{repo}"},
         text_to_image=False, params=params or [], sources=_qwen_sources(repo, gb),
-        download_size_gb=gb, weights_gb=gb, license="Apache-2.0", tags=tags, audio=caps,
+        download_size_gb=gb, weights_gb=gb, license="Apache-2.0", tags=tags, audio=caps, precision="bf16",
     )
 
 
@@ -235,7 +238,7 @@ WHISPER_SMALL = ModelSpec(
     engine="", backend="pack", options={"pack": "speech", "repo": "Systran/faster-whisper-small"},
     text_to_image=False,
     sources=[HfSource("Systran/faster-whisper-small", None, ["model.bin", "config.json", "tokenizer.json"], 0.49)],
-    download_size_gb=0.49, weights_gb=0.5, license="MIT", tags=["transcription", "CPU"],
+    download_size_gb=0.49, weights_gb=0.5, license="MIT", tags=["transcription", "CPU"], precision="fp16",
     audio=AudioCaps(task="stt", languages=[]),
 )
 WHISPER_TURBO = ModelSpec(
@@ -245,7 +248,7 @@ WHISPER_TURBO = ModelSpec(
     text_to_image=False,
     sources=[HfSource("deepdml/faster-whisper-large-v3-turbo-ct2", None,
                       ["model.bin", "config.json", "tokenizer.json"], 1.62)],
-    download_size_gb=1.62, weights_gb=1.7, license="MIT", tags=["transcription"],
+    download_size_gb=1.62, weights_gb=1.7, license="MIT", tags=["transcription"], precision="fp16",
     audio=AudioCaps(task="stt", languages=[]),
 )
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
@@ -13,6 +13,7 @@ import { confirm } from "./Confirm";
 import { IndeterminateBar, ProgressBar, startSetup } from "./Setup";
 import { navigate, paths } from "../lib/router";
 import { Button, IconButton, Spinner } from "./ui";
+import { HubSearch } from "./HubSearch";
 
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 
@@ -32,9 +33,21 @@ export function ModelsDialog() {
   const { data } = useModels();
   const mode = useStore((s) => s.mode);
   const [tab, setTab] = useState<ModelKind>(mode);
+  const searchKind = useStore((s) => s.modelsSearch);
+  const searchRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
-    if (open) setTab(mode);
+    if (open) setTab(useStore.getState().modelsSearch ?? mode);
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Ouverture depuis « Chercher un modèle » : on amène la recherche à l'écran.
+  useEffect(() => {
+    if (!open || !searchKind) return;
+    const t = setTimeout(() => {
+      searchRef.current?.scrollIntoView({ block: "center" });
+      searchRef.current?.focus();
+      useStore.getState().clearModelSearch();
+    }, 120);
+    return () => clearTimeout(t);
+  }, [open, searchKind]);
   const { data: system } = useQuery({ queryKey: ["system"], queryFn: api.system, enabled: open, staleTime: 5_000, refetchInterval: open ? 8_000 : false });
   const models = data?.models.filter((m) => m.kind === tab) ?? [];
   const speech = models.filter((m) => m.audio?.task === "stt");
@@ -75,6 +88,7 @@ export function ModelsDialog() {
                 {speech.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
               </div>
             )}
+            <HubSearch ref={searchRef} kind={tab} />
             <TokenField />
             {system && (
               <p className="font-mono text-[10.5px] leading-relaxed text-faint">
@@ -159,6 +173,23 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
     }
   };
 
+  const retire = async () => {
+    const ok = await confirm({
+      title: `Retirer « ${m.name} » de la liste ?`,
+      description: `Supprime aussi ses fichiers (≈ ${gb(m.installed_gb)} Go). Vous pourrez le rechercher de nouveau sur Hugging Face.`,
+      confirmLabel: "Retirer",
+      danger: true,
+    });
+    if (!ok) return;
+    try {
+      await api.removeCustomModel(m.id);
+      queryClient.invalidateQueries({ queryKey: keys.models });
+      queryClient.invalidateQueries({ queryKey: ["system"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   const saveQuantize = (q: number | null) => api.saveSettings({ quantize: { [m.id]: q } }).then(() => queryClient.invalidateQueries({ queryKey: keys.models }));
 
   return (
@@ -166,6 +197,8 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
         <h3 className="text-[15px] font-medium text-ink">{m.name}</h3>
         <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-muted ring-1 ring-line">{backendLabel(m, system)}</span>
+        {m.precision && <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Précision des poids">{m.precision}</span>}
+        {m.custom && <span className="rounded-md bg-safe-soft px-1.5 py-px font-mono text-[10px] text-ink-2">Hugging Face</span>}
         {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
         {installed && <span className="flex items-center gap-1 font-mono text-[10.5px] text-ok"><Check className="size-3" />installé · {gb(m.installed_gb)} Go</span>}
         {m.install === "partial" && !dl && <span className="font-mono text-[10.5px] text-warn">incomplet · {gb(m.installed_gb)} Go présents</span>}
@@ -235,6 +268,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
             {need > 0 && <span className="font-mono text-[11px] opacity-80">≈ {gb(need)} Go</span>}
           </Button>
         )}
+        {m.custom && !dl && <Button variant="ghost" onClick={retire} disabled={loaded}><Trash2 className="size-4" /> Retirer de la liste</Button>}
         {installed && m.backend === "mlx" && m.quantize_options.length > 0 && (
           <div className="ml-auto flex items-center gap-2">
             <span className="text-[11.5px] text-faint">Précision</span>

@@ -86,6 +86,39 @@ export interface ModelInfo {
   /** Le moteur de ce modèle n'est pas installé mais l'application sait l'installer. */
   needs_engine_install: boolean;
   engine_install_size_mb: number | null;
+  /** Précision des poids (« Q4_K », « bf16 », « 8 bits »…), vide si inconnue. */
+  precision: string;
+  /** Modèle ajouté depuis Hugging Face par l'utilisateur. */
+  custom: boolean;
+}
+
+export interface HubResult {
+  repo: string;
+  family: "gguf-variant" | "sd-diffusers" | "qwen3-tts" | "whisper-ct2";
+  family_label: string;
+  task: "image" | "tts" | "stt";
+  downloads: number;
+  likes: number;
+  base: string;
+  /** Id du modèle déjà présent dans la liste, le cas échéant. */
+  already: string | null;
+}
+
+export interface HubOption {
+  key: string;
+  label: string;
+  precision: string;
+  size_gb: number;
+}
+
+export interface HubInspect {
+  repo: string;
+  family: HubResult["family"];
+  family_label: string;
+  license: string;
+  notes: string[];
+  template?: { id: string; name: string };
+  options: HubOption[];
 }
 
 export interface DownloadProgress {
@@ -335,6 +368,12 @@ export const api = {
   installEngine: () => request<EngineInstallState>("/api/engines/sdcpp/install", { method: "POST" }),
   cancelEngineInstall: () => request<{ ok: true }>("/api/engines/sdcpp/install", { method: "DELETE" }),
   system: () => request<SystemInfo>("/api/system"),
+  hubSearch: (kind: ModelKind, q: string) =>
+    request<{ results: HubResult[] }>(`/api/hf/search?kind=${kind}&q=${encodeURIComponent(q)}`).then((r) => r.results),
+  hubInspect: (repo: string) => request<HubInspect>(`/api/hf/inspect?repo=${encodeURIComponent(repo)}`),
+  addCustomModel: (repo: string, option: string) =>
+    request<{ model_id: string }>("/api/models/custom", { method: "POST", body: json({ repo, option }) }),
+  removeCustomModel: (id: string) => request<{ freed_gb: number }>(`/api/models/${id}/custom`, { method: "DELETE" }),
   downloadModel: (id: string) => request<DownloadProgress>(`/api/models/${id}/download`, { method: "POST" }),
   cancelDownload: (id: string) => request<{ ok: true }>(`/api/models/${id}/download`, { method: "DELETE" }),
   deleteModel: (id: string) =>

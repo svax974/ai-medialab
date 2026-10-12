@@ -120,6 +120,10 @@ class ModelSpec:
     largest_component_gb: float | None = None
     memory_hint: str = ""
     tags: list[str] = field(default_factory=list)
+    # Précision des poids affichée (« Q4_K », « bf16 »…) ; vide = déduite (voir catalog.precision_of).
+    precision: str = ""
+    # Modèle ajouté par l'utilisateur depuis Hugging Face (voir engines/custom.py).
+    custom: bool = False
     # Nature du modèle : "image" (génération d'images) ou "audio" (synthèse vocale, transcription).
     kind: Kind = "image"
     audio: AudioCaps | None = None
