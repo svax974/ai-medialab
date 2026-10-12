@@ -73,7 +73,7 @@ vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarq
 
 | Modèle | Moteur | Usage | Références | Téléchargement |
 |---|---|---|---|---|
-| **Qwen Image 2.1** | MLX | Texte → image, img2img | 1 image de départ | 33 Go |
+| **Qwen Image 2.1** | MLX | Texte → image, img2img | 1 image de départ | 9,6 Go (4 bits) ou 24 Go (8 bits) |
 | **Qwen Image 2.1** | **GGUF** | Texte → image, **édition** par instruction | jusqu'à 4 images | **11 Go** |
 | **Qwen Image 2.1** | PyTorch | Texte → image, **édition**, RGBA | jusqu'à 10 images | 33 Go (32 Go de poids bf16) |
 | **Z-Image Turbo** (Apache 2.0) | **GGUF** | Texte → image rapide (8 étapes) | — | **6,7 Go** |
@@ -212,6 +212,12 @@ ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx taur
 - Itérer sans réassembler le bundle : `CHAMBRE_NOIRE_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/chambre-noire`
   (la coque utilise alors ces ressources au lieu de celles du `.app`).
 - Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
+
+## Quantifications
+
+Chaque modèle MLX et GGUF propose plusieurs quantifications (*Modèles → carte du modèle → Quantification*) : seule celle
+qu'on choisit est téléchargée, jamais la version pleine précision. Qwen Image 2.1 MLX : 4 bits (défaut, ≈ 10 Go de pic
+mémoire mesuré à 1024²) ou 8 bits. GGUF : de Q2_K à Q8_0. Les modèles PyTorch n'ont qu'une précision (bf16 / fp16).
 
 ## Ajouter un modèle depuis Hugging Face
 

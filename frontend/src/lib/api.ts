@@ -92,6 +92,21 @@ export interface ModelInfo {
   precision: string;
   /** Modèle ajouté depuis Hugging Face par l'utilisateur. */
   custom: boolean;
+  /** Quantifications proposées pour ce modèle (vide si une seule). */
+  variants: ModelVariant[];
+  variant: string;
+}
+
+export interface ModelVariant {
+  key: string;
+  label: string;
+  /** Taille du modèle complet avec cette quantification. */
+  size_gb: number;
+  install: "installed" | "partial" | "missing";
+  installed_gb: number;
+  /** Reste à télécharger pour utiliser cette quantification. */
+  need_gb: number;
+  selected: boolean;
 }
 
 export interface HubResult {
@@ -316,6 +331,7 @@ export interface Settings {
   low_memory: boolean;
   has_hf_token: boolean;
   quantize: Record<string, number | null>;
+  variant: Record<string, string>;
 }
 
 export class ApiError extends Error {

@@ -74,3 +74,27 @@ def test_builtin_precisions():
     assert precision_of(MODELS["z-image-turbo-gguf"], None) == "Q4_K"
     assert precision_of(MODELS["qwen-image-edit-gguf"], None) == "Q4_K_M"
     assert precision_of(MODELS["kokoro-82m"], None) == "fp32"
+
+
+def test_variants_replace_only_the_weights():
+    from app.engines.base import with_variant
+
+    base = MODELS["z-image-turbo-gguf"]
+    q8 = with_variant(base, "Q8_0")
+    assert q8.variant == "Q8_0" and q8.precision == "Q8_0"
+    assert q8.options["files"]["diffusion-model"][1] == "z_image_turbo-Q8_0.gguf"
+    assert q8.options["files"]["llm"] == base.options["files"]["llm"]  # encodeur et VAE communs
+    assert q8.download_size_gb > base.download_size_gb
+    assert with_variant(base, "inconnue").variant == "Q4_K"  # retombe sur la quantification par défaut
+    assert base.variant == ""  # la spec d'origine n'est pas modifiée
+
+
+def test_mlx_qwen_has_no_bf16_download():
+    from app.engines.base import with_variant
+
+    spec = MODELS["qwen-image-2.1"]
+    assert spec.hf_repo is None and spec.default_variant == "q4"
+    assert {v.key for v in spec.variants} == {"q4", "q8"}
+    assert all(s.repo != "Qwen/Qwen-Image-2.1" for v in spec.variants for s in v.sources)
+    assert with_variant(spec, None).options["model_path"] == "mlx-community/Qwen-Image-2.1-mflux-q4"
+    assert spec.default_quantize is None

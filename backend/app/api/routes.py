@@ -199,6 +199,7 @@ class SettingsPatch(BaseModel):
     low_memory: bool | None = None
     hf_token: str | None = None
     quantize: dict[str, int | None] | None = None
+    variant: dict[str, str] | None = None
 
 
 def _public_settings() -> dict[str, Any]:
@@ -214,8 +215,21 @@ def get_settings() -> dict[str, Any]:
 
 
 @router.put("/settings")
-def put_settings(patch: SettingsPatch) -> dict[str, Any]:
+async def put_settings(patch: SettingsPatch) -> dict[str, Any]:
     values = patch.model_dump(exclude_none=True)
+    if "variant" in values:
+        for model_id, key in values["variant"].items():
+            spec = MODELS.get(model_id)
+            if spec is None or key not in {v.key for v in spec.variants}:
+                raise HTTPException(422, f"Quantification inconnue pour {model_id} : {key}.")
+        previous = load_settings()["variant"]
+        changed = [i for i, k in values["variant"].items() if previous.get(i, MODELS[i].default_variant) != k]
+        if jobs.worker and jobs.worker.model_id in changed:
+            if jobs.current:
+                raise HTTPException(409, "Une génération est en cours : attendez sa fin pour changer de quantification.")
+            await jobs.unload()  # le modèle chargé utilise l'ancienne quantification
+        values["variant"] = {**previous, **values["variant"]}
+        downloads.invalidate()
     if "quantize" in values:
         merged = {**load_settings()["quantize"], **patch.quantize}
         for model_id, bits in merged.items():

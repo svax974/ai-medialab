@@ -7,7 +7,8 @@ from typing import Any
 
 from . import audio_packs
 from .downloads import downloads
-from .engines import MODELS
+from .engines import MODELS, resolve, selected_variants
+from .engines.base import with_variant
 from .jobs import load_settings
 from .system import get_system, memory_plan
 
@@ -41,10 +42,10 @@ def quant_from_name(name: str) -> str:
 
 def precision_of(spec, quantize: int | None) -> str:
     """Précision des poids telle qu'elle sera utilisée (pour l'affichage)."""
-    if spec.backend == "mlx":
-        return f"{quantize} bits" if quantize else "bf16"
     if spec.precision:
         return spec.precision
+    if spec.backend == "mlx":
+        return f"{quantize} bits" if quantize else "bf16"
     if spec.backend == "sdcpp":
         diffusion = spec.options.get("files", {}).get("diffusion-model") or spec.options.get("files", {}).get("model")
         return quant_from_name(diffusion[1]) if diffusion else ""
@@ -71,12 +72,20 @@ def _engine_detail(spec, engine: dict[str, Any]) -> str:
     return ""
 
 
+def _variant_info(base, v, selected: str) -> dict[str, Any]:
+    st = downloads.status(with_variant(base, v.key))
+    return {"key": v.key, "label": v.label, "size_gb": v.size_gb, "install": st["state"], "installed_gb": st["size_gb"],
+            "need_gb": round(max(0.0, v.size_gb - st["size_gb"]), 2), "selected": v.key == selected}
+
+
 def describe_models() -> dict[str, Any]:
     system = get_system()
     settings = load_settings()
     apple = system["os"] == "Darwin" and system["arch"] == "arm64"
     models: list[dict[str, Any]] = []
-    for spec in MODELS.values():
+    chosen = selected_variants()
+    for base in MODELS.values():
+        spec = resolve(base, chosen)
         if spec.backend == "mlx" and not apple:
             continue  # MLX n'existe que sur Mac Apple Silicon : inutile de l'afficher ailleurs
         m = spec.to_public()
@@ -99,6 +108,8 @@ def describe_models() -> dict[str, Any]:
         compatible = bool(usable_engine and plan["fits"])
         quantize = settings["quantize"].get(spec.id, spec.default_quantize)
         m.update(
+            variants=[_variant_info(base, v, spec.variant) for v in base.variants],
+            variant=spec.variant,
             quantize=quantize,
             precision=precision_of(spec, quantize),
             engine_available=engine["available"],

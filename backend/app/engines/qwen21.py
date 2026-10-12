@@ -2,8 +2,19 @@
 
 from __future__ import annotations
 
-from .base import ModelSpec, ParamSpec
+import dataclasses
+
+from .base import HfSource, ModelSpec, ParamSpec, Variant
 from .mflux_common import MfluxEngine
+
+# Poids déjà quantifiés (format mflux) : on ne télécharge jamais les 33 Go de la version bf16.
+_CHECK = ["transformer/*.safetensors", "text_encoder/*.safetensors", "vae/*.safetensors", "processor/tokenizer.json"]
+Q4_REPO = "mlx-community/Qwen-Image-2.1-mflux-q4"
+Q8_REPO = "JoyFusionAI/Qwen-Image-2.1-MLX-8bit"
+_Q4 = Variant("q4", "4 bits", 9.6, [HfSource(Q4_REPO, None, _CHECK, 9.6)], {"model_path": Q4_REPO},
+              weights_gb=9.6, largest_component_gb=4.3)
+_Q8 = Variant("q8", "8 bits", 24.0, [HfSource(Q8_REPO, None, _CHECK, 24.0)], {"model_path": Q8_REPO},
+              weights_gb=24.0, largest_component_gb=15.1)
 
 SPEC = ModelSpec(
     id="qwen-image-2.1",
@@ -32,16 +43,17 @@ SPEC = ModelSpec(
     ],
     size_multiple=16,
     max_side=2048,
-    default_quantize=8,
-    hf_repo="Qwen/Qwen-Image-2.1",
-    hf_patterns=["transformer/*", "text_encoder/*", "vae/*", "processor/*"],
-    check_files=["transformer/*.safetensors", "text_encoder/*.safetensors", "vae/*.safetensors", "processor/tokenizer.json"],
-    download_size_gb=33.1,
+    default_quantize=None,  # poids déjà quantifiés : rien à quantifier au chargement
+    quantize_options=[],
+    sources=_Q4.sources,
+    variants=[_Q4, _Q8],
+    default_variant="q4",
+    download_size_gb=9.6,
     license="Qwen Research License (recherche, usage non commercial)",
-    weights_gb=31.8,
-    largest_component_gb=17.5,
-    memory_hint="8 bits : ≈ 26 Go au pic (encodage du prompt), ≈ 9 Go pendant le calcul avec l'économie "
-    "de mémoire. L'encodeur de texte (17 Go) n'est jamais quantifié.",
+    weights_gb=9.6,
+    largest_component_gb=4.3,
+    memory_hint="Poids quantifiés (transformeur et encodeur de texte) : ≈ 10 Go en 4 bits.",
+    options={"model_path": Q4_REPO},
     tags=["texte→image", "img2img", "Metal natif"],
 )
 
@@ -77,11 +89,12 @@ class Qwen21Engine(MfluxEngine):
 
         self.latent_creator = Qwen21LatentCreator
         config = ModelConfig.qwen_image_21()
+        self.model_path = self.spec.options.get("model_path") or config.model_name
         model = QwenImage21.__new__(QwenImage21)
         nn.Module.__init__(model)
         Qwen21Initializer._init_config(model, config)
-        weights = WeightLoader.load(weight_definition=WithoutTextEncoder, model_path=config.model_name)
-        Qwen21Initializer._init_tokenizers(model, config.model_name)
+        weights = WeightLoader.load(weight_definition=WithoutTextEncoder, model_path=self.model_path)
+        Qwen21Initializer._init_tokenizers(model, self.model_path)
         model.vae = Qwen21VAE()
         model.transformer = Qwen21Transformer()
         model.text_encoder = None
@@ -110,13 +123,17 @@ class Qwen21Engine(MfluxEngine):
         class TextEncoderOnly(Qwen21WeightDefinition):
             @staticmethod
             def get_components():
-                return [c for c in Qwen21WeightDefinition.get_components() if c.name == "text_encoder"]
+                # mflux n'applique jamais de quantification à l'encodeur (« dégradation sémantique »), mais certains
+                # dépôts déjà quantifiés (4 bits) l'ont quantifié : il faut alors le structurer comme tel. Pour un
+                # encodeur bf16, rien n'est quantifié (aucun niveau enregistré dans ses fichiers).
+                return [dataclasses.replace(c, skip_quantization=False)
+                        for c in Qwen21WeightDefinition.get_components() if c.name == "text_encoder"]
 
             @staticmethod
             def get_download_patterns():
                 return ["text_encoder/*.safetensors", "text_encoder/*.json"]
 
-        weights = WeightLoader.load(weight_definition=TextEncoderOnly, model_path=self.model.model_config.model_name)
+        weights = WeightLoader.load(weight_definition=TextEncoderOnly, model_path=self.model_path)
         encoder = Qwen21TextEncoder()
         WeightApplier.apply_and_quantize(
             weights=weights, models={"text_encoder": encoder}, quantize_arg=None, weight_definition=TextEncoderOnly

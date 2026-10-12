@@ -62,7 +62,8 @@ def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
 
 def _existing_for(repo: str) -> str | None:
     for m in MODELS.values():
-        if any(s.repo == repo for s in m.all_sources()):
+        sources = [*m.all_sources(), *(s for v in m.variants for s in v.sources)]
+        if any(s.repo == repo for s in sources):
             return m.id
     return None
 

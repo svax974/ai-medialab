@@ -86,6 +86,22 @@ class HfSource:
 
 
 @dataclass
+class Variant:
+    """Une quantification d'un même modèle : seuls les fichiers de poids changent, pas le modèle.
+
+    Choisir une variante ne télécharge que celle-là (aucune copie inutile) ; `sources` et `options` remplacent ceux
+    du modèle, le reste (paramètres, références, encodeurs communs) reste identique."""
+
+    key: str
+    label: str  # « Q4_K », « 4 bits »…
+    size_gb: float
+    sources: list["HfSource"]
+    options: dict[str, Any] = field(default_factory=dict)  # fusionnées dans ModelSpec.options
+    weights_gb: float | None = None
+    largest_component_gb: float | None = None
+
+
+@dataclass
 class ModelSpec:
     id: str
     name: str
@@ -131,6 +147,10 @@ class ModelSpec:
     options: dict[str, Any] = field(default_factory=dict)
     # Modèles composés de plusieurs dépôts (ex. GGUF + encodeur + VAE) : prime sur hf_repo.
     sources: list[HfSource] = field(default_factory=list)
+    # Quantifications disponibles. `sources`/`options` ci-dessus décrivent la variante par défaut.
+    variants: list[Variant] = field(default_factory=list)
+    default_variant: str = ""
+    variant: str = ""  # variante effectivement sélectionnée (renseignée par `with_variant`)
 
     def all_sources(self) -> list[HfSource]:
         if self.sources:
@@ -144,12 +164,34 @@ class ModelSpec:
 
     def to_public(self) -> dict[str, Any]:
         d = asdict(self)
+        d["variants"] = [{"key": v.key, "label": v.label, "size_gb": v.size_gb} for v in self.variants]
         d.pop("engine")
         d.pop("options")
         d.pop("hf_patterns")
         d.pop("check_files")
         d.pop("sources")
         return d
+
+
+def with_variant(spec: ModelSpec, key: str | None) -> ModelSpec:
+    """La spec telle qu'elle doit être utilisée pour la quantification `key` (défaut si inconnue)."""
+    import copy
+
+    if not spec.variants:
+        return spec
+    chosen = next((v for v in spec.variants if v.key == key), None) or \
+        next((v for v in spec.variants if v.key == spec.default_variant), spec.variants[0])
+    out = copy.copy(spec)
+    out.variant = chosen.key
+    out.sources = list(chosen.sources)
+    out.options = {**spec.options, **chosen.options}
+    out.download_size_gb = chosen.size_gb
+    out.precision = chosen.label
+    if chosen.weights_gb is not None:
+        out.weights_gb = chosen.weights_gb
+    if chosen.largest_component_gb is not None:
+        out.largest_component_gb = chosen.largest_component_gb
+    return out
 
 
 def hf_hub_dir() -> Path:

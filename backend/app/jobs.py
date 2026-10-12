@@ -32,6 +32,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "previews": True,
     "low_memory": True,  # libère l'encodeur de texte après l'encodage du prompt
     "quantize": {},  # model_id -> bits (None = pleine précision)
+    "variant": {},  # model_id -> quantification choisie (clé d'une `Variant`)
 }
 
 

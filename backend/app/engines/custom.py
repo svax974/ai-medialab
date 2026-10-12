@@ -50,6 +50,7 @@ def _title(repo: str) -> str:
 def _gguf_variant(r: dict[str, Any]) -> ModelSpec:
     base = next(s for s in gguf_models.SPECS if s.id == r["template"])
     spec = copy.deepcopy(base)
+    spec.variants, spec.default_variant, spec.variant = [], "", ""  # une recette = un fichier précis
     repo, file, size = r["repo"], r["file"], float(r["size_gb"])
     old_repo, old_file = base.options["files"]["diffusion-model"]
     i = next(i for i, s in enumerate(base.sources) if s.repo == old_repo and old_file in (s.patterns or []))

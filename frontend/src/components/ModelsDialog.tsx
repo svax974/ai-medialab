@@ -212,6 +212,8 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         {m.license && <span className="font-mono text-[10px] text-faint">· {m.license}</span>}
       </div>
 
+      {m.variants.length > 1 && <VariantPicker model={m} />}
+
       {(m.plan.note || m.engine_reason) && (
         <div className={cx("mt-2.5 flex items-start gap-2 text-[12px] leading-snug", m.compatible ? "text-muted" : "text-warn")}>
           <CircleAlert className="mt-px size-3.5 shrink-0" />
@@ -298,6 +300,43 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         )}
       </div>
     </article>
+  );
+}
+
+/** Choix de la quantification : seule celle qu'on sélectionne est téléchargée, aucune copie inutile. */
+function VariantPicker({ model: m }: { model: ModelInfo }) {
+  const choose = useMutation({
+    mutationFn: (key: string) => api.saveSettings({ variant: { [m.id]: key } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.models });
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+  return (
+    <div className="mt-3">
+      <div className="mb-1.5 flex items-baseline justify-between gap-2">
+        <span className="text-[11.5px] text-muted">Quantification</span>
+        <span className="text-[11px] text-faint">seule celle choisie est téléchargée</span>
+      </div>
+      <div className="flex flex-wrap gap-1">
+        {m.variants.map((v) => (
+          <button
+            key={v.key}
+            disabled={choose.isPending}
+            onClick={() => !v.selected && choose.mutate(v.key)}
+            title={v.install === "installed" ? "Déjà téléchargée" : `À télécharger : ≈ ${gb(v.need_gb)} Go`}
+            className={cx(
+              "flex items-center gap-1.5 rounded-lg px-2 py-1 font-mono text-[11px] ring-1 transition-colors",
+              v.selected ? "bg-safe-soft text-ink ring-safe/50" : "bg-surface text-muted ring-line hover:text-ink",
+            )}
+          >
+            {v.install === "installed" && <Check className="size-3 text-ok" />}
+            {v.label}
+            <span className="text-faint">{gb(v.size_gb)} Go</span>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

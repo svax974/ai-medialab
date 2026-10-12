@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from . import db
-from .engines import MODELS, get_spec
+from .engines import MODELS, all_specs, get_spec
 from .engines.base import HfSource, ModelSpec, _matches, _source_status, hf_hub_dir, installation_status, repo_cache_dir
 from .events import bus
 from .system import get_system
@@ -55,11 +55,12 @@ class DownloadManager:
     # --- État --------------------------------------------------------------------------------------------
 
     def status(self, spec: ModelSpec) -> dict[str, Any]:
-        cached = self._status_cache.get(spec.id)
+        key = f"{spec.id}:{spec.variant}"
+        cached = self._status_cache.get(key)
         if cached and time.time() - cached[0] < _STATUS_TTL:
             return cached[1]
         st = installation_status(spec)
-        self._status_cache[spec.id] = (time.time(), st)
+        self._status_cache[key] = (time.time(), st)
         return st
 
     def invalidate(self) -> None:
@@ -120,11 +121,11 @@ class DownloadManager:
             raise RuntimeError("Un téléchargement est en cours pour ce modèle.")
         freed = 0
         for src in sources:
-            freed += _delete_source(src, keep=[s2 for m in MODELS.values() if m.id != spec.id for s2 in m.all_sources()
+            freed += _delete_source(src, keep=[s2 for m in all_specs() if m.id != spec.id for s2 in m.all_sources()
                                                if s2.repo == src.repo])
         self.invalidate()
         mine = {(s.repo, p) for s in sources for p in (s.patterns or ["*"])}
-        shared = [m.id for m in MODELS.values() if m.id != spec.id
+        shared = [m.id for m in all_specs() if m.id != spec.id
                   and any((s.repo, p) in mine for s in m.all_sources() for p in (s.patterns or ["*"]))]
         bus.publish("models.changed", {})
         return {"freed_gb": round(freed / 1024**3, 2), "also_affects": shared}

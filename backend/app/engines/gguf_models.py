@@ -7,7 +7,7 @@ Seuls des dépôts sans accès restreint sont utilisés.
 
 from __future__ import annotations
 
-from .base import HfSource, ModelSpec, ParamSpec
+from .base import HfSource, ModelSpec, ParamSpec, Variant
 
 ENGINE = "app.engines.sdcpp_engine:SdcppEngine"
 
@@ -149,5 +149,39 @@ QWEN_EDIT_GGUF = ModelSpec(
         "guidance_arg": "--cfg-scale",
     },
 )
+
+# --- Quantifications proposées (tailles des fichiers de diffusion, en Go) ----------------------------------
+# On ne télécharge que la quantification choisie ; l'encodeur de texte et le VAE sont communs à toutes.
+
+def _gguf_variants(spec: ModelSpec, repo: str, name: str, table: list[tuple[str, float]], default: str) -> None:
+    old_repo, old_file = spec.options["files"]["diffusion-model"]
+    idx = next(i for i, s in enumerate(spec.sources) if s.repo == old_repo and old_file in (s.patterns or []))
+    old_size = spec.sources[idx].size_gb or 0
+    for label, size in table:
+        file = name.format(label)
+        sources = list(spec.sources)
+        sources[idx] = src((repo, file), size)
+        delta = size - old_size
+        spec.variants.append(Variant(
+            key=label, label=label, size_gb=round((spec.download_size_gb or 0) + delta, 2), sources=sources,
+            options={"files": {**spec.options["files"], "diffusion-model": (repo, file)}},
+            weights_gb=round((spec.weights_gb or 0) + delta, 2), largest_component_gb=max(spec.largest_component_gb or 0, size),
+        ))
+    spec.default_variant = default
+    chosen = next(v for v in spec.variants if v.key == default)
+    spec.sources, spec.options = chosen.sources, {**spec.options, **chosen.options}
+
+
+_gguf_variants(Z_IMAGE_GGUF, "leejet/Z-Image-Turbo-GGUF", "z_image_turbo-{}.gguf",
+               [("Q2_K", 2.59), ("Q3_K", 3.14), ("Q4_0", 3.68), ("Q4_K", 3.86), ("Q5_0", 4.54), ("Q6_K", 5.26), ("Q8_0", 6.58)],
+               "Q4_K")
+_gguf_variants(QWEN21_GGUF, "leejet/Qwen-Image-2.1-GGUF", "qwen_image_2.1-{}.gguf",
+               [("Q2_K", 2.56), ("Q3_K", 3.27), ("Q4_0", 4.2), ("Q4_K", 4.2), ("Q5_0", 5.07), ("Q6_K", 6.0), ("Q8_0", 7.69)],
+               "Q4_K")
+_gguf_variants(QWEN_EDIT_GGUF, "unsloth/Qwen-Image-Edit-2511-GGUF", "qwen-image-edit-2511-{}.gguf",
+               [("Q2_K", 7.47), ("Q3_K_S", 9.22), ("Q3_K_M", 9.92), ("Q3_K_L", 10.58), ("Q4_0", 11.85), ("Q4_K_S", 12.41),
+                ("Q4_1", 12.84), ("Q4_K_M", 13.24), ("Q5_0", 14.4), ("Q5_K_S", 14.33), ("Q5_K_M", 15.03), ("Q5_1", 15.39),
+                ("Q6_K", 16.85), ("Q8_0", 21.76)],
+               "Q4_K_M")
 
 SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN_EDIT_GGUF]
