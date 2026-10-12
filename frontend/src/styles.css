@@ -103,6 +103,10 @@
   45% { opacity: 1; filter: blur(4px) sepia(0.6) saturate(1.6) hue-rotate(-10deg) brightness(0.8); }
   100% { opacity: 1; filter: none; transform: none; }
 }
+@keyframes slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
 @keyframes breathe {
   0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }

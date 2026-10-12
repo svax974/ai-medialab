@@ -5,12 +5,14 @@ import { cx } from "../lib/format";
 import { useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 
-const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "démo" };
+const BACKEND: Record<string, string> = { mlx: "MLX", torch: "PyTorch", sdcpp: "GGUF", pack: "audio", demo: "démo" };
 
 export function ModelPicker({ model }: { model: ModelInfo }) {
   const { data } = useModels();
   const engine = useStore((s) => s.engine);
-  const setModel = useStore((s) => s.setModel);
+  const setImageModel = useStore((s) => s.setModel);
+  const setAudioModel = useStore((s) => s.setAudioModel);
+  const setModel = model.kind === "audio" ? setAudioModel : setImageModel;
   const setModelsOpen = useStore((s) => s.setModelsOpen);
 
   return (
@@ -26,7 +28,7 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
       <DropdownMenu.Portal>
         <DropdownMenu.Content collisionPadding={12} side="top" align="start" sideOffset={8} className="menu w-[380px]">
           <div className="eyebrow px-2.5 pb-1 pt-1.5">Modèles locaux</div>
-          {data?.models.map((m) => {
+          {data?.models.filter((m) => m.kind === model.kind && m.audio?.task !== "stt").map((m) => {
             const loaded = engine?.model_id === m.id;
             return (
               <DropdownMenu.Item
@@ -44,6 +46,13 @@ export function ModelPicker({ model }: { model: ModelInfo }) {
                     {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
                   </div>
                   <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-snug text-muted">{m.description}</p>
+                  {m.kind === "audio" && m.tags.length > 0 && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {m.tags.map((t) => (
+                        <span key={t} className="rounded-md bg-surface px-1.5 py-px font-mono text-[9.5px] text-muted ring-1 ring-line">{t}</span>
+                      ))}
+                    </div>
+                  )}
                   <div className="mt-1.5 flex flex-wrap items-center gap-1">
                     {m.needs_engine_install && (
                       <span className="flex items-center gap-1 rounded-md bg-warn/10 px-1.5 py-px font-mono text-[10px] text-warn">

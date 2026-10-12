@@ -1,12 +1,21 @@
-// Routeur minimal (History API) : "/", "/c/:id", "/galerie".
+// Routeur minimal (History API) : "/", "/c/:id", "/galerie" (images) ; "/audio", "/audio/voix", "/audio/bibliotheque" (audio).
 import { useSyncExternalStore } from "react";
 
-export type Route = { name: "home" } | { name: "conversation"; id: string } | { name: "gallery" };
+export type Route =
+  | { name: "home" }
+  | { name: "conversation"; id: string }
+  | { name: "gallery" }
+  | { name: "audio-home" }
+  | { name: "voices" }
+  | { name: "audio-gallery" };
 
 function parse(pathname: string): Route {
   const conv = pathname.match(/^\/c\/([\w-]+)\/?$/);
   if (conv) return { name: "conversation", id: conv[1] };
   if (/^\/galerie\/?$/.test(pathname)) return { name: "gallery" };
+  if (/^\/audio\/?$/.test(pathname)) return { name: "audio-home" };
+  if (/^\/audio\/voix\/?$/.test(pathname)) return { name: "voices" };
+  if (/^\/audio\/bibliotheque\/?$/.test(pathname)) return { name: "audio-gallery" };
   return { name: "home" };
 }
 
@@ -41,4 +50,7 @@ export const paths = {
   home: "/",
   conversation: (id: string) => `/c/${id}`,
   gallery: "/galerie",
+  audioHome: "/audio",
+  voices: "/audio/voix",
+  audioGallery: "/audio/bibliotheque",
 };

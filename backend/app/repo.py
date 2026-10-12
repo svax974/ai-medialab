@@ -17,6 +17,8 @@ def asset_public(row: sqlite3.Row | dict) -> dict[str, Any]:
     return {
         "id": a["id"],
         "kind": a["kind"],
+        "media": a.get("media") or "image",
+        "duration": a.get("duration"),
         "url": media_url(folder, a["filename"]),
         "thumb_url": media_url("thumbs", a.get("thumb")) or media_url(folder, a["filename"]),
         "width": a.get("width"),
@@ -55,7 +57,7 @@ def get_message(message_id: str) -> dict[str, Any] | None:
 def conversation_summary(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str, Any]:
     c = dict(row)
     cover = conn.execute(
-        "SELECT * FROM assets WHERE conversation_id = ? AND kind = 'generated' ORDER BY created_at DESC LIMIT 1",
+        "SELECT * FROM assets WHERE conversation_id = ? AND kind = 'generated' AND media = 'image' ORDER BY created_at DESC LIMIT 1",
         (c["id"],),
     ).fetchone()
     stats = conn.execute(
@@ -70,17 +72,20 @@ def conversation_summary(conn: sqlite3.Connection, row: sqlite3.Row) -> dict[str
     return c
 
 
-def list_conversations(query: str | None = None) -> list[dict[str, Any]]:
+def list_conversations(query: str | None = None, mode: str | None = None) -> list[dict[str, Any]]:
     with db.connect() as conn:
+        where, args = [], []
+        if mode:
+            where.append("c.mode = ?")
+            args.append(mode)
         if query:
             like = f"%{query}%"
-            rows = conn.execute(
-                "SELECT DISTINCT c.* FROM conversations c LEFT JOIN messages m ON m.conversation_id = c.id "
-                "WHERE c.title LIKE ? OR m.prompt LIKE ? ORDER BY c.pinned DESC, c.updated_at DESC",
-                (like, like),
-            ).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM conversations ORDER BY pinned DESC, updated_at DESC").fetchall()
+            where.append("(c.title LIKE ? OR m.prompt LIKE ?)")
+            args += [like, like]
+        sql = ("SELECT DISTINCT c.* FROM conversations c LEFT JOIN messages m ON m.conversation_id = c.id"
+               + (" WHERE " + " AND ".join(where) if where else "")
+               + " ORDER BY c.pinned DESC, c.updated_at DESC")
+        rows = conn.execute(sql, args).fetchall()
         return [conversation_summary(conn, r) for r in rows]
 
 

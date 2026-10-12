@@ -103,4 +103,51 @@ QWEN21_GGUF = ModelSpec(
     },
 )
 
-SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF]
+E_GGUF = ("unsloth/Qwen-Image-Edit-2511-GGUF", "qwen-image-edit-2511-Q4_K_M.gguf")
+E_LLM = ("mradermacher/Qwen2.5-VL-7B-Instruct-GGUF", "Qwen2.5-VL-7B-Instruct.Q4_K_M.gguf")
+E_VISION = ("mradermacher/Qwen2.5-VL-7B-Instruct-GGUF", "Qwen2.5-VL-7B-Instruct.mmproj-Q8_0.gguf")
+E_VAE = ("Comfy-Org/Qwen-Image_ComfyUI", "split_files/vae/qwen_image_vae.safetensors")
+
+QWEN_EDIT_GGUF = ModelSpec(
+    id="qwen-image-edit-gguf",
+    name="Qwen Image Edit",
+    family="Qwen",
+    description="Édition d'images par instruction (« remplace le texte », « mets-lui un chapeau ») et composition de "
+    "plusieurs images (jusqu'à 3). Modèle dédié à l'édition, licence Apache 2.0 (usage commercial permis). "
+    "Version quantifiée (Q4_K_M) : ≈ 19 Go au lieu de 58 Go.",
+    engine=ENGINE,
+    backend="sdcpp",
+    reference_mode="multi",
+    max_references=3,
+    requires_references=True,
+    text_to_image=False,
+    params=[
+        ParamSpec("steps", "Étapes", "int", 12, 8, 50, 1,
+                  "12 suffisent (mesuré : même résultat qu'à 20, en deux fois moins de temps). Plus lent que Qwen Image 2.1."),
+        ParamSpec("guidance", "Guidance (CFG)", "float", 2.5, 1.0, 10.0, 0.5, "Fidélité à l'instruction.", advanced=True),
+        ParamSpec("negative_prompt", "Prompt négatif", "text", "", help="Ce que l'image doit éviter.", advanced=True),
+    ],
+    size_multiple=16,
+    min_side=256,
+    max_side=2048,
+    default_quantize=None,
+    quantize_options=[],
+    sources=[src(E_GGUF, 13.24), src(E_LLM, 4.68), src(E_VISION, 0.85), src(E_VAE, 0.25)],
+    download_size_gb=19.0,
+    license="Apache 2.0",
+    weights_gb=19.0,
+    largest_component_gb=13.2,
+    memory_hint="≈ 19 Go de poids (Q4_K_M) ; plus lourd et plus lent que Qwen Image 2.1 (20 milliards de paramètres).",
+    tags=["édition", "multi-images", "GGUF", "Apache 2.0"],
+    options={
+        "files": {"diffusion-model": E_GGUF, "llm": E_LLM, "vae": E_VAE, "llm_vision": E_VISION},
+        "vision_for_refs": ["llm_vision"],
+        # Réglages du guide stable-diffusion.cpp ; « zero_cond_t » est indispensable pour la version 2511.
+        "cli_args": ["--sampling-method", "euler", "--flow-shift", "3", "--model-args", "qwen_image_zero_cond_t=true",
+                     "--increase-ref-index"],
+        "fa_variants": ["metal", "cuda", "rocm"],
+        "guidance_arg": "--cfg-scale",
+    },
+)
+
+SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN_EDIT_GGUF]

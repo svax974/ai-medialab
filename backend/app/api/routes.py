@@ -6,13 +6,15 @@ import asyncio
 import json
 from typing import Any
 
-from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import db, repo
+from .. import audio_packs, db, repo, voices
+from ..audio_worker import run_transcribe
 from ..catalog import describe_models
 from ..downloads import downloads
+from ..audio_packs import installer as pack_installer
 from ..engine_install import installer
 from ..engines import MODELS, get_spec
 from ..events import bus
@@ -38,7 +40,44 @@ def system_info(refresh: bool = False) -> dict[str, Any]:
     info = get_system(refresh=refresh)
     engines = {k: dict(v) for k, v in info["engines"].items()}
     engines["sdcpp"]["install"] = installer.public()  # état en direct, hors du cache de détection
-    return {**info, "engines": engines}
+    packs = {
+        p.id: {"name": p.name, "size_mb": p.size_mb, "installed": audio_packs.is_installed(p.id),
+               **{k: v for k, v in audio_packs.engine_info(p.id).items() if k in ("installable", "reason")}}
+        for p in audio_packs.PACKS.values()
+    }
+    return {**info, "engines": engines, "packs": packs, "pack_install": pack_installer.public()}
+
+
+@router.post("/engines/pack/{pack_id}/install")
+async def install_pack(pack_id: str) -> dict[str, Any]:
+    try:
+        return await pack_installer.start(pack_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from None
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from None
+
+
+@router.delete("/engines/pack/install")
+async def cancel_pack_install() -> dict[str, Any]:
+    if not pack_installer.cancel():
+        raise HTTPException(409, "Aucune installation en cours.")
+    return {"ok": True}
+
+
+@router.delete("/engines/pack/{pack_id}")
+async def uninstall_pack(pack_id: str) -> dict[str, Any]:
+    if pack_id not in audio_packs.PACKS:
+        raise HTTPException(404, "Pack inconnu.")
+    if jobs.worker and jobs.worker.alive:
+        spec = get_spec(jobs.worker.model_id)
+        if spec.options.get("pack") == pack_id:
+            raise HTTPException(409, "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.")
+    try:
+        pack_installer.uninstall(pack_id)
+    except RuntimeError as exc:
+        raise HTTPException(409, str(exc)) from None
+    return {"ok": True}
 
 
 @router.post("/engines/sdcpp/install")
@@ -137,12 +176,13 @@ def put_settings(patch: SettingsPatch) -> dict[str, Any]:
 # --- Conversations ---------------------------------------------------------------------------------
 
 @router.get("/conversations")
-def list_conversations(q: str | None = None) -> list[dict[str, Any]]:
-    return repo.list_conversations(q.strip() if q else None)
+def list_conversations(q: str | None = None, mode: str | None = None) -> list[dict[str, Any]]:
+    return repo.list_conversations(q.strip() if q else None, mode if mode in ("image", "audio") else None)
 
 
 class ConversationCreate(BaseModel):
     title: str = "Nouvelle création"
+    mode: str = "image"
 
 
 @router.post("/conversations")
@@ -151,8 +191,8 @@ def create_conversation(body: ConversationCreate) -> dict[str, Any]:
     ts = db.now()
     with db.connect() as conn:
         conn.execute(
-            "INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-            (cid, body.title.strip() or "Nouvelle création", ts, ts),
+            "INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+            (cid, body.title.strip() or "Nouvelle création", "audio" if body.mode == "audio" else "image", ts, ts),
         )
     conv = repo.get_conversation(cid)
     bus.publish("conversation.updated", _summary(cid))
@@ -246,8 +286,10 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
     prompt = body.prompt.strip()
     if not prompt:
         raise HTTPException(422, "Le prompt est vide.")
-    if spec.requires_references and not body.reference_ids:
+    if spec.kind == "image" and spec.requires_references and not body.reference_ids:
         raise HTTPException(422, f"{spec.name} a besoin d'au moins une image de référence.")
+    if spec.kind == "audio" and spec.audio.task != "tts":
+        raise HTTPException(422, f"{spec.name} ne synthétise pas de voix.")
 
     ts = db.now()
     with db.connect() as conn:
@@ -258,8 +300,8 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
         else:
             cid = db.new_id()
             conn.execute(
-                "INSERT INTO conversations (id, title, created_at, updated_at) VALUES (?, ?, ?, ?)",
-                (cid, _title_from_prompt(prompt), ts, ts),
+                "INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+                (cid, _title_from_prompt(prompt), spec.kind, ts, ts),
             )
         # Première génération d'une conversation créée vide : on la titre d'après le prompt.
         has_msgs = conn.execute("SELECT 1 FROM messages WHERE conversation_id = ? LIMIT 1", (cid,)).fetchone()
@@ -394,6 +436,7 @@ async def upload_assets(files: list[UploadFile] = File(...)) -> list[dict[str, A
 @router.get("/assets")
 def list_assets(
     kind: str = "generated",
+    media: str = "image",
     favorites: bool = False,
     q: str | None = None,
     before: float | None = None,
@@ -405,6 +448,9 @@ def list_assets(
         "LEFT JOIN messages m ON m.id = a.message_id WHERE a.kind = ?"
     )
     args: list[Any] = [kind]
+    if media in ("image", "audio"):
+        sql += " AND a.media = ?"
+        args.append(media)
     if favorites:
         sql += " AND a.favorite = 1"
     if q:
@@ -455,6 +501,135 @@ def delete_asset(asset_id: str) -> dict[str, Any]:
     return {"ok": True}
 
 
+# --- Voix (bibliothèque de clonage) ------------------------------------------------------------------------
+
+@router.get("/voices")
+def list_voices() -> list[dict[str, Any]]:
+    return voices.list_voices()
+
+
+@router.post("/voices")
+async def create_voice(
+    file: UploadFile = File(...),
+    name: str = Form(""),
+    transcript: str = Form(""),
+    language: str = Form(""),
+    description: str = Form(""),
+    kind: str = Form("clone"),
+) -> dict[str, Any]:
+    data = await file.read()
+    try:
+        audio, _ = await asyncio.to_thread(voices.prepare_reference, data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    except Exception:
+        raise HTTPException(422, "Fichier audio illisible (formats : WAV, MP3, FLAC, OGG).") from None
+    stem = (file.filename or "").rsplit(".", 1)[0]
+    voice = await asyncio.to_thread(
+        lambda: voices.save_voice(name=name or stem or "Ma voix", kind="design" if kind == "design" else "clone",
+                                  audio=audio, transcript=transcript, description=description,
+                                  language=language or None))
+    bus.publish("voices.changed", {})
+    return voice
+
+
+class FromAsset(BaseModel):
+    asset_id: str
+    name: str = ""
+    description: str = ""
+    transcript: str = ""
+    language: str | None = None
+    kind: str = "design"
+
+
+@router.post("/voices/from-asset")
+async def voice_from_asset(body: FromAsset) -> dict[str, Any]:
+    """Garde une prise générée comme voix de la bibliothèque (ex. une voix inventée par description)."""
+    with db.connect() as conn:
+        row = conn.execute("SELECT * FROM assets WHERE id = ? AND media = 'audio'", (body.asset_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, "Prise audio introuvable.")
+    from ..config import OUTPUTS_DIR
+
+    data = (OUTPUTS_DIR / row["filename"]).read_bytes()
+    meta = json.loads(row["meta"] or "{}")
+    try:
+        audio, _ = await asyncio.to_thread(voices.prepare_reference, data)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    voice = await asyncio.to_thread(
+        lambda: voices.save_voice(
+            name=body.name or meta.get("voice") or "Voix enregistrée", kind="design" if body.kind == "design" else "clone",
+            audio=audio, transcript=body.transcript or (meta.get("prompt") or "")[:600],
+            description=body.description or meta.get("instruct") or "", language=body.language or meta.get("language")))
+    bus.publish("voices.changed", {})
+    return voice
+
+
+class VoicePatch(BaseModel):
+    name: str | None = None
+    transcript: str | None = None
+    description: str | None = None
+    language: str | None = None
+
+
+@router.patch("/voices/{voice_id}")
+def patch_voice(voice_id: str, body: VoicePatch) -> dict[str, Any]:
+    fields = {k: v for k, v in body.model_dump().items() if v is not None}
+    if "name" in fields:
+        fields["name"] = fields["name"].strip()[:80] or "Voix sans nom"
+    if fields:
+        cols = ", ".join(f"{k} = ?" for k in fields)
+        with db.connect() as conn:
+            conn.execute(f"UPDATE voices SET {cols} WHERE id = ?", (*fields.values(), voice_id))
+    voice = voices.get_voice(voice_id)
+    if not voice:
+        raise HTTPException(404, "Voix introuvable.")
+    bus.publish("voices.changed", {})
+    return voice
+
+
+@router.delete("/voices/{voice_id}")
+def delete_voice(voice_id: str) -> dict[str, Any]:
+    if not voices.delete_voice(voice_id):
+        raise HTTPException(404, "Voix introuvable.")
+    bus.publish("voices.changed", {})
+    return {"ok": True}
+
+
+class TranscribeBody(BaseModel):
+    language: str | None = None
+    model_id: str | None = None
+
+
+@router.post("/voices/{voice_id}/transcribe")
+async def transcribe_voice(voice_id: str, body: TranscribeBody) -> dict[str, Any]:
+    """Retranscrit l'extrait d'une voix (Whisper) : la transcription améliore le clonage."""
+    from ..downloads import downloads as dl
+    from ..engines.base import repo_cache_dir
+
+    voice = voices.get_voice(voice_id)
+    if not voice:
+        raise HTTPException(404, "Voix introuvable.")
+    candidates = [body.model_id] if body.model_id else ["whisper-small", "whisper-large-v3-turbo"]
+    spec = next((MODELS[m] for m in candidates if m in MODELS and dl.status(MODELS[m])["state"] == "installed"), None)
+    if spec is None:
+        raise HTTPException(409, "Aucun modèle de transcription n'est téléchargé : installez « Whisper Small » "
+                                 "(Modèles → Audio).")
+    pack = spec.options["pack"]
+    if not audio_packs.is_installed(pack):
+        raise HTTPException(409, "Le moteur « Voix légères » n'est pas installé (Modèles → Moteurs).")
+    snaps = sorted((repo_cache_dir(spec.options["repo"]) / "snapshots").glob("*"))
+    if not snaps:
+        raise HTTPException(409, "Modèle de transcription introuvable sur le disque.")
+    path = str(voices.voice_path(voice["url"].rsplit("/", 1)[-1]))
+    try:
+        result = await asyncio.to_thread(run_transcribe, pack, path, str(snaps[-1]), body.language or voice["language"])
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(500, str(exc)) from None
+    return result
+
+
 # --- Temps réel ------------------------------------------------------------------------------------
 
 @router.get("/events")
@@ -470,6 +645,7 @@ async def events(request: Request) -> StreamingResponse:
             for dl in downloads.active():
                 yield f"event: download.progress\ndata: {json.dumps(dl)}\n\n"
             yield f"event: engine.install\ndata: {json.dumps(installer.public())}\n\n"
+            yield f"event: pack.install\ndata: {json.dumps(pack_installer.public())}\n\n"
             while True:
                 if await request.is_disconnected():
                     break

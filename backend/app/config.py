@@ -9,6 +9,10 @@ FRONTEND_DIST = ROOT_DIR / "frontend" / "dist"
 
 # Moteurs installés depuis l'application (l'application elle-même peut être en lecture seule).
 ENGINES_DIR = DATA_DIR / "engines"
+# Moteurs audio : un environnement Python isolé par « pack » (dépendances parfois incompatibles entre elles),
+# installés à la demande. Le code qui y tourne (worker, moteurs) est livré avec l'application.
+AUDIO_PACKS_DIR = ENGINES_DIR / "audio"
+AUDIO_RUNTIME_DIR = ROOT_DIR / "backend" / "audio_runtime"
 
 DB_PATH = DATA_DIR / "chambre-noire.db"
 UPLOADS_DIR = DATA_DIR / "uploads"

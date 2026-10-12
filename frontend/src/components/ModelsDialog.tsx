@@ -1,21 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Check, CircleAlert, CloudDownload, Cpu, HardDrive, KeyRound, MemoryStick, Trash2, TriangleAlert, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { api, type ModelInfo, type SystemInfo } from "../lib/api";
+import { api, type ModelInfo, type ModelKind, type SystemInfo } from "../lib/api";
 import { cx } from "../lib/format";
 import { keys, queryClient, useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { confirm } from "./Confirm";
-import { ProgressBar, startSetup } from "./Setup";
+import { IndeterminateBar, ProgressBar, startSetup } from "./Setup";
+import { navigate, paths } from "../lib/router";
 import { Button, IconButton, Spinner } from "./ui";
 
 const gb = (n: number) => (n >= 10 ? n.toFixed(0) : n.toFixed(1)).replace(".", ",");
 
-const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyTorch", sdcpp: "GGUF", demo: "Démo" };
+const BACKEND_LABEL: Record<string, string> = { mlx: "Metal · MLX", torch: "PyTorch", sdcpp: "GGUF", pack: "Audio", demo: "Démo" };
 const SDCPP_DEVICE: Record<string, string> = { metal: "Metal", cuda: "CUDA", rocm: "ROCm", vulkan: "Vulkan", cpu: "CPU" };
 
 function backendLabel(m: ModelInfo, system?: SystemInfo) {
@@ -29,7 +30,15 @@ export function ModelsDialog() {
   const open = useStore((s) => s.modelsOpen);
   const setOpen = useStore((s) => s.setModelsOpen);
   const { data } = useModels();
+  const mode = useStore((s) => s.mode);
+  const [tab, setTab] = useState<ModelKind>(mode);
+  useEffect(() => {
+    if (open) setTab(mode);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
   const { data: system } = useQuery({ queryKey: ["system"], queryFn: api.system, enabled: open, staleTime: 5_000, refetchInterval: open ? 8_000 : false });
+  const models = data?.models.filter((m) => m.kind === tab) ?? [];
+  const speech = models.filter((m) => m.audio?.task === "stt");
+  const generators = models.filter((m) => m.audio?.task !== "stt");
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -50,11 +59,22 @@ export function ModelsDialog() {
 
           <div className="space-y-5 overflow-y-auto px-6 pb-6 pt-2">
             {system && <MachineCard system={system} />}
-            {system && <EnginesCard system={system} />}
+            <KindTabs value={tab} onChange={setTab} />
+            {system && tab === "image" && <EnginesCard system={system} />}
+            {system && tab === "audio" && <PacksCard system={system} />}
             <div className="space-y-3">
-              {data?.models.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
+              {generators.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
               {!data && <div className="grid h-24 place-items-center text-muted"><Spinner /></div>}
             </div>
+            {speech.length > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <div className="eyebrow">Transcription</div>
+                  <p className="mt-1 text-[12px] leading-snug text-faint">Retranscrit l'extrait d'une voix à cloner (la transcription améliore la fidélité).</p>
+                </div>
+                {speech.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
+              </div>
+            )}
             <TokenField />
             {system && (
               <p className="font-mono text-[10.5px] leading-relaxed text-faint">
@@ -105,7 +125,8 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
   const live = useStore((s) => s.downloads[m.id]);
   const dl = live && live.state === "running" ? live : m.download?.state === "running" ? m.download : null;
   const error = live?.state === "error" ? live.error : m.download?.state === "error" ? m.download.error : null;
-  const setModel = useStore((s) => s.setModel);
+  const setImageModel = useStore((s) => s.setModel);
+  const setAudioModel = useStore((s) => s.setAudioModel);
   const setOpen = useStore((s) => s.setModelsOpen);
   const loaded = useStore((s) => s.engine?.model_id === m.id);
   const installed = m.install === "installed";
@@ -192,7 +213,19 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
           </Button>
         ) : installed ? (
           <>
-            <Button variant="primary" disabled={!m.compatible} onClick={() => { setModel(m.id); setOpen(false); }}>Utiliser</Button>
+            {m.audio?.task !== "stt" && (
+              <Button
+                variant="primary"
+                disabled={!m.compatible}
+                onClick={() => {
+                  if (m.kind === "audio") (setAudioModel(m.id), navigate(paths.audioHome));
+                  else (setImageModel(m.id), navigate(paths.home));
+                  setOpen(false);
+                }}
+              >
+                Utiliser
+              </Button>
+            )}
             <Button variant="ghost" onClick={remove} disabled={loaded}><Trash2 className="size-4" /> Supprimer</Button>
           </>
         ) : (
@@ -308,6 +341,89 @@ function EnginesCard({ system }: { system: SystemInfo }) {
       {install?.state === "error" && (
         <div className="mt-3 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] leading-snug text-ink-2">
           <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" /> {install.error}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function KindTabs({ value, onChange }: { value: ModelKind; onChange: (k: ModelKind) => void }) {
+  return (
+    <div role="tablist" className="grid grid-cols-2 gap-1 rounded-xl bg-surface p-1 ring-1 ring-line">
+      {([["image", "Modèles d'image"], ["audio", "Modèles audio"]] as const).map(([id, label]) => (
+        <button
+          key={id}
+          role="tab"
+          aria-selected={value === id}
+          onClick={() => onChange(id)}
+          className={cx("h-8 rounded-lg text-[13px] font-medium transition-colors", value === id ? "bg-surface-3 text-ink shadow-sm" : "text-muted hover:text-ink")}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function PacksCard({ system }: { system: SystemInfo }) {
+  const live = useStore((s) => s.packInstall);
+  const install = live.state !== "idle" ? live : system.pack_install;
+  const running = install?.state === "running";
+  return (
+    <section className="rounded-2xl border border-line bg-surface-2/50 p-4">
+      <div className="eyebrow mb-1">Moteurs audio</div>
+      <p className="mb-3 text-[12px] leading-snug text-faint">
+        Chaque famille de modèles a son propre environnement, installé à la demande : aucun conflit, rien d'inutile sur le disque.
+      </p>
+      <div className="space-y-2.5">
+        {Object.entries(system.packs ?? {}).map(([id, p]) => {
+          const mine = running && install.pack === id;
+          return (
+            <div key={id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className={cx("size-2 shrink-0 rounded-full", p.installed ? "bg-ok" : p.installable ? "bg-warn" : "bg-faint")} />
+              <div className="min-w-0 flex-1">
+                <div className="text-[13.5px] text-ink">{p.name}</div>
+                <div className="text-[11.5px] leading-snug text-faint">
+                  {p.installed ? "Installé" : p.installable ? `Non installé · ≈ ${p.size_mb} Mo` : p.reason}
+                </div>
+              </div>
+              {!p.installed && p.installable && !running && (
+                <Button variant="primary" onClick={() => api.installPack(id).then(useStore.getState().setPackInstall).catch((e) => toast.error(e.message))}>
+                  <CloudDownload className="size-4" /> Installer ≈ {p.size_mb} Mo
+                </Button>
+              )}
+              {mine && <Button variant="secondary" onClick={() => api.cancelPackInstall().catch(() => {})}>Annuler</Button>}
+              {p.installed && !running && (
+                <Button
+                  variant="ghost"
+                  onClick={async () => {
+                    const ok = await confirm({
+                      title: `Désinstaller « ${p.name} » ?`,
+                      description: "Libère l'environnement Python de ce moteur. Les modèles téléchargés sont conservés.",
+                      confirmLabel: "Désinstaller",
+                      danger: true,
+                    });
+                    if (!ok) return;
+                    try {
+                      await api.uninstallPack(id);
+                      queryClient.invalidateQueries({ queryKey: keys.models });
+                      queryClient.invalidateQueries({ queryKey: ["system"] });
+                    } catch (e) {
+                      toast.error((e as Error).message);
+                    }
+                  }}
+                >
+                  <Trash2 className="size-4" /> Désinstaller
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {running && <IndeterminateBar message={install.message} detail={install.detail} since={install.started_at} />}
+      {install?.state === "error" && (
+        <div className="mt-3 flex items-start gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-[12.5px] leading-snug text-ink-2">
+          <TriangleAlert className="mt-0.5 size-4 shrink-0 text-danger" /> <span className="min-w-0 break-words">{install.error}</span>
         </div>
       )}
     </section>

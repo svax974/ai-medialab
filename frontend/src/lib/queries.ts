@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { QueryClient, useQuery, type InfiniteData } from "@tanstack/react-query";
 import {
   api, type Asset, type Conversation, type ConversationSummary, type DownloadProgress, type EngineInstallState, type Message,
-  type ModelInfo,
+  type ModelInfo, type ModelKind, type PackInstallState, type Voice,
 } from "./api";
 import { useStore } from "./store";
 
@@ -16,23 +16,35 @@ export const keys = {
   settings: ["settings"] as const,
   conversations: (q = "") => ["conversations", q] as const,
   conversation: (id: string) => ["conversation", id] as const,
-  assets: (favorites: boolean, q: string) => ["assets", favorites, q] as const,
+  assets: (favorites: boolean, q: string, media: ModelKind = "image") => ["assets", favorites, q, media] as const,
+  voices: ["voices"] as const,
 };
 
 export function useModels() {
   return useQuery({ queryKey: keys.models, queryFn: api.models, staleTime: 60_000 });
 }
 
-/** Modèle actif du composer (préférence locale, sinon modèle par défaut du serveur). */
-export function useActiveModel(): ModelInfo | undefined {
+/** Modèle actif du composer (préférence locale, sinon modèle par défaut du serveur), pour les images ou l'audio. */
+export function useActiveModel(kind: ModelKind = "image"): ModelInfo | undefined {
   const { data } = useModels();
-  const modelId = useStore((s) => s.modelId);
+  const stored = useStore((s) => (kind === "audio" ? s.audioModelId : s.modelId));
   if (!data) return undefined;
-  return data.models.find((m) => m.id === modelId) ?? data.models.find((m) => m.id === data.default_model_id) ?? data.models[0];
+  // La transcription (Whisper) n'est pas un modèle de génération : jamais proposée dans le composer.
+  const mine = data.models.filter((m) => m.kind === kind && m.audio?.task !== "stt");
+  const defaultId = kind === "audio" ? data.audio.default_model_id : data.default_model_id;
+  return mine.find((m) => m.id === stored) ?? mine.find((m) => m.id === defaultId) ?? mine[0];
 }
 
-export function useConversations(q: string) {
-  return useQuery({ queryKey: keys.conversations(q), queryFn: () => api.conversations(q || undefined) });
+export function useVoices() {
+  return useQuery({ queryKey: keys.voices, queryFn: api.voices, staleTime: 60_000 });
+}
+
+export function voiceName(voices: Voice[] | undefined, id: string) {
+  return voices?.find((v) => v.id === id)?.name ?? "Voix supprimée";
+}
+
+export function useConversations(q: string, mode: ModelKind) {
+  return useQuery({ queryKey: keys.conversations(`${mode}:${q}`), queryFn: () => api.conversations(q || undefined, mode) });
 }
 
 export function useConversation(id: string | null) {
@@ -122,6 +134,14 @@ export function useServerEvents() {
           queryClient.invalidateQueries({ queryKey: ["system"] });
         }
       });
+      on<PackInstallState>("pack.install", (s) => {
+        store().setPackInstall(s);
+        if (s.state !== "running") {
+          queryClient.invalidateQueries({ queryKey: keys.models });
+          queryClient.invalidateQueries({ queryKey: ["system"] });
+        }
+      });
+      on("voices.changed", () => queryClient.invalidateQueries({ queryKey: keys.voices }));
       on("job.progress", store().setProgress);
       on<Message>("message.updated", (msg) => {
         upsertMessage(msg);

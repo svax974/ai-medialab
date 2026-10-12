@@ -15,8 +15,43 @@ export interface ParamSpec {
   requires_references: boolean;
 }
 
+export type ModelKind = "image" | "audio";
+
+export interface Language {
+  code: string;
+  label: string;
+}
+
+export interface PresetVoice {
+  id: string;
+  name: string;
+  /** Code de langue, ou "*" pour toutes les langues du modèle. */
+  language: string;
+  gender: "f" | "m" | "n";
+  description: string;
+}
+
+export interface AudioCaps {
+  task: "tts" | "stt";
+  languages: Language[];
+  voices: PresetVoice[];
+  clone: "none" | "optional" | "required";
+  instruct: boolean;
+  instruct_help: string;
+  design: boolean;
+  speed: boolean;
+  tags: string[];
+  max_chars: number;
+  sample_rate: number;
+}
+
 export interface ModelInfo {
   id: string;
+  kind: ModelKind;
+  audio: AudioCaps | null;
+  /** Pack de moteur audio (environnement isolé) dont dépend ce modèle. */
+  engine_pack: string | null;
+  engine_name: string | null;
   name: string;
   family: string;
   description: string;
@@ -38,7 +73,7 @@ export interface ModelInfo {
   memory_hint: string;
   tags: string[];
   downloaded: boolean;
-  backend: "mlx" | "torch" | "sdcpp" | "demo";
+  backend: "mlx" | "torch" | "sdcpp" | "pack" | "demo";
   engine_available: boolean;
   engine_reason: string | null;
   compatible: boolean;
@@ -71,6 +106,25 @@ export interface Accelerator {
   unified: boolean;
 }
 
+export interface PackInstallState {
+  state: "idle" | "running" | "done" | "error" | "cancelled";
+  pack?: string;
+  name?: string;
+  message?: string;
+  detail?: string;
+  error?: string | null;
+  started_at?: number;
+  size_mb?: number;
+}
+
+export interface PackInfo {
+  name: string;
+  size_mb: number;
+  installed: boolean;
+  installable?: boolean;
+  reason?: string;
+}
+
 export interface EngineInstallState {
   state: "idle" | "running" | "done" | "error" | "cancelled";
   variant?: string;
@@ -99,6 +153,8 @@ export interface SystemInfo {
   accelerators: Accelerator[];
   unusable_gpus: { vendor: string; name: string; memory_gb: number | null; reason: string }[];
   engines: Record<string, EngineInfo>;
+  packs: Record<string, PackInfo>;
+  pack_install: PackInstallState;
   disk: { free_gb: number; total_gb: number };
   paths: { data: string; models: string };
 }
@@ -106,6 +162,9 @@ export interface SystemInfo {
 export interface Asset {
   id: string;
   kind: "upload" | "generated";
+  media: "image" | "audio";
+  /** Durée en secondes (audio). */
+  duration: number | null;
   url: string;
   thumb_url: string;
   width: number | null;
@@ -160,6 +219,7 @@ export interface GenParams {
 
 export interface ConversationSummary {
   id: string;
+  mode: ModelKind;
   title: string;
   pinned: boolean;
   created_at: number;
@@ -195,6 +255,24 @@ export interface JobProgress {
   eta?: number | null;
   seconds_per_step?: number | null;
   preview_url?: string | null;
+}
+
+export interface VoiceRef {
+  source: "preset" | "library";
+  id: string;
+}
+
+export interface Voice {
+  id: string;
+  name: string;
+  kind: "clone" | "design";
+  transcript: string;
+  description: string;
+  language: string | null;
+  duration: number | null;
+  peaks: number[];
+  url: string | null;
+  created_at: number;
 }
 
 export interface Settings {
@@ -235,9 +313,25 @@ const json = (body: unknown) => JSON.stringify(body);
 
 export const api = {
   models: () =>
-    request<{ models: ModelInfo[]; default_model_id: string | null; recommended_model_id: string | null; ready: boolean }>(
-      "/api/models",
-    ),
+    request<{
+      models: ModelInfo[];
+      default_model_id: string | null;
+      recommended_model_id: string | null;
+      ready: boolean;
+      audio: { default_model_id: string | null; recommended_model_id: string | null; ready: boolean };
+    }>("/api/models"),
+  installPack: (pack: string) => request<PackInstallState>(`/api/engines/pack/${pack}/install`, { method: "POST" }),
+  cancelPackInstall: () => request<{ ok: true }>("/api/engines/pack/install", { method: "DELETE" }),
+  uninstallPack: (pack: string) => request<{ ok: true }>(`/api/engines/pack/${pack}`, { method: "DELETE" }),
+  voices: () => request<Voice[]>("/api/voices"),
+  createVoice: (form: FormData) => request<Voice>("/api/voices", { method: "POST", body: form }),
+  voiceFromAsset: (body: { asset_id: string; name?: string; description?: string; transcript?: string; language?: string | null; kind?: "clone" | "design" }) =>
+    request<Voice>("/api/voices/from-asset", { method: "POST", body: json(body) }),
+  patchVoice: (id: string, patch: { name?: string; transcript?: string; description?: string; language?: string }) =>
+    request<Voice>(`/api/voices/${id}`, { method: "PATCH", body: json(patch) }),
+  deleteVoice: (id: string) => request<{ ok: true }>(`/api/voices/${id}`, { method: "DELETE" }),
+  transcribeVoice: (id: string, body: { language?: string | null } = {}) =>
+    request<{ text: string; language: string; duration: number }>(`/api/voices/${id}/transcribe`, { method: "POST", body: json(body) }),
   installEngine: () => request<EngineInstallState>("/api/engines/sdcpp/install", { method: "POST" }),
   cancelEngineInstall: () => request<{ ok: true }>("/api/engines/sdcpp/install", { method: "DELETE" }),
   system: () => request<SystemInfo>("/api/system"),
@@ -250,8 +344,12 @@ export const api = {
   settings: () => request<Settings>("/api/settings"),
   saveSettings: (patch: Partial<Settings> & { hf_token?: string }) => request<Settings>("/api/settings", { method: "PUT", body: json(patch) }),
 
-  conversations: (q?: string) =>
-    request<ConversationSummary[]>(`/api/conversations${q ? `?q=${encodeURIComponent(q)}` : ""}`),
+  conversations: (q?: string, mode?: ModelKind) => {
+    const sp = new URLSearchParams();
+    if (q) sp.set("q", q);
+    if (mode) sp.set("mode", mode);
+    return request<ConversationSummary[]>(`/api/conversations${sp.size ? `?${sp}` : ""}`);
+  },
   conversation: (id: string) => request<Conversation>(`/api/conversations/${id}`),
   patchConversation: (id: string, patch: { title?: string; pinned?: boolean }) =>
     request<ConversationSummary>(`/api/conversations/${id}`, { method: "PATCH", body: json(patch) }),
@@ -279,8 +377,8 @@ export const api = {
     files.forEach((f) => form.append("files", f));
     return request<Asset[]>("/api/assets", { method: "POST", body: form });
   },
-  assets: (params: { favorites?: boolean; q?: string; before?: number | null }) => {
-    const sp = new URLSearchParams({ kind: "generated", limit: "60" });
+  assets: (params: { favorites?: boolean; q?: string; before?: number | null; media?: ModelKind }) => {
+    const sp = new URLSearchParams({ kind: "generated", limit: "60", media: params.media ?? "image" });
     if (params.favorites) sp.set("favorites", "true");
     if (params.q) sp.set("q", params.q);
     if (params.before) sp.set("before", String(params.before));

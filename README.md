@@ -79,6 +79,7 @@ vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarq
 | **Z-Image Turbo** (Apache 2.0) | **GGUF** | Texte → image rapide (8 étapes) | — | **6,7 Go** |
 | **Z-Image Turbo** (Apache 2.0) | PyTorch | idem, pleine précision | — | 33 Go |
 | **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 7 Go |
+| **Qwen Image Edit** (Apache 2.0) | **GGUF** | Édition par instruction, composition | 1 à 3 images | **19 Go** |
 | **Qwen Image Edit** | MLX | Édition par instruction | 1 à 3 images | 58 Go |
 
 Mesuré sur un M3 Max (36 Go) en Metal, poids Q4_K : Z-Image Turbo, 3,2 s par étape à 512×512 (45 s par image de
@@ -86,6 +87,13 @@ Mesuré sur un M3 Max (36 Go) en Metal, poids Q4_K : Z-Image Turbo, 3,2 s par é
 correctement dans l'image) et 149 s en édition avec guidance 1 — qui ne suit pas bien l'instruction : l'application
 applique donc une guidance de 4 en édition (338 s, instruction suivie). Aucune mesure Vulkan/CUDA/ROCm n'a pu être
 faite ici.
+
+Qwen Image Edit GGUF (Q4_K_M, Metal, 576×576) : 935 s en 20 étapes, **479 s en 12 étapes** (qualité équivalente, valeur
+par défaut), soit environ 40 s par étape — 3 à 4 fois plus lent que Qwen Image 2.1 (modèle de 20 milliards de
+paramètres contre 7). Mémoire : ≈ 18 Go pour `sd-cli`, en édition avec une ou deux références ; ne pas lancer d'autre
+calcul lourd en parallèle sur une machine de 36 Go. Avec deux références (384×384, 12 étapes : ≈ 320 s), le modèle lit bien
+les deux images (il reproduit fidèlement la seconde sur demande), mais une consigne de composition (« ajoute le phare de
+l'image 2 dans l'image 1 ») n'a pas abouti dans mon essai à cette définition : à valider avec plus d'étapes.
 
 Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
 renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine
@@ -108,6 +116,39 @@ fait swapper la machine. À désactiver dans Réglages sur une machine très dot
   pour MLX. Puis l'inscrire dans `backend/app/engines/__init__.py`.
 
 L'interface s'adapte seule : sélecteur, curseurs, règles sur les images de référence, état d'installation.
+
+## Audio : synthèse vocale, clonage, scénarios
+
+Le commutateur **Image / Audio** (en haut du panneau de gauche) bascule l'application entre les deux studios ; conversations,
+téléchargements, file d'attente et mémoire sont partagés (un seul modèle chargé à la fois).
+
+- **Voix** : voix intégrées par modèle, **clonage** à partir d'un enregistrement (micro du navigateur ou fichier), **création
+  de voix par description** (Qwen3-TTS VoiceDesign). Les voix se gardent dans *Mes voix* ; n'importe quelle prise générée peut
+  y être ajoutée (« Garder comme voix de référence »).
+- **Transcription automatique** (Whisper, optionnelle) de l'extrait de référence : elle améliore la fidélité du clonage.
+- **Scénarios** : `Alice : …` / `Marc : …` — chaque personnage reçoit sa voix, assemblage avec repères cliquables sur l'onde.
+- **Longs textes** découpés par phrases (progression par morceau), plusieurs prises (graines) par demande, lecteur avec
+  forme d'onde, vitesse, favoris, export WAV.
+
+| Modèle | Clonage | Langues | Poids | Licence | Vérifié (M3 Max) |
+|---|---|---|---|---|---|
+| Kokoro 82M | non (54 voix) | fr, en, es, it, pt | 0,4 Go | Apache-2.0 | oui, ≈ 4× le temps réel sur CPU |
+| Pocket TTS (FR/EN, + DE/ES/IT/PT/NL) | oui | 7 | 0,6 / 1,5 Go | CC-BY-4.0 | oui, ≈ 7× le temps réel sur CPU |
+| Qwen3-TTS Voix & style 1.7B / 0.6B | non (9 voix + consigne de style) | 10 | 4,5 / 2,5 Go | Apache-2.0 | 0.6B oui (MPS, bfloat16) |
+| Qwen3-TTS Création de voix 1.7B | voix décrite | 10 | 4,5 Go | Apache-2.0 | oui |
+| Qwen3-TTS Clonage 1.7B / 0.6B | oui | 10 | 4,5 / 2,5 Go | Apache-2.0 | 0.6B oui |
+| Whisper Small / Large v3 Turbo | — (transcription) | multi | 0,5 / 1,6 Go | MIT | Small oui |
+
+Les sorties ont été vérifiées en les retranscrivant avec Whisper. Non testés : CUDA / ROCm / Vulkan pour l'audio
+(les installations de PyTorch ciblent `cu128` / `rocm6.4` / CPU, jamais exécutées ici), Windows et Linux.
+
+**Packs de moteurs.** Les bibliothèques audio épinglent des versions incompatibles entre elles (Qwen3-TTS exige
+`transformers==4.57.3`, le moteur image `>=5.17`). Chaque famille tourne donc dans son **propre environnement Python**, créé
+à la demande depuis l'application (`uv` si présent, sinon `venv` + `pip` en Python 3.12) sous `<données>/engines/audio/<pack>/`,
+et piloté par `backend/audio_runtime/worker.py` (protocole JSON ligne à ligne). Ajouter un modèle = une classe dans
+`audio_runtime/engines/` + une spec dans `app/engines/audio_specs.py` (+ un pack si les dépendances diffèrent).
+Piège rencontré : eSpeak-ng (phonémiseur de Kokoro) tronque son chemin de données à 160 caractères ; le moteur copie les
+données sous un chemin court quand le venv est profond.
 
 ## Architecture
 
@@ -171,3 +212,7 @@ ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx taur
 - Itérer sans réassembler le bundle : `CHAMBRE_NOIRE_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/chambre-noire`
   (la coque utilise alors ces ressources au lieu de celles du `.app`).
 - Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
+
+## Licence
+
+Code sous [licence MIT](LICENSE). Les modèles téléchargés gardent leur propre licence : voir [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).

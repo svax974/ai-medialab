@@ -4,6 +4,8 @@ import { toast } from "sonner";
 import { api } from "../lib/api";
 import { useConversation } from "../lib/queries";
 import { navigate, paths } from "../lib/router";
+import { AudioComposer } from "./AudioComposer";
+import { AudioAssistantMessage } from "./AudioMessage";
 import { Composer } from "./Composer";
 import { AssistantMessage, UserMessage } from "./Message";
 import { Spinner } from "./ui";
@@ -53,12 +55,13 @@ export function ConversationView({ id }: { id: string }) {
     );
   }
 
+  const audio = conv.mode === "audio";
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-3 border-b border-line/60 px-5 pl-14 md:pl-5">
         <TitleEditor id={conv.id} title={conv.title} />
         {conv.pinned && <Pin className="size-3.5 text-faint" />}
-        <span className="ml-auto font-mono text-[11px] text-faint">{conv.generation_count} génération(s)</span>
+        <span className="ml-auto font-mono text-[11px] text-faint">{conv.generation_count} {audio ? "synthèse(s)" : "génération(s)"}</span>
       </header>
 
       <div
@@ -70,8 +73,20 @@ export function ConversationView({ id }: { id: string }) {
         className="min-h-0 flex-1 overflow-y-auto"
       >
         <div className="mx-auto w-full max-w-[880px] space-y-7 px-5 pb-48 pt-8">
-          {conv.messages.map((m) => (m.role === "user" ? <UserMessage key={m.id} message={m} /> : <AssistantMessage key={m.id} message={m} />))}
-          {conv.messages.length === 0 && <p className="py-20 text-center text-sm text-faint">Conversation vide. Décrivez une première image ci-dessous.</p>}
+          {conv.messages.map((m) =>
+            m.role === "user" ? (
+              <UserMessage key={m.id} message={m} audio={audio} />
+            ) : audio ? (
+              <AudioAssistantMessage key={m.id} message={m} />
+            ) : (
+              <AssistantMessage key={m.id} message={m} />
+            ),
+          )}
+          {conv.messages.length === 0 && (
+            <p className="py-20 text-center text-sm text-faint">
+              {audio ? "Conversation vide. Écrivez un premier texte ci-dessous." : "Conversation vide. Décrivez une première image ci-dessous."}
+            </p>
+          )}
         </div>
       </div>
 
@@ -86,7 +101,7 @@ export function ConversationView({ id }: { id: string }) {
               <ArrowDown className="size-4" />
             </button>
           )}
-          <Composer conversationId={conv.id} />
+          {audio ? <AudioComposer conversationId={conv.id} /> : <Composer conversationId={conv.id} />}
         </div>
       </div>
     </div>

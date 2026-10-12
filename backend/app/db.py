@@ -64,6 +64,19 @@ CREATE TABLE IF NOT EXISTS message_refs (
     PRIMARY KEY (message_id, asset_id)
 );
 
+CREATE TABLE IF NOT EXISTS voices (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    kind        TEXT NOT NULL CHECK (kind IN ('clone', 'design')),
+    filename    TEXT,
+    transcript  TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    language    TEXT,
+    duration    REAL,
+    peaks       TEXT NOT NULL DEFAULT '[]',
+    created_at  REAL NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS settings (
     key     TEXT PRIMARY KEY,
     value   TEXT NOT NULL
@@ -95,10 +108,28 @@ def connect() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+# Colonnes ajoutées après la première version (bases existantes).
+MIGRATIONS = [
+    ("conversations", "mode", "TEXT NOT NULL DEFAULT 'image'"),  # image | audio
+    ("assets", "media", "TEXT NOT NULL DEFAULT 'image'"),  # image | audio
+    ("assets", "duration", "REAL"),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, column, ddl in MIGRATIONS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        if column not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_assets_media ON assets(media, kind, created_at)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_conv_mode ON conversations(mode, updated_at)")
+
+
 def init_db() -> None:
     with connect() as conn:
         conn.execute("PRAGMA journal_mode = WAL")
         conn.executescript(SCHEMA)
+        _migrate(conn)
         # Les générations interrompues par un arrêt du serveur ne reprendront pas.
         conn.execute(
             "UPDATE messages SET status = 'error', error = 'Interrompu par l''arrêt du serveur', finished_at = ? "
@@ -111,7 +142,7 @@ def row_to_dict(row: sqlite3.Row | None) -> dict[str, Any] | None:
     if row is None:
         return None
     d = dict(row)
-    for key in ("params", "meta"):
+    for key in ("params", "meta", "peaks"):
         if key in d and isinstance(d[key], str):
             d[key] = json.loads(d[key] or "{}")
     return d

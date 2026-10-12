@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { Check, CloudDownload, Cpu, Sparkles, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
-import { api, type ModelInfo } from "../lib/api";
-import { cx, formatDuration } from "../lib/format";
+import { api, type ModelInfo, type ModelKind } from "../lib/api";
+import { cx, formatClock, formatDuration } from "../lib/format";
 import { useActiveModel, useModels } from "../lib/queries";
 import { useStore } from "../lib/store";
 import { Button, Spinner } from "./ui";
@@ -31,13 +31,35 @@ export function ProgressBar({ done, total, rate, eta, unit = "gb" }: { done: num
   );
 }
 
+/** Barre sans pourcentage connu (installation d'un environnement Python) : message, détail et temps écoulé. */
+export function IndeterminateBar({ message, detail, since }: { message?: string; detail?: string; since?: number }) {
+  const [now, setNow] = useState(() => Date.now() / 1000);
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now() / 1000), 1000);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="mt-3">
+      <div className="relative h-1.5 overflow-hidden rounded-full bg-surface-3">
+        <div className="absolute inset-y-0 w-1/3 animate-[slide_1.6s_ease-in-out_infinite] rounded-full bg-safe/80 shadow-[0_0_10px_var(--safe)]" style={{ left: 0 }} />
+      </div>
+      <div className="mt-1.5 flex justify-between gap-3 font-mono text-[11px] text-muted">
+        <span className="min-w-0 truncate">{message || "Préparation…"}</span>
+        {since ? <span className="shrink-0">{formatClock(now - since)}</span> : null}
+      </div>
+      {detail && <p className="mt-0.5 truncate font-mono text-[10.5px] text-faint">{detail}</p>}
+    </div>
+  );
+}
+
 /** Lance ce qu'il faut pour rendre ce modèle utilisable : le moteur d'abord si besoin, puis le modèle. */
 export async function startSetup(model: ModelInfo): Promise<void> {
   const store = useStore.getState();
   try {
     if (model.needs_engine_install) {
       store.setPendingModel(model.install === "installed" ? null : model.id);
-      store.setEngineInstall(await api.installEngine());
+      if (model.engine_pack) store.setPackInstall(await api.installPack(model.engine_pack));
+      else store.setEngineInstall(await api.installEngine());
     } else if (model.install !== "installed") {
       store.setDownload(await api.downloadModel(model.id));
     }
@@ -49,9 +71,12 @@ export async function startSetup(model: ModelInfo): Promise<void> {
 
 /** Enchaîne : quand le moteur est prêt, démarre le téléchargement du modèle demandé. */
 export function SetupController() {
-  const engine = useStore((s) => s.engineInstall);
+  const sd = useStore((s) => s.engineInstall);
+  const pack = useStore((s) => s.packInstall);
   const pending = useStore((s) => s.pendingModelId);
   const setPending = useStore((s) => s.setPendingModel);
+  // Le moteur concerné est celui qui travaille (ou vient de finir) : un seul installateur tourne à la fois.
+  const engine = pack.state === "running" || (sd.state === "idle" && pack.state !== "idle") ? pack : sd;
 
   useEffect(() => {
     if (!pending) return;
@@ -74,7 +99,10 @@ export function SetupController() {
 
 /** Ce qu'il manque pour utiliser ce modèle, avec un bouton pour tout installer. */
 export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welcome?: boolean }) {
-  const engine = useStore((s) => s.engineInstall);
+  const sdEngine = useStore((s) => s.engineInstall);
+  const packEngine = useStore((s) => s.packInstall);
+  const isPack = !!model.engine_pack;
+  const engine = isPack ? (packEngine.pack === model.engine_pack ? packEngine : { state: "idle" as const }) : sdEngine;
   const dl = useStore((s) => s.downloads[model.id]);
   const pending = useStore((s) => s.pendingModelId);
   const [busy, setBusy] = useState(false);
@@ -86,10 +114,11 @@ export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welc
   const installing = engine.state === "running";
   const download = dl?.state === "running" ? dl : model.download?.state === "running" ? model.download : null;
   const error =
-    (engine.state === "error" && needEngine ? engine.error : null) ||
+    (engine.state === "error" && needEngine ? (engine as { error?: string | null }).error : null) ||
     (dl?.state === "error" ? dl.error : model.download?.state === "error" ? model.download.error : null);
   const modelGb = Math.max(0, (model.download_size_gb ?? 0) - model.installed_gb);
   const engineMb = model.engine_install_size_mb ?? 0;
+  const packRunning = isPack && packEngine.state === "running";
   const working = installing || !!download || busy || !!pending;
   const totalLabel = [needEngine ? `moteur ≈ ${mb(engineMb)}` : null, needModel ? `modèle ≈ ${gb(modelGb)} Go` : null]
     .filter(Boolean)
@@ -129,7 +158,7 @@ export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welc
             variant="secondary"
             onClick={() => {
               useStore.getState().setPendingModel(null);
-              if (installing) api.cancelEngineInstall().catch(() => {});
+              if (installing) (isPack ? api.cancelPackInstall() : api.cancelEngineInstall()).catch(() => {});
               else if (download) api.cancelDownload(model.id).catch(() => {});
             }}
           >
@@ -138,8 +167,9 @@ export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welc
         )}
       </div>
 
-      {installing && <ProgressBar done={engine.done ?? 0} total={engine.total ?? 0} unit="mb" />}
-      {installing && engine.message && <p className="mt-1 font-mono text-[11px] text-faint">{engine.message}</p>}
+      {installing && !isPack && <ProgressBar done={sdEngine.done ?? 0} total={sdEngine.total ?? 0} unit="mb" />}
+      {installing && !isPack && engine.message && <p className="mt-1 font-mono text-[11px] text-faint">{engine.message}</p>}
+      {packRunning && <IndeterminateBar message={packEngine.message} detail={packEngine.detail} since={packEngine.started_at} />}
       {download && <ProgressBar done={download.done} total={download.total} rate={download.rate} eta={download.eta} />}
       {error && !working && (
         <div className="mt-2.5 flex items-start gap-2 text-[12.5px] leading-snug text-danger">
@@ -167,15 +197,16 @@ function Steps({ needEngine, engineState, needModel }: { needEngine: boolean; en
 }
 
 /** Carte d'accueil : tant qu'aucun modèle n'est prêt, propose le plus adapté à cette machine. */
-export function useWelcomeModel(): ModelInfo | null {
+export function useWelcomeModel(kind: ModelKind = "image"): ModelInfo | null {
   const { data } = useModels();
-  const active = useActiveModel();
-  if (!data || data.ready || !active || active.id !== data.recommended_model_id) return null;
+  const active = useActiveModel(kind);
+  const scope = kind === "audio" ? data?.audio : data;
+  if (!data || !scope || scope.ready || !active || active.id !== scope.recommended_model_id) return null;
   return active;
 }
 
-export function WelcomeSetup() {
-  const model = useWelcomeModel();
+export function WelcomeSetup({ kind = "image" }: { kind?: ModelKind }) {
+  const model = useWelcomeModel(kind);
   if (!model) return null;
   return (
     <div className="mb-4 animate-rise">

@@ -18,11 +18,16 @@ const ACTIVE = ["queued", "loading", "running"];
 
 // --- Message utilisateur ---------------------------------------------------------------------------
 
-export function UserMessage({ message }: { message: Message }) {
+export function UserMessage({ message, audio = false }: { message: Message; audio?: boolean }) {
   const openLightbox = useStore((s) => s.openLightbox);
 
   const reuse = () => {
     const s = useStore.getState();
+    if (audio) {
+      s.setAudioPrompt(message.prompt);
+      focusComposer(true);
+      return;
+    }
     s.setPrompt(message.prompt);
     s.clearReferences();
     s.addReferences(message.references);
@@ -32,7 +37,7 @@ export function UserMessage({ message }: { message: Message }) {
   const remove = async () => {
     const ok = await confirm({
       title: "Supprimer ce message ?",
-      description: "Le prompt et toutes les générations qui en découlent seront supprimés.",
+      description: audio ? "Le texte et toutes les synthèses qui en découlent seront supprimés." : "Le prompt et toutes les générations qui en découlent seront supprimés.",
       confirmLabel: "Supprimer",
       danger: true,
     });
@@ -60,7 +65,7 @@ export function UserMessage({ message }: { message: Message }) {
       </div>
       <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         <span className="mr-1 font-mono text-[10.5px] text-faint">{formatTime(message.created_at)}</span>
-        <IconButton label="Copier le prompt" size="sm" onClick={() => copy(message.prompt)}>
+        <IconButton label={audio ? "Copier le texte" : "Copier le prompt"} size="sm" onClick={() => copy(message.prompt)}>
           <Copy className="size-3.5" />
         </IconButton>
         <IconButton label="Reprendre dans le composer" size="sm" onClick={reuse}>

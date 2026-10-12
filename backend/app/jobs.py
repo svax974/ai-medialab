@@ -18,7 +18,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from . import db, repo
+from . import audio_packs, db, repo
+from .audio_worker import AudioWorkerHandle
 from .config import OUTPUTS_DIR, PREVIEWS_DIR
 from .engines import get_spec
 from .engines.base import GenerationRequest
@@ -210,6 +211,13 @@ class JobManager:
             return
 
         spec = get_spec(plan["model_id"])
+        if spec.backend == "pack":
+            pack = spec.options["pack"]
+            if not audio_packs.is_installed(pack):
+                self._finish(message_id, "error",
+                             f"Le moteur « {audio_packs.PACKS[pack].name} » n'est pas installé. "
+                             "Ouvrez Modèles pour l'installer.")
+                return
         if spec.backend == "sdcpp":
             from .system import get_system
 
@@ -232,14 +240,14 @@ class JobManager:
         quantize = settings["quantize"].get(plan["model_id"], spec.default_quantize)
         self.progress[message_id] = self._progress_base(message_id, plan)
         self._update(message_id, status="loading", started_at=db.now(), params=plan["params"])
-        if not await self._ensure_worker(message_id, plan["model_id"], quantize):
+        if not await self._ensure_worker(message_id, plan["model_id"], quantize, plan):
             return
 
         self.state = "busy"
         self._update(message_id, status="running")
         self._publish_status()
         steps = plan["params"]["steps"]
-        preview_every = max(2, round(steps / 5)) if settings["previews"] else 0
+        preview_every = max(2, round(steps / 5)) if settings["previews"] and spec.kind == "image" else 0
         self.worker.cancel_event.clear()
         self.worker.send(
             {
@@ -282,6 +290,10 @@ class JobManager:
                 asset = await asyncio.to_thread(self._register_output, message_id, plan, evt)
                 bus.publish("job.image", {"message_id": message_id, "conversation_id": plan["conversation_id"],
                                           "asset": asset})
+            elif kind == "audio":
+                asset = await asyncio.to_thread(self._register_audio, message_id, plan, evt)
+                bus.publish("job.image", {"message_id": message_id, "conversation_id": plan["conversation_id"],
+                                          "asset": asset})
             elif kind == "done":
                 self._finish(message_id, "done")
                 return
@@ -295,14 +307,12 @@ class JobManager:
             elif kind == "exit":
                 self.worker = None
                 self.state = "idle"
-                self._finish(
-                    message_id, "error",
-                    f"Le processus du modèle s'est arrêté (code {evt['code']}). "
-                    "Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite.",
-                )
+                hint = ("Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite."
+                        if plan.get("kind") != "audio" else "Mémoire insuffisante ? Essayez un modèle plus léger.")
+                self._finish(message_id, "error", f"Le processus du modèle s'est arrêté (code {evt['code']}). {hint}")
                 return
 
-    async def _ensure_worker(self, message_id: str, model_id: str, quantize: int | None) -> bool:
+    async def _ensure_worker(self, message_id: str, model_id: str, quantize: int | None, plan: dict) -> bool:
         w = self.worker
         if w and w.alive and w.model_id == model_id and w.quantize == quantize:
             return True
@@ -318,8 +328,17 @@ class JobManager:
         self._publish_progress(prog)
         self._publish_status()
 
-        options = {"low_memory": load_settings()["low_memory"]}
-        self.worker = WorkerHandle(model_id, quantize, options, asyncio.get_running_loop())
+        spec = get_spec(model_id)
+        if spec.kind == "audio":
+            token = db.get_settings().get("hf_token")
+            self.worker = AudioWorkerHandle(
+                model_id, spec.options["pack"], spec.engine,
+                {**spec.options, "language": plan["params"].get("language")},
+                asyncio.get_running_loop(), env={"HF_TOKEN": token} if token else None,
+            )
+        else:
+            options = {"low_memory": load_settings()["low_memory"]}
+            self.worker = WorkerHandle(model_id, quantize, options, asyncio.get_running_loop())
         while True:
             worker = self.worker
             if worker is None:  # annulé pendant le chargement
@@ -363,6 +382,8 @@ class JobManager:
             spec = get_spec(msg["model_id"])
         except KeyError as exc:
             raise ValueError(str(exc)) from None
+        if spec.kind == "audio":
+            return self._build_audio_plan(msg, spec)
         params = dict(msg["params"])
 
         with db.connect() as conn:
@@ -427,6 +448,72 @@ class JobManager:
             "items": items,
             "prompt": msg["prompt"],
         }
+
+    # --- Audio ------------------------------------------------------------------------------------------------
+
+    def _build_audio_plan(self, msg: dict, spec) -> dict:
+        from .dialogue import parse_dialogue
+        from .voices import resolve_voice
+
+        params = dict(msg["params"])
+        caps = spec.audio
+        text = msg["prompt"].strip()
+        if not text:
+            raise ValueError("Le texte est vide.")
+        if caps.task != "tts":
+            raise ValueError(f"{spec.name} ne synthétise pas de voix.")
+        codes = [l.code for l in caps.languages]
+        language = params.get("language") or (codes[0] if codes else "en")
+        if codes and language not in codes:
+            language = codes[0]
+        instruct = (params.get("instruct") or "").strip()
+        default_voice = resolve_voice(spec, params.get("voice"), language, instruct)
+
+        cast = params.get("cast") or {}
+        if cast:
+            segments = parse_dialogue(text, {n: resolve_voice(spec, v, language, instruct) for n, v in cast.items()},
+                                      default_voice)
+        else:
+            segments = [{"text": text, "voice": default_voice}]
+        if not any(s["text"].strip() for s in segments):
+            raise ValueError("Le texte est vide.")
+
+        defaults = spec.default_params()
+        speed = float(params.get("speed", defaults.get("speed", 1.0)) or 1.0)
+        extra = {k: params[k] for k in defaults if k not in ("speed",) and k in params}
+        seeds = params.get("seeds") or [new_seed()]
+        params.update(language=language, seeds=seeds, steps=1, speed=speed)
+        items = []
+        for i, seed in enumerate(seeds):
+            items.append({
+                "segments": segments, "language": language, "instruct": instruct or None, "speed": speed,
+                "seed": int(seed), "params": extra, "output": str(OUTPUTS_DIR / f"{msg['id']}_{i}.wav"),
+            })
+        voice_label = segments[0]["voice"].get("label") or segments[0]["voice"].get("id") or ""
+        return {
+            "kind": "audio", "model_id": spec.id, "conversation_id": msg["conversation_id"], "params": params,
+            "items": items, "prompt": msg["prompt"], "voice_label": voice_label,
+            "speakers": [s.get("label") for s in segments if s.get("label")],
+        }
+
+    def _register_audio(self, message_id: str, plan: dict, evt: dict) -> dict:
+        path = Path(evt["path"])
+        asset_id = db.new_id()
+        meta = {
+            "model_id": plan["model_id"], "prompt": plan["prompt"], "seconds": evt.get("seconds"),
+            "language": plan["params"].get("language"), "instruct": plan["items"][0].get("instruct"),
+            "voice": plan.get("voice_label"), "speakers": plan.get("speakers"),
+            "sample_rate": evt.get("sample_rate"), "peaks": evt.get("peaks"), "markers": evt.get("markers"),
+        }
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO assets (id, kind, media, conversation_id, message_id, filename, seed, duration, "
+                "position, meta, created_at) VALUES (?, 'generated', 'audio', ?, ?, ?, ?, ?, ?, ?, ?)",
+                (asset_id, plan["conversation_id"], message_id, path.name, evt.get("seed"), evt.get("duration"),
+                 evt["index"], json.dumps(meta), db.now()),
+            )
+            row = conn.execute("SELECT * FROM assets WHERE id = ?", (asset_id,)).fetchone()
+        return repo.asset_public(row)
 
     def _register_output(self, message_id: str, plan: dict, evt: dict) -> dict:
         path = Path(evt["path"])

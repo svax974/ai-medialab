@@ -1,7 +1,9 @@
 // État client (zustand) : brouillon du composer, préférences, progression temps réel, visionneuse.
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { Asset, DownloadProgress, EngineInstallState, EngineStatus, GenParams, JobProgress } from "./api";
+import type {
+  Asset, DownloadProgress, EngineInstallState, EngineStatus, GenParams, JobProgress, ModelKind, PackInstallState, VoiceRef,
+} from "./api";
 
 export interface PendingUpload {
   tempId: string;
@@ -16,7 +18,42 @@ interface LightboxState {
   index: number;
 }
 
+export interface VoiceStudioState {
+  /** Fichier audio déposé / choisi à l'ouverture. */
+  file?: File;
+  /** Voix existante à modifier. */
+  voiceId?: string;
+}
+
 interface State {
+  // Mode : images ou audio (commutateur du panneau de gauche)
+  mode: ModelKind;
+  setMode: (m: ModelKind) => void;
+
+  // Composer audio
+  audioPrompt: string;
+  audioModelId: string | null;
+  voiceByModel: Record<string, VoiceRef | undefined>;
+  languageByModel: Record<string, string | undefined>;
+  instructByModel: Record<string, string | undefined>;
+  /** Distribution des voix d'un scénario : nom du personnage -> voix. */
+  cast: Record<string, VoiceRef | undefined>;
+  audioCount: number;
+  autoplay: boolean;
+  setAudioPrompt: (p: string) => void;
+  setAudioModel: (id: string) => void;
+  setVoice: (modelId: string, v: VoiceRef | undefined) => void;
+  setLanguage: (modelId: string, l: string) => void;
+  setInstruct: (modelId: string, t: string) => void;
+  setCast: (name: string, v: VoiceRef | undefined) => void;
+  setAudioCount: (n: number) => void;
+  setAutoplay: (b: boolean) => void;
+  voiceStudio: VoiceStudioState | null;
+  openVoiceStudio: (s?: VoiceStudioState) => void;
+  closeVoiceStudio: () => void;
+  packInstall: PackInstallState;
+  setPackInstall: (s: PackInstallState) => void;
+
   // Composer
   prompt: string;
   references: Asset[];
@@ -69,6 +106,30 @@ interface State {
 export const useStore = create<State>()(
   persist(
     (set) => ({
+      mode: "image",
+      setMode: (mode) => set({ mode }),
+      audioPrompt: "",
+      audioModelId: null,
+      voiceByModel: {},
+      languageByModel: {},
+      instructByModel: {},
+      cast: {},
+      audioCount: 1,
+      autoplay: true,
+      setAudioPrompt: (audioPrompt) => set({ audioPrompt }),
+      setAudioModel: (audioModelId) => set({ audioModelId }),
+      setVoice: (id, v) => set((s) => ({ voiceByModel: { ...s.voiceByModel, [id]: v } })),
+      setLanguage: (id, l) => set((s) => ({ languageByModel: { ...s.languageByModel, [id]: l } })),
+      setInstruct: (id, t) => set((s) => ({ instructByModel: { ...s.instructByModel, [id]: t } })),
+      setCast: (name, v) => set((s) => ({ cast: { ...s.cast, [name]: v } })),
+      setAudioCount: (audioCount) => set({ audioCount }),
+      setAutoplay: (autoplay) => set({ autoplay }),
+      voiceStudio: null,
+      openVoiceStudio: (s) => set({ voiceStudio: s ?? {} }),
+      closeVoiceStudio: () => set({ voiceStudio: null }),
+      packInstall: { state: "idle" },
+      setPackInstall: (packInstall) => set({ packInstall }),
+
       prompt: "",
       references: [],
       uploading: [],
@@ -151,6 +212,15 @@ export const useStore = create<State>()(
         count: s.count,
         sidebarOpen: s.sidebarOpen,
         prompt: s.prompt,
+        mode: s.mode,
+        audioPrompt: s.audioPrompt,
+        audioModelId: s.audioModelId,
+        voiceByModel: s.voiceByModel,
+        languageByModel: s.languageByModel,
+        instructByModel: s.instructByModel,
+        cast: s.cast,
+        audioCount: s.audioCount,
+        autoplay: s.autoplay,
       }),
     },
   ),

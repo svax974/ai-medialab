@@ -33,7 +33,46 @@ class ParamSpec:
     requires_references: bool = False
 
 
-Backend = Literal["mlx", "torch", "sdcpp", "demo"]
+Backend = Literal["mlx", "torch", "sdcpp", "pack", "demo"]
+Kind = Literal["image", "audio"]
+
+
+@dataclass
+class PresetVoice:
+    """Voix intégrée à un modèle de synthèse vocale."""
+
+    id: str
+    name: str
+    language: str  # code (« fr », « en »…) ; "*" = toutes les langues du modèle
+    gender: Literal["f", "m", "n"] = "n"
+    description: str = ""
+
+
+@dataclass
+class Language:
+    code: str
+    label: str
+
+
+@dataclass
+class AudioCaps:
+    """Capacités d'un modèle audio (synthèse vocale) : ce que l'interface peut proposer."""
+
+    task: Literal["tts", "stt"] = "tts"
+    languages: list[Language] = field(default_factory=list)
+    voices: list[PresetVoice] = field(default_factory=list)
+    # Clonage depuis un extrait : "none", "optional" (la transcription améliore) ou "required".
+    clone: Literal["none", "optional", "required"] = "none"
+    # Consigne de style en langage naturel (« ton chaleureux, voix posée… »).
+    instruct: bool = False
+    instruct_help: str = ""
+    # Création d'une voix à partir d'une description (la description EST la voix).
+    design: bool = False
+    speed: bool = False
+    # Balises à insérer dans le texte (« [rire] »…).
+    tags: list[str] = field(default_factory=list)
+    max_chars: int = 600
+    sample_rate: int = 24000
 
 
 @dataclass
@@ -81,6 +120,9 @@ class ModelSpec:
     largest_component_gb: float | None = None
     memory_hint: str = ""
     tags: list[str] = field(default_factory=list)
+    # Nature du modèle : "image" (génération d'images) ou "audio" (synthèse vocale, transcription).
+    kind: Kind = "image"
+    audio: AudioCaps | None = None
     # Options propres au moteur (classe de pipeline, noms d'arguments…).
     options: dict[str, Any] = field(default_factory=dict)
     # Modèles composés de plusieurs dépôts (ex. GGUF + encodeur + VAE) : prime sur hf_repo.
