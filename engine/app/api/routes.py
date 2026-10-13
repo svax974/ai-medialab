@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import audio_packs, db, repo, voices
+from .. import audio_packs, db, legacy_jobs, repo, voices
 from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
@@ -424,7 +424,7 @@ def create_message(body: MessageCreate) -> dict[str, Any]:
         assistant_id = _insert_assistant(conn, cid, user_id, prompt, spec.id, params)
         repo.touch_conversation(conn, cid)
 
-    jobs.enqueue(assistant_id)
+    legacy_jobs.enqueue(assistant_id)
     user_msg, assistant_msg = repo.get_message(user_id), repo.get_message(assistant_id)
     bus.publish("conversation.updated", _summary(cid))
     return {"conversation_id": cid, "user_message": user_msg, "assistant_message": assistant_msg}
@@ -471,7 +471,7 @@ def retry_message(message_id: str, body: RetryBody) -> dict[str, Any]:
     with db.connect() as conn:
         mid = _insert_assistant(conn, msg["conversation_id"], msg["parent_id"], msg["prompt"], model_id, params)
         repo.touch_conversation(conn, msg["conversation_id"])
-    jobs.enqueue(mid)
+    legacy_jobs.enqueue(mid)
     new_msg = repo.get_message(mid)
     bus.publish("message.updated", new_msg)
     return new_msg

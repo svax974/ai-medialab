@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 
 from . import db
 from .api.auth import require_engine_token
+from .api.jobs import jobs_router
 from .api.routes import router
 from .api.runtime import runtime_router
 from .config import FRONTEND_DIST, MEDIA_DIRS, ensure_dirs
@@ -33,10 +34,12 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI MediaLab", lifespan=lifespan)
-# `/engine/v1` is the contract with the NestJS server (token-protected, in the OpenAPI schema); `/api` is the same
+# `/engine/v1` is the contract with the NestJS server (token-protected, in the OpenAPI schema; `runtime_router` and
+# `jobs_router` exist only there); `/api` is the same
 # router for the legacy UI (no token, kept until it is removed) and stays out of the schema (duplicate operation ids).
 app.include_router(router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
 app.include_router(runtime_router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
+app.include_router(jobs_router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
 app.include_router(router, prefix="/api", include_in_schema=False)
 
 ensure_dirs()

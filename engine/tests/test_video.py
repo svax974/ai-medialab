@@ -156,7 +156,8 @@ def _asset(conn, media, filename, kind="upload"):
 class TestPlan:
     def _plan(self, model_id, params, refs=(), tmp=None):
         from app.config import UPLOADS_DIR
-        from app.jobs import JobManager
+        from app.job_plans import build_plan
+        from app.legacy_jobs import request_from_message
 
         UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
         with db.connect() as conn:
@@ -167,7 +168,7 @@ class TestPlan:
                 conn.execute("INSERT INTO message_refs (message_id, asset_id, position) VALUES ('u', ?, ?)", (aid, pos))
         msg = {"id": "m", "conversation_id": "c", "parent_id": "u", "prompt": "un chat qui court", "model_id": model_id,
                "params": params}
-        return JobManager()._build_video_plan(msg, get_spec(model_id))
+        return build_plan(request_from_message(msg))
 
     def test_text_to_video_plan(self, database):
         plan = self._plan("wan-2.2-ti2v-5b", {"seeds": [1, 2, 3]})

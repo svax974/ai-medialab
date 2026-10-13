@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from .config import OUTPUTS_DIR, THUMBS_DIR, UPLOADS_DIR
+from .config import OUTPUTS_DIR, PREVIEWS_DIR, THUMBS_DIR, UPLOADS_DIR
 
 THUMB_SIZE = 640
 MAX_UPLOAD_SIDE = 4096
@@ -57,6 +57,12 @@ def make_thumb(src: Path, asset_id: str) -> str:
         img.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.Resampling.LANCZOS)
         img.save(THUMBS_DIR / filename, quality=86)
     return filename
+
+
+def delete_previews(job_id: str) -> None:
+    """Remove the intermediate preview images of a job."""
+    for p in PREVIEWS_DIR.glob(f"{job_id}_*"):
+        p.unlink(missing_ok=True)
 
 
 def asset_path(kind: str, filename: str) -> Path:

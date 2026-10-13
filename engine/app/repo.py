@@ -10,7 +10,7 @@ import sqlite3
 from typing import Any
 
 from . import db
-from .config import OUTPUTS_DIR, PREVIEWS_DIR, THUMBS_DIR, UPLOADS_DIR
+from .config import OUTPUTS_DIR, THUMBS_DIR, UPLOADS_DIR
 from .media import media_url
 
 
@@ -138,8 +138,3 @@ def purge_assets(conn: sqlite3.Connection, asset_rows: list[sqlite3.Row]) -> Non
         else:
             conn.execute("DELETE FROM assets WHERE id = ?", (a["id"],))
             delete_asset_files(a)
-
-
-def delete_previews(job_id: str) -> None:
-    for p in PREVIEWS_DIR.glob(f"{job_id}_*"):
-        p.unlink(missing_ok=True)

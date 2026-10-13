@@ -117,19 +117,25 @@ def delete_voice(voice_id: str) -> bool:
     return True
 
 
-def resolve_voice(spec, ref: dict[str, Any] | None, language: str, instruct: str) -> dict[str, Any]:
+def resolve_voice(spec, ref: dict[str, Any] | None, language: str, instruct: str,
+                  library: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     """Effective voice in the format the worker expects: preset | clone | design.
 
-    `ref` is {"source": "preset", "id": "ff_siwis"}, {"source": "library", "id": "<voice>"} or None."""
+    `ref` is {"source": "preset", "id": "ff_siwis"}, {"source": "library", "id": "<voice>"} or None.
+    `library` (voices the caller resolved: id -> {"path", "transcript", "name"}) is looked at before the engine's own."""
     caps = spec.audio
     ref = ref or {}
     if ref.get("source") == "library":
-        voice = get_voice(ref.get("id", ""))
-        if not voice:
+        given = (library or {}).get(ref.get("id", ""))
+        voice = get_voice(ref.get("id", "")) if given is None else None
+        if given is None and not voice:
             raise ValueError("Cette voix n'existe plus dans votre bibliothèque.")
         if caps.clone == "none":
             raise ValueError(f"{spec.name} ne sait pas cloner une voix : choisissez un modèle de clonage "
                              "ou l'une de ses voix intégrées.")
+        if given is not None:
+            return {"kind": "clone", "ref_audio": str(given["path"]), "ref_text": given.get("transcript") or None,
+                    "label": given.get("name") or ""}
         return {"kind": "clone", "ref_audio": str(voice_path(Path(voice["url"]).name)),
                 "ref_text": voice["transcript"] or None, "label": voice["name"]}
     if caps.design:
