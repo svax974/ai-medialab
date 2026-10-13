@@ -27,9 +27,9 @@ export interface ConversationSummary {
   busy: boolean
 }
 
-/** A conversation with its messages; the messages are typed by the modules that render them (H4). */
-export interface Conversation extends ConversationSummary {
-  messages: unknown[]
+/** A conversation with its messages; the messages are typed by the modules that render them (`studio-core`: `Message`). */
+export interface Conversation<TMessage = unknown> extends ConversationSummary {
+  messages: TMessage[]
 }
 
 export interface ConversationPatch {

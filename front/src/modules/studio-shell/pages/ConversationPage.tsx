@@ -4,12 +4,14 @@
  */
 
 import { useParams } from 'react-router-dom'
-import { useConversation } from '../hooks/useConversations'
-import { ComingSoonPage } from './ComingSoonPage'
+import { imageStudioAdapter } from '@/modules/image-studio'
+import { ConversationView, type ModeAdapters } from '@/modules/studio-core'
 
-/** `/c/:id`: the conversation view arrives with H4.3; for now the title of the conversation, once loaded. */
+/** Adapters of the creation modes that have their studio; audio and video join with H4.5 and H4.6. */
+const ADAPTERS: ModeAdapters = { image: imageStudioAdapter }
+
+/** `/c/:id`: the conversation thread of `studio-core` with the composer of the conversation's mode. */
 export function ConversationPage() {
   const { id } = useParams()
-  const { data } = useConversation(id ?? null)
-  return <ComingSoonPage titleKey="studio.page.conversation.title" title={data?.title} />
+  return id ? <ConversationView key={id} id={id} adapters={ADAPTERS} /> : null
 }

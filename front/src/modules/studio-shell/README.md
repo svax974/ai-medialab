@@ -3,11 +3,11 @@
 ## Rôle
 
 Coquille du studio dans le nouveau front : barre latérale (mode image / audio / vidéo, pages du mode, recherche et liste des
-conversations épinglées et groupées par période, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
+conversations épinglées et groupées par période, carte du moteur, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
-abonnement au flux d'événements du moteur. Les écrans eux-mêmes (composeurs, conversation, galeries, voix, modèles,
-réglages) sont des **pages minces « à venir »** que les tâches H4 remplacent ; le dialogue Réglages est celui du module
-`settings` (H4.1), le dialogue Modèles celui du module `model-catalog` avec les installateurs du module `engines` (H4.2).
+abonnements au flux d'événements (`engine.*` du moteur, `studio.*` de Nest). Les écrans eux-mêmes sont des **pages minces** : l'accueil et la conversation
+sont ceux du studio image (modules `image-studio` et `studio-core`, H4.3b) ; les galeries, voix, audio et vidéo restent « à venir » jusqu'aux tâches H4.4 à H4.6 ;
+le dialogue Réglages est celui du module `settings` (H4.1), le dialogue Modèles celui du module `model-catalog` avec les installateurs du module `engines` (H4.2).
 
 Module d'application (`front/src/modules/`), pas un module partagé. Thème : `front/src/themes/chambre-noire/README.md`.
 
@@ -21,7 +21,7 @@ studio-shell/
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
   components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem,
                            SidebarFooter, Mark, modeIcons
-  pages/                   ComingSoonPage, ConversationPage (pages provisoires)
+  pages/                   HomePage (ImageHome), ConversationPage (ConversationView + adaptateurs de modes), ComingSoonPage (pages provisoires)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
   services/                studioHttp (proxy transitoire), conversationsApi
@@ -35,10 +35,10 @@ gabarit ; la coquille reste montée d'une page à l'autre, donc la recherche et 
 
 ## Routes
 
-| Chemin | Page (provisoire) | Mode | Tâche qui la remplit |
+| Chemin | Page | Mode | Tâche qui la remplit |
 |---|---|---|---|
-| `/` | Nouvelle création | image | H4.3 |
-| `/c/:id` | Conversation (titre chargé) | de la conversation | H4.3 |
+| `/` | Accueil du studio image (`ImageHome`) | image | H4.3b (fait) |
+| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait ; audio, vidéo : H4.5, H4.6) |
 | `/galerie` | Galerie | image | H4.4 |
 | `/audio` | Nouvel audio | audio | H4.5 |
 | `/audio/voix` | Mes voix | audio | H4.5 |
@@ -53,10 +53,11 @@ de sa route dans `routes.tsx` (ou passer un `lazy`).
 
 | Méthode | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/conversations?mode=&q=` | Liste du mode, filtrée par la recherche (proxy transitoire vers le moteur). |
+| `GET` | `/api/conversations?mode=&q=` | Liste du mode, filtrée par la recherche (module Nest `studio-core`). |
 | `GET` | `/api/conversations/:id` | Conversation et messages (mode de la page, titre). |
 | `PATCH` | `/api/conversations/:id` | Épingler (`pinned`) ou renommer (`title`). |
 | `DELETE` | `/api/conversations/:id` | Supprimer. |
+| `POST` | (`studioUpload`) | Ajouté en H4.3b : envoi multipart avec progression (`HttpService.upload`), pour `POST /api/assets` (module `studio-core`). |
 | `PUT`/`POST` | (`studioRequest`) | Ajouté en H4.1 pour les modules `settings` et `hardware` (`GET/PUT /api/settings`, `GET /api/system`, `GET /api/status`, `POST /api/engine/unload`, routes Nest). |
 | `GET` | `/api/events/stream?topics=engine.conversation.updated,…` | Flux d'événements (brique commune `eventStreamClient`). |
 
@@ -69,8 +70,8 @@ Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolv
 
 - **TanStack Query** (écart assumé au gabarit, lot H) : clés dans `lib/queryKeys.ts` (`conversations`, `conversation`).
   Défauts : `staleTime` 30 s, pas de rechargement au focus (le flux d'événements invalide), un nouvel essai.
-- **Flux d'événements** (`hooks/useEngineEventSync.ts`, monté par `StudioShell`) : abonnement aux sujets
-  `engine.conversation.updated`, `engine.conversation.deleted`, `engine.message.updated`, `engine.message.deleted`,
+- **Flux d'événements** : `hooks/useStudioEvents` du module `studio-core` (monté par `StudioShell`) suit les sujets `studio.*` publiés par Nest pour les conversations, messages, images,
+  assets et la progression, et écrit directement dans le cache (voir son README). `hooks/useEngineEventSync.ts` (monté par `StudioShell`) : abonnement aux sujets
   `engine.engine.status`, `engine.models.changed`, `engine.download.progress`, `engine.engine.install`, `engine.pack.install` (clés `['engine-status']` et
   `['system']` du module `hardware`, `['models']` du module `model-catalog` ; la progression en cours n'invalide rien, elle alimente les stores `model-catalog` et `engines`), `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
   (regroupés sur 250 ms) ; `engine.link` revenu à `connected: true` et la trame `resync` rechargent tout. Quand le flux est
@@ -96,13 +97,13 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 
 | Nom | Description |
 |---|---|
-| `StudioShell` | Mise en page (barre latérale 284 px masquable + page), raccourcis, suivi du mode, abonnement aux événements, dialogues, `ConfirmHost`. |
+| `StudioShell` | Mise en page (barre latérale 284 px masquable + page), raccourcis, suivi du mode, abonnements aux événements (`engine.*`, `studio.*`), dialogues, visionneuse (`StudioLightbox`), dépôt d'images sur la fenêtre en mode image (`ImageDropLayer`), `ConfirmHost`. |
 | `Sidebar` | Marque (`custom.app.name`), masquage, `ModeSwitch`, pages du mode (`NavItem`), `SearchField`, `ConversationList`, `SidebarFooter`. |
 | `ModeSwitch` | `Tabs` MUI en commande segmentée ; revient à la dernière page du mode. |
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
 | `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
-| `SidebarFooter` | Modèles (`ModelsDialog`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
+| `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
 | `ComingSoonPage` | Page provisoire (le `ComingSoonDialog` a disparu avec H4.2 : plus aucun dialogue provisoire). |
 
 Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.
@@ -110,7 +111,7 @@ Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`
 ## Types principaux
 
 `StudioMode` (`'image' | 'audio' | 'video'`), `ConversationSummary` (forme du moteur : `updated_at` en secondes, `cover.thumb_url`,
-`generation_count`, `busy`, `pinned`), `Conversation` (+ `messages: unknown[]`, typés par H4), `ConversationPatch`,
+`generation_count`, `busy`, `pinned`), `Conversation<TMessage>` (+ `messages`, typés par `studio-core` : `ConversationDetail`), `ConversationPatch`,
 `StudioRouteDef`, `PeriodKey`, `ShortcutAction`, `CacheEffect`.
 
 ## Internationalisation
@@ -126,7 +127,7 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 | Ancien (`frontend/src/`) | Nouveau |
 |---|---|
 | `App.tsx` (mise en page, raccourcis, `useModeSync`) | `components/StudioShell`, `hooks/useShortcuts`, `hooks/useModeSync` |
-| `App.tsx` (`useFileDrop`, surcouche de dépôt) | **non repris** : dépend des composeurs (H4.3-H4.6) |
+| `App.tsx` (`useFileDrop`, surcouche de dépôt) | image : `image-studio` (`ImageDropLayer`, H4.3b) ; audio et vidéo : H4.5, H4.6 |
 | `App.tsx` (`Toaster` sonner) | `ToastZone` (react-toastify) du gabarit, dans `Router` |
 | `components/Sidebar.tsx` : `Sidebar` | `components/Sidebar` |
 | `Sidebar.tsx` : `ModeSwitch` | `components/ModeSwitch` |
@@ -134,14 +135,14 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 | `Sidebar.tsx` : recherche (+ ⌘K) | `components/SearchField` |
 | `Sidebar.tsx` : liste, groupes (`periodOf`) | `components/ConversationList`, `lib/periods` |
 | `Sidebar.tsx` : `ConversationItem` (+ menu Radix) | `components/ConversationItem` (menu MUI) |
-| `Sidebar.tsx` : pied (`EngineCard`, Modèles, Réglages, thème) | `components/SidebarFooter` ; `EngineCard` : H4.3 |
+| `Sidebar.tsx` : pied (`EngineCard`, Modèles, Réglages, thème) | `components/SidebarFooter` ; `EngineCard` : module `studio-core` (H4.3b) |
 | `components/ui.tsx` : `IconButton`, `Tip`, `Kbd`, `InfoTip`, `HelpBody` | `TipIconButton`, `Tooltip`, `Kbd`, `InfoTip`, `HelpBody` de `common` (lot I) |
 | `ui.tsx` : `Button`, `Spinner` | `Button`, `CircularProgress` MUI (thème) |
 | `ui.tsx` : `Mark` | `components/Mark` |
 | `components/Confirm.tsx` | `confirm()` / `ConfirmHost` de `common` |
 | `lib/router.ts` (History API) | `react-router-dom` + `lib/routes.ts` |
 | `lib/store.ts` (partie coquille) | `state/studioStore.ts` (reste : H4) |
-| `lib/queries.ts` : `useConversations`, `useConversation`, flux | `hooks/useConversations`, `hooks/useEngineEventSync`, `lib/eventEffects` |
+| `lib/queries.ts` : `useConversations`, `useConversation`, flux | `hooks/useConversations`, `hooks/useEngineEventSync`, `lib/eventEffects` ; événements de conversations : `studio-core` (`useStudioEvents`) |
 | `lib/format.ts` : `periodOf`, `formatTime`, `cx` | `lib/periods` ; `cx` : inutile (`sx`) ; autres formats : H4 |
 | `lib/composer.ts` : `focusComposer`, `registerComposer` | `lib/focusRegistry` |
 | `components/SettingsDialog.tsx` | module `settings` (H4.1) |
@@ -167,6 +168,6 @@ Un fichier à la fois, depuis `front/`, sous garde mémoire :
 
 ## Points d'extension
 
-- Remplacer une page : `routes.tsx`. Ajouter une route : `STUDIO_ROUTES` (+ clé de titre dans les locales).
+- Remplacer une page : `routes.tsx` (`pageOf`) ; un mode ajoute son adaptateur dans `pages/ConversationPage.tsx`. Ajouter une route : `STUDIO_ROUTES` (+ clé de titre dans les locales).
 - Nouveaux sujets d'événements : `ENGINE_TOPICS` et `effectOfEvent` (`lib/eventEffects.ts`, avec test).
 - État client : tranches ajoutées à `useStudioStore`.

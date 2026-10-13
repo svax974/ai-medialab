@@ -7,12 +7,11 @@ import { hardwareKeys } from '@/modules/hardware/lib/hardwareKeys'
 import { modelCatalogKeys } from '@/modules/model-catalog/lib/modelCatalogKeys'
 import { studioKeys } from './queryKeys'
 
-/** Subscribed topics: the engine events relayed by Nest as `engine.<name>` (back/src/modules/engine/README.md). */
+/**
+ * Subscribed topics: the engine events relayed by Nest as `engine.<name>` (back/src/modules/engine/README.md). The
+ * conversations and messages come as `studio.*` (module `studio-core`, `useStudioEvents`): the engine no longer knows them.
+ */
 export const ENGINE_TOPICS = [
-  'engine.conversation.updated',
-  'engine.conversation.deleted',
-  'engine.message.updated',
-  'engine.message.deleted',
   'engine.engine.status',
   'engine.models.changed',
   'engine.download.progress',
@@ -33,9 +32,6 @@ export interface CacheEffect {
 }
 
 const NONE: CacheEffect = { invalidate: [], remove: [] }
-const FINISHED_STATUSES = ['done', 'error']
-
-const stringOf = (value: unknown): string | null => (typeof value === 'string' && value !== '' ? value : null)
 
 /**
  * Maps an engine event to cache invalidations (the stream carries invalidations, the client re-reads by REST).
@@ -44,26 +40,6 @@ const stringOf = (value: unknown): string | null => (typeof value === 'string' &
 export function effectOfEvent(event: EventLike): CacheEffect {
   const data = event.data ?? {}
   switch (event.topic) {
-    case 'engine.conversation.updated': {
-      const id = stringOf(data['id'])
-      return { invalidate: [studioKeys.conversations, ...(id ? [studioKeys.conversation(id)] : [])], remove: [] }
-    }
-    case 'engine.conversation.deleted': {
-      const id = stringOf(data['id'])
-      return { invalidate: [studioKeys.conversations], remove: id ? [studioKeys.conversation(id)] : [] }
-    }
-    case 'engine.message.updated': {
-      const conversationId = stringOf(data['conversation_id'])
-      const finished = FINISHED_STATUSES.includes(String(data['status']))
-      return {
-        invalidate: [...(finished ? [studioKeys.conversations] : []), ...(conversationId ? [studioKeys.conversation(conversationId)] : [])],
-        remove: [],
-      }
-    }
-    case 'engine.message.deleted': {
-      const conversationId = stringOf(data['conversation_id'])
-      return conversationId ? { invalidate: [studioKeys.conversation(conversationId)], remove: [] } : NONE
-    }
     case 'engine.engine.status':
       return { invalidate: [hardwareKeys.status], remove: [] }
     case 'engine.models.changed':

@@ -16,19 +16,24 @@ import { useStudioStore } from '../state/studioStore'
 import { EnginesPanel, startSetup, useEnginesSync } from '@/modules/engines'
 import { ModelsDialog, useDownloadEvents } from '@/modules/model-catalog'
 import { SettingsDialog } from '@/modules/settings'
+import { ImageDropLayer } from '@/modules/image-studio'
+import { StudioLightbox, useStudioEvents } from '@/modules/studio-core'
 import { Sidebar } from './Sidebar'
 
 /**
  * Layout of the studio: the sidebar (hideable, Cmd+B) and the page. Mounted once above the routes, so the list and
- * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the engine event subscription and the
- * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`).
+ * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the `engine.*` and `studio.*` event subscriptions and the
+ * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`), the image
+ * viewer and the window drop of images (image mode).
  */
 export function StudioShell({ children }: { children: ReactNode }) {
   useShortcuts()
   useModeSync()
   useEngineEventSync()
+  useStudioEvents()
   useDownloadEvents()
   useEnginesSync()
+  const mode = useStudioStore((s) => s.mode)
   const sidebarOpen = useStudioStore((s) => s.sidebarOpen)
   const toggleSidebar = useStudioStore((s) => s.toggleSidebar)
   const settingsOpen = useStudioStore((s) => s.settingsOpen)
@@ -56,6 +61,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
         onSetup={(model) => void startSetup(model)}
         renderEngines={(kind, models) => <EnginesPanel kind={kind} models={models} />}
       />
+      <StudioLightbox />
+      {mode === 'image' && <ImageDropLayer />}
       <ConfirmHost />
     </Box>
   )

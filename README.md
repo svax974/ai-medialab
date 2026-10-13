@@ -80,13 +80,16 @@ et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
 React + MUI sur le gabarit vx-public. Thème « chambre noire » (sombre par défaut, clair « papier » en option, polices Hanken
 Grotesk / JetBrains Mono / Instrument Serif) : `front/src/themes/chambre-noire/README.md` (correspondance des jetons avec
 l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conversations, raccourcis ⌘B, ⌘⇧O, ⌘K, `/`,
-routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; les écrans eux-mêmes
-(composeurs, galeries, voix) sont des pages « à venir » jusqu'aux tâches H4 ; le dialogue Réglages
+routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; le studio image est fait (H4.3b) : l'accueil et le
+composeur (références, modèle, proportions, réglages, nombre d'images) dans `front/src/modules/image-studio/README.md`, le fil de conversation
+(messages, progression avec aperçus, relance, annulation, suppression, vignettes, visionneuse, carte du moteur) dans `front/src/modules/studio-core/README.md` ;
+les autres écrans (galeries, voix, audio, vidéo) sont des pages « à venir » jusqu'aux tâches H4.4 à H4.6 ; le dialogue Réglages
 (`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
 (catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
 installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
 (`locales/` des modules, `npm run i18n:check`). TanStack Query et Zustand (écart assumé au gabarit) portent le cache alimenté
-par le flux d'événements (`engine.*` relayés par Nest).
+par le flux d'événements (`engine.*` relayés par Nest pour les modèles et les installateurs, `studio.*` publiés par Nest pour les conversations,
+les messages, les images et la progression).
 
 ```sh
 cd front

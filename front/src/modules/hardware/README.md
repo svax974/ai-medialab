@@ -8,7 +8,7 @@ Back : `back/src/modules/hardware/README.md`. Tâche H4.1.
 
 L'ancienne interface n'affichait pas ces informations sur la carte d'accueil : la carte « Cette machine » était dans le
 dialogue des modèles (`ModelsDialog.tsx`) et l'état du worker dans `EngineCard.tsx`. Ce module les fournit ; **le dialogue des
-modèles (H4.2, module `model-catalog`) monte `MachineCard`/`StoragePaths`, les cartes de moteurs (module `engines`) lisent `engines`, `packs` et `pack_install` de `useSystemInfo`, la carte moteur (H4.3) utilisera `useEngineStatus`/`useUnloadEngine`**.
+modèles (H4.2, module `model-catalog`) monte `MachineCard`/`StoragePaths`, les cartes de moteurs (module `engines`) lisent `engines`, `packs` et `pack_install` de `useSystemInfo`, la carte moteur (`EngineCard` du module `studio-core`, H4.3b) utilise `useEngineStatus`/`useUnloadEngine`**.
 
 ## Structure
 

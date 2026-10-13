@@ -18,8 +18,8 @@ export class StudioApiError extends Error {
 }
 
 /**
- * Base URL of the transitional engine proxy (`/api/<segment>`, see back/src/modules/engine/README.md), which sits next to
- * `/api/v1`. Each H4 task moves its routes to a Nest module served under `getApiUrl('<module>')` and drops them here.
+ * Base URL of the studio routes (`/api/<segment>`, served by Nest modules or, until H6, by the transitional engine proxy: see
+ * back/src/modules/engine/README.md), which sit next to `/api/v1`.
  */
 export function studioApiBase(): string {
   return configurationService.getApiUrl().replace(/\/v\d+\/?$/, '')
@@ -51,6 +51,25 @@ export function studioRequest<T>(method: 'get' | 'post' | 'put' | 'patch' | 'del
           ? httpService.delete(url, options)
           : httpService[method](url, body ?? {}, options)
     result
+      .then((data) => resolve(data as T))
+      .fail((payload) => reject(toError(payload)))
+      .error((payload) => reject(toError(payload)))
+      .notAuthorized((payload) => reject(toError(payload)))
+  })
+}
+
+export interface StudioUploadOptions {
+  /** Real progress of the upload, 0..100 (`null` while the browser does not know the total). */
+  onProgress?: (percent: number | null) => void
+  signal?: AbortSignal
+}
+
+/** Multipart upload (`HttpService.upload`) with progress; same error mapping and clear transport as `studioRequest`. */
+export function studioUpload<T>(path: string, formData: FormData, options: StudioUploadOptions = {}): Promise<T> {
+  const { onProgress, signal } = options
+  return new Promise<T>((resolve, reject) => {
+    httpService
+      .upload(studioApiBase() + path, formData, { skipTransport: true, signal, onProgress: onProgress ? (progress) => onProgress(progress.percent) : undefined })
       .then((data) => resolve(data as T))
       .fail((payload) => reject(toError(payload)))
       .error((payload) => reject(toError(payload)))

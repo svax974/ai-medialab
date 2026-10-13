@@ -3,10 +3,11 @@
  * SPDX-License-Identifier: MIT
  */
 
-import type { Conversation, ConversationPatch, ConversationSummary, StudioMode } from '../types'
+import type { ConversationDetail } from '@/modules/studio-core/types'
+import type { ConversationPatch, ConversationSummary, StudioMode } from '../types'
 import { studioRequest } from './studioHttp'
 
-/** Conversations of the engine through the transitional proxy (`/api/conversations`). */
+/** Conversations (`/api/conversations`, Nest module `studio-core`). */
 export const conversationsApi = {
   list(query: string, mode: StudioMode): Promise<ConversationSummary[]> {
     const params = new URLSearchParams()
@@ -14,8 +15,8 @@ export const conversationsApi = {
     params.set('mode', mode)
     return studioRequest<ConversationSummary[]>('get', `/conversations?${params.toString()}`)
   },
-  get(id: string): Promise<Conversation> {
-    return studioRequest<Conversation>('get', `/conversations/${encodeURIComponent(id)}`)
+  get(id: string): Promise<ConversationDetail> {
+    return studioRequest<ConversationDetail>('get', `/conversations/${encodeURIComponent(id)}`)
   },
   patch(id: string, patch: ConversationPatch): Promise<ConversationSummary> {
     return studioRequest<ConversationSummary>('patch', `/conversations/${encodeURIComponent(id)}`, patch)
