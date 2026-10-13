@@ -98,6 +98,12 @@ l'image 2 dans l'image 1 ») n'a pas abouti dans mon essai à cette définition 
 Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
 renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine
 (planificateur mémoire : tout sur le GPU, composants chargés un à un, couche par couche, ou refus avec explication).
+La recherche Hugging Face applique la même règle de moteur : les résultats que la machine ne peut pas exécuter
+(par exemple un modèle PyTorch sans GPU CUDA, ROCm ou Metal) sont listés après les autres, marqués
+« incompatible avec cette machine », avec la raison, et ne peuvent pas être ajoutés. À l'ouverture d'un résultat, chaque variante
+(quantification) est aussi testée contre la mémoire de la machine, avec la même règle que les modèles de la liste : celles qui
+ne tiennent pas sont barrées avec les chiffres, la présélection est une variante qui tient, et le serveur refuse l'ajout d'une
+variante qui ne tient pas.
 
 Un seul modèle est chargé à la fois ; il reste en mémoire entre deux générations puis est déchargé après un délai
 réglable (Réglages → Mémoire) ou à la demande (indicateur en bas de la barre latérale).
@@ -147,6 +153,12 @@ Les sorties ont été vérifiées en les retranscrivant avec Whisper. Non testé
 à la demande depuis l'application (`uv` si présent, sinon `venv` + `pip` en Python 3.12) sous `<données>/engines/audio/<pack>/`,
 et piloté par `backend/audio_runtime/worker.py` (protocole JSON ligne à ligne). Ajouter un modèle = une classe dans
 `audio_runtime/engines/` + une spec dans `app/engines/audio_specs.py` (+ un pack si les dépendances diffèrent).
+**Pack natif audio.cpp.** Un pack peut aussi être un programme précompilé sans Python : `audiocpp` installe le build d'audio.cpp
+adapté à la machine (Metal, CUDA, Vulkan ou processeur, vérifié par somme de contrôle) et fait tourner des modèles GGUF sur
+**n'importe quel GPU**, y compris AMD et Intel. Les modèles correspondants s'affichent à côté de leurs équivalents PyTorch.
+Détails, mesures, limites et candidats : `docs/components/audiocpp.md`. Le registre de tous les composants tiers et la
+procédure de revue périodique sont dans `docs/components/README.md`.
+
 Piège rencontré : eSpeak-ng (phonémiseur de Kokoro) tronque son chemin de données à 160 caractères ; le moteur copie les
 données sous un chemin court quand le venv est profond.
 

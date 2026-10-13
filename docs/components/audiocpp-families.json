@@ -1,0 +1,2193 @@
+{
+ "captured": "2026-10-13",
+ "families": {
+  "ace_step": {
+   "category": "audio_generation",
+   "commercial": "Yes",
+   "languages": [
+    "50+ languages"
+   ],
+   "license": "MIT",
+   "name": "ACE-Step",
+   "status": "supported",
+   "tasks": [
+    "music",
+    "edit"
+   ]
+  },
+  "apollo": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "CC-BY-SA-4.0",
+   "name": "Apollo",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "audio8_asr": {
+   "category": "asr",
+   "commercial": "No",
+   "languages": [
+    "en",
+    "zh",
+    "yue",
+    "ja",
+    "ko",
+    "fr",
+    "de"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "Audio8-ASR-0.1B",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "audio8_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "auto",
+    "yue",
+    "zh",
+    "nl",
+    "en",
+    "fr",
+    "de",
+    "it",
+    "ja",
+    "ko",
+    "pl",
+    "es"
+   ],
+   "license": "Apache-2.0",
+   "name": "Audio8 TTS Preview 0.6B",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "audio_flamingo": {
+   "category": "asr",
+   "commercial": "No",
+   "languages": [
+    "en"
+   ],
+   "license": "NVIDIA OneWay Noncommercial",
+   "name": "Audio Flamingo 3 / Next",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "audiosr": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "Apache-2.0",
+   "name": "AudioSR",
+   "status": "experimental",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "auk": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "MIT",
+   "name": "AuK",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "edit"
+   ]
+  },
+  "breeze_tts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "zh",
+    "en"
+   ],
+   "license": "BreezeBlue Research and Non-Commercial License",
+   "name": "BreezeTTS 2",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "bs_roformer": {
+   "category": "audio_tools",
+   "commercial": "Unclear",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "Apache-2.0, as listed in the audio.cpp GGUF repo",
+   "name": "BS-RoFormer",
+   "status": "supported",
+   "tasks": [
+    "sep"
+   ]
+  },
+  "builtin_audio_utils": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "BSD-3-Clause (RNNoise); MIT or Apache-2.0 (DeepFilterNet)",
+   "name": "Built-in Audio Utilities",
+   "status": "experimental",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "canary_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "de",
+    "es",
+    "fr"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "Canary 180M Flash",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "chatterbox": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ar",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "fi",
+    "fr",
+    "hi",
+    "it",
+    "ko",
+    "ms",
+    "nl",
+    "no",
+    "pl",
+    "pt",
+    "sv",
+    "sw",
+    "tr"
+   ],
+   "license": "MIT",
+   "name": "Chatterbox",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "vc"
+   ]
+  },
+  "chatterbox_turbo": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "MIT",
+   "name": "Chatterbox Turbo",
+   "status": "testing",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "citrinet_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "Citrinet ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "cohere_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "fr",
+    "de",
+    "es",
+    "it",
+    "pt",
+    "nl",
+    "pl",
+    "el",
+    "ar",
+    "ja",
+    "zh",
+    "vi",
+    "ko"
+   ],
+   "license": "Apache-2.0",
+   "name": "Cohere Transcribe",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "confucius4_r2t2": {
+   "category": "asr",
+   "commercial": "Conditional",
+   "languages": [
+    "zh",
+    "en",
+    "yue",
+    "ar",
+    "de",
+    "fr",
+    "es",
+    "pt",
+    "id",
+    "it",
+    "ko",
+    "ru",
+    "th",
+    "vi",
+    "ja",
+    "tr",
+    "hi",
+    "ms",
+    "nl",
+    "sv",
+    "da",
+    "fi",
+    "pl",
+    "cs",
+    "fil",
+    "fa",
+    "el",
+    "hu",
+    "mk",
+    "ro"
+   ],
+   "license": "NetEase Youdao Model License",
+   "name": "Confucius4-R2T2",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "confucius4_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "es",
+    "id",
+    "it",
+    "th",
+    "pt",
+    "ru",
+    "ms",
+    "vi"
+   ],
+   "license": "Apache-2.0",
+   "name": "Confucius4-TTS",
+   "status": "experimental",
+   "tasks": [
+    "clone"
+   ]
+  },
+  "controlfoley": {
+   "category": "audio_tools",
+   "commercial": "No",
+   "languages": [
+    "auto"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "ControlFoley",
+   "status": "experimental",
+   "tasks": [
+    "sfx"
+   ]
+  },
+  "cosyvoice3": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "es",
+    "fr",
+    "it",
+    "ru",
+    "yue"
+   ],
+   "license": "Apache-2.0",
+   "name": "CosyVoice3",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "crisperwhisper": {
+   "category": "asr",
+   "commercial": "No",
+   "languages": [
+    "af",
+    "am",
+    "ar",
+    "as",
+    "az",
+    "ba",
+    "be",
+    "bg",
+    "bn",
+    "bo",
+    "br",
+    "bs",
+    "ca",
+    "cs",
+    "cy",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "et",
+    "eu",
+    "fa",
+    "fi",
+    "fo",
+    "fr",
+    "gl",
+    "gu",
+    "ha",
+    "haw",
+    "he",
+    "hi",
+    "hr",
+    "ht",
+    "hu",
+    "hy",
+    "id",
+    "is",
+    "it",
+    "ja"
+   ],
+   "license": "nyra health Non-Commercial Research License",
+   "name": "CrisperWhisper 2.0",
+   "status": "supported",
+   "tasks": [
+    "asr",
+    "align"
+   ]
+  },
+  "dots_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "multilingual"
+   ],
+   "license": "Apache-2.0",
+   "name": "DotTTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "dramabox": {
+   "category": "tts",
+   "commercial": "Conditional",
+   "languages": [
+    "en"
+   ],
+   "license": "LTX-2 Community License",
+   "name": "DramaBox",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "echo_tts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "en"
+   ],
+   "license": "CC-BY-NC-SA-4.0",
+   "name": "Echo-TTS",
+   "status": "experimental",
+   "tasks": [
+    "clone"
+   ]
+  },
+  "f5_tts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "en",
+    "ar"
+   ],
+   "license": "CC-BY-NC-4.0 (F5-TTS); CC-BY-NC-SA-4.0 (Habibi-TTS)",
+   "name": "F5-TTS",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "firered_audio": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "FireRedAudio",
+   "status": "experimental",
+   "tasks": [
+    "asr",
+    "tts",
+    "clone",
+    "design",
+    "edit"
+   ]
+  },
+  "fireredtts3": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "Chinese",
+    "English",
+    "Cantonese",
+    "Japanese",
+    "Korean",
+    "Spanish",
+    "French",
+    "Russian",
+    "Arabic",
+    "Turkish",
+    "Indonesian",
+    "Portuguese",
+    "Italian",
+    "Dutch",
+    "Vietnamese",
+    "German",
+    "Ukrainian",
+    "Thai",
+    "Polish",
+    "Romanian",
+    "Greek",
+    "Czech",
+    "Finnish",
+    "Hindi",
+    "ZH_Anhui",
+    "ZH_Fujian",
+    "ZH_Gansu",
+    "ZH_Guizhou",
+    "ZH_Hebei",
+    "ZH_Henan",
+    "ZH_Hubei",
+    "ZH_Hunan",
+    "ZH_Jiangxi",
+    "ZH_Liaoning",
+    "ZH_Minnan",
+    "ZH_Ningxia",
+    "ZH_Shaanxi",
+    "ZH_Shandong",
+    "ZH_Shanghai",
+    "ZH_Shanxi"
+   ],
+   "license": "Apache-2.0",
+   "name": "FireRedTTS3",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "fish_audio": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "80+ languages"
+   ],
+   "license": "Fish Audio Research License",
+   "name": "Fish Audio S2 Pro",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "fun_asr_nano": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "auto",
+    "zh",
+    "en",
+    "ja"
+   ],
+   "license": "Apache-2.0",
+   "name": "Fun-ASR-Nano",
+   "status": "wip",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "gigaam_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "ru",
+    "kk",
+    "ky",
+    "uz",
+    "en"
+   ],
+   "license": "MIT",
+   "name": "GigaAM ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "glm_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en"
+   ],
+   "license": "MIT",
+   "name": "GLM-TTS",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "granite5asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "Granite Speech 5.0 470M TurboCTC",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "heartmula": {
+   "category": "audio_generation",
+   "commercial": "Yes",
+   "languages": [
+    "multilingual"
+   ],
+   "license": "Apache-2.0",
+   "name": "HeartMuLa",
+   "status": "supported",
+   "tasks": [
+    "music"
+   ]
+  },
+  "higgs_audio_stt": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "Higgs Audio v3 STT",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "higgs_audio_tts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "100+ languages"
+   ],
+   "license": "Boson Higgs TTS 3 Research and Non-Commercial License",
+   "name": "Higgs Audio v3 TTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "htdemucs": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "HTDemucs",
+   "status": "supported",
+   "tasks": [
+    "sep"
+   ]
+  },
+  "htdemucs_6stems": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "HTDemucs 6-stem",
+   "status": "supported",
+   "tasks": [
+    "sep"
+   ]
+  },
+  "hviske_asr": {
+   "category": "asr",
+   "commercial": "No",
+   "languages": [
+    "ar",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "fr",
+    "it",
+    "ja",
+    "ko",
+    "nl",
+    "pl",
+    "pt",
+    "vi",
+    "zh"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "Hviske ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "index_echo": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "es",
+    "ja"
+   ],
+   "license": "Apache-2.0",
+   "name": "Index-Echo-S2TT",
+   "status": "experimental",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "index_tts2": {
+   "category": "tts",
+   "commercial": "Conditional",
+   "languages": [
+    "zh",
+    "en",
+    "ja",
+    "es",
+    "ar"
+   ],
+   "license": "bilibili Model Use License",
+   "name": "IndexTTS2",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "inflect_v2": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "Inflect Micro v2",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "irodori_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ja"
+   ],
+   "license": "MIT",
+   "name": "Irodori-TTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "kitten_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "KittenTTS Mini 0.8",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "kitten_tts2": {
+   "category": "tts",
+   "commercial": "Conditional",
+   "languages": [
+    "en",
+    "ar",
+    "zh",
+    "fr",
+    "de",
+    "hi",
+    "it",
+    "pt",
+    "ru",
+    "es"
+   ],
+   "license": "Stellon Labs Community License",
+   "name": "Kitten TTS 2",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "kokoro_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en-us",
+    "en-gb",
+    "es",
+    "fr-fr",
+    "hi",
+    "it",
+    "ja",
+    "pt-br",
+    "zh"
+   ],
+   "license": "Apache-2.0",
+   "name": "Kokoro 82M",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "kroko_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "de",
+    "en",
+    "es",
+    "fr",
+    "it",
+    "he",
+    "nl",
+    "pt",
+    "sv",
+    "tr"
+   ],
+   "license": "CC-BY-SA",
+   "name": "Kroko Community ASR",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "kugelaudio": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "de",
+    "fr",
+    "es",
+    "it",
+    "pt",
+    "nl",
+    "pl",
+    "ru",
+    "uk",
+    "cs",
+    "ro",
+    "hu",
+    "sv",
+    "da",
+    "fi",
+    "no",
+    "el",
+    "bg",
+    "sk",
+    "hr",
+    "sr",
+    "tr"
+   ],
+   "license": "MIT",
+   "name": "KugelAudio-0-Open",
+   "status": "experimental",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "lfm2_audio": {
+   "category": "asr",
+   "commercial": "Conditional",
+   "languages": [
+    "en",
+    "ja"
+   ],
+   "license": "LFM Open License v1.0",
+   "name": "LFM2.5-Audio",
+   "status": "experimental",
+   "tasks": [
+    "asr",
+    "tts",
+    "s2s"
+   ]
+  },
+  "liveavatar": {
+   "category": "audio_generation",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "Apache-2.0",
+   "name": "LiveAvatar",
+   "status": "experimental",
+   "tasks": [
+    "sfx"
+   ]
+  },
+  "magpie_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ar-AE",
+    "ar-MSA",
+    "ar-SA",
+    "de",
+    "en",
+    "es",
+    "fr",
+    "hi",
+    "it",
+    "ko",
+    "pt-BR",
+    "vi",
+    "zh"
+   ],
+   "license": "NVIDIA Open Model License",
+   "name": "MagpieTTS Multilingual 357M",
+   "status": "supported",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "maya1": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0 (Maya1); MIT (SNAC)",
+   "name": "Maya1",
+   "status": "supported",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "meanvc2": {
+   "category": "voice_conversion",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "Apache-2.0",
+   "name": "MeanVC2",
+   "status": "supported",
+   "tasks": [
+    "vc"
+   ]
+  },
+  "mel_band_roformer": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "Mel-Band RoFormer",
+   "status": "supported",
+   "tasks": [
+    "sep"
+   ]
+  },
+  "midashenglm_gen": {
+   "category": "audio_generation",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "Apache-2.0",
+   "name": "MiDashengLM-Gen",
+   "status": "experimental",
+   "tasks": [
+    "music"
+   ]
+  },
+  "minimax_h3": {
+   "category": "audio_generation",
+   "commercial": "Conditional",
+   "languages": [
+    "auto"
+   ],
+   "license": "MiniMax H3 Community License",
+   "name": "MiniMax-H3",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "music",
+    "sfx"
+   ]
+  },
+  "minimax_music3": {
+   "category": "audio_generation",
+   "commercial": "Conditional",
+   "languages": [
+    "auto"
+   ],
+   "license": "MiniMax-Music3 Community License",
+   "name": "MiniMax Music 3",
+   "status": "experimental",
+   "tasks": [
+    "music"
+   ]
+  },
+  "miocodec": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "MioCodec",
+   "status": "supported",
+   "tasks": [
+    "vc",
+    "s2s"
+   ]
+  },
+  "miotts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "ja"
+   ],
+   "license": "Apache-2.0",
+   "name": "MioTTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "mira_tts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "en"
+   ],
+   "license": "CC-BY-NC-SA-4.0",
+   "name": "MiraTTS",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "mms_forced_aligner": {
+   "category": "speech_analysis",
+   "commercial": "No",
+   "languages": [
+    "multilingual"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "Meta MMS-300M Forced Aligner",
+   "status": "community",
+   "tasks": [
+    "align"
+   ]
+  },
+  "moonshine_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "MIT",
+   "name": "Moonshine Streaming ASR",
+   "status": "experimental",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "moss_transcribe_diarize": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "auto",
+    "50+ languages"
+   ],
+   "license": "Apache-2.0",
+   "name": "MOSS-Transcribe-Diarize",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "moss_tts_local": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ar",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "fa",
+    "fi",
+    "fr",
+    "he",
+    "hi",
+    "hu",
+    "it",
+    "ja",
+    "ko",
+    "mk",
+    "ms",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sv",
+    "sw",
+    "th",
+    "tl",
+    "tr",
+    "vi",
+    "yue",
+    "zh"
+   ],
+   "license": "Apache-2.0",
+   "name": "MOSS-TTS-Local",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "moss_tts_nano": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ar",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "fa",
+    "fr",
+    "hu",
+    "it",
+    "ja",
+    "ko",
+    "pl",
+    "pt",
+    "ru",
+    "sv",
+    "tr",
+    "zh"
+   ],
+   "license": "Apache-2.0",
+   "name": "MOSS-TTS-Nano",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "moss_tts_v15": {
+   "category": "community",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "Apache-2.0",
+   "name": "MOSS-TTS-v1.5",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "moss_ttsd": {
+   "category": "community",
+   "commercial": "?",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "?",
+   "name": "MOSS-TTSD",
+   "status": "experimental",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "moss_voicegen": {
+   "category": "community",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "Apache-2.0",
+   "name": "MOSS-VoiceGenerator",
+   "status": "community",
+   "tasks": [
+    "design"
+   ]
+  },
+  "muscriptor": {
+   "category": "audio_tools",
+   "commercial": "No",
+   "languages": [
+    "music"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "MuScriptor",
+   "status": "supported",
+   "tasks": [
+    "midi"
+   ]
+  },
+  "nemotron_3_diar": {
+   "category": "speech_analysis",
+   "commercial": "Yes",
+   "languages": [
+    "multilingual"
+   ],
+   "license": "OpenMDW-1.1",
+   "name": "Nemotron 3 Diarization",
+   "status": "supported",
+   "tasks": [
+    "diar"
+   ]
+  },
+  "nemotron_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "ar-AR",
+    "bg-BG",
+    "cs-CZ",
+    "da-DK",
+    "de-DE",
+    "el-GR",
+    "en-GB",
+    "en-US",
+    "es-ES",
+    "es-US",
+    "et-EE",
+    "fi-FI",
+    "fr-CA",
+    "fr-FR",
+    "he-IL",
+    "hi-IN",
+    "hr-HR",
+    "hu-HU",
+    "it-IT",
+    "ja-JP",
+    "ko-KR",
+    "lt-LT",
+    "lv-LV",
+    "mt-MT",
+    "nb-NO",
+    "nl-NL",
+    "nn-NO",
+    "pl-PL",
+    "pt-BR",
+    "pt-PT",
+    "ro-RO",
+    "ru-RU",
+    "sk-SK",
+    "sl-SI",
+    "sv-SE",
+    "th-TH",
+    "tr-TR",
+    "uk-UA",
+    "vi-VN",
+    "zh-CN"
+   ],
+   "license": "OpenMDW-1.1",
+   "name": "Nemotron 3.5 ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "neutts": {
+   "category": "tts",
+   "commercial": "Conditional",
+   "languages": [
+    "en"
+   ],
+   "license": "NeuTTS Open License v1.0",
+   "name": "NeuTTS",
+   "status": "supported",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "niagara_asr": {
+   "category": "asr",
+   "commercial": "Conditional",
+   "languages": [
+    "en"
+   ],
+   "license": "Applied Brain Research Open License v1.1",
+   "name": "Niagara ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "omnivoice": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "600+ languages"
+   ],
+   "license": "CC-BY-NC",
+   "name": "OmniVoice",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "outetts": {
+   "category": "tts",
+   "commercial": "No",
+   "languages": [
+    "ar",
+    "be",
+    "bn",
+    "de",
+    "en",
+    "es",
+    "fa",
+    "fr",
+    "hu",
+    "it",
+    "ja",
+    "ka",
+    "ko",
+    "lt",
+    "lv",
+    "nl",
+    "pl",
+    "pt",
+    "ru",
+    "sw",
+    "ta",
+    "uk",
+    "zh"
+   ],
+   "license": "CC-BY-NC-SA-4.0",
+   "name": "Llama-OuteTTS 1.0",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "owsm": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "abk",
+    "afr",
+    "amh",
+    "ara",
+    "asm",
+    "ast",
+    "aze",
+    "bak",
+    "bas",
+    "bel",
+    "ben",
+    "bos",
+    "bre",
+    "bul",
+    "cat",
+    "ceb",
+    "ces",
+    "chv",
+    "ckb",
+    "cmn",
+    "cnh",
+    "cym",
+    "dan",
+    "deu",
+    "dgd",
+    "div",
+    "ell",
+    "eng",
+    "epo",
+    "est",
+    "eus",
+    "fas",
+    "fil",
+    "fin",
+    "fra",
+    "frr",
+    "ful",
+    "gle",
+    "glg",
+    "grn"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "OWSM",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "owsm_ctc": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "abk",
+    "afr",
+    "amh",
+    "ara",
+    "asm",
+    "ast",
+    "aze",
+    "bak",
+    "bas",
+    "bel",
+    "ben",
+    "bos",
+    "bre",
+    "bul",
+    "cat",
+    "ceb",
+    "ces",
+    "chv",
+    "ckb",
+    "cmn",
+    "cnh",
+    "cym",
+    "dan",
+    "deu",
+    "dgd",
+    "div",
+    "ell",
+    "eng",
+    "epo",
+    "est",
+    "eus",
+    "fas",
+    "fil",
+    "fin",
+    "fra",
+    "frr",
+    "ful",
+    "gle",
+    "glg",
+    "grn"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "OWSM-CTC",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "parakeet_tdt": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "bg",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "en",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "hr",
+    "hu",
+    "it",
+    "lt",
+    "lv",
+    "mt",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "uk"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "Parakeet-TDT 0.6B v3",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "personaplex": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "NVIDIA Open Model License",
+   "name": "PersonaPlex",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "piper_tts": {
+   "category": "tts",
+   "commercial": "Unclear",
+   "languages": [
+    "en"
+   ],
+   "license": "MIT",
+   "name": "Piper TTS",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "pocket_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "de",
+    "it",
+    "pt",
+    "es"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "PocketTTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "pulsevad": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "PulseVAD",
+   "status": "supported",
+   "tasks": [
+    "vad"
+   ]
+  },
+  "qwen3_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "yue",
+    "ar",
+    "de",
+    "fr",
+    "es",
+    "pt",
+    "id",
+    "it",
+    "ko",
+    "ru",
+    "th",
+    "vi",
+    "ja",
+    "tr",
+    "hi",
+    "ms",
+    "nl",
+    "sv",
+    "da",
+    "fi",
+    "pl",
+    "cs",
+    "fil",
+    "fa",
+    "el",
+    "hu",
+    "mk",
+    "ro",
+    "zh dialects"
+   ],
+   "license": "Apache-2.0",
+   "name": "Qwen3-ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "qwen3_forced_aligner": {
+   "category": "speech_analysis",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "yue",
+    "fr",
+    "de",
+    "it",
+    "ja",
+    "ko",
+    "pt",
+    "ru",
+    "es"
+   ],
+   "license": "Apache-2.0",
+   "name": "Qwen3 Forced Aligner",
+   "status": "supported",
+   "tasks": [
+    "align"
+   ]
+  },
+  "qwen3_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "ja",
+    "ko",
+    "de",
+    "fr",
+    "ru",
+    "pt",
+    "es",
+    "it"
+   ],
+   "license": "Apache-2.0",
+   "name": "Qwen3-TTS",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "reuse": {
+   "category": "audio_tools",
+   "commercial": "No",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "NVIDIA One-Way Noncommercial License (NSCLv1)",
+   "name": "RE-USE",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "rvc": {
+   "category": "voice_conversion",
+   "commercial": "Unclear",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "RVC",
+   "status": "experimental",
+   "tasks": [
+    "vc"
+   ]
+  },
+  "sam_audio": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "SAM License",
+   "name": "SAM Audio",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "samsone": {
+   "category": "asr",
+   "commercial": "Unclear",
+   "languages": [
+    "en"
+   ],
+   "license": "Not stated",
+   "name": "SAMSONE",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "sanotts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "vi",
+    "id",
+    "cs",
+    "de",
+    "es",
+    "fr",
+    "it",
+    "pt",
+    "ro",
+    "ru",
+    "tr",
+    "ne",
+    "hi"
+   ],
+   "license": "GPL-3.0",
+   "name": "sanoTTS Nano",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "seed_vc": {
+   "category": "voice_conversion",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "GPL-3.0",
+   "name": "Seed-VC",
+   "status": "supported",
+   "tasks": [
+    "vc",
+    "svc"
+   ]
+  },
+  "sense_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "auto",
+    "zh",
+    "en",
+    "yue",
+    "ja",
+    "ko",
+    "pt",
+    "ru",
+    "es",
+    "it",
+    "fr",
+    "de",
+    "nl",
+    "pl",
+    "tr",
+    "ar",
+    "hi",
+    "vi",
+    "th",
+    "id",
+    "ms",
+    "fa",
+    "nospeech"
+   ],
+   "license": "FunASR Model Open Source License v1.1",
+   "name": "SenseVoice-Small",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "sheetsage2": {
+   "category": "audio_tools",
+   "commercial": "No",
+   "languages": [
+    "music"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "SheetSage2",
+   "status": "supported",
+   "tasks": [
+    "midi"
+   ]
+  },
+  "sidon": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "Sidon v0.1",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "smart_turn": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "auto"
+   ],
+   "license": "BSD-2-Clause",
+   "name": "Smart Turn v3.2",
+   "status": "supported",
+   "tasks": [
+    "turn"
+   ]
+  },
+  "soprano_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en"
+   ],
+   "license": "Apache-2.0",
+   "name": "Soprano",
+   "status": "community",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "sopro_tts": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "pt",
+    "fr",
+    "de"
+   ],
+   "license": "Apache-2.0",
+   "name": "Sopro V2 Turbo",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "sortformer_diar": {
+   "category": "speech_analysis",
+   "commercial": "No",
+   "languages": [
+    "en"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "Sortformer Diarization",
+   "status": "supported",
+   "tasks": [
+    "diar"
+   ]
+  },
+  "sortformer_diar_v2": {
+   "category": "speech_analysis",
+   "commercial": "Yes",
+   "languages": [
+    "multilingual"
+   ],
+   "license": "NVIDIA Open Model License",
+   "name": "Sortformer Diarization v2.1",
+   "status": "community",
+   "tasks": [
+    "diar"
+   ]
+  },
+  "stable_audio": {
+   "category": "audio_generation",
+   "commercial": "Conditional",
+   "languages": [
+    "en"
+   ],
+   "license": "Stability AI Community License",
+   "name": "Stable Audio 3",
+   "status": "supported",
+   "tasks": [
+    "music",
+    "sfx",
+    "edit"
+   ]
+  },
+  "supertonic": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "ko",
+    "ja",
+    "ar",
+    "bg",
+    "cs",
+    "da",
+    "de",
+    "el",
+    "es",
+    "et",
+    "fi",
+    "fr",
+    "hi",
+    "hr",
+    "hu",
+    "id",
+    "it",
+    "lt",
+    "lv",
+    "nl",
+    "pl",
+    "pt",
+    "ro",
+    "ru",
+    "sk",
+    "sl",
+    "sv",
+    "tr",
+    "uk",
+    "vi"
+   ],
+   "license": "BigScience OpenRAIL-M",
+   "name": "Supertonic 3",
+   "status": "supported",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "tone_color_vc": {
+   "category": "voice_conversion",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "MIT",
+   "name": "Tone Color VC",
+   "status": "experimental",
+   "tasks": [
+    "vc"
+   ]
+  },
+  "universr": {
+   "category": "audio_tools",
+   "commercial": "Yes",
+   "languages": [
+    "language_agnostic"
+   ],
+   "license": "CC-BY-4.0",
+   "name": "UniverSR",
+   "status": "supported",
+   "tasks": [
+    "s2s"
+   ]
+  },
+  "vevo2": {
+   "category": "voice_conversion",
+   "commercial": "No",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "CC-BY-NC-ND-4.0",
+   "name": "Vevo2",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "music",
+    "vc",
+    "edit",
+    "svc",
+    "s2s"
+   ]
+  },
+  "vibeasr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh",
+    "fr",
+    "it",
+    "ko",
+    "pt",
+    "vi"
+   ],
+   "license": "MIT",
+   "name": "VibeVoice-ASR-BitNet",
+   "status": "community",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "vibevoice": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "MIT",
+   "name": "VibeVoice",
+   "status": "supported",
+   "tasks": [
+    "tts"
+   ]
+  },
+  "vibevoice_asr": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "auto",
+    "51 languages"
+   ],
+   "license": "MIT",
+   "name": "VibeVoice ASR",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "vibevoice_asr_streaming": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh",
+    "es",
+    "pt",
+    "de",
+    "ja",
+    "ko",
+    "fr",
+    "ru",
+    "it"
+   ],
+   "license": "MIT",
+   "name": "VibeVoice ASR Streaming",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "vieneu_v3_turbo": {
+   "category": "tts",
+   "commercial": "?",
+   "languages": [
+    "vi",
+    "en"
+   ],
+   "license": "?",
+   "name": "VieNeu-TTS v3 Turbo",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "voxcpm1": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "zh",
+    "en",
+    "ja",
+    "ko"
+   ],
+   "license": "Apache-2.0",
+   "name": "VoxCPM1",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  },
+  "voxcpm2": {
+   "category": "tts",
+   "commercial": "Yes",
+   "languages": [
+    "ar",
+    "my",
+    "zh",
+    "zh dialects",
+    "da",
+    "nl",
+    "en",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "he",
+    "hi",
+    "id",
+    "it",
+    "ja",
+    "km",
+    "ko",
+    "lo",
+    "ms",
+    "no",
+    "pl",
+    "pt",
+    "ru",
+    "es",
+    "sw",
+    "sv",
+    "tl",
+    "th",
+    "tr",
+    "vi"
+   ],
+   "license": "Apache-2.0",
+   "name": "VoxCPM2",
+   "status": "supported",
+   "tasks": [
+    "tts",
+    "clone",
+    "design"
+   ]
+  },
+  "voxtral_realtime": {
+   "category": "asr",
+   "commercial": "Yes",
+   "languages": [
+    "en",
+    "zh",
+    "hi",
+    "es",
+    "ar",
+    "fr",
+    "pt",
+    "ru",
+    "de",
+    "ja",
+    "ko",
+    "it",
+    "nl"
+   ],
+   "license": "Apache-2.0",
+   "name": "Voxtral Mini 4B Realtime",
+   "status": "supported",
+   "tasks": [
+    "asr"
+   ]
+  },
+  "yue2": {
+   "category": "audio_generation",
+   "commercial": "No",
+   "languages": [
+    "en"
+   ],
+   "license": "CC-BY-NC-4.0",
+   "name": "YuE2",
+   "status": "supported",
+   "tasks": [
+    "music"
+   ]
+  },
+  "zipvoice": {
+   "category": "tts",
+   "commercial": "Unclear",
+   "languages": [
+    "en",
+    "zh"
+   ],
+   "license": "Not stated",
+   "name": "ZipVoice",
+   "status": "community",
+   "tasks": [
+    "tts",
+    "clone"
+   ]
+  }
+ },
+ "release": "v0.9.1"
+}
