@@ -15,12 +15,11 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .. import audio_packs, db, repo, voices
-from ..audio_worker import run_transcribe
 from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
 from ..engine_install import installer
-from .. import hf_search
+from .. import hf_search, transcription
 from ..engines import MODELS, custom, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings, new_seed
@@ -731,31 +730,23 @@ class TranscribeBody(BaseModel):
 
 @router.post("/voices/{voice_id}/transcribe")
 async def transcribe_voice(voice_id: str, body: TranscribeBody) -> dict[str, Any]:
-    """Re-transcribe a voice sample with Whisper; a transcript improves cloning."""
+    """Suggest a transcript for a voice sample (improves cloning). The user can always correct it afterwards."""
     from ..downloads import downloads as dl
-    from ..engines.base import repo_cache_dir
 
     voice = voices.get_voice(voice_id)
     if not voice:
         raise HTTPException(404, "Voix introuvable.")
-    stt = [m.id for m in MODELS.values() if m.audio and m.audio.task == "stt"]
-    candidates = [body.model_id] if body.model_id else sorted(stt, key=lambda i: (i not in ("whisper-small", "whisper-large-v3-turbo"), i))
-    spec = next((MODELS[m] for m in candidates if m in MODELS and dl.status(MODELS[m])["state"] == "installed"), None)
+    spec, why = transcription.choose(
+        transcription.ordered(MODELS, body.model_id),
+        downloaded=lambda m: dl.status(m)["state"] == "installed",
+        engine_ready=lambda m: audio_packs.is_installed(m.options["pack"]))
     if spec is None:
-        raise HTTPException(409, "Aucun modèle de transcription n'est téléchargé : installez « Whisper Small » "
-                                 "(Modèles → Audio).")
-    pack = spec.options["pack"]
-    if not audio_packs.is_installed(pack):
-        raise HTTPException(409, "Le moteur « Voix légères » n'est pas installé (Modèles → Moteurs).")
-    snaps = sorted((repo_cache_dir(spec.options["repo"]) / "snapshots").glob("*"))
-    if not snaps:
-        raise HTTPException(409, "Modèle de transcription introuvable sur le disque.")
+        raise HTTPException(409, why)
     path = str(voices.voice_path(voice["url"].rsplit("/", 1)[-1]))
     try:
-        result = await asyncio.to_thread(run_transcribe, pack, path, str(snaps[-1]), body.language or voice["language"])
+        return await asyncio.to_thread(transcription.transcribe, spec, path, body.language or voice["language"])
     except Exception as exc:  # noqa: BLE001
         raise HTTPException(500, str(exc)) from None
-    return result
 
 
 # Real-time events

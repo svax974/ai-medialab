@@ -89,7 +89,7 @@ export function ModelsDialog() {
               <div className="space-y-3">
                 <div>
                   <div className="eyebrow">Transcription</div>
-                  <p className="mt-1 text-[12px] leading-snug text-faint">Retranscrit l'extrait d'une voix à cloner (la transcription améliore la fidélité).</p>
+                  <p className="mt-1 text-[12px] leading-snug text-faint">Retranscrit l'extrait d'une voix à cloner (la transcription améliore la fidélité). Le texte proposé reste modifiable dans l'éditeur de voix.</p>
                 </div>
                 {speech.map((m) => <ModelCard key={m.id} model={m} system={system} />)}
               </div>
@@ -222,6 +222,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
         )}
         {m.download_size_gb ? <span className="rounded-md bg-surface px-1.5 py-px font-mono text-[10px] text-ink-2 ring-1 ring-line" title="Taille du modèle">{formatModelSize(m.download_size_gb)}</span> : null}
         {m.custom && <span className="rounded-md bg-safe-soft px-1.5 py-px font-mono text-[10px] text-ink-2">Hugging Face</span>}
+        {m.plan.degraded && <span className="rounded-full bg-warn/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-warn" title={m.plan.note}>lent · processeur</span>}
         {loaded && <span className="rounded-full bg-ok/15 px-1.5 py-px font-mono text-[9.5px] uppercase tracking-wider text-ok">en mémoire</span>}
         {installed && <span className="flex items-center gap-1 font-mono text-[10.5px] text-ok"><Check className="size-3" />installé · {gb(m.installed_gb)} Go</span>}
         {m.install === "partial" && !dl && <span className="font-mono text-[10.5px] text-warn">incomplet · {gb(m.installed_gb)} Go présents</span>}
@@ -244,7 +245,7 @@ function ModelCard({ model: m, system }: { model: ModelInfo; system?: SystemInfo
       {m.variants.length > 1 && <VariantPicker model={m} disabled={deleting} />}
 
       {(m.plan.note || m.engine_reason) && (
-        <div className={cx("mt-2.5 flex items-start gap-2 text-[12px] leading-snug", m.compatible ? "text-muted" : "text-warn")}>
+        <div className={cx("mt-2.5 flex items-start gap-2 text-[12px] leading-snug", m.compatible && !m.plan.degraded ? "text-muted" : "text-warn")}>
           <CircleAlert className="mt-px size-3.5 shrink-0" />
           {m.engine_reason || m.plan.note}
         </div>

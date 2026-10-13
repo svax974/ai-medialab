@@ -244,7 +244,7 @@ function Studio({ initialFile, voiceId, onClose }: { initialFile?: File; voiceId
                     {busy === "transcribe" ? <Spinner className="size-3" /> : <Sparkles className="size-3.5" />} Transcrire automatiquement
                   </button>
                 ) : (
-                  <span className="text-[11.5px] text-faint">Whisper n'est pas installé · <WhisperInstall /></span>
+                  <span className="text-[11.5px] text-faint">Aucun modèle de transcription installé (voir Modèles → Audio) · <WhisperInstall /></span>
                 )
               }
             >

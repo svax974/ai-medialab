@@ -33,10 +33,22 @@ def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
     need = (spec.weights_gb or 0) * 1.6 + 1.5
     if ram < need:
         return {"fits": False, "strategy": "none", "note": f"Il faut ≈ {need:.0f} Go de mémoire ({ram:.0f} Go ici)."}
-    gpu_tagged = "GPU" in spec.tags
-    if gpu_tagged and not system["accelerators"]:
-        return {"fits": True, "strategy": "full", "note": "Aucun GPU détecté : ce modèle sera très lent sur processeur."}
-    return {"fits": True, "strategy": "full", "note": ""}
+    return {"fits": True, "strategy": "full", "note": "", **_degraded(spec, system)}
+
+
+def _degraded(spec, system: dict[str, Any]) -> dict[str, Any]:
+    """Marks a PyTorch model that would run on the CPU here because no GPU it can drive exists, and names the GGUF
+    twin (audio.cpp, any GPU) when there is one. Models made for the CPU (tag "CPU") and native engines never are."""
+    pack = audio_packs.PACKS.get(spec.options.get("pack", ""))
+    if spec.backend != "pack" or not pack or pack.native or "CPU" in spec.tags:
+        return {}
+    if audio_packs.torch_acceleration(system):
+        return {}
+    twin = MODELS.get(spec.options.get("twin", ""))
+    note = "Aucun GPU exploitable par PyTorch ici (CUDA, ROCm sous Linux ou Metal) : ce modèle tournera sur le processeur, très lentement."
+    if twin:
+        note += f" Alternative qui utilise votre GPU : « {twin.name} »."
+    return {"degraded": True, "alternative": {"id": twin.id, "name": twin.name} if twin else None, "note": note}
 
 
 def _video_pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
@@ -88,6 +100,9 @@ def _engine_name(spec, engine: dict[str, Any]) -> str:
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
     """Plain-language description of what installing brings (UI text)."""
     if spec.backend == "pack":
+        pack = audio_packs.PACKS.get(engine.get("pack") or "")
+        if pack and pack.native:  # prebuilt binaries: nothing Python to install
+            return f"Programme autonome : {engine.get('pack_contents') or ''}".rstrip()
         return f"environnement Python isolé avec {engine.get('pack_contents') or ''}".rstrip()
     if spec.backend == "sdcpp":
         dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
@@ -102,6 +117,48 @@ def _variant_info(base, v, selected: str) -> dict[str, Any]:
             "need_gb": round(max(0.0, v.size_gb - st["size_gb"]), 2), "selected": v.key == selected}
 
 
+def engine_for(backend: str, pack: str | None, system: dict[str, Any]) -> dict[str, Any]:
+    """Engine status (same shape as `system["engines"]`) for a model backend, on this machine."""
+    if backend == "demo":
+        return {"available": True}
+    if backend == "pack":
+        return audio_packs.engine_info(pack or "")
+    return system["engines"].get(backend, {"available": False, "reason": "Moteur inconnu."})
+
+
+def engine_compat(backend: str, pack: str | None = None, system: dict[str, Any] | None = None) -> dict[str, Any]:
+    """{compatible, reason}: can this machine run (or install the engine for) a model of this backend?
+
+    Shared by the preset list and the Hugging Face search so both mark the same models as unusable."""
+    engine = engine_for(backend, pack, system or get_system())
+    ok = bool(engine["available"] or engine.get("installable"))
+    return {"compatible": ok, "reason": "" if ok else engine.get("reason", "")}
+
+
+def _engine_and_plan(spec, system: dict[str, Any]) -> tuple[dict[str, Any], bool, dict[str, Any]]:
+    """(engine status, engine usable, memory plan) of a model on this machine."""
+    engine = engine_for(spec.backend, spec.options.get("pack"), system)
+    # An engine the app can install is not a blocker; the UI offers to install it.
+    usable = bool(engine["available"] or engine.get("installable"))
+    if not usable:
+        plan = {"fits": False, "strategy": "none", "note": engine.get("reason", "")}
+    elif spec.backend == "pack":
+        plan = _pack_plan(spec, system)
+    else:
+        plan = memory_plan(spec.weights_gb, spec.largest_component_gb, system, spec.backend,
+                           spec.options.get("overhead_gb", 0.0))
+    return engine, usable, plan
+
+
+def plan_for(spec, system: dict[str, Any] | None = None) -> dict[str, Any]:
+    """{compatible, note, degraded}: can this machine run the model, and what to tell the user when it cannot.
+
+    The same verdict as the model list, for a model that is not in it yet (Hugging Face search)."""
+    _engine, usable, plan = _engine_and_plan(spec, system or get_system())
+    return {"compatible": bool(usable and plan["fits"]), "note": plan.get("note", ""),
+            "degraded": bool(plan.get("degraded"))}
+
+
 def describe_models() -> dict[str, Any]:
     system = get_system()
     settings = load_settings()
@@ -113,21 +170,7 @@ def describe_models() -> dict[str, Any]:
         if spec.backend == "mlx" and not apple:
             continue  # MLX only runs on Apple Silicon Macs, no point listing it elsewhere
         m = spec.to_public()
-        if spec.backend == "demo":
-            engine = {"available": True}
-        elif spec.backend == "pack":
-            engine = audio_packs.engine_info(spec.options["pack"])
-        else:
-            engine = system["engines"].get(spec.backend, {"available": False, "reason": "Moteur inconnu."})
-        # An engine the app can install is not a blocker; the UI offers to install it.
-        usable_engine = bool(engine["available"] or engine.get("installable"))
-        if not usable_engine:
-            plan = {"fits": False, "strategy": "none", "note": engine.get("reason", "")}
-        elif spec.backend == "pack":
-            plan = _pack_plan(spec, system)
-        else:
-            plan = memory_plan(spec.weights_gb, spec.largest_component_gb, system, spec.backend,
-                               spec.options.get("overhead_gb", 0.0))
+        engine, usable_engine, plan = _engine_and_plan(spec, system)
         status = downloads.status(spec)
         job = downloads.job(spec.id)
         compatible = bool(usable_engine and plan["fits"])
@@ -159,6 +202,7 @@ def describe_models() -> dict[str, Any]:
         mine = [m for m in models if m["kind"] == kind and not (m.get("audio") or {}).get("task") == "stt"]
         ready = [m for m in mine if m["ready"]]
         usable = [m for m in mine if m["compatible"]]
+        usable = [m for m in usable if not m["plan"].get("degraded")] or usable  # slow-on-CPU models only as a last resort
         by_id = {m["id"]: m for m in usable}
         starter = next((by_id[i] for i in order if i in by_id), usable[0] if usable else None)
         # Default: a ready model, else one already downloaded, else the recommended one.

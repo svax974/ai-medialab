@@ -20,6 +20,7 @@ import os
 import re
 import shutil
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -94,8 +95,9 @@ def _http_json(url: str) -> Any:
         return json.load(r)
 
 
-def _download(url: str, dest: Path, on_bytes: Callable[[int], None], cancel: threading.Event | None) -> str:
-    if not url.startswith(DOWNLOAD_PREFIX):
+def _download(url: str, dest: Path, on_bytes: Callable[[int], None], cancel: threading.Event | None,
+              prefix: str = DOWNLOAD_PREFIX) -> str:
+    if not url.startswith(prefix):
         raise RuntimeError(f"Adresse de téléchargement inattendue : {url}")
     sha = hashlib.sha256()
     req = urllib.request.Request(url, headers={"User-Agent": "ai-medialab"})
@@ -117,6 +119,19 @@ def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
         if root != target and root not in target.parents:
             raise RuntimeError(f"Archive refusée : chemin hors du dossier cible ({info.filename})")
     zf.extractall(dest)
+
+
+def safe_extract_tar(tf: tarfile.TarFile, dest: Path) -> None:
+    """Same guarantee for tarballs: regular files and folders only, nothing outside the target folder."""
+    root = dest.resolve()
+    members = tf.getmembers()
+    for m in members:
+        target = (dest / m.name).resolve()
+        if root != target and root not in target.parents:
+            raise RuntimeError(f"Archive refusée : chemin hors du dossier cible ({m.name})")
+        if not (m.isfile() or m.isdir()):
+            raise RuntimeError(f"Archive refusée : entrée non ordinaire ({m.name})")
+    tf.extractall(dest, members=members)
 
 
 def install_variant(

@@ -119,7 +119,7 @@ export const HELP: Record<string, Help> = {
   transcript: {
     title: "Transcription de l'extrait",
     body: "Texte exact prononcé dans l'extrait. Facultatif, mais il aide le modèle à mieux « entendre » la voix et améliore nettement la fidélité du clonage avec Qwen3. Elle doit correspondre mot pour mot à ce qui est dit, sinon elle dégrade le résultat.",
-    tip: "« Transcrire automatiquement » (Whisper) fait le travail ; relisez et corrigez.",
+    tip: "« Transcrire automatiquement » propose un texte ; relisez-le et corrigez-le toujours si besoin.",
   },
   max_chars: {
     title: "Longueur du texte",

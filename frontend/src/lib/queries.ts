@@ -32,7 +32,7 @@ export function useActiveModel(kind: ModelKind = "image"): ModelInfo | undefined
   const { data } = useModels();
   const stored = useStore((s) => (kind === "audio" ? s.audioModelId : kind === "video" ? s.videoModelId : s.modelId));
   if (!data) return undefined;
-  // Transcription (Whisper) is not a generation model: never offered in the composer.
+  // Transcription (Whisper, Qwen3-ASR) is not a generation model: never offered in the composer.
   const mine = data.models.filter((m) => m.kind === kind && m.audio?.task !== "stt");
   const defaultId = kind === "audio" ? data.audio.default_model_id : kind === "video" ? data.video?.default_model_id : data.default_model_id;
   return mine.find((m) => m.id === stored) ?? mine.find((m) => m.id === defaultId) ?? mine[0];

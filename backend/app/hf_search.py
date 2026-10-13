@@ -16,10 +16,11 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from . import db
-from .catalog import quant_from_name
+from .catalog import engine_compat, plan_for, quant_from_name
 from .engines import MODELS
-from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, slug,
+from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, build, slug,
                              video_template_id)
+from .system import get_system
 
 FAMILY_LABEL = {
     "gguf-variant": "GGUF",
@@ -31,6 +32,11 @@ FAMILY_LABEL = {
 }
 TASK = {"gguf-variant": "image", "sd-diffusers": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
         "video-diffusers": "video", "video-gguf": "video"}
+# Engine (backend, audio pack) that runs each family, as the presets declare it.
+FAMILY_ENGINE: dict[str, tuple[str, str | None]] = {
+    "gguf-variant": ("sdcpp", None), "video-gguf": ("sdcpp", None), "sd-diffusers": ("torch", None),
+    "video-diffusers": ("torch", None), "qwen3-tts": ("pack", "qwen3"), "whisper-ct2": ("pack", "speech"),
+}
 # Repos quantized in a format the Python Qwen3-TTS engine can't load.
 _NOT_TORCH = re.compile(r"gguf|mlx|onnx|gptq|awq|bnb|[-_ ](?:4|8)-?bit|int[48]|fp8", re.I)
 
@@ -113,6 +119,7 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
     except Exception as exc:  # noqa: BLE001
         raise HubError(f"Hugging Face est injoignable ({type(exc).__name__}). Vérifiez la connexion.") from None
     seen: dict[str, dict[str, Any]] = {}
+    system = get_system()
     for m in (m for b in batches for m in b):
         if m.id in seen or "not-for-all-audiences" in (m.tags or []):
             continue
@@ -125,8 +132,10 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
             "downloads": m.downloads or 0, "likes": m.likes or 0,
             "base": details.get("base") or details.get("pipeline") or "",
             "already": _existing_for(m.id),
+            **engine_compat(*FAMILY_ENGINE[family], system),
         }
-    return sorted(seen.values(), key=lambda r: -r["downloads"])[:limit]
+    # Models this machine can run first, then by popularity.
+    return sorted(seen.values(), key=lambda r: (not r["compatible"], -r["downloads"]))[:limit]
 
 
 def _size_gb(n: int | None) -> float:
@@ -173,6 +182,28 @@ def _dominant_dtype(info, repo: str = "", filename: str = "") -> str:
 
 
 def inspect(repo: str) -> dict[str, Any]:
+    """What the repo offers, with for each variant whether this machine can run it (`fits`, `fit_note`)."""
+    out = _inspect(repo)
+    system = get_system()
+    for opt in out["options"]:
+        opt.update(_fit(out["family"], repo, out["license"], opt, opt.pop("_r", {}), system))
+    return out
+
+
+def _fit(family: str, repo: str, license_: str, opt: dict[str, Any], extra: dict[str, Any],
+         system: dict[str, Any]) -> dict[str, Any]:
+    """Memory verdict for one variant, from the very spec the model would get if added (same rule as the model list).
+    Best effort: an unexpected repo layout yields no verdict rather than breaking the inspection."""
+    recipe = {"family": family, "id": "custom-preview", "repo": repo, "name": _title(repo), "license": license_,
+              "precision": opt["precision"], "size_gb": opt["size_gb"], **extra}
+    try:
+        verdict = plan_for(build(recipe), system)
+    except Exception:  # noqa: BLE001
+        return {}
+    return {"fits": verdict["compatible"], "fit_note": verdict["note"]}
+
+
+def _inspect(repo: str) -> dict[str, Any]:
     try:
         info = _api().model_info(repo, files_metadata=True)
     except Exception as exc:  # noqa: BLE001
@@ -190,7 +221,7 @@ def inspect(repo: str) -> dict[str, Any]:
     files = {s.rfilename: (s.size or 0) for s in info.siblings or []}
     license_ = _license(tags)
     out: dict[str, Any] = {"repo": repo, "family": family, "family_label": FAMILY_LABEL[family], "license": license_,
-                           "notes": [], "options": []}
+                           "notes": [], "options": [], **engine_compat(*FAMILY_ENGINE[family])}
 
     if family == "gguf-variant":
         template = next(m for m in MODELS.values() if m.id == details["template"])
@@ -202,7 +233,8 @@ def inspect(repo: str) -> dict[str, Any]:
             raise HubError("Aucun fichier GGUF de diffusion dans ce dépôt.")
         for f, n in sorted(ggufs.items(), key=lambda kv: kv[1]):
             q = quant_from_name(f) or "GGUF"
-            out["options"].append({"key": f, "label": q, "precision": q, "file": f, "size_gb": _size_gb(n)})
+            out["options"].append({"key": f, "label": q, "precision": q, "file": f, "size_gb": _size_gb(n),
+                                   "_r": {"template": template.id, "file": f}})
         out["notes"].append(f"Exécuté comme « {template.name} » : l'encodeur de texte et le VAE du modèle de référence "
                             "sont réutilisés.")
         return out
@@ -210,7 +242,9 @@ def inspect(repo: str) -> dict[str, Any]:
     if family == "sd-diffusers":
         sel = _select_diffusers(repo, files, details["pipeline"])
         out["options"].append({"key": "default", "label": sel["precision"], "precision": sel["precision"],
-                               "size_gb": sel["size_gb"]})
+                               "size_gb": sel["size_gb"],
+                               "_r": {"pipeline": details["pipeline"], "files": sel["files"], "fp16": sel["fp16"],
+                                      "weights_gb": sel["weights_gb"], "largest_gb": sel["largest_gb"]}})
         out["notes"].append("Format diffusers (PyTorch) : nécessite le moteur PyTorch et un GPU.")
         return out
 
@@ -221,7 +255,9 @@ def inspect(repo: str) -> dict[str, Any]:
         template = next(m for m in MODELS.values() if m.id == tpl)
         out["template"] = {"id": tpl, "name": template.name}
         out["options"].append({"key": "default", "label": sel["precision"], "precision": sel["precision"],
-                               "size_gb": sel["size_gb"]})
+                               "size_gb": sel["size_gb"],
+                               "_r": {"pipeline": pipeline, "template": tpl, "files": sel["files"],
+                                      "weights_gb": sel["weights_gb"], "largest_gb": sel["largest_gb"]}})
         out["notes"].append(f"Format diffusers (PyTorch) : exécuté avec les réglages de « {template.name} », nécessite "
                             "le moteur PyTorch, un GPU et beaucoup de mémoire.")
         return out
@@ -236,7 +272,8 @@ def inspect(repo: str) -> dict[str, Any]:
             raise HubError("Aucun fichier GGUF de diffusion à la racine de ce dépôt.")
         for f, n in sorted(ggufs.items(), key=lambda kv: kv[1]):
             q = quant_from_name(f) or "GGUF"
-            out["options"].append({"key": f, "label": q, "precision": q, "file": f, "size_gb": _size_gb(n)})
+            out["options"].append({"key": f, "label": q, "precision": q, "file": f, "size_gb": _size_gb(n),
+                                   "_r": {"template": template.id, "file": f}})
         out["notes"].append(f"Exécuté comme « {template.name} » : l'encodeur de texte et le VAE du modèle de référence "
                             "sont réutilisés.")
         return out
@@ -255,7 +292,8 @@ def inspect(repo: str) -> dict[str, Any]:
         size = _size_gb(files["model.safetensors"] + files["speech_tokenizer/model.safetensors"])
         out["options"].append({"key": "default", "label": {"custom_voice": "voix & style", "voice_design": "création de voix",
                                                            "base": "clonage"}[variant],
-                               "precision": _dominant_dtype(info, repo, "model.safetensors") or "bf16", "size_gb": size})
+                               "precision": _dominant_dtype(info, repo, "model.safetensors") or "bf16", "size_gb": size,
+                               "_r": {"variant": variant, "speakers": []}})
         return out
 
     # whisper-ct2
@@ -310,6 +348,11 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
     opt = next((o for o in info["options"] if o["key"] == key), None)
     if opt is None:
         raise HubError("Variante inconnue pour ce dépôt.")
+    # The UI already disables the button; this is the check that counts (a direct call must not get around it).
+    if not info["compatible"]:
+        raise HubError(info["reason"] or "Ce modèle ne peut pas tourner sur cette machine.")
+    if opt.get("fits") is False:
+        raise HubError(opt.get("fit_note") or "Pas assez de mémoire pour cette variante.")
     family = info["family"]
     base = {"family": family, "repo": repo, "license": info["license"], "precision": opt["precision"],
             "size_gb": opt["size_gb"], "name": _title(repo)}

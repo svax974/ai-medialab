@@ -101,3 +101,65 @@ def test_mlx_qwen_has_no_bf16_download():
     assert all(s.repo != "Qwen/Qwen-Image-2.1" for v in spec.variants for s in v.sources)
     assert with_variant(spec, None).options["model_path"] == "mlx-community/Qwen-Image-2.1-mflux-q4"
     assert spec.default_quantize is None
+
+
+def _system(engines):
+    return {"engines": engines, "os": "Linux", "accelerators": [], "unusable_gpus": []}
+
+
+def test_engine_compat_marks_unusable_backends():
+    from app.catalog import engine_compat
+
+    system = _system({"torch": {"available": False, "reason": "Aucun GPU exploitable par PyTorch."},
+                      "sdcpp": {"available": True, "device": "vulkan"}})
+    assert engine_compat("sdcpp", None, system) == {"compatible": True, "reason": ""}
+    torch = engine_compat("torch", None, system)
+    assert torch["compatible"] is False and "PyTorch" in torch["reason"]
+    # an engine the app can install is not a blocker
+    system["engines"]["sdcpp"] = {"available": False, "installable": True, "reason": "absent"}
+    assert engine_compat("sdcpp", None, system)["compatible"] is True
+
+
+def test_every_family_has_an_engine():
+    assert set(hf_search.FAMILY_ENGINE) == set(hf_search.FAMILY_LABEL)
+
+
+class TestMemoryVerdict:
+    """Hugging Face variants are checked against this machine's memory before being offered or added."""
+
+    @staticmethod
+    def machine(ram, vram):
+        return {"os": "Windows", "arch": "x86_64", "ram_gb": ram, "disk": {"free_gb": 100}, "unusable_gpus": [],
+                "accelerators": [{"vendor": "nvidia", "backend": "cuda", "name": "g", "memory_gb": vram, "unified": False}],
+                "engines": {"sdcpp": {"available": True, "device": "vulkan"}, "torch": {"available": True, "device": "cuda"}}}
+
+    def fit(self, size, system, family="gguf-variant"):
+        extra = {"template": "z-image-turbo-gguf", "file": "x.gguf"}
+        opt = {"precision": "Q8_0", "size_gb": size}
+        return hf_search._fit(family, "u/Z-Image-Turbo-GGUF", "apache-2.0", opt, extra, system)
+
+    def test_a_variant_that_fits_is_accepted(self):
+        assert self.fit(3.0, self.machine(32, 12))["fits"] is True
+
+    def test_a_variant_too_big_for_ram_and_vram_is_refused_with_the_numbers(self):
+        r = self.fit(13.0, self.machine(8, 4))
+        assert r["fits"] is False and "ne suffisent pas" in r["fit_note"]
+
+    def test_a_slow_but_possible_variant_is_accepted_with_a_warning(self):
+        r = self.fit(13.0, self.machine(32, 4))
+        assert r["fits"] is True and "plus lent" in r["fit_note"]
+
+    def test_an_unreadable_layout_gives_no_verdict_instead_of_an_error(self):
+        assert hf_search._fit("gguf-variant", "u/x", "mit", {"precision": "Q4", "size_gb": 1}, {}, self.machine(32, 12)) == {}
+
+    def test_adding_is_refused_server_side(self, monkeypatch):
+        info = {"family": "gguf-variant", "license": "mit", "compatible": True, "reason": "",
+                "options": [{"key": "a", "label": "Q8", "precision": "Q8", "size_gb": 13, "file": "a.gguf",
+                             "fits": False, "fit_note": "Pas assez de mémoire."}], "template": {"id": "z-image-turbo-gguf", "name": "Z"}}
+        monkeypatch.setattr(hf_search, "inspect", lambda repo: info)
+        with pytest.raises(hf_search.HubError, match="Pas assez"):
+            hf_search.make_recipe("u/r", "a")
+        info["options"][0]["fits"] = True
+        info["compatible"], info["reason"] = False, "Aucun GPU exploitable."
+        with pytest.raises(hf_search.HubError, match="Aucun GPU"):
+            hf_search.make_recipe("u/r", "a")

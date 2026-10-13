@@ -67,7 +67,7 @@ export const HubSearch = forwardRef<HTMLInputElement, { kind: ModelKind }>(funct
 
 function Result({ r, open, onToggle }: { r: HubResult; open: boolean; onToggle: () => void }) {
   return (
-    <div className={cx("rounded-xl border bg-surface/60 transition-colors", open ? "border-line-strong" : "border-line")}>
+    <div className={cx("rounded-xl border bg-surface/60 transition-colors", open ? "border-line-strong" : "border-line", !r.compatible && "opacity-75")}>
       <button onClick={onToggle} className="flex w-full items-center gap-2.5 px-3 py-2 text-left">
         <ChevronRight className={cx("size-3.5 shrink-0 text-faint transition-transform", open && "rotate-90")} />
         <div className="min-w-0 flex-1">
@@ -77,6 +77,7 @@ function Result({ r, open, onToggle }: { r: HubResult; open: boolean; onToggle: 
             <span>{TASK_LABEL[r.task]}</span>
             <span>· {compact(r.downloads)} téléch.</span>
             {r.already && <span className="text-ok">· déjà dans la liste</span>}
+            {!r.compatible && <span className="text-warn">· incompatible avec cette machine</span>}
           </div>
         </div>
       </button>
@@ -98,7 +99,11 @@ function Detail({ r }: { r: HubResult }) {
     onError: (e) => toast.error((e as Error).message),
   });
   const options = data?.options ?? [];
-  const chosen = options.find((o) => o.key === pick) ?? (options.length ? (options.find((o) => /^Q4_K/.test(o.label)) ?? options[Math.floor(options.length / 2)]) : null);
+  // Default pick: a variant this machine can run (Q4_K if possible), never one it cannot.
+  const runnable = options.filter((o) => o.fits !== false);
+  const pool = runnable.length ? runnable : options;
+  const chosen = options.find((o) => o.key === pick) ?? (pool.length ? (pool.find((o) => /^Q4_K/.test(o.label)) ?? pool[Math.floor(pool.length / 2)]) : null);
+  const blocked = !data?.compatible || chosen?.fits === false;
 
   return (
     <div className="space-y-2.5 border-t border-line px-3 pb-3 pt-2.5">
@@ -121,7 +126,9 @@ function Detail({ r }: { r: HubResult }) {
                     className={cx(
                       "rounded-md px-2 py-1 font-mono text-[11px] ring-1 transition-colors",
                       o.key === chosen.key ? "bg-safe-soft text-ink ring-safe/50" : "bg-surface text-muted ring-line hover:text-ink",
+                      o.fits === false && "opacity-60 line-through decoration-warn/60",
                     )}
+                    title={o.fit_note || undefined}
                   >
                     {o.label} <span className="text-faint">{gb(o.size_gb)} Go</span>
                   </button>
@@ -135,11 +142,21 @@ function Detail({ r }: { r: HubResult }) {
             <span>licence <b className="font-normal text-ink-2">{data.license || "voir le dépôt"}</b></span>
           </div>
           {data.notes.map((n) => <p key={n} className="text-[12px] leading-snug text-faint">{n}</p>)}
+          {data.compatible && chosen.fit_note && (
+            <p className={cx("flex items-start gap-2 text-[12px] leading-snug", chosen.fits === false ? "text-warn" : "text-muted")}>
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" /> {chosen.fit_note}
+            </p>
+          )}
+          {!data.compatible && (
+            <p className="flex items-start gap-2 text-[12px] leading-snug text-warn">
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" /> {data.reason || "Ce modèle ne peut pas tourner sur cette machine."}
+            </p>
+          )}
           <div className="flex items-center gap-2">
             {r.already ? (
               <span className="flex items-center gap-1 text-[12.5px] text-ok"><Check className="size-3.5" /> Déjà dans la liste</span>
             ) : (
-              <Button variant="primary" disabled={add.isPending} onClick={() => add.mutate(chosen.key)}>
+              <Button variant="primary" disabled={add.isPending || blocked} onClick={() => add.mutate(chosen.key)}>
                 {add.isPending ? <Spinner /> : <Download className="size-4" />}
                 Ajouter et télécharger
               </Button>

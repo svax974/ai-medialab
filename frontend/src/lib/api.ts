@@ -115,7 +115,15 @@ export interface ModelInfo {
   engine_available: boolean;
   engine_reason: string | null;
   compatible: boolean;
-  plan: { fits: boolean; strategy: "full" | "model_offload" | "sequential" | "none"; note: string };
+  plan: {
+    fits: boolean;
+    strategy: "full" | "model_offload" | "sequential" | "none";
+    note: string;
+    /** Works, but only on the CPU here (no GPU its engine can drive): very slow. */
+    degraded?: boolean;
+    /** Same model on an engine that does use this machine's GPU, when one exists. */
+    alternative?: { id: string; name: string } | null;
+  };
   install: "installed" | "partial" | "missing";
   installed_gb: number;
   download: DownloadProgress | null;
@@ -155,6 +163,9 @@ export interface HubResult {
   base: string;
   /** Id of the model already in the list, if any. */
   already: string | null;
+  /** Whether this machine can run (or install the engine for) the model; `reason` says why not. */
+  compatible: boolean;
+  reason: string;
 }
 
 export interface HubOption {
@@ -162,6 +173,10 @@ export interface HubOption {
   label: string;
   precision: string;
   size_gb: number;
+  /** Whether this machine has the memory for this variant (absent when the repo layout gave no verdict). */
+  fits?: boolean;
+  /** Why not, or a speed warning (part of the model stays in RAM...). */
+  fit_note?: string;
 }
 
 export interface HubInspect {
@@ -172,6 +187,8 @@ export interface HubInspect {
   notes: string[];
   template?: { id: string; name: string };
   options: HubOption[];
+  compatible: boolean;
+  reason: string;
 }
 
 export interface DownloadProgress {

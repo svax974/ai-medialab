@@ -185,11 +185,13 @@ def _qwen_sources(name: str, gb: float) -> list[HfSource]:
 
 
 def _qwen(id: str, name: str, repo: str, gb: float, caps: AudioCaps, description: str, tags: list[str],
-          params: list[ParamSpec] | None = None) -> ModelSpec:
+          params: list[ParamSpec] | None = None, twin: str = "") -> ModelSpec:
+    # `twin`: the same model in GGUF for audio.cpp (any GPU), suggested when this one would run on the CPU.
     return ModelSpec(
         id=id, name=name, family="Qwen3-TTS", kind="audio", description=description,
         engine="qwen3_engine:Qwen3Engine", backend="pack",
-        options={"pack": "qwen3", "variant": repo.split("-")[-1].lower(), "repo": f"Qwen/Qwen3-TTS-12Hz-{repo}"},
+        options={"pack": "qwen3", "variant": repo.split("-")[-1].lower(), "repo": f"Qwen/Qwen3-TTS-12Hz-{repo}",
+                 "twin": twin},
         text_to_image=False, params=params or [], sources=_qwen_sources(repo, gb),
         download_size_gb=gb, weights_gb=gb, license="Apache-2.0", tags=tags, audio=caps, precision="bf16",
     )
@@ -205,6 +207,7 @@ QWEN_CUSTOM = _qwen(
               max_chars=400),
     "Neuf voix premium multilingues, pilotables par une consigne de style en langage naturel (émotion, débit, ton).",
     ["style", "multilingue", "GPU"], [_QWEN_TEMPERATURE],
+    twin="qwen3-tts-gguf-custom",
 )
 QWEN_CUSTOM_SMALL = _qwen(
     "qwen3-tts-custom-small", "Qwen3-TTS · Voix & style 0.6B", "0.6B-CustomVoice", 2.52,
@@ -220,6 +223,7 @@ QWEN_DESIGN = _qwen(
     "Inventez une voix à partir d'une simple description (âge, timbre, caractère, émotion). Enregistrez celles que "
     "vous aimez dans votre bibliothèque.",
     ["voice design", "multilingue", "GPU"], [_QWEN_TEMPERATURE],
+    twin="qwen3-tts-gguf-design",
 )
 QWEN_CLONE = _qwen(
     "qwen3-tts-clone", "Qwen3-TTS · Clonage 1.7B", "1.7B-Base", 4.54,
@@ -227,12 +231,14 @@ QWEN_CLONE = _qwen(
     "Clonage de voix multilingue à partir de quelques secondes d'enregistrement ; la transcription de l'extrait "
     "améliore la fidélité.",
     ["clonage", "multilingue", "GPU"], [_QWEN_TEMPERATURE],
+    twin="qwen3-tts-gguf-clone",
 )
 QWEN_CLONE_SMALL = _qwen(
     "qwen3-tts-clone-small", "Qwen3-TTS · Clonage 0.6B", "0.6B-Base", 2.52,
     AudioCaps(languages=QWEN_LANGS, voices=[], clone="optional", max_chars=400),
     "Clonage de voix multilingue, version compacte.",
     ["clonage", "multilingue", "léger"], [_QWEN_TEMPERATURE],
+    twin="qwen3-tts-gguf-clone-small",
 )
 
 # Transcription (of a reference voice sample)

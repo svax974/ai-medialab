@@ -79,6 +79,8 @@ class PackDef:
     rocm: str = "rocm6.4"
     # Folders of `<runtime>/shims/` put on the worker's import path (stand-ins for optional compiled libraries).
     shims: tuple[str, ...] = ()
+    # Name of the prebuilt native runtime this pack installs instead of a Python environment ("" = Python pack).
+    native: str = ""
 
 
 PACKS: dict[str, PackDef] = {
@@ -102,6 +104,15 @@ PACKS: dict[str, PackDef] = {
         torch_packages=("torch", "torchaudio"),
         engine="PyTorch",
         contents="la bibliothèque qwen-tts (le calcul passe par le GPU quand il y en a un).",
+    ),
+    # Native runtime: prebuilt ggml binaries, no Python environment (see `audiocpp.py`). Runs on any GPU through Metal,
+    # CUDA or Vulkan, and on the CPU. Registered models are in `engines/audiocpp_specs.py`.
+    "audiocpp": PackDef(
+        id="audiocpp",
+        name="audio.cpp (GGUF, tout GPU)",
+        requirements=(), imports=(), size_mb=60, native="audiocpp",
+        engine="audio.cpp (ggml)",
+        contents="le moteur audio.cpp précompilé (Metal, CUDA, Vulkan ou processeur selon la machine), sans Python ni PyTorch.",
     ),
     # Video packs: NVIDIA (or AMD on Linux) only, versions pinned to what the authors tested.
     "kiwi": PackDef(
@@ -194,12 +205,20 @@ def pack_env(pack_id: str) -> dict[str, str]:
     if pack:
         paths += [str(runtime_dir(pack_id) / "shims" / name) for name in pack.shims]
     env = {"PYTHONPATH": os.pathsep.join(paths)} if paths else {}
+    if pack and pack.native == "audiocpp":
+        from . import audiocpp
+
+        if found := audiocpp.installed_binary():
+            env.update(AUDIOCPP_VARIANT=found[0], AUDIOCPP_BIN=str(found[1]))
     if pack and pack.family == "video":
         env["HF_HUB_OFFLINE"] = "1"
     return env
 
 
 def venv_python(pack_id: str) -> Path:
+    pack = PACKS.get(pack_id)
+    if pack and pack.native:  # no environment of its own: the worker runs on the server's interpreter
+        return Path(sys.executable)
     base = pack_dir(pack_id) / "venv"
     return base / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
 
@@ -226,6 +245,10 @@ def find_uv() -> str | None:
 
 def is_installed(pack_id: str) -> bool:
     pack = PACKS.get(pack_id)
+    if pack and pack.native:
+        from . import audiocpp
+
+        return audiocpp.installed_binary() is not None
     marker = pack_dir(pack_id) / "ready.json"
     if not pack or not venv_python(pack_id).is_file() or not marker.is_file():
         return False
@@ -248,6 +271,18 @@ def can_install(python: str = PYTHON_VERSION) -> tuple[bool, str]:
 def _gpu_vendors(system: dict[str, Any]) -> set[str]:
     """GPU makers the machine has, even when the main runtime's PyTorch cannot use them (the pack ships its own)."""
     return {a["vendor"] for a in system.get("accelerators", [])} | {g["vendor"] for g in system.get("unusable_gpus", [])}
+
+
+def torch_acceleration(system: dict[str, Any]) -> bool:
+    """Whether a GPU the audio packs' own PyTorch can drive is present.
+
+    NVIDIA (CUDA wheels on Windows and Linux), AMD on Linux (ROCm wheels) and Apple Silicon (Metal). Not covered, so
+    such machines run PyTorch packs on the CPU: AMD on Windows (ROCm there is a preview limited to Radeon RX 7000/9000,
+    served by AMD's own wheels, see `desktop/runtime/profiles.json`: not used by `_torch_index`), Intel (PyTorch has an
+    XPU backend, not wired in the engines) and any GPU only Vulkan can use (PyTorch's Vulkan backend is unmaintained).
+    Extend this together with `_torch_index` when one of those paths is added and tested."""
+    vendors = _gpu_vendors(system)
+    return "nvidia" in vendors or "apple" in vendors or ("amd" in vendors and system.get("os") == "Linux")
 
 
 def unsupported_reason(pack: PackDef, system: dict[str, Any]) -> str | None:
@@ -273,7 +308,7 @@ def engine_info(pack_id: str) -> dict[str, Any]:
     if blocked:  # listed with its description, but no install is offered
         return {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents,
                 "pack_engine": pack.engine, "reason": blocked}
-    ok, why = can_install(python_of(pack))
+    ok, why = (True, "") if pack.native else can_install(python_of(pack))
     info: dict[str, Any] = {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents, "pack_engine": pack.engine,
                             "reason": f"Le moteur « {pack.name} » n'est pas installé."}
     if ok:
@@ -334,7 +369,7 @@ class PackInstaller:
         blocked = unsupported_reason(pack, system)
         if blocked:
             raise RuntimeError(blocked)
-        ok, why = can_install(python_of(pack))
+        ok, why = (True, "") if pack.native else can_install(python_of(pack))
         if not ok:
             raise RuntimeError(why)
         free_mb = system["disk"]["free_gb"] * 1024
@@ -345,7 +380,7 @@ class PackInstaller:
         self._set(state="running", pack=pack_id, name=pack.name, message="Préparation…", error=None,
                   started_at=time.time(), size_mb=pack.size_mb)
         accelerators = system["accelerators"]
-        if pack.gpu:  # the pack brings its own PyTorch: use the GPU the OS sees even if the main runtime's one can't
+        if pack.gpu or pack.native:  # the pack brings its own runtime: use the GPU the OS sees even if the main one can't
             accelerators = accelerators + system.get("unusable_gpus", [])
         asyncio.create_task(asyncio.to_thread(self._run, pack, accelerators))
         return self.public()
@@ -404,7 +439,27 @@ class PackInstaller:
         if not kept:
             raise RuntimeError("Le code officiel téléchargé ne contient pas les dossiers attendus.")
 
+    def _run_native(self, pack: PackDef, accelerators: list[dict[str, Any]]) -> None:
+        from . import audiocpp
+        from .engine_install import InstallCancelled
+
+        def progress(done: int, total: int, message: str) -> None:
+            if time.time() - getattr(self, "_last_progress", 0.0) > 0.4 or done >= total:
+                self._last_progress = time.time()
+                self._set(message=message, detail=f"{done >> 20} / {total >> 20} Mo")
+
+        try:
+            res = audiocpp.install([a["vendor"] for a in accelerators], progress=progress, cancel=self._cancel)
+            self._set(state="done", message="Installé", detail=res["variant"])
+            bus.publish("models.changed", {})
+        except InstallCancelled:
+            self._set(state="cancelled", message="Annulé", detail="")
+        except Exception as exc:  # noqa: BLE001
+            self._set(state="error", error=str(exc), message="Échec de l'installation", detail="")
+
     def _run(self, pack: PackDef, accelerators: list[dict[str, Any]]) -> None:
+        if pack.native:
+            return self._run_native(pack, accelerators)
         target = pack_dir(pack.id)
         venv = target / "venv"
         try:
@@ -447,6 +502,11 @@ class PackInstaller:
     def uninstall(self, pack_id: str) -> None:
         if self.running and self.state.get("pack") == pack_id:
             raise RuntimeError("Une installation est en cours.")
+        pack = PACKS.get(pack_id)
+        if pack and pack.native:
+            from . import audiocpp
+
+            shutil.rmtree(audiocpp.install_root(), ignore_errors=True)
         shutil.rmtree(pack_dir(pack_id), ignore_errors=True)  # blocking; the caller publishes `models.changed`
 
 
