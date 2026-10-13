@@ -14,6 +14,7 @@ import { CommonModule } from 'src/modules_shared/common/CommonModule';
 import { AuthCoreModule } from 'src/modules_shared/common/auth/AuthCoreModule';
 import { sharedPlugins, sharedPluginModules } from 'src/modules_shared/plugins.generated';
 import { EngineModule } from 'src/modules/engine/EngineModule';
+import { HardwareModule } from 'src/modules/hardware';
 import { AudioStudioModule } from 'src/modules/audio-studio';
 import { LegacyImportModule } from 'src/modules/legacy-import';
 import { MediaLibraryModule } from 'src/modules/media-library';
@@ -47,6 +48,7 @@ if (authPlugins.length > 1) {
     StudioCoreModule,
     AudioStudioModule,
     SettingsModule,
+    HardwareModule,
     LegacyImportModule,
   ],
   controllers: [],

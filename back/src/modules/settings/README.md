@@ -2,31 +2,56 @@
 
 ## Rôle
 
-Déclare les **réglages du studio** (anciennement la table `settings` de la base du moteur) comme configuration de module
-du gabarit : valeurs par défaut semées au démarrage, administration générique, `hf_token` chiffré. Module d'application.
-
-État (tâche H2) : schéma et enregistrement seulement, plus la correspondance avec les anciennes clés (utilisée par
-l'importateur). Le panneau de réglages, les routes et la transmission au moteur sont la tâche H4.1.
+**Source de vérité des réglages du studio** (anciennement la table `settings` de la base du moteur). Ils sont déclarés comme
+configuration de module du gabarit (valeurs par défaut semées au démarrage, `hf_token` chiffré), exposés par `GET/PUT
+/api/settings` (même URL et même forme publique que l'ancienne route du moteur) et **transmis au moteur** au démarrage et à
+chaque changement. Module d'application. Tâche H4.1.
 
 ## Architecture
 
 | Type | Fichier | Description |
 |---|---|---|
-| Module | `SettingsModule.ts` | Importe `CommonModule`, fournit l'enregistrement du schéma. |
+| Module | `SettingsModule.ts` | Importe `CommonModule`, déclare le contrôleur et les services, exporte `SettingsService`. |
 | Schéma | `configSchema.ts` | `settingsConfigSchema` (moduleId `studio`). |
+| Contrôleur | `controllers/SettingsController.ts` | `GET/PUT /api/settings` (administrateur, `local-trust` inclus ; JSON en clair, `NoTransportCrypt`). |
+| Service | `services/SettingsService.ts` | Lecture (défauts si absent), mise à jour (validation, envoi au moteur, enregistrement), `pushToEngine()`. Appels sérialisés. |
+| Service | `services/SettingsEngineSync.ts` | Envoie l'état au moteur au démarrage et à chaque reconnexion du flux d'événements (`EngineEventRelay.linkChanges$`). |
+| Pures | `services/settingsPatch.ts` | `parseSettingsPatch` (422 sur un mauvais type), `applyPatch` (fusion des cartes par modèle), `toPublic`, `DEFAULT_SETTINGS`. |
 | Service | `services/SettingsConfigRegistration.ts` | `OnApplicationBootstrap` : `moduleConfigService.register(schema)`. |
-| Correspondance | `legacySettings.ts` | `LEGACY_SETTING_KEYS`, `mapLegacySettings()` (ancienne clé vers clé de configuration, valeurs invalides écartées). |
+| Correspondance | `legacySettings.ts` | `LEGACY_SETTING_KEYS`, `mapLegacySettings()` (utilisée par l'importateur). |
+| Types | `types/settingsTypes.ts` | `StudioSettings`, `PublicSettings`, `SettingsPatch`. |
 
 Libellés : `back/src/locales/custom.fr.json` et `custom.en.json` (clés `custom.settings.*`).
 
 ## Dépendances
 
-`common` : `ModuleConfigService`, `ConfigurationService` (stockage dans la table `config`).
+`common` : `ModuleConfigService`, `ConfigurationService` (table `config`). `engine` : `EngineClient` (typé), `EngineEventRelay`,
+`engineErrorToHttp`. `legacy-import` appelle `SettingsService.pushToEngine()` après avoir importé les réglages de l'ancienne base.
 
 ## Endpoints exposés (exhaustif)
 
-Aucun propre à ce module. Les valeurs sont lisibles et modifiables par les routes d'administration de `common`
-(`GET`/`PUT /api/v1/admin/module-configs/studio`, `GET …/secret/studio_hfToken`).
+| Méthode | Endpoint | Auth | Description |
+|---|---|---|---|
+| `GET` | `/api/settings` | Admin | Réglages publics : `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`. Le jeton n'est **jamais** renvoyé. |
+| `PUT` | `/api/settings` | Admin | Sous-ensemble des mêmes clés + `hf_token` (`''` le retire). Renvoie l'état public. |
+
+Erreurs de `PUT` : 422 si un type est faux (`keep_alive_minutes` entier de -1 à 1440, booléens, cartes `model_id -> entier|null` et
+`model_id -> texte`) ; 422 relayé du moteur (modèle ou quantification inconnus) ; 409 relayé du moteur (changer la
+quantification du modèle chargé pendant une génération). Dans ces cas **rien n'est enregistré**.
+
+## Transmission au moteur
+
+Le moteur ne lit plus ces réglages dans sa base : Nest lui envoie l'état **complet** par `PUT /engine/v1/runtime/settings`
+(route réservée à Nest, protégée par `X-Engine-Token`, absente de l'ancien préfixe `/api`) :
+
+1. au démarrage (`SettingsEngineSync.onApplicationBootstrap`), puis à chaque (re)connexion du flux d'événements (le moteur a pu
+   redémarrer et a perdu sa mémoire) ;
+2. après l'import des réglages de l'ancienne base (`LegacyImportBootstrap`) ;
+3. à chaque `PUT /api/settings` : le moteur valide **avant** l'enregistrement (il connaît les modèles).
+
+Si le moteur est injoignable au moment d'un `PUT`, les valeurs sont enregistrées (la validation du moteur est alors sautée) et
+envoyées à la prochaine connexion ; un refus tardif est journalisé. Tant que Nest n'a rien envoyé, le moteur garde le
+comportement antérieur (valeurs de sa propre base).
 
 ## Entités
 
@@ -37,28 +62,28 @@ Aucune (table `config` de `common`).
 | `studio_keepAliveMinutes` | `keep_alive_minutes` | nombre | 10 | Inactivité avant de décharger le modèle ; -1 jamais, 0 après chaque génération. |
 | `studio_previews` | `previews` | booléen | vrai | Aperçus intermédiaires des images. |
 | `studio_lowMemory` | `low_memory` | booléen | vrai | Libère l'encodeur de texte après l'encodage du prompt. |
-| `studio_quantize` | `quantize` | json (masqué) | `{}` | `model_id` vers bits de quantification. |
-| `studio_variant` | `variant` | json (masqué) | `{}` | `model_id` vers variante de quantification. |
+| `studio_quantize` | `quantize` | json (masqué) | `{}` | `model_id` vers bits de quantification (écrit par le dialogue des modèles, H4.2). |
+| `studio_variant` | `variant` | json (masqué) | `{}` | `model_id` vers variante de quantification (H4.2). |
 | `studio_hfToken` | `hf_token` | `secret` | vide | Jeton Hugging Face (modèles à accès restreint), chiffré. |
 
-## Qui lit ces réglages (et ce que H4.1 doit faire)
-
-Le moteur les lit lui-même dans **sa** base (`db.get_settings()`) : `keep_alive_minutes`, `previews`, `low_memory`,
-`quantize` et `variant` dans `engine/app/jobs.py` (déchargement, aperçus, options du worker, quantification choisie) et
-`engine/app/catalog.py` (précision affichée dans le catalogue), `hf_token` dans `downloads.py` et `hf_search.py`
-(téléchargements et recherche Hugging Face) ainsi que `jobs.py` (jeton passé au worker). Tant que le moteur garde ses
-routes `/api` et sa base (jusqu'à H6), ces lectures continuent de marcher et les réglages restent donc dans les **deux**
-bases : celle du moteur fait foi pour lui, la configuration de Nest est une copie importée une fois.
-
-Proposition pour H4.1 (non implémentée ici) : Nest devient la source et pousse les valeurs au moteur sans qu'il ait besoin de
-lire une base : (1) `PUT /engine/v1/settings` (ou un nouvel `PUT /engine/v1/config`) appelé par Nest au démarrage du moteur
-(détecté par `EngineHealthContributor`/relais SSE) et après chaque modification ; (2) en H4.3 (moteur sans état), les
-valeurs propres à un job (`low_memory`, `quantize`, variante, `hf_token` pour les modèles à accès restreint) voyagent dans
-le job lui-même, et `keep_alive_minutes` / `previews` dans la configuration poussée. `quantize` et `variant` sont aussi
-validés par le moteur (modèle connu, bits pris en charge) : Nest doit relayer l'erreur 422 du moteur. Le jeton n'est jamais
-renvoyé au navigateur (`has_hf_token` seulement, comme aujourd'hui).
+Les valeurs restent lisibles et modifiables par les routes d'administration de `common` (`GET`/`PUT
+/api/v1/admin/module-configs/studio`) ; une modification faite par là n'est **pas** transmise au moteur avant le prochain
+démarrage ou la prochaine reconnexion (limite connue).
 
 ## Points d'extension
 
-H4.1 : contrôleur de réglages (forme publique actuelle : les clés ci-dessus en snake_case + `has_hf_token`), panneau,
-transmission au moteur.
+- H4.3 (moteur sans état) : les valeurs propres à un job (`low_memory`, `quantize`, variante, jeton) voyageront dans le job ;
+  `keep_alive_minutes` et `previews` restent dans la configuration poussée.
+- Un nouveau réglage : champ du schéma, clé de `LEGACY_SETTING_KEYS` si l'ancienne base le portait, `StudioSettings`,
+  `parseSettingsPatch`, `RuntimeSettings` du moteur (`engine/app/api/runtime.py`), puis `npm run engine:types`.
+
+## Tests
+
+Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh 3` :
+
+```sh
+npx jest --runInBand src/modules/settings/services/settingsPatch.spec.ts
+```
+
+`services/{settingsPatch,SettingsService,SettingsEngineSync}.spec.ts` (faux moteur HTTP, configuration de module simulée),
+`controllers/SettingsController.spec.ts`, `legacySettings.spec.ts`. Côté moteur : `engine/tests/test_runtime_settings.py`.

@@ -15,7 +15,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import db
+from . import runtime_settings
 from .engines import MODELS, all_specs, get_spec
 from .engines.base import HfSource, ModelSpec, _matches, _source_status, hf_hub_dir, installation_status, repo_cache_dir
 from .events import bus
@@ -79,7 +79,7 @@ class DownloadManager:
         spec = get_spec(model_id)
         if not spec.all_sources():
             raise ValueError("Ce modèle n'a rien à télécharger.")
-        if spec.gated and not db.get_settings().get("hf_token"):
+        if spec.gated and not runtime_settings.get_settings().get("hf_token"):
             raise RuntimeError(GATED_MESSAGE)
         if (j := self.jobs.get(model_id)) and j.state == "running":
             return j
@@ -140,7 +140,7 @@ class DownloadManager:
         known: list[int | None] = [None] * len(sources)  # real sizes, known once a repo has been handled
         done_before = 0
         env = dict(os.environ)
-        token = db.get_settings().get("hf_token")
+        token = runtime_settings.get_settings().get("hf_token")
         if token:
             env["HF_TOKEN"] = token
         env.setdefault("HF_HUB_DISABLE_TELEMETRY", "1")

@@ -15,7 +15,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
-from . import db
+from . import runtime_settings
 from .catalog import engine_compat, plan_for, quant_from_name
 from .engines import MODELS
 from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, build, slug,
@@ -48,7 +48,7 @@ class HubError(RuntimeError):
 def _api():
     from huggingface_hub import HfApi
 
-    return HfApi(token=db.get_settings().get("hf_token") or None)
+    return HfApi(token=runtime_settings.get_settings().get("hf_token") or None)
 
 
 def _tag_values(tags: list[str], prefix: str) -> list[str]:
@@ -145,7 +145,7 @@ def _size_gb(n: int | None) -> float:
 def _json(repo: str, name: str) -> dict[str, Any]:
     from huggingface_hub import hf_hub_download
 
-    return json.loads(open(hf_hub_download(repo, name, token=db.get_settings().get("hf_token") or None)).read())
+    return json.loads(open(hf_hub_download(repo, name, token=runtime_settings.get_settings().get("hf_token") or None)).read())
 
 
 def _license(tags: list[str]) -> str:

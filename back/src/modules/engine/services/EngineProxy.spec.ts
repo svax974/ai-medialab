@@ -14,7 +14,7 @@ import type { AuthPrincipal } from 'src/modules_shared/common/auth';
 import { EngineProxyController } from '../controllers/EngineProxyController';
 import { ENGINE_CONFIG } from '../engineConfig';
 import { startFakeEngine, testConfig, TEST_TOKEN, type FakeEngine } from '../testing/fakeEngine';
-import { EngineProxyService, PROXIED_SEGMENTS, toEnginePath } from './EngineProxyService';
+import { EngineProxyService, NEST_SERVED_SEGMENTS, PROXIED_SEGMENTS, toEnginePath } from './EngineProxyService';
 
 @Controller()
 class NestOwnController {
@@ -43,6 +43,7 @@ describe('toEnginePath', () => {
   });
 
   it('leaves Nest routes, Swagger and unknown segments alone', () => {
+    for (const url of ['/api/settings', '/api/system', '/api/status', '/api/engine/unload', '/api/runtime/settings']) expect(toEnginePath(url)).toBeNull();
     for (const url of ['/api', '/api/v1/health', '/api/unknown', '/models', '/api-json']) expect(toEnginePath(url)).toBeNull();
   });
 });
@@ -199,6 +200,6 @@ describe('EngineProxy (fake engine)', () => {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const schema = require('../../../../../engine/openapi.json') as { paths: Record<string, unknown> };
     const segments = new Set(Object.keys(schema.paths).map((p) => p.replace('/engine/v1/', '').split('/')[0]));
-    expect([...segments].filter((s) => !(PROXIED_SEGMENTS as readonly string[]).includes(s))).toEqual([]);
+    expect([...segments].filter((s) => !(PROXIED_SEGMENTS as readonly string[]).includes(s) && !(NEST_SERVED_SEGMENTS as readonly string[]).includes(s))).toEqual([]);
   });
 });

@@ -53,6 +53,16 @@ describe('EngineEventRelay', () => {
     expect(engine.requests[0].headers['x-engine-token']).toBe('test-engine-token');
   });
 
+  it('emits link changes on linkChanges$ (true at each (re)connection)', async () => {
+    const changes: boolean[] = [];
+    make().linkChanges$.subscribe((c) => changes.push(c));
+    relay.start();
+    await until(() => relay.connected);
+    engine.streams[0].end();
+    await until(() => engine.streams.length === 2 && relay.connected);
+    expect(changes).toEqual([true, false, true]);
+  });
+
   it('reports the link state and reconnects after the engine closes the stream', async () => {
     make();
     relay.start();

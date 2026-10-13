@@ -15,17 +15,19 @@ import { ENGINE_API_PREFIX, ENGINE_CONFIG, ENGINE_TOKEN_HEADER, type EngineConfi
 export const PROXIED_SEGMENTS = [
   'assets',
   'conversations',
-  'engine',
   'engines',
   'events',
   'hf',
   'messages',
   'models',
-  'settings',
-  'status',
-  'system',
   'voices',
 ] as const;
+
+/**
+ * First segments of the engine API that Nest serves itself (a module takes the route over, the proxy no longer relays it)
+ * or that only Nest may call (`runtime`). Together with `PROXIED_SEGMENTS` they cover `engine/openapi.json`.
+ */
+export const NEST_SERVED_SEGMENTS = ['engine', 'runtime', 'settings', 'status', 'system'] as const;
 
 /** `/api/media/<kind>/<file>` -> the engine's static media mounts (`/media/...`, no token). */
 export const MEDIA_SEGMENT = 'media';

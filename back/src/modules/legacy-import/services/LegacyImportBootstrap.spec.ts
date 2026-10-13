@@ -4,6 +4,7 @@
  */
 
 import { afterEach, describe, expect, it, jest } from '@jest/globals';
+import { SettingsService } from 'src/modules/settings';
 import { LegacyImportBootstrap } from './LegacyImportBootstrap';
 import { LegacyImportService } from './LegacyImportService';
 
@@ -18,6 +19,20 @@ describe('LegacyImportBootstrap', () => {
     const { importer, bootstrap } = make(async () => ({ status: 'no-source', counts: {} }));
     await bootstrap.onApplicationBootstrap();
     expect(importer.run).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends the imported settings to the engine', async () => {
+    const importer = { run: jest.fn(async () => ({ status: 'imported', counts: {}, settingsApplied: 6 })) } as unknown as LegacyImportService;
+    const settings = { pushToEngine: jest.fn(async () => true) } as unknown as SettingsService;
+    await new LegacyImportBootstrap(importer, settings).onApplicationBootstrap();
+    expect(settings.pushToEngine).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not push when no setting was imported', async () => {
+    const importer = { run: jest.fn(async () => ({ status: 'imported', counts: {}, settingsApplied: 0 })) } as unknown as LegacyImportService;
+    const settings = { pushToEngine: jest.fn(async () => true) } as unknown as SettingsService;
+    await new LegacyImportBootstrap(importer, settings).onApplicationBootstrap();
+    expect(settings.pushToEngine).not.toHaveBeenCalled();
   });
 
   it('is skipped with LEGACY_IMPORT=false', async () => {

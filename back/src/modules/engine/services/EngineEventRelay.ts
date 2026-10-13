@@ -33,6 +33,7 @@ const AUDIENCE = { admin: true } as const;
 export class EngineEventRelay implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EngineEventRelay.name);
   private readonly subject = new Subject<EngineEvent>();
+  private readonly linkSubject = new Subject<boolean>();
   private controller: AbortController | null = null;
   private wake: (() => void) | null = null;
   private stopped = true;
@@ -47,6 +48,11 @@ export class EngineEventRelay implements OnModuleInit, OnModuleDestroy {
   /** Every event received from the engine, in order. */
   get events$(): Observable<EngineEvent> {
     return this.subject.asObservable();
+  }
+
+  /** Emits `true` each time the stream (re)connects and `false` when it drops: the engine may have restarted. */
+  get linkChanges$(): Observable<boolean> {
+    return this.linkSubject.asObservable();
   }
 
   /** True while the engine stream is open. */
@@ -147,6 +153,7 @@ export class EngineEventRelay implements OnModuleInit, OnModuleDestroy {
   private setLink(connected: boolean): void {
     if (this.link === connected) return;
     this.link = connected;
+    this.linkSubject.next(connected);
     this.stream.publish(ENGINE_LINK_TOPIC, { type: 'link', data: { connected } }, AUDIENCE);
   }
 

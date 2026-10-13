@@ -65,3 +65,5 @@ de `repo.py` : `testing/expectedPublic.json`, régénérable par `scripts-local/
 ## Points d'extension
 
 H6 : supprimer le module, renommer l'ancienne base en `.imported`, retirer `import_markers` par une migration.
+
+Après un import qui a appliqué des réglages, `LegacyImportBootstrap` appelle `SettingsService.pushToEngine()` (H4.1) : le moteur reçoit les valeurs importées (voir `back/src/modules/settings/README.md`).

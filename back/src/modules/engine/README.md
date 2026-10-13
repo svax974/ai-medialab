@@ -22,6 +22,7 @@ Module d'application (pas un module partagé) ; branché dans `modules/app/AppMo
 | `EngineEventRelay` | `services/EngineEventRelay.ts` | Abonnement à `/engine/v1/events` avec reconnexion ; relais vers `EventStreamService` ; flux serveur `events$`. |
 | `SseParser` | `services/sseParser.ts` | Analyse incrémentale d'un flux SSE (trames `event:` / `data:`). |
 | `EngineHealthContributor` | `services/EngineHealthContributor.ts` | Contribution `engine` de `GET /api/v1/health`. |
+| `engineErrorToHttp` | `services/engineHttpError.ts` | Erreur du moteur vers erreur HTTP d'une route Nest (statut et message relayés, injoignable : 502). |
 | `EngineProxyService`, `EngineProxyController` | `services/`, `controllers/` | Proxy transitoire (H6 : suppression). |
 | Faux moteur de test | `testing/fakeEngine.ts` | Serveur HTTP local qui joue le moteur dans les tests. |
 
@@ -87,6 +88,7 @@ test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json`
   `engine.conversation.updated`), `type` = nom de l'événement, `data` = charge utile du moteur ;
 - audience **`{ admin: true }`** : application mono-utilisateur, et le principal du mode local de confiance (`local-trust`)
   est `{ id: 0, admin: true }`, donc il reçoit ces événements (vérifié : `matchesAudience` ne teste que `admin`) ;
+- `linkChanges$` (serveur) émet `true` à chaque (re)connexion et `false` à la coupure (`SettingsEngineSync` y renvoie les réglages) ;
 - sujet **`engine.link`** : `{ connected: boolean }`, publié à chaque changement d'état du flux (le front relit l'état
   du moteur quand `connected` repasse à `true`, le moteur renvoyant son instantané à chaque connexion).
 
@@ -101,9 +103,10 @@ Limites : un événement de plus de 16 Ko est abandonné par `EventStreamService
 
 Pour que l'ancienne interface (et le nouveau front, avant que Nest ne porte chaque fonctionnalité) fonctionne dès
 maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est dans `PROXIED_SEGMENTS`
-(`assets, conversations, engine, engines, events, hf, messages, models, settings, status, system, voices`) est relayée à
-`/engine/v1/<segment>[/...]` avec `X-Engine-Token`. Un test vérifie que cette liste couvre tous les premiers segments de
-`engine/openapi.json`. Chaque tâche H4 retire de la liste les routes qu'elle reprend.
+(`assets, conversations, engines, events, hf, messages, models, voices`) est relayée à
+`/engine/v1/<segment>[/...]` avec `X-Engine-Token`. Un test vérifie que cette liste et `NEST_SERVED_SEGMENTS` (segments servis par Nest ou réservés à Nest : `engine`, `runtime`,
+`settings`, `status`, `system`, repris par `settings` et `hardware` en H4.1) couvrent tous les premiers segments de
+`engine/openapi.json`. Chaque tâche H4 retire de `PROXIED_SEGMENTS` les routes qu'elle reprend (et les ajoute à `NEST_SERVED_SEGMENTS`).
 
 - **Médias** : `/api/media/<kind>/<fichier>` → `/media/<kind>/<fichier>` du moteur (sans jeton, plages `Range` transmises).
   Le préfixe `/api` évite que le repli SPA de `serveFrontend` (qui sert `index.html` à tout `GET` acceptant du HTML hors
@@ -124,7 +127,7 @@ maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est da
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/v1/health` | Public | Route de `common` ; ce module y ajoute `checks.engine` : `{ status, events, engine }`. |
-| `ALL` | `/api/<assets\|conversations\|engine\|engines\|events\|hf\|messages\|models\|settings\|status\|system\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
+| `ALL` | `/api/<assets\|conversations\|engines\|events\|hf\|messages\|models\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
 | `ALL` | `/api/media/...` | Admin | Proxy transitoire vers les médias du moteur (`/media/...`). |
 
 Santé : `status: ok` si `/engine/v1/status` répond sous 2 s, sinon **`degraded`** (HTTP 200 : le serveur et l'interface

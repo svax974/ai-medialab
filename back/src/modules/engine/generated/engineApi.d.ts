@@ -368,6 +368,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/runtime/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Push Settings
+         * @description Keeps the studio settings in memory (the engine then stops reading them in its database).
+         *
+         *     Same checks as the legacy `PUT /settings`: unknown model or quantization is a 422, a variant change while a
+         *     generation runs is a 409 (nothing is applied then); the loaded model is unloaded when its variant changed.
+         */
+        put: operations["push_settings_engine_v1_runtime_settings_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/settings": {
         parameters: {
             query?: never;
@@ -635,6 +658,40 @@ export interface components {
             params?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /**
+         * RuntimeSettings
+         * @description The complete studio settings (Nest sends all of them every time; maps are replaced, not merged).
+         */
+        RuntimeSettings: {
+            /**
+             * Hf Token
+             * @default
+             */
+            hf_token: string;
+            /**
+             * Keep Alive Minutes
+             * @default 10
+             */
+            keep_alive_minutes: number;
+            /**
+             * Low Memory
+             * @default true
+             */
+            low_memory: boolean;
+            /**
+             * Previews
+             * @default true
+             */
+            previews: boolean;
+            /** Quantize */
+            quantize?: {
+                [key: string]: number | null;
+            };
+            /** Variant */
+            variant?: {
+                [key: string]: string;
+            };
         };
         /** SettingsPatch */
         SettingsPatch: {
@@ -1555,6 +1612,41 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    push_settings_engine_v1_runtime_settings_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RuntimeSettings"];
+            };
+        };
         responses: {
             /** @description Successful Response */
             200: {

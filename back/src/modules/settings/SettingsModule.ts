@@ -5,11 +5,16 @@
 
 import { Module } from '@nestjs/common';
 import { CommonModule } from 'src/modules_shared/common/CommonModule';
+import { SettingsController } from './controllers/SettingsController';
 import { SettingsConfigRegistration } from './services/SettingsConfigRegistration';
+import { SettingsEngineSync } from './services/SettingsEngineSync';
+import { SettingsService } from './services/SettingsService';
 
-/** Declares the studio settings (module config). Routes, the settings panel and the hand-over to the engine: H4.1. */
+/** Studio settings: module config schema, `/api/settings`, and the hand-over to the engine. See README.md. */
 @Module({
   imports: [CommonModule],
-  providers: [SettingsConfigRegistration],
+  controllers: [SettingsController],
+  providers: [SettingsConfigRegistration, SettingsService, SettingsEngineSync],
+  exports: [SettingsService],
 })
 export class SettingsModule {}

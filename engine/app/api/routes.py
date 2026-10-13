@@ -211,44 +211,57 @@ class SettingsPatch(BaseModel):
     variant: dict[str, str] | None = None
 
 
-def _public_settings() -> dict[str, Any]:
+def public_settings() -> dict[str, Any]:
     st = load_settings()
     token = st.pop("hf_token", None)
     st["has_hf_token"] = bool(token)
     return st
 
 
+def check_variant(variant: dict[str, str]) -> None:
+    for model_id, key in variant.items():
+        spec = MODELS.get(model_id)
+        if spec is None or key not in {v.key for v in spec.variants}:
+            raise HTTPException(422, f"Quantification inconnue pour {model_id} : {key}.")
+
+
+def check_quantize(quantize: dict[str, int | None]) -> None:
+    for model_id, bits in quantize.items():
+        if model_id in MODELS and bits is not None and bits not in MODELS[model_id].quantize_options:
+            raise HTTPException(422, f"Quantification {bits} non prise en charge par {model_id}.")
+
+
+async def unload_if_variant_changed(previous: dict[str, str], variant: dict[str, str]) -> None:
+    """The loaded model uses the old quantization: unload it (409 while a generation runs)."""
+    changed = [i for i, k in variant.items() if previous.get(i, MODELS[i].default_variant) != k]
+    if jobs.worker and jobs.worker.model_id in changed:
+        if jobs.current:
+            raise HTTPException(409, "Une génération est en cours : attendez sa fin pour changer de quantification.")
+        await jobs.unload()
+    downloads.invalidate()
+
+
 @router.get("/settings")
 def get_settings() -> dict[str, Any]:
-    return _public_settings()
+    return public_settings()
 
 
 @router.put("/settings")
 async def put_settings(patch: SettingsPatch) -> dict[str, Any]:
     values = patch.model_dump(exclude_none=True)
     if "variant" in values:
-        for model_id, key in values["variant"].items():
-            spec = MODELS.get(model_id)
-            if spec is None or key not in {v.key for v in spec.variants}:
-                raise HTTPException(422, f"Quantification inconnue pour {model_id} : {key}.")
+        check_variant(values["variant"])
         previous = load_settings()["variant"]
-        changed = [i for i, k in values["variant"].items() if previous.get(i, MODELS[i].default_variant) != k]
-        if jobs.worker and jobs.worker.model_id in changed:
-            if jobs.current:
-                raise HTTPException(409, "Une génération est en cours : attendez sa fin pour changer de quantification.")
-            await jobs.unload()  # le modèle chargé utilise l'ancienne quantification
+        await unload_if_variant_changed(previous, values["variant"])
         values["variant"] = {**previous, **values["variant"]}
-        downloads.invalidate()
     if "quantize" in values:
         merged = {**load_settings()["quantize"], **patch.quantize}
-        for model_id, bits in merged.items():
-            if model_id in MODELS and bits is not None and bits not in MODELS[model_id].quantize_options:
-                raise HTTPException(422, f"Quantification {bits} non prise en charge par {model_id}.")
+        check_quantize(merged)
         values["quantize"] = merged
     if "hf_token" in values:
         values["hf_token"] = values["hf_token"].strip()
     db.put_settings(values)
-    return _public_settings()
+    return public_settings()
 
 
 # Conversations

@@ -277,6 +277,54 @@
         "title": "RetryBody",
         "type": "object"
       },
+      "RuntimeSettings": {
+        "description": "The complete studio settings (Nest sends all of them every time; maps are replaced, not merged).",
+        "properties": {
+          "hf_token": {
+            "default": "",
+            "title": "Hf Token",
+            "type": "string"
+          },
+          "keep_alive_minutes": {
+            "default": 10,
+            "title": "Keep Alive Minutes",
+            "type": "integer"
+          },
+          "low_memory": {
+            "default": true,
+            "title": "Low Memory",
+            "type": "boolean"
+          },
+          "previews": {
+            "default": true,
+            "title": "Previews",
+            "type": "boolean"
+          },
+          "quantize": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Quantize",
+            "type": "object"
+          },
+          "variant": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Variant",
+            "type": "object"
+          }
+        },
+        "title": "RuntimeSettings",
+        "type": "object"
+      },
       "SettingsPatch": {
         "properties": {
           "hf_token": {
@@ -1619,6 +1667,50 @@
           }
         },
         "summary": "Download Model"
+      }
+    },
+    "/engine/v1/runtime/settings": {
+      "put": {
+        "description": "Keeps the studio settings in memory (the engine then stops reading them in its database).\n\nSame checks as the legacy `PUT /settings`: unknown model or quantization is a 422, a variant change while a\ngeneration runs is a 409 (nothing is applied then); the loaded model is unloaded when its variant changed.",
+        "operationId": "push_settings_engine_v1_runtime_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RuntimeSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Push Settings Engine V1 Runtime Settings Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Push Settings",
+        "tags": [
+          "runtime"
+        ]
       }
     },
     "/engine/v1/settings": {

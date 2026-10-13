@@ -21,7 +21,7 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
-from . import audio_packs, db, repo
+from . import audio_packs, db, repo, runtime_settings
 from .audio_worker import AudioWorkerHandle
 from .config import OUTPUTS_DIR, PREVIEWS_DIR
 from .engines import get_spec
@@ -40,7 +40,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
 
 
 def load_settings() -> dict[str, Any]:
-    return {**DEFAULT_SETTINGS, **db.get_settings()}
+    return {**DEFAULT_SETTINGS, **runtime_settings.get_settings()}
 
 
 def new_seed() -> int:
@@ -341,7 +341,7 @@ class JobManager:
         spec = get_spec(model_id)
         if spec.backend == "pack":
             # Audio and video packs share the worker handle; the pack's family picks the worker script.
-            token = db.get_settings().get("hf_token")
+            token = runtime_settings.get_settings().get("hf_token")
             options = {**spec.options, "language": plan["params"].get("language"),
                        "sources": [{"repo": src.repo, "patterns": src.patterns} for src in spec.all_sources()]}
             self.worker = AudioWorkerHandle(
