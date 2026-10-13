@@ -54,6 +54,20 @@ modèle : `back/.env.example`, section « ai-medialab ») : `ENGINE_TOKEN` (secr
 `IMAGEGEN_DATA_DIR`, posé par `dev-services.sh`) et `DB_PATH=app.db` (base de Nest, distincte de l'ancienne
 `ai-medialab.db`). Le moteur n'écoute que sur `127.0.0.1` ; le navigateur ne parle qu'à Nest.
 
+### Données de Nest et import de l'ancienne base
+
+Nest possède sa propre base SQLite (`<APP_DATA_DIR>/app.db`, `DB_PATH`) : conversations, messages, assets, voix
+(modules `studio-core`, `media-library`, `audio-studio`, détail dans leurs README), réglages du studio (module `settings`,
+configuration de module, `hf_token` chiffré). Le schéma est versionné dans `back/src/migrations/` (en dev TypeORM le
+construit lui-même ; bureau : `DB_SYNC=false` et `DB_MIGRATIONS_RUN=true`, voir `back/src/migrations/README.md`).
+
+Au premier démarrage, le module `legacy-import` copie l'**ancienne base du moteur** (`<APP_DATA_DIR>/ai-medialab.db`, ou
+`chambre-noire.db`) dans `app.db` : lecture seule, une transaction, marqueur dans la table `import_markers`, fichiers de
+`uploads/`, `outputs/`, `thumbs/` et `previews/` inchangés (mêmes chemins). L'import est idempotent ; `LEGACY_IMPORT=false`
+le désactive. L'ancienne base n'est ni modifiée, ni renommée, ni supprimée : le moteur s'en sert encore jusqu'à H6, où elle
+sera renommée en `.imported` (jamais supprimée automatiquement). Pour rejouer l'import : arrêter Nest et supprimer
+`app.db` (les fichiers médias ne sont pas concernés, mais ce qui a été créé dans Nest depuis l'import est perdu). Détail : `back/src/modules/legacy-import/README.md`.
+
 **Ports** : le nouveau front est sur **5174** (`front/.env.dev`, `FRONT_PORT` de `back/.env.dev`) tant que l'ancien
 `frontend/` occupe 5173 ; retour à 5173 en H6. Sans le lanceur : `cd back && npm run start:dev`, `cd front && npm run dev`
 et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
@@ -265,11 +279,12 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
   app/system.py      détection GPU / mémoire / disque, planificateur mémoire
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
 back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif ; pour l'instant le module
-           `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé)
+           `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé), la persistance
+           (`studio-core`, `media-library`, `audio-studio`, `settings`) et l'import de l'ancienne base (`legacy-import`)
 front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
 desktop/   application Tauri
 docs/      components/ (registre des composants tiers), migration/ (plan de migration)
-data/      base SQLite, références importées, images générées, vignettes (créé au démarrage)
+data/      bases SQLite (`ai-medialab.db` du moteur, `app.db` de Nest), références importées, images générées, vignettes (créé au démarrage)
 ```
 
 Contrat avec le serveur NestJS (en cours de migration, voir `docs/migration/`) : `/engine/v1/*`, mêmes routes que

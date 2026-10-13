@@ -14,5 +14,16 @@
   "custom.landing.footer.tagline": "Remplacez ce texte par un slogan court.",
   "custom.legal.confidentiality.placeholder": "À compléter — contactez  à .",
   "custom.legal.mentions.placeholder": "À compléter — contactez  à .",
-  "custom.legal.usageConditions.placeholder": "À compléter — contactez  à ."
+  "custom.legal.usageConditions.placeholder": "À compléter — contactez  à .",
+  "custom.settings.description": "Réglages du studio : mémoire, aperçus et accès Hugging Face.",
+  "custom.settings.keepAliveMinutes": "Garder le modèle chargé (minutes)",
+  "custom.settings.keepAliveMinutes.description": "Durée d'inactivité avant de décharger le modèle ; -1 ne le décharge jamais, 0 le décharge après chaque génération.",
+  "custom.settings.previews": "Aperçus pendant la génération",
+  "custom.settings.previews.description": "Affiche des aperçus intermédiaires des images en cours de génération.",
+  "custom.settings.lowMemory": "Économiser la mémoire",
+  "custom.settings.lowMemory.description": "Libère l'encodeur de texte après l'encodage du prompt.",
+  "custom.settings.quantize": "Quantification par modèle",
+  "custom.settings.variant": "Variante par modèle",
+  "custom.settings.hfToken": "Jeton Hugging Face",
+  "custom.settings.hfToken.description": "Requis pour télécharger les modèles à accès restreint ; stocké chiffré."
 }

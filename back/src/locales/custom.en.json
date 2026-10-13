@@ -14,5 +14,16 @@
   "custom.landing.footer.tagline": "Replace this placeholder with a short tagline.",
   "custom.legal.confidentiality.placeholder": "To be completed — contact  at .",
   "custom.legal.mentions.placeholder": "To be completed — contact  at .",
-  "custom.legal.usageConditions.placeholder": "To be completed — contact  at ."
+  "custom.legal.usageConditions.placeholder": "To be completed — contact  at .",
+  "custom.settings.description": "Studio settings: memory, previews and Hugging Face access.",
+  "custom.settings.keepAliveMinutes": "Keep the model loaded (minutes)",
+  "custom.settings.keepAliveMinutes.description": "Idle time before the model is unloaded; -1 never unloads it, 0 unloads it after each generation.",
+  "custom.settings.previews": "Previews while generating",
+  "custom.settings.previews.description": "Shows intermediate previews of images being generated.",
+  "custom.settings.lowMemory": "Save memory",
+  "custom.settings.lowMemory.description": "Frees the text encoder after the prompt is encoded.",
+  "custom.settings.quantize": "Quantization per model",
+  "custom.settings.variant": "Variant per model",
+  "custom.settings.hfToken": "Hugging Face token",
+  "custom.settings.hfToken.description": "Required to download gated models; stored encrypted."
 }

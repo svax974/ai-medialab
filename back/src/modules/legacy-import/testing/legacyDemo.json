@@ -1,0 +1,414 @@
+{
+ "conversations": [
+  {
+   "id": "c1",
+   "title": "Portrait studio",
+   "pinned": 1,
+   "mode": "image",
+   "created_at": 1760000010.0,
+   "updated_at": 1760000300.0
+  },
+  {
+   "id": "c2",
+   "title": "Voix off",
+   "pinned": 0,
+   "mode": "audio",
+   "created_at": 1760000020.0,
+   "updated_at": 1760000200.0
+  },
+  {
+   "id": "c3",
+   "title": "Plan séquence",
+   "pinned": 0,
+   "mode": "video",
+   "created_at": 1760000030.0,
+   "updated_at": 1760000400.0
+  },
+  {
+   "id": "c4",
+   "title": "Nouvelle création",
+   "pinned": 0,
+   "mode": "image",
+   "created_at": 1760000040.0,
+   "updated_at": 1760000040.0
+  },
+  {
+   "id": "c5",
+   "title": "Paysages d'été",
+   "pinned": 0,
+   "mode": "image",
+   "created_at": 1760000050.0,
+   "updated_at": 1760000150.0
+  }
+ ],
+ "messages": [
+  {
+   "id": "u1",
+   "conversation_id": "c1",
+   "parent_id": null,
+   "role": "user",
+   "prompt": "Un portrait en lumière douce",
+   "model_id": null,
+   "params": {},
+   "status": "done",
+   "error": null,
+   "created_at": 1760000011.0,
+   "started_at": null,
+   "finished_at": null
+  },
+  {
+   "id": "m1",
+   "conversation_id": "c1",
+   "parent_id": "u1",
+   "role": "assistant",
+   "prompt": "Un portrait en lumière douce",
+   "model_id": "flux-schnell",
+   "params": {
+    "steps": 4,
+    "count": 2,
+    "seeds": [
+     11,
+     22
+    ],
+    "width": 1024,
+    "height": 1024
+   },
+   "status": "done",
+   "error": null,
+   "created_at": 1760000012.0,
+   "started_at": 1760000013.0,
+   "finished_at": 1760000040.0
+  },
+  {
+   "id": "u2",
+   "conversation_id": "c2",
+   "parent_id": null,
+   "role": "user",
+   "prompt": "Bienvenue dans le studio",
+   "model_id": null,
+   "params": {},
+   "status": "done",
+   "error": null,
+   "created_at": 1760000021.0,
+   "started_at": null,
+   "finished_at": null
+  },
+  {
+   "id": "m2",
+   "conversation_id": "c2",
+   "parent_id": "u2",
+   "role": "assistant",
+   "prompt": "Bienvenue dans le studio",
+   "model_id": "kokoro",
+   "params": {
+    "voice": "ff_siwis",
+    "language": "fr"
+   },
+   "status": "done",
+   "error": null,
+   "created_at": 1760000022.0,
+   "started_at": 1760000023.0,
+   "finished_at": 1760000030.0
+  },
+  {
+   "id": "u3",
+   "conversation_id": "c3",
+   "parent_id": null,
+   "role": "user",
+   "prompt": "Travelling avant sur une forêt",
+   "model_id": null,
+   "params": {},
+   "status": "done",
+   "error": null,
+   "created_at": 1760000031.0,
+   "started_at": null,
+   "finished_at": null
+  },
+  {
+   "id": "m3",
+   "conversation_id": "c3",
+   "parent_id": "u3",
+   "role": "assistant",
+   "prompt": "Travelling avant sur une forêt",
+   "model_id": "ltx-video",
+   "params": {
+    "frames": 97,
+    "fps": 24
+   },
+   "status": "running",
+   "error": null,
+   "created_at": 1760000032.0,
+   "started_at": 1760000033.0,
+   "finished_at": null
+  },
+  {
+   "id": "m3b",
+   "conversation_id": "c3",
+   "parent_id": "u3",
+   "role": "assistant",
+   "prompt": "Travelling avant sur une forêt",
+   "model_id": "ltx-video",
+   "params": {
+    "frames": 97
+   },
+   "status": "error",
+   "error": "Mémoire insuffisante",
+   "created_at": 1760000034.0,
+   "started_at": 1760000035.0,
+   "finished_at": 1760000036.0
+  },
+  {
+   "id": "u5",
+   "conversation_id": "c5",
+   "parent_id": null,
+   "role": "user",
+   "prompt": "Une plage au lever du jour",
+   "model_id": null,
+   "params": {},
+   "status": "done",
+   "error": null,
+   "created_at": 1760000051.0,
+   "started_at": null,
+   "finished_at": null
+  },
+  {
+   "id": "m5",
+   "conversation_id": "c5",
+   "parent_id": "u5",
+   "role": "assistant",
+   "prompt": "Une plage au lever du jour",
+   "model_id": "flux-schnell",
+   "params": {
+    "steps": 4
+   },
+   "status": "done",
+   "error": null,
+   "created_at": 1760000052.0,
+   "started_at": 1760000053.0,
+   "finished_at": 1760000060.0
+  }
+ ],
+ "assets": [
+  {
+   "id": "a_ref",
+   "kind": "upload",
+   "conversation_id": "c1",
+   "message_id": null,
+   "filename": "ref_001.png",
+   "thumb": "ref_001.jpg",
+   "original_name": "visage.png",
+   "width": 800,
+   "height": 600,
+   "seed": null,
+   "position": 0,
+   "favorite": 0,
+   "meta": {},
+   "created_at": 1760000005.0,
+   "media": "image",
+   "duration": null
+  },
+  {
+   "id": "a_free",
+   "kind": "upload",
+   "conversation_id": null,
+   "message_id": null,
+   "filename": "free_002.png",
+   "thumb": null,
+   "original_name": "Sans titre.png",
+   "width": 640,
+   "height": 480,
+   "seed": null,
+   "position": 0,
+   "favorite": 0,
+   "meta": {},
+   "created_at": 1760000006.0,
+   "media": "image",
+   "duration": null
+  },
+  {
+   "id": "g1",
+   "kind": "generated",
+   "conversation_id": "c1",
+   "message_id": "m1",
+   "filename": "out_m1_0.png",
+   "thumb": "out_m1_0.jpg",
+   "original_name": null,
+   "width": 1024,
+   "height": 1024,
+   "seed": 11,
+   "position": 0,
+   "favorite": 1,
+   "meta": {
+    "model": "flux-schnell"
+   },
+   "created_at": 1760000040.0,
+   "media": "image",
+   "duration": null
+  },
+  {
+   "id": "g2",
+   "kind": "generated",
+   "conversation_id": "c1",
+   "message_id": "m1",
+   "filename": "out_m1_1.png",
+   "thumb": "out_m1_1.jpg",
+   "original_name": null,
+   "width": 1024,
+   "height": 1024,
+   "seed": 22,
+   "position": 1,
+   "favorite": 0,
+   "meta": {},
+   "created_at": 1760000041.0,
+   "media": "image",
+   "duration": null
+  },
+  {
+   "id": "g3",
+   "kind": "generated",
+   "conversation_id": "c2",
+   "message_id": "m2",
+   "filename": "take_m2.wav",
+   "thumb": null,
+   "original_name": null,
+   "width": null,
+   "height": null,
+   "seed": null,
+   "position": 0,
+   "favorite": 0,
+   "meta": {
+    "voice": "ff_siwis",
+    "prompt": "Bienvenue dans le studio"
+   },
+   "created_at": 1760000030.0,
+   "media": "audio",
+   "duration": 3.2
+  },
+  {
+   "id": "g4",
+   "kind": "generated",
+   "conversation_id": "c3",
+   "message_id": "m3",
+   "filename": "clip_m3.mp4",
+   "thumb": "clip_m3.jpg",
+   "original_name": null,
+   "width": 768,
+   "height": 512,
+   "seed": null,
+   "position": 0,
+   "favorite": 0,
+   "meta": {
+    "fps": 24,
+    "frames": 97
+   },
+   "created_at": 1760000037.0,
+   "media": "video",
+   "duration": 4.04
+  },
+  {
+   "id": "g5",
+   "kind": "generated",
+   "conversation_id": "c5",
+   "message_id": "m5",
+   "filename": "out_m5_0.png",
+   "thumb": null,
+   "original_name": null,
+   "width": 1344,
+   "height": 768,
+   "seed": 5,
+   "position": 0,
+   "favorite": 0,
+   "meta": {},
+   "created_at": 1760000060.0,
+   "media": "image",
+   "duration": null
+  },
+  {
+   "id": "a_orphan",
+   "kind": "generated",
+   "conversation_id": null,
+   "message_id": null,
+   "filename": "out_old.png",
+   "thumb": null,
+   "original_name": null,
+   "width": 512,
+   "height": 512,
+   "seed": 1,
+   "position": 0,
+   "favorite": 0,
+   "meta": {},
+   "created_at": 1760000002.0,
+   "media": "image",
+   "duration": null
+  }
+ ],
+ "message_refs": [
+  {
+   "message_id": "u1",
+   "asset_id": "a_ref",
+   "position": 0
+  }
+ ],
+ "voices": [
+  {
+   "id": "v1",
+   "name": "Ma voix",
+   "kind": "clone",
+   "filename": "voice_v1.wav",
+   "transcript": "Bonjour tout le monde",
+   "description": "",
+   "language": "fr",
+   "duration": 4.5,
+   "peaks": [
+    0.1,
+    0.5,
+    1.0,
+    0.3
+   ],
+   "created_at": 1760000100.0
+  },
+  {
+   "id": "v2",
+   "name": "Narratrice chaleureuse",
+   "kind": "design",
+   "filename": null,
+   "transcript": "",
+   "description": "Voix douce et posée",
+   "language": null,
+   "duration": null,
+   "peaks": [],
+   "created_at": 1760000200.0
+  }
+ ],
+ "settings": [
+  {
+   "key": "keep_alive_minutes",
+   "value": 30
+  },
+  {
+   "key": "previews",
+   "value": false
+  },
+  {
+   "key": "low_memory",
+   "value": true
+  },
+  {
+   "key": "quantize",
+   "value": {
+    "flux-schnell": 4,
+    "qwen-edit": null
+   }
+  },
+  {
+   "key": "variant",
+   "value": {
+    "flux-schnell": "q4"
+   }
+  },
+  {
+   "key": "hf_token",
+   "value": "hf_demo_token"
+  }
+ ]
+}

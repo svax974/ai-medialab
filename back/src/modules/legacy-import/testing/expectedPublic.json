@@ -1,0 +1,1191 @@
+{
+ "assets": {
+  "a_free": {
+   "conversation_id": null,
+   "created_at": 1760000006.0,
+   "duration": null,
+   "favorite": false,
+   "fps": null,
+   "height": 480,
+   "id": "a_free",
+   "kind": "upload",
+   "media": "image",
+   "message_id": null,
+   "meta": {},
+   "original_name": "Sans titre.png",
+   "seed": null,
+   "thumb_url": "/media/uploads/free_002.png",
+   "url": "/media/uploads/free_002.png",
+   "width": 640
+  },
+  "a_orphan": {
+   "conversation_id": null,
+   "created_at": 1760000002.0,
+   "duration": null,
+   "favorite": false,
+   "fps": null,
+   "height": 512,
+   "id": "a_orphan",
+   "kind": "generated",
+   "media": "image",
+   "message_id": null,
+   "meta": {},
+   "original_name": null,
+   "seed": 1,
+   "thumb_url": "/media/outputs/out_old.png",
+   "url": "/media/outputs/out_old.png",
+   "width": 512
+  },
+  "a_ref": {
+   "conversation_id": "c1",
+   "created_at": 1760000005.0,
+   "duration": null,
+   "favorite": false,
+   "fps": null,
+   "height": 600,
+   "id": "a_ref",
+   "kind": "upload",
+   "media": "image",
+   "message_id": null,
+   "meta": {},
+   "original_name": "visage.png",
+   "seed": null,
+   "thumb_url": "/media/thumbs/ref_001.jpg",
+   "url": "/media/uploads/ref_001.png",
+   "width": 800
+  },
+  "g1": {
+   "conversation_id": "c1",
+   "created_at": 1760000040.0,
+   "duration": null,
+   "favorite": true,
+   "fps": null,
+   "height": 1024,
+   "id": "g1",
+   "kind": "generated",
+   "media": "image",
+   "message_id": "m1",
+   "meta": {
+    "model": "flux-schnell"
+   },
+   "original_name": null,
+   "seed": 11,
+   "thumb_url": "/media/thumbs/out_m1_0.jpg",
+   "url": "/media/outputs/out_m1_0.png",
+   "width": 1024
+  },
+  "g2": {
+   "conversation_id": "c1",
+   "created_at": 1760000041.0,
+   "duration": null,
+   "favorite": false,
+   "fps": null,
+   "height": 1024,
+   "id": "g2",
+   "kind": "generated",
+   "media": "image",
+   "message_id": "m1",
+   "meta": {},
+   "original_name": null,
+   "seed": 22,
+   "thumb_url": "/media/thumbs/out_m1_1.jpg",
+   "url": "/media/outputs/out_m1_1.png",
+   "width": 1024
+  },
+  "g3": {
+   "conversation_id": "c2",
+   "created_at": 1760000030.0,
+   "duration": 3.2,
+   "favorite": false,
+   "fps": null,
+   "height": null,
+   "id": "g3",
+   "kind": "generated",
+   "media": "audio",
+   "message_id": "m2",
+   "meta": {
+    "prompt": "Bienvenue dans le studio",
+    "voice": "ff_siwis"
+   },
+   "original_name": null,
+   "seed": null,
+   "thumb_url": "/media/outputs/take_m2.wav",
+   "url": "/media/outputs/take_m2.wav",
+   "width": null
+  },
+  "g4": {
+   "conversation_id": "c3",
+   "created_at": 1760000037.0,
+   "duration": 4.04,
+   "favorite": false,
+   "fps": 24,
+   "height": 512,
+   "id": "g4",
+   "kind": "generated",
+   "media": "video",
+   "message_id": "m3",
+   "meta": {
+    "fps": 24,
+    "frames": 97
+   },
+   "original_name": null,
+   "seed": null,
+   "thumb_url": "/media/thumbs/clip_m3.jpg",
+   "url": "/media/outputs/clip_m3.mp4",
+   "width": 768
+  },
+  "g5": {
+   "conversation_id": "c5",
+   "created_at": 1760000060.0,
+   "duration": null,
+   "favorite": false,
+   "fps": null,
+   "height": 768,
+   "id": "g5",
+   "kind": "generated",
+   "media": "image",
+   "message_id": "m5",
+   "meta": {},
+   "original_name": null,
+   "seed": 5,
+   "thumb_url": "/media/outputs/out_m5_0.png",
+   "url": "/media/outputs/out_m5_0.png",
+   "width": 1344
+  }
+ },
+ "conversationList": [
+  {
+   "busy": false,
+   "cover": {
+    "conversation_id": "c1",
+    "created_at": 1760000041.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 1024,
+    "id": "g2",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m1",
+    "meta": {},
+    "original_name": null,
+    "seed": 22,
+    "thumb_url": "/media/thumbs/out_m1_1.jpg",
+    "url": "/media/outputs/out_m1_1.png",
+    "width": 1024
+   },
+   "created_at": 1760000010.0,
+   "generation_count": 1,
+   "id": "c1",
+   "mode": "image",
+   "pinned": true,
+   "title": "Portrait studio",
+   "updated_at": 1760000300.0
+  },
+  {
+   "busy": true,
+   "cover": {
+    "conversation_id": "c3",
+    "created_at": 1760000037.0,
+    "duration": 4.04,
+    "favorite": false,
+    "fps": 24,
+    "height": 512,
+    "id": "g4",
+    "kind": "generated",
+    "media": "video",
+    "message_id": "m3",
+    "meta": {
+     "fps": 24,
+     "frames": 97
+    },
+    "original_name": null,
+    "seed": null,
+    "thumb_url": "/media/thumbs/clip_m3.jpg",
+    "url": "/media/outputs/clip_m3.mp4",
+    "width": 768
+   },
+   "created_at": 1760000030.0,
+   "generation_count": 2,
+   "id": "c3",
+   "mode": "video",
+   "pinned": false,
+   "title": "Plan séquence",
+   "updated_at": 1760000400.0
+  },
+  {
+   "busy": false,
+   "cover": null,
+   "created_at": 1760000020.0,
+   "generation_count": 1,
+   "id": "c2",
+   "mode": "audio",
+   "pinned": false,
+   "title": "Voix off",
+   "updated_at": 1760000200.0
+  },
+  {
+   "busy": false,
+   "cover": {
+    "conversation_id": "c5",
+    "created_at": 1760000060.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 768,
+    "id": "g5",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m5",
+    "meta": {},
+    "original_name": null,
+    "seed": 5,
+    "thumb_url": "/media/outputs/out_m5_0.png",
+    "url": "/media/outputs/out_m5_0.png",
+    "width": 1344
+   },
+   "created_at": 1760000050.0,
+   "generation_count": 1,
+   "id": "c5",
+   "mode": "image",
+   "pinned": false,
+   "title": "Paysages d'été",
+   "updated_at": 1760000150.0
+  },
+  {
+   "busy": false,
+   "cover": null,
+   "created_at": 1760000040.0,
+   "generation_count": 0,
+   "id": "c4",
+   "mode": "image",
+   "pinned": false,
+   "title": "Nouvelle création",
+   "updated_at": 1760000040.0
+  }
+ ],
+ "conversationListAudio": [
+  {
+   "busy": false,
+   "cover": null,
+   "created_at": 1760000020.0,
+   "generation_count": 1,
+   "id": "c2",
+   "mode": "audio",
+   "pinned": false,
+   "title": "Voix off",
+   "updated_at": 1760000200.0
+  }
+ ],
+ "conversationListQuery": [
+  {
+   "busy": false,
+   "cover": {
+    "conversation_id": "c5",
+    "created_at": 1760000060.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 768,
+    "id": "g5",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m5",
+    "meta": {},
+    "original_name": null,
+    "seed": 5,
+    "thumb_url": "/media/outputs/out_m5_0.png",
+    "url": "/media/outputs/out_m5_0.png",
+    "width": 1344
+   },
+   "created_at": 1760000050.0,
+   "generation_count": 1,
+   "id": "c5",
+   "mode": "image",
+   "pinned": false,
+   "title": "Paysages d'été",
+   "updated_at": 1760000150.0
+  }
+ ],
+ "conversations": {
+  "c1": {
+   "busy": false,
+   "cover": {
+    "conversation_id": "c1",
+    "created_at": 1760000041.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 1024,
+    "id": "g2",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m1",
+    "meta": {},
+    "original_name": null,
+    "seed": 22,
+    "thumb_url": "/media/thumbs/out_m1_1.jpg",
+    "url": "/media/outputs/out_m1_1.png",
+    "width": 1024
+   },
+   "created_at": 1760000010.0,
+   "generation_count": 1,
+   "id": "c1",
+   "messages": [
+    {
+     "conversation_id": "c1",
+     "created_at": 1760000011.0,
+     "error": null,
+     "finished_at": null,
+     "id": "u1",
+     "model_id": null,
+     "outputs": [],
+     "params": {},
+     "parent_id": null,
+     "prompt": "Un portrait en lumière douce",
+     "references": [
+      {
+       "conversation_id": "c1",
+       "created_at": 1760000005.0,
+       "duration": null,
+       "favorite": false,
+       "fps": null,
+       "height": 600,
+       "id": "a_ref",
+       "kind": "upload",
+       "media": "image",
+       "message_id": null,
+       "meta": {},
+       "original_name": "visage.png",
+       "seed": null,
+       "thumb_url": "/media/thumbs/ref_001.jpg",
+       "url": "/media/uploads/ref_001.png",
+       "width": 800
+      }
+     ],
+     "role": "user",
+     "started_at": null,
+     "status": "done"
+    },
+    {
+     "conversation_id": "c1",
+     "created_at": 1760000012.0,
+     "error": null,
+     "finished_at": 1760000040.0,
+     "id": "m1",
+     "model_id": "flux-schnell",
+     "outputs": [
+      {
+       "conversation_id": "c1",
+       "created_at": 1760000040.0,
+       "duration": null,
+       "favorite": true,
+       "fps": null,
+       "height": 1024,
+       "id": "g1",
+       "kind": "generated",
+       "media": "image",
+       "message_id": "m1",
+       "meta": {
+        "model": "flux-schnell"
+       },
+       "original_name": null,
+       "seed": 11,
+       "thumb_url": "/media/thumbs/out_m1_0.jpg",
+       "url": "/media/outputs/out_m1_0.png",
+       "width": 1024
+      },
+      {
+       "conversation_id": "c1",
+       "created_at": 1760000041.0,
+       "duration": null,
+       "favorite": false,
+       "fps": null,
+       "height": 1024,
+       "id": "g2",
+       "kind": "generated",
+       "media": "image",
+       "message_id": "m1",
+       "meta": {},
+       "original_name": null,
+       "seed": 22,
+       "thumb_url": "/media/thumbs/out_m1_1.jpg",
+       "url": "/media/outputs/out_m1_1.png",
+       "width": 1024
+      }
+     ],
+     "params": {
+      "count": 2,
+      "height": 1024,
+      "seeds": [
+       11,
+       22
+      ],
+      "steps": 4,
+      "width": 1024
+     },
+     "parent_id": "u1",
+     "prompt": "Un portrait en lumière douce",
+     "references": [],
+     "role": "assistant",
+     "started_at": 1760000013.0,
+     "status": "done"
+    }
+   ],
+   "mode": "image",
+   "pinned": true,
+   "title": "Portrait studio",
+   "updated_at": 1760000300.0
+  },
+  "c2": {
+   "busy": false,
+   "cover": null,
+   "created_at": 1760000020.0,
+   "generation_count": 1,
+   "id": "c2",
+   "messages": [
+    {
+     "conversation_id": "c2",
+     "created_at": 1760000021.0,
+     "error": null,
+     "finished_at": null,
+     "id": "u2",
+     "model_id": null,
+     "outputs": [],
+     "params": {},
+     "parent_id": null,
+     "prompt": "Bienvenue dans le studio",
+     "references": [],
+     "role": "user",
+     "started_at": null,
+     "status": "done"
+    },
+    {
+     "conversation_id": "c2",
+     "created_at": 1760000022.0,
+     "error": null,
+     "finished_at": 1760000030.0,
+     "id": "m2",
+     "model_id": "kokoro",
+     "outputs": [
+      {
+       "conversation_id": "c2",
+       "created_at": 1760000030.0,
+       "duration": 3.2,
+       "favorite": false,
+       "fps": null,
+       "height": null,
+       "id": "g3",
+       "kind": "generated",
+       "media": "audio",
+       "message_id": "m2",
+       "meta": {
+        "prompt": "Bienvenue dans le studio",
+        "voice": "ff_siwis"
+       },
+       "original_name": null,
+       "seed": null,
+       "thumb_url": "/media/outputs/take_m2.wav",
+       "url": "/media/outputs/take_m2.wav",
+       "width": null
+      }
+     ],
+     "params": {
+      "language": "fr",
+      "voice": "ff_siwis"
+     },
+     "parent_id": "u2",
+     "prompt": "Bienvenue dans le studio",
+     "references": [],
+     "role": "assistant",
+     "started_at": 1760000023.0,
+     "status": "done"
+    }
+   ],
+   "mode": "audio",
+   "pinned": false,
+   "title": "Voix off",
+   "updated_at": 1760000200.0
+  },
+  "c3": {
+   "busy": true,
+   "cover": {
+    "conversation_id": "c3",
+    "created_at": 1760000037.0,
+    "duration": 4.04,
+    "favorite": false,
+    "fps": 24,
+    "height": 512,
+    "id": "g4",
+    "kind": "generated",
+    "media": "video",
+    "message_id": "m3",
+    "meta": {
+     "fps": 24,
+     "frames": 97
+    },
+    "original_name": null,
+    "seed": null,
+    "thumb_url": "/media/thumbs/clip_m3.jpg",
+    "url": "/media/outputs/clip_m3.mp4",
+    "width": 768
+   },
+   "created_at": 1760000030.0,
+   "generation_count": 2,
+   "id": "c3",
+   "messages": [
+    {
+     "conversation_id": "c3",
+     "created_at": 1760000031.0,
+     "error": null,
+     "finished_at": null,
+     "id": "u3",
+     "model_id": null,
+     "outputs": [],
+     "params": {},
+     "parent_id": null,
+     "prompt": "Travelling avant sur une forêt",
+     "references": [],
+     "role": "user",
+     "started_at": null,
+     "status": "done"
+    },
+    {
+     "conversation_id": "c3",
+     "created_at": 1760000032.0,
+     "error": null,
+     "finished_at": null,
+     "id": "m3",
+     "model_id": "ltx-video",
+     "outputs": [
+      {
+       "conversation_id": "c3",
+       "created_at": 1760000037.0,
+       "duration": 4.04,
+       "favorite": false,
+       "fps": 24,
+       "height": 512,
+       "id": "g4",
+       "kind": "generated",
+       "media": "video",
+       "message_id": "m3",
+       "meta": {
+        "fps": 24,
+        "frames": 97
+       },
+       "original_name": null,
+       "seed": null,
+       "thumb_url": "/media/thumbs/clip_m3.jpg",
+       "url": "/media/outputs/clip_m3.mp4",
+       "width": 768
+      }
+     ],
+     "params": {
+      "fps": 24,
+      "frames": 97
+     },
+     "parent_id": "u3",
+     "prompt": "Travelling avant sur une forêt",
+     "references": [],
+     "role": "assistant",
+     "started_at": 1760000033.0,
+     "status": "running"
+    },
+    {
+     "conversation_id": "c3",
+     "created_at": 1760000034.0,
+     "error": "Mémoire insuffisante",
+     "finished_at": 1760000036.0,
+     "id": "m3b",
+     "model_id": "ltx-video",
+     "outputs": [],
+     "params": {
+      "frames": 97
+     },
+     "parent_id": "u3",
+     "prompt": "Travelling avant sur une forêt",
+     "references": [],
+     "role": "assistant",
+     "started_at": 1760000035.0,
+     "status": "error"
+    }
+   ],
+   "mode": "video",
+   "pinned": false,
+   "title": "Plan séquence",
+   "updated_at": 1760000400.0
+  },
+  "c4": {
+   "busy": false,
+   "cover": null,
+   "created_at": 1760000040.0,
+   "generation_count": 0,
+   "id": "c4",
+   "messages": [],
+   "mode": "image",
+   "pinned": false,
+   "title": "Nouvelle création",
+   "updated_at": 1760000040.0
+  },
+  "c5": {
+   "busy": false,
+   "cover": {
+    "conversation_id": "c5",
+    "created_at": 1760000060.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 768,
+    "id": "g5",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m5",
+    "meta": {},
+    "original_name": null,
+    "seed": 5,
+    "thumb_url": "/media/outputs/out_m5_0.png",
+    "url": "/media/outputs/out_m5_0.png",
+    "width": 1344
+   },
+   "created_at": 1760000050.0,
+   "generation_count": 1,
+   "id": "c5",
+   "messages": [
+    {
+     "conversation_id": "c5",
+     "created_at": 1760000051.0,
+     "error": null,
+     "finished_at": null,
+     "id": "u5",
+     "model_id": null,
+     "outputs": [],
+     "params": {},
+     "parent_id": null,
+     "prompt": "Une plage au lever du jour",
+     "references": [],
+     "role": "user",
+     "started_at": null,
+     "status": "done"
+    },
+    {
+     "conversation_id": "c5",
+     "created_at": 1760000052.0,
+     "error": null,
+     "finished_at": 1760000060.0,
+     "id": "m5",
+     "model_id": "flux-schnell",
+     "outputs": [
+      {
+       "conversation_id": "c5",
+       "created_at": 1760000060.0,
+       "duration": null,
+       "favorite": false,
+       "fps": null,
+       "height": 768,
+       "id": "g5",
+       "kind": "generated",
+       "media": "image",
+       "message_id": "m5",
+       "meta": {},
+       "original_name": null,
+       "seed": 5,
+       "thumb_url": "/media/outputs/out_m5_0.png",
+       "url": "/media/outputs/out_m5_0.png",
+       "width": 1344
+      }
+     ],
+     "params": {
+      "steps": 4
+     },
+     "parent_id": "u5",
+     "prompt": "Une plage au lever du jour",
+     "references": [],
+     "role": "assistant",
+     "started_at": 1760000053.0,
+     "status": "done"
+    }
+   ],
+   "mode": "image",
+   "pinned": false,
+   "title": "Paysages d'été",
+   "updated_at": 1760000150.0
+  }
+ },
+ "gallery": {
+  "generatedAudio": [
+   {
+    "conversation_id": "c2",
+    "conversation_title": "Voix off",
+    "created_at": 1760000030.0,
+    "duration": 3.2,
+    "favorite": false,
+    "fps": null,
+    "height": null,
+    "id": "g3",
+    "kind": "generated",
+    "media": "audio",
+    "message_id": "m2",
+    "meta": {
+     "prompt": "Bienvenue dans le studio",
+     "voice": "ff_siwis"
+    },
+    "model_id": "kokoro",
+    "original_name": null,
+    "prompt": "Bienvenue dans le studio",
+    "seed": null,
+    "thumb_url": "/media/outputs/take_m2.wav",
+    "url": "/media/outputs/take_m2.wav",
+    "width": null
+   }
+  ],
+  "generatedImage": [
+   {
+    "conversation_id": "c5",
+    "conversation_title": "Paysages d'été",
+    "created_at": 1760000060.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 768,
+    "id": "g5",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m5",
+    "meta": {},
+    "model_id": "flux-schnell",
+    "original_name": null,
+    "prompt": "Une plage au lever du jour",
+    "seed": 5,
+    "thumb_url": "/media/outputs/out_m5_0.png",
+    "url": "/media/outputs/out_m5_0.png",
+    "width": 1344
+   },
+   {
+    "conversation_id": "c1",
+    "conversation_title": "Portrait studio",
+    "created_at": 1760000041.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 1024,
+    "id": "g2",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m1",
+    "meta": {},
+    "model_id": "flux-schnell",
+    "original_name": null,
+    "prompt": "Un portrait en lumière douce",
+    "seed": 22,
+    "thumb_url": "/media/thumbs/out_m1_1.jpg",
+    "url": "/media/outputs/out_m1_1.png",
+    "width": 1024
+   },
+   {
+    "conversation_id": "c1",
+    "conversation_title": "Portrait studio",
+    "created_at": 1760000040.0,
+    "duration": null,
+    "favorite": true,
+    "fps": null,
+    "height": 1024,
+    "id": "g1",
+    "kind": "generated",
+    "media": "image",
+    "message_id": "m1",
+    "meta": {
+     "model": "flux-schnell"
+    },
+    "model_id": "flux-schnell",
+    "original_name": null,
+    "prompt": "Un portrait en lumière douce",
+    "seed": 11,
+    "thumb_url": "/media/thumbs/out_m1_0.jpg",
+    "url": "/media/outputs/out_m1_0.png",
+    "width": 1024
+   },
+   {
+    "conversation_id": null,
+    "conversation_title": null,
+    "created_at": 1760000002.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 512,
+    "id": "a_orphan",
+    "kind": "generated",
+    "media": "image",
+    "message_id": null,
+    "meta": {},
+    "model_id": null,
+    "original_name": null,
+    "prompt": null,
+    "seed": 1,
+    "thumb_url": "/media/outputs/out_old.png",
+    "url": "/media/outputs/out_old.png",
+    "width": 512
+   }
+  ],
+  "uploadImage": [
+   {
+    "conversation_id": null,
+    "conversation_title": null,
+    "created_at": 1760000006.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 480,
+    "id": "a_free",
+    "kind": "upload",
+    "media": "image",
+    "message_id": null,
+    "meta": {},
+    "model_id": null,
+    "original_name": "Sans titre.png",
+    "prompt": null,
+    "seed": null,
+    "thumb_url": "/media/uploads/free_002.png",
+    "url": "/media/uploads/free_002.png",
+    "width": 640
+   },
+   {
+    "conversation_id": "c1",
+    "conversation_title": "Portrait studio",
+    "created_at": 1760000005.0,
+    "duration": null,
+    "favorite": false,
+    "fps": null,
+    "height": 600,
+    "id": "a_ref",
+    "kind": "upload",
+    "media": "image",
+    "message_id": null,
+    "meta": {},
+    "model_id": null,
+    "original_name": "visage.png",
+    "prompt": null,
+    "seed": null,
+    "thumb_url": "/media/thumbs/ref_001.jpg",
+    "url": "/media/uploads/ref_001.png",
+    "width": 800
+   }
+  ]
+ },
+ "messages": {
+  "m1": {
+   "conversation_id": "c1",
+   "created_at": 1760000012.0,
+   "error": null,
+   "finished_at": 1760000040.0,
+   "id": "m1",
+   "model_id": "flux-schnell",
+   "outputs": [
+    {
+     "conversation_id": "c1",
+     "created_at": 1760000040.0,
+     "duration": null,
+     "favorite": true,
+     "fps": null,
+     "height": 1024,
+     "id": "g1",
+     "kind": "generated",
+     "media": "image",
+     "message_id": "m1",
+     "meta": {
+      "model": "flux-schnell"
+     },
+     "original_name": null,
+     "seed": 11,
+     "thumb_url": "/media/thumbs/out_m1_0.jpg",
+     "url": "/media/outputs/out_m1_0.png",
+     "width": 1024
+    },
+    {
+     "conversation_id": "c1",
+     "created_at": 1760000041.0,
+     "duration": null,
+     "favorite": false,
+     "fps": null,
+     "height": 1024,
+     "id": "g2",
+     "kind": "generated",
+     "media": "image",
+     "message_id": "m1",
+     "meta": {},
+     "original_name": null,
+     "seed": 22,
+     "thumb_url": "/media/thumbs/out_m1_1.jpg",
+     "url": "/media/outputs/out_m1_1.png",
+     "width": 1024
+    }
+   ],
+   "params": {
+    "count": 2,
+    "height": 1024,
+    "seeds": [
+     11,
+     22
+    ],
+    "steps": 4,
+    "width": 1024
+   },
+   "parent_id": "u1",
+   "prompt": "Un portrait en lumière douce",
+   "references": [],
+   "role": "assistant",
+   "started_at": 1760000013.0,
+   "status": "done"
+  },
+  "m2": {
+   "conversation_id": "c2",
+   "created_at": 1760000022.0,
+   "error": null,
+   "finished_at": 1760000030.0,
+   "id": "m2",
+   "model_id": "kokoro",
+   "outputs": [
+    {
+     "conversation_id": "c2",
+     "created_at": 1760000030.0,
+     "duration": 3.2,
+     "favorite": false,
+     "fps": null,
+     "height": null,
+     "id": "g3",
+     "kind": "generated",
+     "media": "audio",
+     "message_id": "m2",
+     "meta": {
+      "prompt": "Bienvenue dans le studio",
+      "voice": "ff_siwis"
+     },
+     "original_name": null,
+     "seed": null,
+     "thumb_url": "/media/outputs/take_m2.wav",
+     "url": "/media/outputs/take_m2.wav",
+     "width": null
+    }
+   ],
+   "params": {
+    "language": "fr",
+    "voice": "ff_siwis"
+   },
+   "parent_id": "u2",
+   "prompt": "Bienvenue dans le studio",
+   "references": [],
+   "role": "assistant",
+   "started_at": 1760000023.0,
+   "status": "done"
+  },
+  "m3": {
+   "conversation_id": "c3",
+   "created_at": 1760000032.0,
+   "error": null,
+   "finished_at": null,
+   "id": "m3",
+   "model_id": "ltx-video",
+   "outputs": [
+    {
+     "conversation_id": "c3",
+     "created_at": 1760000037.0,
+     "duration": 4.04,
+     "favorite": false,
+     "fps": 24,
+     "height": 512,
+     "id": "g4",
+     "kind": "generated",
+     "media": "video",
+     "message_id": "m3",
+     "meta": {
+      "fps": 24,
+      "frames": 97
+     },
+     "original_name": null,
+     "seed": null,
+     "thumb_url": "/media/thumbs/clip_m3.jpg",
+     "url": "/media/outputs/clip_m3.mp4",
+     "width": 768
+    }
+   ],
+   "params": {
+    "fps": 24,
+    "frames": 97
+   },
+   "parent_id": "u3",
+   "prompt": "Travelling avant sur une forêt",
+   "references": [],
+   "role": "assistant",
+   "started_at": 1760000033.0,
+   "status": "running"
+  },
+  "m3b": {
+   "conversation_id": "c3",
+   "created_at": 1760000034.0,
+   "error": "Mémoire insuffisante",
+   "finished_at": 1760000036.0,
+   "id": "m3b",
+   "model_id": "ltx-video",
+   "outputs": [],
+   "params": {
+    "frames": 97
+   },
+   "parent_id": "u3",
+   "prompt": "Travelling avant sur une forêt",
+   "references": [],
+   "role": "assistant",
+   "started_at": 1760000035.0,
+   "status": "error"
+  },
+  "m5": {
+   "conversation_id": "c5",
+   "created_at": 1760000052.0,
+   "error": null,
+   "finished_at": 1760000060.0,
+   "id": "m5",
+   "model_id": "flux-schnell",
+   "outputs": [
+    {
+     "conversation_id": "c5",
+     "created_at": 1760000060.0,
+     "duration": null,
+     "favorite": false,
+     "fps": null,
+     "height": 768,
+     "id": "g5",
+     "kind": "generated",
+     "media": "image",
+     "message_id": "m5",
+     "meta": {},
+     "original_name": null,
+     "seed": 5,
+     "thumb_url": "/media/outputs/out_m5_0.png",
+     "url": "/media/outputs/out_m5_0.png",
+     "width": 1344
+    }
+   ],
+   "params": {
+    "steps": 4
+   },
+   "parent_id": "u5",
+   "prompt": "Une plage au lever du jour",
+   "references": [],
+   "role": "assistant",
+   "started_at": 1760000053.0,
+   "status": "done"
+  },
+  "u1": {
+   "conversation_id": "c1",
+   "created_at": 1760000011.0,
+   "error": null,
+   "finished_at": null,
+   "id": "u1",
+   "model_id": null,
+   "outputs": [],
+   "params": {},
+   "parent_id": null,
+   "prompt": "Un portrait en lumière douce",
+   "references": [
+    {
+     "conversation_id": "c1",
+     "created_at": 1760000005.0,
+     "duration": null,
+     "favorite": false,
+     "fps": null,
+     "height": 600,
+     "id": "a_ref",
+     "kind": "upload",
+     "media": "image",
+     "message_id": null,
+     "meta": {},
+     "original_name": "visage.png",
+     "seed": null,
+     "thumb_url": "/media/thumbs/ref_001.jpg",
+     "url": "/media/uploads/ref_001.png",
+     "width": 800
+    }
+   ],
+   "role": "user",
+   "started_at": null,
+   "status": "done"
+  },
+  "u2": {
+   "conversation_id": "c2",
+   "created_at": 1760000021.0,
+   "error": null,
+   "finished_at": null,
+   "id": "u2",
+   "model_id": null,
+   "outputs": [],
+   "params": {},
+   "parent_id": null,
+   "prompt": "Bienvenue dans le studio",
+   "references": [],
+   "role": "user",
+   "started_at": null,
+   "status": "done"
+  },
+  "u3": {
+   "conversation_id": "c3",
+   "created_at": 1760000031.0,
+   "error": null,
+   "finished_at": null,
+   "id": "u3",
+   "model_id": null,
+   "outputs": [],
+   "params": {},
+   "parent_id": null,
+   "prompt": "Travelling avant sur une forêt",
+   "references": [],
+   "role": "user",
+   "started_at": null,
+   "status": "done"
+  },
+  "u5": {
+   "conversation_id": "c5",
+   "created_at": 1760000051.0,
+   "error": null,
+   "finished_at": null,
+   "id": "u5",
+   "model_id": null,
+   "outputs": [],
+   "params": {},
+   "parent_id": null,
+   "prompt": "Une plage au lever du jour",
+   "references": [],
+   "role": "user",
+   "started_at": null,
+   "status": "done"
+  }
+ },
+ "voices": [
+  {
+   "created_at": 1760000200.0,
+   "description": "Voix douce et posée",
+   "duration": null,
+   "id": "v2",
+   "kind": "design",
+   "language": null,
+   "name": "Narratrice chaleureuse",
+   "peaks": [],
+   "transcript": "",
+   "url": null
+  },
+  {
+   "created_at": 1760000100.0,
+   "description": "",
+   "duration": 4.5,
+   "id": "v1",
+   "kind": "clone",
+   "language": "fr",
+   "name": "Ma voix",
+   "peaks": [
+    0.1,
+    0.5,
+    1.0,
+    0.3
+   ],
+   "transcript": "Bonjour tout le monde",
+   "url": "/media/uploads/voice_v1.wav"
+  }
+ ]
+}
