@@ -11,9 +11,11 @@ import { ComingSoonPage } from './pages/ComingSoonPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { ConversationPage } from './pages/ConversationPage'
 import { HomePage } from './pages/HomePage'
+import { VideoHomePage } from './pages/VideoHomePage'
+import { VideoLibraryPage } from './pages/VideoLibraryPage'
 import { VoicesPage } from './pages/VoicesPage'
 
-/** Page of a route: the image studio's home and conversation (H4.3) and gallery (H4.4), the audio studio's home, voices and library (H4.5); the video ones are still provisional (`ComingSoonPage`). */
+/** Page of a route: the image studio's home and conversation (H4.3) and gallery (H4.4), the audio studio's home, voices and library (H4.5), the video studio's home and library (H4.6); `ComingSoonPage` stays as the fallback of a route without a page. */
 function pageOf(route: StudioRouteDef) {
   if (route.name === 'home') return <HomePage />
   if (route.name === 'conversation') return <ConversationPage />
@@ -21,6 +23,8 @@ function pageOf(route: StudioRouteDef) {
   if (route.name === 'audio-home') return <AudioHomePage />
   if (route.name === 'voices') return <VoicesPage />
   if (route.name === 'audio-library') return <AudioLibraryPage />
+  if (route.name === 'video-home') return <VideoHomePage />
+  if (route.name === 'video-library') return <VideoLibraryPage />
   return <ComingSoonPage titleKey={route.titleKey} />
 }
 

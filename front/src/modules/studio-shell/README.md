@@ -21,7 +21,7 @@ studio-shell/
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
   components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem,
                            SidebarFooter, Mark, modeIcons
-  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), ConversationPage (ConversationView + adaptateurs image et audio), ComingSoonPage (pages provisoires : vidéo)
+  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), VideoHomePage, VideoLibraryPage, ConversationPage (ConversationView + adaptateurs image, audio et vidéo), ComingSoonPage (page de repli d'une route sans page)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
   services/                studioHttp (proxy transitoire), conversationsApi
@@ -38,13 +38,13 @@ gabarit ; la coquille reste montée d'une page à l'autre, donc la recherche et 
 | Chemin | Page | Mode | Tâche qui la remplit |
 |---|---|---|---|
 | `/` | Accueil du studio image (`ImageHome`) | image | H4.3b (fait) |
-| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait), audio : H4.5 (fait), vidéo : H4.6 |
+| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait), audio : H4.5 (fait), vidéo : H4.6 (fait) |
 | `/galerie` | Galerie (`ImageGallery`) | image | H4.4 (fait) |
 | `/audio` | Accueil audio (`AudioHome`) | audio | H4.5 (fait) |
 | `/audio/voix` | Mes voix (`VoicesLibrary`) | audio | H4.5 (fait) |
 | `/audio/bibliotheque` | Bibliothèque audio (`AudioGallery`) | audio | H4.5 (fait) |
-| `/video` | Nouvelle vidéo | vidéo | H4.6 |
-| `/video/bibliotheque` | Bibliothèque vidéo | vidéo | H4.6 |
+| `/video` | Accueil vidéo (`VideoHome`) | vidéo | H4.6 (fait) |
+| `/video/bibliotheque` | Bibliothèque vidéo (`VideoGallery`) | vidéo | H4.6 (fait) |
 
 Table unique : `lib/routes.ts` (`STUDIO_ROUTES`, `studioPaths`, `matchStudioRoute`). Pour remplacer une page : changer l'`element`
 de sa route dans `routes.tsx` (ou passer un `lazy`).
@@ -127,7 +127,7 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 | Ancien (`frontend/src/`) | Nouveau |
 |---|---|
 | `App.tsx` (mise en page, raccourcis, `useModeSync`) | `components/StudioShell`, `hooks/useShortcuts`, `hooks/useModeSync` |
-| `App.tsx` (`useFileDrop`, surcouche de dépôt) | image : `image-studio` (`ImageDropLayer`, H4.3b) ; audio et vidéo : H4.5, H4.6 |
+| `App.tsx` (`useFileDrop`, surcouche de dépôt) | image : `image-studio` (`ImageDropLayer`, H4.3b) ; audio : `voices` (`VoiceDropLayer`, H4.5) ; vidéo : `video-studio` (`VideoDropLayer`, H4.6) |
 | `App.tsx` (`Toaster` sonner) | `ToastZone` (react-toastify) du gabarit, dans `Router` |
 | `components/Sidebar.tsx` : `Sidebar` | `components/Sidebar` |
 | `Sidebar.tsx` : `ModeSwitch` | `components/ModeSwitch` |

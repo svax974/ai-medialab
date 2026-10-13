@@ -45,7 +45,7 @@ Montage : `studio-shell/pages/{AudioHomePage,AudioLibraryPage,VoicesPage,Convers
 | Dialogue | deux personnages détectés (« Nom : réplique » en début de ligne) : panneau « Scénario à N voix » avec un sélecteur de voix par personnage (distribution automatique : le premier garde la voix choisie, les autres des voix du genre opposé d'abord) ; « C'est un simple texte » / « Attribuer une voix à chaque personnage » |
 | Avis | modèle incompatible (texte du moteur), note du plan, « Ce modèle clone une voix : choisissez ou enregistrez une voix de référence. », texte très long (> 6000) |
 | Modèle non prêt | `SetupPrompt` (module `engines`) ; sur l'accueil, la carte du premier lancement (`WelcomeSetup`) la remplace |
-| Barre | `ModelPicker`, voix (intégrées par langue / « Mes voix » / « Enregistrer ou importer une voix… » ; modèle à voix décrite : rappel « Voix décrite ci-dessus » ; modèle qui ne clone pas : avertissement), langue (si le modèle en a plusieurs), réglages du modèle + graine (`GenerationParams` d'`image-studio`, voir écarts), prises 1 à 4, lecture automatique, Synthétiser |
+| Barre | `ModelPicker`, voix (intégrées par langue / « Mes voix » / « Enregistrer ou importer une voix… » ; modèle à voix décrite : rappel « Voix décrite ci-dessus » ; modèle qui ne clone pas : avertissement), langue (si le modèle en a plusieurs), réglages du modèle + graine (`GenerationParams` de `studio-core`), prises 1 à 4, lecture automatique, Synthétiser |
 | Envoyer | désactivé sans texte, au-delà de 8000, modèle non installé ou incompatible, sans voix, sans description de voix ; info-bulle selon la raison, raccourci ↵ ; après l'envoi le texte est vidé ; depuis l'accueil la conversation s'ouvre |
 
 ## Messages et prises
@@ -91,7 +91,7 @@ Cases cochées = vérifiées par la logique testée et le rendu côté serveur (
 **Dépôt audio** (règles de H4.4) : voir `voices` (dépôt d'un son = ouvre le studio de voix).
 
 **Écarts**
-- Réglages du modèle et graine : composant `GenerationParams` d'`image-studio` (réexporté), à remonter dans `studio-core` avec H4.6 ; son bouton n'affiche pas le nombre d'étapes pour l'audio.
+- Réglages du modèle et graine : composant `GenerationParams` de `studio-core` (remonté d'`image-studio` en H4.6) ; son bouton affiche « Réglages » pour l'audio (et la vidéo), comme l'ancienne interface.
 - La langue par défaut suit la langue de l'interface (fr / en), plus le réglage du navigateur.
 - Libellés du favori : « Ajouter aux favoris » / « Retirer des favoris » (comme les images).
 - Lecteur : composants de `common` (`useSharedAudioPlayer`, `Waveform`, `WaveformPending`) ; la vitesse de lecture est partagée par tout l'onglet (comme avant).

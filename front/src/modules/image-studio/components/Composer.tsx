@@ -16,7 +16,7 @@ import { ModelPicker, useActiveModel, useModels, useWelcomeModel, useModelSelect
 import { pickerBackendKey } from '@/modules/model-catalog/lib/catalogFormat'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { LabelTooltip, useImageDraftStore } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, useImageDraftStore } from '@/modules/studio-core'
 import { useSendMessage } from '../hooks/useSendMessage'
 import { composerNotices, multiAlternative, placeholderKey, sendState } from '../lib/composerRules'
 import { attachHelp } from '../lib/help'
@@ -25,7 +25,6 @@ import { buildSendRequest } from '../lib/sendRequest'
 import { uploadReferences } from '../lib/uploadReferences'
 import { AspectPicker } from './AspectPicker'
 import { CountPicker } from './CountPicker'
-import { GenerationParams } from './GenerationParams'
 import { ReferenceStrip } from './ReferenceStrip'
 
 function Notices({ model, referenceCount, alternative }: { model: ModelInfo; referenceCount: number; alternative: ModelInfo | undefined }) {

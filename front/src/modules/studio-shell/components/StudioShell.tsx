@@ -18,14 +18,18 @@ import { ModelsDialog, useDownloadEvents } from '@/modules/model-catalog'
 import { SettingsDialog } from '@/modules/settings'
 import { ImageDropLayer } from '@/modules/image-studio'
 import { useVoiceEvents, VoiceDropLayer, VoiceStudioDialog } from '@/modules/voices'
-import { StudioLightbox, useStudioEvents } from '@/modules/studio-core'
+import { VideoDropLayer, VideoViewerActions } from '@/modules/video-studio'
+import { StudioLightbox, useStudioEvents, type ViewerModeActions } from '@/modules/studio-core'
 import { Sidebar } from './Sidebar'
+
+/** What the viewer offers per mode in place of "use as reference". */
+const VIEWER_ACTIONS: ViewerModeActions = { video: VideoViewerActions }
 
 /**
  * Layout of the studio: the sidebar (hideable, Cmd+B) and the page. Mounted once above the routes, so the list and
  * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the `engine.*`, `studio.*` and voice-library event subscriptions and the
- * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`), the image
- * viewer, the window drop of images (image mode) and of a voice sample (audio mode), and the voice studio dialog.
+ * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`), the media
+ * viewer, the window drop of images (image mode), of a voice sample (audio mode) and of images and videos (video mode), and the voice studio dialog.
  */
 export function StudioShell({ children }: { children: ReactNode }) {
   useShortcuts()
@@ -63,9 +67,10 @@ export function StudioShell({ children }: { children: ReactNode }) {
         onSetup={(model) => void startSetup(model)}
         renderEngines={(kind, models) => <EnginesPanel kind={kind} models={models} />}
       />
-      <StudioLightbox />
+      <StudioLightbox modeActions={VIEWER_ACTIONS} />
       {mode === 'image' && <ImageDropLayer />}
       {mode === 'audio' && <VoiceDropLayer />}
+      {mode === 'video' && <VideoDropLayer />}
       <VoiceStudioDialog />
       <ConfirmHost />
     </Box>

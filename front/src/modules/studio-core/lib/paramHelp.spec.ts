@@ -17,6 +17,11 @@ describe('paramHelp', () => {
     })
   })
 
+  it('uses the video wording of the influence parameter for a video model', () => {
+    expect(paramHelp({ key: 'strength', label: 'Influence', help: '' }, 'video', t).title).toBe('«thread.help.strength_video.title»')
+    expect(paramHelp({ key: 'strength', label: 'Influence', help: '' }, 'image', t).title).toBe('«thread.help.strength.title»')
+  })
+
   it('adds the model caveat after "this model"', () => {
     const help = paramHelp({ key: 'guidance', label: 'Guidance', help: 'À 1, désactivée sur ce modèle.' }, 'image', t)
     expect(help.body).toBe('«thread.help.guidance.body»\n\n«thread.help.modelSays» À 1, désactivée sur ce modèle.')

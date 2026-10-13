@@ -40,7 +40,7 @@ model-catalog/
 `ModelsDialog` (monté par `StudioShell`, qui lui passe `onSetup` et `renderEngines` du module `engines` : le module ne dépend pas de
 `engines`), `ModelPicker` (`<ModelPicker model={actif} onSelect? />`), `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
 `useModelSelectionStore`, `useDownloadStore`, `activeDownload`, `modelCatalogApi`, `modelCatalogKeys`, `VideoBadges`, `LicenseWarning`,
-`GatedNotice` (réutilisés par le composeur vidéo, H4.6), `Section`, `Tag`, `Notice`, types.
+`GatedNotice` (réutilisés par le composeur vidéo, H4.6), `MODEL_HELP` (info-bulles des badges, reprises par les avis du composeur vidéo), `Section`, `Tag`, `Notice`, types.
 
 ## Comportement
 

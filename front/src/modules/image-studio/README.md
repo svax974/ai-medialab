@@ -11,17 +11,17 @@ réglages du modèle générés depuis ses paramètres, graine, nombre d'images,
 
 ```
 image-studio/
-  index.ts                       exports : ImageHome, ImageGallery, Composer, GenerationParams (réutilisé par `audio-studio`), ImageDropLayer, imageStudioAdapter
+  index.ts                       exports : ImageHome, ImageGallery, Composer, ImageDropLayer, imageStudioAdapter
   imageStudioAdapter.tsx         ce que le mode image branche sur le fil de studio-core (composeur, génération, reprise d'un prompt)
   hooks/useSendMessage.ts        envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
   hooks/useImageDrop.ts          dépôt sur la fenêtre : fichiers (useWindowDrop de `common`) et images de la conversation glissées
   lib/size.ts                    ASPECTS, QUALITIES, resolveSize (miroir de `resolve_size` du moteur), définitions visibles (testé)
-  lib/params.ts                  paramètres effectifs, schéma pour le formulaire commun, détection du « Valeurs par défaut » (testé)
+  lib/params.ts                  paramètres effectifs (définition « Original » et format `auto` avec références), corps `params` d'un message (testé) ; le schéma du formulaire et `GenerationParams` sont dans `studio-core` depuis H4.6
   lib/composerRules.ts           avis du composeur, rôle d'une référence, modèle multi-images de remplacement, état du bouton Générer (testé)
   lib/uploadReferences.ts        import des références (filtre d'images, aperçus, HttpService.upload) (testé)
   lib/sendRequest.ts             corps de POST /api/messages (testé)
   lib/help.ts                    info-bulles propres à l'image, prompts de départ
-  components/                    ImageHome, ImageGallery (H4.4 : `AssetGallery` de `media-library` + `ImageTile` de `studio-core`), Composer, ReferenceStrip, AspectPicker, GenerationParams, CountPicker, DropOverlay (ImageDropLayer)
+  components/                    ImageHome, ImageGallery (H4.4 : `AssetGallery` de `media-library` + `ImageTile` de `studio-core`), Composer, ReferenceStrip, AspectPicker, CountPicker, DropOverlay (ImageDropLayer)
   locales/                       locales.fr.json, locales.en.json (clés imageStudio.*)
 ```
 
@@ -55,7 +55,7 @@ glissées depuis une vignette (type `application/x-cn-asset`) deviennent des ré
 | `components/Home.tsx` | `components/ImageHome` |
 | `components/Composer.tsx` : composeur, `RefThumb`, `CountPicker`, avis | `components/Composer`, `ReferenceStrip`, `CountPicker`, `lib/composerRules` |
 | `components/AspectPicker.tsx` | `components/AspectPicker`, `lib/size` |
-| `components/ParamsPopover.tsx` | `components/GenerationParams` + `SchemaParamsPopover` (`common`), `lib/params` |
+| `components/ParamsPopover.tsx` | `studio-core/components/GenerationParams` (remonté en H4.6) + `SchemaParamsPopover` (`common`), `studio-core/lib/paramsSchema` |
 | `lib/size.ts` | `lib/size` |
 | `lib/composer.ts` : `uploadFiles`, `effectiveParams`, `registerComposer`/`focusComposer` | `lib/uploadReferences`, `lib/params`, `studio-shell/lib/focusRegistry` |
 | `App.tsx` : `useFileDrop`, surcouche | `hooks/useImageDrop`, `components/DropOverlay` |
@@ -66,7 +66,7 @@ glissées depuis une vignette (type `application/x-cn-asset`) deviennent des ré
 
 - Le titre du panneau de réglages est « Réglages » (le formulaire commun n'accepte pas de nom de modèle dans son titre) ; le nombre d'étapes, le cadenas de la graine et le point « modifié » sont dans le bouton.
 - « Valeurs par défaut » est repéré à partir de ce que le formulaire commun envoie (tous les champs à leur défaut, au moins deux champs) ; il libère la graine comme l'ancien bouton « Défauts ».
-- Le dépôt de fichiers ne s'applique qu'en mode image (comme avant) ; l'audio a le sien depuis H4.5 (module `voices` : un son ouvre le studio de voix), la vidéo aura le sien (H4.6).
+- Le dépôt de fichiers ne s'applique qu'en mode image (comme avant) ; l'audio a le sien depuis H4.5 (module `voices` : un son ouvre le studio de voix) et la vidéo depuis H4.6 (`video-studio` : images et vidéos vers les emplacements du composeur).
 - Les libellés des réglages d'un modèle et les remarques « Ce modèle : » viennent du moteur (français).
 - Pas de barre de progression de l'envoi des images (l'ancien composeur n'en avait pas non plus pour les images : indicateur seulement).
 

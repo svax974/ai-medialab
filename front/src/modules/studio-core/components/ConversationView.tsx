@@ -25,7 +25,7 @@ const WIDTH = 880
 /**
  * A conversation: editable title and count, the thread (user messages and generations of its mode), a button back to the
  * bottom when scrolled up, and the composer of the mode floating at the bottom. A missing conversation (404) goes
- * back to the home page with a message. Modes without an adapter (audio and video until H4.5/H4.6) show a notice.
+ * back to the home page with a message. A mode without an adapter shows a notice.
  */
 export function ConversationView({ id, adapters }: { id: string; adapters: ModeAdapters }) {
   const t = useT()

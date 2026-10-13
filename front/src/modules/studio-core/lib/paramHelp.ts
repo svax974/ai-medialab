@@ -15,13 +15,14 @@ const entry = (name: string, withTip: boolean): Help => ({
 /**
  * Explanations of the generation parameters shared by the creation modes (texts of the former `lib/help.ts`: `steps`,
  * `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`) and the audio ones (`speed`, `temperature`,
- * `count_takes`, H4.5). The video parameters arrive with H4.6. Locale keys: `Help` of `InfoTip`/`HelpBody`.
+ * `count_takes`, H4.5) and the video ones (`strength_video`: the influence of the source video, H4.6). Locale keys: `Help` of `InfoTip`/`HelpBody`.
  */
 export const PARAM_HELP: Record<string, Help> = {
   steps: entry('steps', true),
   guidance: entry('guidance', true),
   negative_prompt: entry('negative_prompt', true),
   strength: entry('strength', true),
+  strength_video: entry('strength_video', true),
   seed: entry('seed', true),
   fast_decode: entry('fast_decode', true),
   count_images: entry('count_images', false),

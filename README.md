@@ -57,7 +57,7 @@ modèle : `back/.env.example`, section « ai-medialab ») : `ENGINE_TOKEN` (secr
 ### Données de Nest et import de l'ancienne base
 
 Nest possède sa propre base SQLite (`<APP_DATA_DIR>/app.db`, `DB_PATH`) : conversations, messages, assets, voix
-(modules `studio-core`, `media-library`, `audio-studio`, détail dans leurs README), réglages du studio (module `settings`,
+(modules `studio-core`, `media-library`, `audio-studio`, détail dans leurs README ; la vidéo n'a pas de module Nest propre : ses jobs passent par `studio-core`, voir son README), réglages du studio (module `settings`,
 configuration de module, `hf_token` chiffré ; Nest en est la source de vérité et les transmet au moteur par
 `PUT /engine/v1/runtime/settings`), état matériel (module `hardware`, délégué au moteur), catalogue des modèles, téléchargements, recherche Hugging Face et modèles
 personnalisés (module `model-catalog`) et installateurs de moteurs et de packs (module `engines`), eux aussi délégués au moteur : Nest porte les routes
@@ -84,7 +84,7 @@ routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules
 composeur (références, modèle, proportions, réglages, nombre d'images) dans `front/src/modules/image-studio/README.md`, le fil de conversation
 (messages, progression avec aperçus, relance, annulation, suppression, vignettes, visionneuse, carte du moteur) dans `front/src/modules/studio-core/README.md` ;
 la galerie d'images (`/galerie`) est faite (H4.4, `front/src/modules/media-library/README.md`)  ; le studio audio est fait (H4.5) : l'accueil, le composeur (texte ou dialogue avec distribution des voix, voix, langue, style, prises), les prises avec lecteur et forme d'onde et la bibliothèque audio (`/audio`, `/audio/bibliotheque`) dans `front/src/modules/audio-studio/README.md`,
-la bibliothèque de voix et le studio de voix (micro, import, transcription modifiable, `/audio/voix`) dans `front/src/modules/voices/README.md` ; la vidéo reste une page « à venir » jusqu'à la tâche H4.6 ; le dialogue Réglages
+la bibliothèque de voix et le studio de voix (micro, import, transcription modifiable, `/audio/voix`) dans `front/src/modules/voices/README.md` ; le studio vidéo est fait (H4.6) : l'accueil, le composeur (vidéo source, image de départ et de fin, durée, format et définition, réglages, nombre de clips), les clips avec lecteur et actions (source, dernière image comme départ), le dépôt d'images et de vidéos et la bibliothèque (`/video`, `/video/bibliotheque`) dans `front/src/modules/video-studio/README.md` ; les réglages du modèle et la graine sont communs aux trois composeurs (`GenerationParams` de `studio-core`) ; le dialogue Réglages
 (`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
 (catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
 installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
@@ -345,6 +345,11 @@ qui soumet le même job et écrit la base du moteur comme avant.
 (`voices`) ; le proxy transitoire ne relaie plus que `events`. Un `message.updated` audio (4 prises avec formes d'onde et repères) pèse de 8 Ko (texte court) à
 plus de 100 Ko (8000 caractères) : la limite d'événement du flux, 16 Ko par défaut, est portée à 256 Ko pour cette application
 (`StudioEventLimitsModule`, `back/src/modules/media-library/README.md`).
+
+**Vidéo (H4.6).** Pas de module Nest propre : un job vidéo est un job comme les autres (`studio-core`). Les entrées du composeur (image de départ, image de fin, vidéo source) sont des assets joints au prompt dans cet ordre ;
+le moteur décide de la tâche (`i2v`, `v2v`, `t2v`), refuse ce qu'un modèle exige et ignore ce qu'il ne sait pas utiliser (`engine/app/job_checks.py`, `job_plans.py`), borne les clips à 2, et décrit chaque clip
+produit (affiche WebP de la première image, durée, dimensions, fps ; `engine/app/job_outputs.py`). Les images d'une vidéo (« dernière image comme départ ») sont extraites dans le navigateur. Tests : `back/src/modules/studio-core/services/VideoGeneration.spec.ts`,
+`engine/tests/test_jobs.py` (`TestVideoPlans`). Front : `front/src/modules/video-studio/README.md`.
 
 **File des générations (H4.4).** Nest publie la file (message en cours et messages en attente, tous modes et toutes conversations) par
 `studio.queue.updated` et `GET /api/queue` : le front en tire « position N » et « N en attente » exacts (l'ancienne interface lisait `queue`

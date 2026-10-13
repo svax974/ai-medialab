@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { useEffect } from 'react'
+import { useEffect, type ComponentType } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Box, Button } from '@mui/material'
 import AddPhotoAlternateOutlined from '@mui/icons-material/AddPhotoAlternateOutlined'
@@ -19,14 +19,29 @@ import { Lightbox, type LightboxItem } from '@/modules_shared/common/components/
 import { i18n } from '@/modules_shared/common/core/i18n/I18n'
 import { useModels } from '@/modules/model-catalog'
 import { studioPaths } from '@/modules/studio-shell/lib/routes'
+import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
+import type { StudioMode } from '@/modules/studio-shell/types'
 import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
 import { useDeleteAsset, useToggleFavorite } from '../hooks/useAssetActions'
 import { copyText, downloadAsset } from '../lib/clipboard'
 import { addAsReference } from '../lib/draftActions'
+import { viewerActionsMode } from '../lib/viewerActionsMode'
 import { assetModelId, assetPrompt, viewerDetails } from '../lib/viewerDetails'
 import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import type { Asset } from '../types'
+
+/** The mode's own actions when it has some, else "use as reference" for an image (nothing for a clip of a mode without actions). */
+function ModeActions({ asset, modeActions, mode }: { asset: Asset; modeActions: ViewerModeActions | undefined; mode: StudioMode }) {
+  const Own = modeActions?.[viewerActionsMode(asset, mode)]
+  if (Own) return <Own asset={asset} />
+  if (asset.media === 'video') return null
+  return (
+    <TipIconButton labelId="thread.viewer.useAsReference" onClick={() => addAsReference(asset)} sx={{ color: 'inherit' }}>
+      <AddPhotoAlternateOutlined fontSize="small" />
+    </TipIconButton>
+  )
+}
 
 const toItem = (asset: Asset): LightboxItem => ({
   id: asset.id,
@@ -124,13 +139,17 @@ function Details({ asset }: { asset: Asset }) {
   )
 }
 
+/** What a creation mode puts in the viewer's toolbar in place of "use as reference" (the video studio: use as the video to edit, last frame as the start). */
+export type ViewerModeActions = Partial<Record<StudioMode, ComponentType<{ asset: Asset }>>>
+
 /**
- * The image viewer (common `Lightbox`) wired to the studio: use as reference, favorite (`F`), download, details panel
- * (`I`) with prompt, model, size, seed, steps..., open the conversation, delete. Mounted once by the shell; opened with
- * `useLightboxStore().show(items, index)`. The full gallery arrives with H4.4.
+ * The media viewer (common `Lightbox`) wired to the studio: use as reference (or, in a mode that has its own actions, those),
+ * favorite (`F`), download, details panel (`I`) with prompt, model, size, seed, steps..., open the conversation, delete.
+ * Mounted once by the shell; opened with `useLightboxStore().show(items, index)`.
  */
-export function StudioLightbox() {
+export function StudioLightbox({ modeActions }: { modeActions?: ViewerModeActions }) {
   const { open, items, index, setIndex, close } = useLightboxStore()
+  const mode = useStudioStore((s) => s.mode)
   const toggle = useToggleFavorite()
   useViewerKeys(open ? items[index] : undefined, (asset) => toggle.mutate(asset))
   if (!open || items.length === 0) return null
@@ -145,11 +164,7 @@ export function StudioLightbox() {
         if (!asset) return null
         return (
           <>
-            {asset.media !== 'video' && (
-              <TipIconButton labelId="thread.viewer.useAsReference" onClick={() => addAsReference(asset)} sx={{ color: 'inherit' }}>
-                <AddPhotoAlternateOutlined fontSize="small" />
-              </TipIconButton>
-            )}
+            <ModeActions asset={asset} modeActions={modeActions} mode={mode} />
             {asset.kind === 'generated' && (
               <TipIconButton labelId={asset.favorite ? 'thread.tile.unfavorite' : 'thread.tile.favorite'} kbd="F" active={asset.favorite} onClick={() => toggle.mutate(asset)} sx={{ color: asset.favorite ? 'var(--safe)' : 'inherit' }}>
                 {asset.favorite ? <FavoriteRounded fontSize="small" /> : <FavoriteBorderRounded fontSize="small" />}

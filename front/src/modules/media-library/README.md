@@ -28,7 +28,7 @@ media-library/
   components/AssetGallery.tsx    la galerie : en-tête, colonnes, états, sentinelle ; les tuiles viennent de `renderTile(asset, index, open)`
   components/GalleryHeader.tsx   titre, compteur, filtre texte, bouton Favoris (textes library.<media>.*)
   components/DropVeil.tsx        surcouche « Déposez… » (image-studio, audio et vidéo y mettent leurs textes)
-  components/VideoPosterTile.tsx tuile de clip sur `VideoPoster` de `common` (pour H4.6)
+  components/VideoPosterTile.tsx tuile de clip sur `VideoPoster` de `common` (utilisée par la bibliothèque vidéo de `video-studio`, H4.6)
   locales/                       locales.fr.json, locales.en.json (clés library.*)
 ```
 
@@ -38,7 +38,7 @@ media-library/
 `useLightboxStore`, `patchAssetInData` / `removeAssetFromData` / `flattenPages`, `classifyDrop` / `AUDIO_ACCEPT` / `VIDEO_ACCEPT`, `galleryState` / `emptyKey` / `countText` /
 `GALLERY_COLUMNS`, types.
 
-**Pour H4.5 et H4.6** : `<AssetGallery media="audio" renderTile={…} />` (ou `video`, avec `VideoPosterTile` + les boutons de la vidéo en `overlay`) ; les textes `library.audio.*` et `library.video.*`
+**Utilisé par H4.5 et H4.6** : `<AssetGallery media="audio" renderTile={…} />` (`audio-studio`) et `media="video"` avec `VideoPosterTile` + les boutons du clip en `overlay` (`video-studio/components/VideoGallery`) ; les textes `library.audio.*` et `library.video.*`
 (titre « Bibliothèque », compteurs « prises » / « clips », filtres, messages vides) et les textes de dépôt `library.drop.audio.*` / `library.drop.video.*` sont déjà là, ainsi que les colonnes
 (`GALLERY_COLUMNS`, 1 colonne pour l'audio : les cartes s'empilent, à vous de les centrer dans `renderTile`). Dépôt : `classifyDrop(mode, files)` renvoie les fichiers à garder et la clé de
 l'avertissement ; le dépôt lui-même se branche avec `useWindowDrop` (`common`) et `DropVeil`, comme `image-studio/hooks/useImageDrop.ts`.

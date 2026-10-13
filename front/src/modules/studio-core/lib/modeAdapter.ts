@@ -10,7 +10,7 @@ import type { Message } from '../types'
 /**
  * What a creation mode plugs into the conversation thread: its composer, how its generations are drawn and how a prompt
  * goes back to the composer. The thread (title, scrolling, user messages, empty state) is common to the three modes.
- * Image: `image-studio`; audio and video arrive with H4.5 and H4.6.
+ * Image: `image-studio`; audio: `audio-studio`; video: `video-studio`.
  */
 export interface ModeAdapter {
   kind: StudioMode
