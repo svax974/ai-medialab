@@ -40,12 +40,16 @@ function toError(payload: Payload): StudioApiError {
  * Calls the proxy and resolves the JSON body. `HttpResult` is callback-based; the transport encryption is skipped:
  * the proxy relays plain JSON to the engine.
  */
-export function studioRequest<T>(method: 'get' | 'patch' | 'delete', path: string, body?: unknown): Promise<T> {
+export function studioRequest<T>(method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, body?: unknown): Promise<T> {
   const url = studioApiBase() + path
   const options = { skipTransport: true }
   return new Promise<T>((resolve, reject) => {
     const result =
-      method === 'get' ? httpService.get(url, options) : method === 'patch' ? httpService.patch(url, body, options) : httpService.delete(url, options)
+      method === 'get'
+        ? httpService.get(url, options)
+        : method === 'delete'
+          ? httpService.delete(url, options)
+          : httpService[method](url, body ?? {}, options)
     result
       .then((data) => resolve(data as T))
       .fail((payload) => reject(toError(payload)))

@@ -42,7 +42,18 @@ describe('effectOfEvent', () => {
     expect(effectOfEvent({ topic: 'engine.link', data: { connected: false } }).invalidate).toEqual([])
   })
 
+  it('engine status refreshes the worker state; models and finished installs refresh the machine', () => {
+    expect(effectOfEvent({ topic: 'engine.engine.status', data: { state: 'idle' } }).invalidate).toEqual([['engine-status']])
+    expect(effectOfEvent({ topic: 'engine.models.changed' }).invalidate).toEqual([['system']])
+    expect(effectOfEvent({ topic: 'engine.engine.install', data: { state: 'done' } }).invalidate).toEqual([['system']])
+    expect(effectOfEvent({ topic: 'engine.pack.install', data: { state: 'error' } }).invalidate).toEqual([['system']])
+  })
+
+  it('a running install (many progress events) changes nothing', () => {
+    expect(effectOfEvent({ topic: 'engine.engine.install', data: { state: 'running' } })).toEqual({ invalidate: [], remove: [] })
+  })
+
   it('ignores other topics', () => {
-    expect(effectOfEvent({ topic: 'engine.models.changed' })).toEqual({ invalidate: [], remove: [] })
+    expect(effectOfEvent({ topic: 'engine.job.progress' })).toEqual({ invalidate: [], remove: [] })
   })
 })

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { hardwareKeys } from '@/modules/hardware/lib/hardwareKeys'
 import { studioKeys } from './queryKeys'
 
 /** Subscribed topics: the engine events relayed by Nest as `engine.<name>` (back/src/modules/engine/README.md). */
@@ -11,6 +12,10 @@ export const ENGINE_TOPICS = [
   'engine.conversation.deleted',
   'engine.message.updated',
   'engine.message.deleted',
+  'engine.engine.status',
+  'engine.models.changed',
+  'engine.engine.install',
+  'engine.pack.install',
   'engine.link',
 ] as const
 
@@ -57,6 +62,14 @@ export function effectOfEvent(event: EventLike): CacheEffect {
       const conversationId = stringOf(data['conversation_id'])
       return conversationId ? { invalidate: [studioKeys.conversation(conversationId)], remove: [] } : NONE
     }
+    case 'engine.engine.status':
+      return { invalidate: [hardwareKeys.status], remove: [] }
+    case 'engine.models.changed':
+      return { invalidate: [hardwareKeys.system], remove: [] }
+    case 'engine.engine.install':
+    case 'engine.pack.install':
+      // Only a finished install changes what the machine can run (a running one emits many progress events).
+      return data['state'] === 'running' ? NONE : { invalidate: [hardwareKeys.system], remove: [] }
     case 'engine.link':
       return data['connected'] === true ? effectOfResync() : NONE
     default:
@@ -66,5 +79,5 @@ export function effectOfEvent(event: EventLike): CacheEffect {
 
 /** Server asked to reload everything (replay impossible after a reconnection). */
 export function effectOfResync(): CacheEffect {
-  return { invalidate: [studioKeys.conversations, studioKeys.conversationAll], remove: [] }
+  return { invalidate: [studioKeys.conversations, studioKeys.conversationAll, hardwareKeys.system, hardwareKeys.status], remove: [] }
 }

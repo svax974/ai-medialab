@@ -6,8 +6,8 @@ Coquille du studio dans le nouveau front : barre latérale (mode image / audio /
 conversations épinglées et groupées par période, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
 abonnement au flux d'événements du moteur. Les écrans eux-mêmes (composeurs, conversation, galeries, voix, modèles,
-réglages) sont de **pages minces « à venir »** que les tâches H4 remplacent ; les dialogues Réglages et Modèles sont
-vides (H4.1, H4.2).
+réglages) sont des **pages minces « à venir »** que les tâches H4 remplacent ; le dialogue Réglages est celui du module
+`settings` (H4.1), le dialogue Modèles reste vide (H4.2).
 
 Module d'application (`front/src/modules/`), pas un module partagé. Thème : `front/src/themes/chambre-noire/README.md`.
 
@@ -57,6 +57,7 @@ de sa route dans `routes.tsx` (ou passer un `lazy`).
 | `GET` | `/api/conversations/:id` | Conversation et messages (mode de la page, titre). |
 | `PATCH` | `/api/conversations/:id` | Épingler (`pinned`) ou renommer (`title`). |
 | `DELETE` | `/api/conversations/:id` | Supprimer. |
+| `PUT`/`POST` | (`studioRequest`) | Ajouté en H4.1 pour les modules `settings` et `hardware` (`GET/PUT /api/settings`, `GET /api/system`, `GET /api/status`, `POST /api/engine/unload`, routes Nest). |
 | `GET` | `/api/events/stream?topics=engine.conversation.updated,…` | Flux d'événements (brique commune `eventStreamClient`). |
 
 Les appels passent par `httpService` (`skipTransport: true` : le proxy relaie du JSON en clair) ; l'URL de base est celle de
@@ -70,7 +71,8 @@ Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolv
   Défauts : `staleTime` 30 s, pas de rechargement au focus (le flux d'événements invalide), un nouvel essai.
 - **Flux d'événements** (`hooks/useEngineEventSync.ts`, monté par `StudioShell`) : abonnement aux sujets
   `engine.conversation.updated`, `engine.conversation.deleted`, `engine.message.updated`, `engine.message.deleted`,
-  `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
+  `engine.engine.status`, `engine.models.changed`, `engine.engine.install`, `engine.pack.install` (clés `['engine-status']` et
+  `['system']` du module `hardware`), `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
   (regroupés sur 250 ms) ; `engine.link` revenu à `connected: true` et la trame `resync` rechargent tout. Quand le flux est
   indisponible (`fallback`), la liste se relit au montage ; les composants H4 ajoutent leurs sujets dans `ENGINE_TOPICS` et leurs effets.
 - **Actions** (`useConversationActions`) : épingler/renommer en mise à jour optimiste avec retour arrière et message d'erreur
@@ -100,7 +102,7 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
 | `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
-| `SidebarFooter` | Modèles, Réglages (dialogues vides), `SwitchLanguage`, bascule clair/sombre. |
+| `SidebarFooter` | Modèles (dialogue vide), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
 | `ComingSoonDialog` / `ComingSoonPage` | Dialogue et page provisoires. |
 
 Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.
@@ -142,7 +144,8 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 | `lib/queries.ts` : `useConversations`, `useConversation`, flux | `hooks/useConversations`, `hooks/useEngineEventSync`, `lib/eventEffects` |
 | `lib/format.ts` : `periodOf`, `formatTime`, `cx` | `lib/periods` ; `cx` : inutile (`sx`) ; autres formats : H4 |
 | `lib/composer.ts` : `focusComposer`, `registerComposer` | `lib/focusRegistry` |
-| `components/SettingsDialog.tsx`, `ModelsDialog.tsx` | `ComingSoonDialog` (H4.1, H4.2) |
+| `components/SettingsDialog.tsx` | module `settings` (H4.1) |
+| `components/ModelsDialog.tsx` | `ComingSoonDialog` (H4.2) |
 | `styles.css` | `front/src/themes/chambre-noire/` |
 
 ## Dépendances

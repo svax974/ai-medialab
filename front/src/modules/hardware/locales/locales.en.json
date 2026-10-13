@@ -1,0 +1,22 @@
+{
+  "hardware.machine.title": "This machine",
+  "hardware.machine.loading": "Checking the machine…",
+  "hardware.machine.error": "Could not read the machine status.",
+  "hardware.machine.retry": "Retry",
+  "hardware.gpu.metal": "Chip",
+  "hardware.gpu.rocm": "AMD GPU · ROCm",
+  "hardware.gpu.cuda": "NVIDIA GPU · CUDA",
+  "hardware.gpu.none": "GPU",
+  "hardware.gpu.noneValue": "No usable GPU",
+  "hardware.gpu.memoryUnified": "{0} GB (unified memory)",
+  "hardware.gpu.memoryVram": "{0} GB of VRAM",
+  "hardware.gpu.unusable": "detected but unusable: {0}",
+  "hardware.ram.label": "Memory",
+  "hardware.ram.value": "{0} GB",
+  "hardware.ram.free": "{0} GB available",
+  "hardware.disk.label": "Disk (models)",
+  "hardware.disk.value": "{0} GB free",
+  "hardware.disk.total": "of {0} GB",
+  "hardware.paths.models": "Models: {0}",
+  "hardware.paths.data": "Data: {0}"
+}

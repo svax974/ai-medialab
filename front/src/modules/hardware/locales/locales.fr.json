@@ -1,0 +1,22 @@
+{
+  "hardware.machine.title": "Cette machine",
+  "hardware.machine.loading": "Analyse de la machine…",
+  "hardware.machine.error": "Impossible de lire l'état de la machine.",
+  "hardware.machine.retry": "Réessayer",
+  "hardware.gpu.metal": "Puce",
+  "hardware.gpu.rocm": "GPU AMD · ROCm",
+  "hardware.gpu.cuda": "GPU NVIDIA · CUDA",
+  "hardware.gpu.none": "GPU",
+  "hardware.gpu.noneValue": "Aucun GPU exploitable",
+  "hardware.gpu.memoryUnified": "{0} Go (mémoire unifiée)",
+  "hardware.gpu.memoryVram": "{0} Go de VRAM",
+  "hardware.gpu.unusable": "détecté mais inutilisable : {0}",
+  "hardware.ram.label": "Mémoire vive",
+  "hardware.ram.value": "{0} Go",
+  "hardware.ram.free": "{0} Go disponibles",
+  "hardware.disk.label": "Disque (modèles)",
+  "hardware.disk.value": "{0} Go libres",
+  "hardware.disk.total": "sur {0} Go",
+  "hardware.paths.models": "Modèles : {0}",
+  "hardware.paths.data": "Données : {0}"
+}

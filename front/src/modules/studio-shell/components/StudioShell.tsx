@@ -13,13 +13,14 @@ import { useEngineEventSync } from '../hooks/useEngineEventSync'
 import { useModeSync } from '../hooks/useModeSync'
 import { useShortcuts } from '../hooks/useShortcuts'
 import { useStudioStore } from '../state/studioStore'
+import { SettingsDialog } from '@/modules/settings'
 import { ComingSoonDialog } from './ComingSoonDialog'
 import { Sidebar } from './Sidebar'
 
 /**
  * Layout of the studio: the sidebar (hideable, Cmd+B) and the page. Mounted once above the routes, so the list and
  * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the engine event subscription and the
- * dialogs (settings and models: empty until H4.1 / H4.2).
+ * dialogs (settings: module `settings`; models: empty until H4.2).
  */
 export function StudioShell({ children }: { children: ReactNode }) {
   useShortcuts()
@@ -45,7 +46,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
         )}
         {children}
       </Box>
-      <ComingSoonDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} titleKey="studio.dialog.settings.title" />
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <ComingSoonDialog open={modelsOpen} onClose={() => setModelsOpen(false)} titleKey="studio.dialog.models.title" />
       <ConfirmHost />
     </Box>
