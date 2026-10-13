@@ -13,6 +13,7 @@ import { useModels } from '@/modules/model-catalog'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useNow } from '../hooks/useNow'
 import { engineCardView } from '../lib/engineState'
+import { useQueueStore } from '../state/queueStore'
 
 const DOT: Record<string, object> = {
   warn: { backgroundColor: 'var(--warn)', animation: 'var(--animate-breathe)' },
@@ -27,11 +28,12 @@ export function EngineCard() {
   const { data: status } = useEngineStatus()
   const { data: catalog } = useModels()
   const unload = useUnloadEngine()
+  const waiting = useQueueStore((s) => s.queue)
   const now = useNow(status?.state === 'loading')
   if (!status) return null
 
   const model = catalog?.models.find((m) => m.id === status.model_id)
-  const view = engineCardView(status, model?.name ?? null, model?.kind ?? null)
+  const view = engineCardView(status, model?.name ?? null, model?.kind ?? null, waiting)
   const detail = view.detail && 'clockFrom' in view.detail ? formatClock(now - view.detail.clockFrom) : view.detail ? t(view.detail.key, view.detail.params) : ''
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, borderRadius: '12px', border: '1px solid var(--line)', backgroundColor: 'var(--surface)', px: 1.5, py: 1 }}>

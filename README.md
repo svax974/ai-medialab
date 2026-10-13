@@ -83,7 +83,7 @@ l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conv
 routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; le studio image est fait (H4.3b) : l'accueil et le
 composeur (références, modèle, proportions, réglages, nombre d'images) dans `front/src/modules/image-studio/README.md`, le fil de conversation
 (messages, progression avec aperçus, relance, annulation, suppression, vignettes, visionneuse, carte du moteur) dans `front/src/modules/studio-core/README.md` ;
-les autres écrans (galeries, voix, audio, vidéo) sont des pages « à venir » jusqu'aux tâches H4.4 à H4.6 ; le dialogue Réglages
+la galerie d'images (`/galerie`) est faite (H4.4, `front/src/modules/media-library/README.md`) ; les autres écrans (bibliothèques audio et vidéo, voix, audio, vidéo) sont des pages « à venir » jusqu'aux tâches H4.5 et H4.6 ; le dialogue Réglages
 (`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
 (catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
 installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
@@ -337,6 +337,10 @@ génération à la fois (un modèle chargé à la fois, déchargement après ina
 (`back/src/modules/studio-core/README.md`) ; le contrat détaillé est dans le README du module `engine`. L'ancienne interface
 `frontend/`, qui parle directement au moteur sur `/api`, continue de marcher : `/api/messages*` passe par `app/legacy_jobs.py`,
 qui soumet le même job et écrit la base du moteur comme avant.
+
+**File des générations (H4.4).** Nest publie la file (message en cours et messages en attente, tous modes et toutes conversations) par
+`studio.queue.updated` et `GET /api/queue` : le front en tire « position N » et « N en attente » exacts (l'ancienne interface lisait `queue`
+dans le statut du moteur). Détail : `back/src/modules/studio-core/README.md`.
 
 Tests : un fichier à la fois, par exemple `cd engine && .venv/bin/python -m pytest -q tests/test_core.py`.
 

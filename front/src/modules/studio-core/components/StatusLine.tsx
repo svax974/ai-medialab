@@ -11,19 +11,21 @@ import { useNow } from '../hooks/useNow'
 import { formatTime } from '../lib/format'
 import { queueIndex, statusLine } from '../lib/messageState'
 import { useLiveStore } from '../state/liveStore'
+import { useQueueStore } from '../state/queueStore'
 import type { Message } from '../types'
 
 const mono = { fontFamily: 'var(--font-mono)', fontSize: 11 }
 
 /** The line next to the model name: waiting, loading the model (with a clock), step and remaining time, or the summary. */
-export function StatusLine({ message, model, siblings, engineQueue }: { message: Message; model: ModelInfo | undefined; siblings: readonly Message[]; engineQueue: readonly string[] | undefined }) {
+export function StatusLine({ message, model }: { message: Message; model: ModelInfo | undefined }) {
   const t = useT()
   const lang = useLang()
   const progress = useLiveStore((s) => s.progress[message.id])
+  const waiting = useQueueStore((s) => s.queue)
   const now = useNow(message.status === 'loading' || message.status === 'running')
   const line = statusLine(message, progress, {
     now,
-    queueIndex: message.status === 'queued' ? queueIndex(siblings, message.id, engineQueue) : -1,
+    queueIndex: message.status === 'queued' ? queueIndex(waiting, message.id) : -1,
     modelInstalled: model ? model.install === 'installed' : true,
   })
   if (line.kind === 'queued') {

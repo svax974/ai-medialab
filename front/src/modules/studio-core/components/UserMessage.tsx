@@ -13,7 +13,7 @@ import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
 import { useMessageActions, type MessageKind } from '../hooks/useMessageActions'
 import { copyText } from '../lib/clipboard'
 import { formatTime } from '../lib/format'
-import { useLightboxStore } from '../state/lightboxStore'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import type { Message } from '../types'
 
 /** What the user sent: reference thumbnails (open the viewer), the prompt, and hover actions (copy, reuse, delete). */

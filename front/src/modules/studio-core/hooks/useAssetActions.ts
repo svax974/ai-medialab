@@ -6,8 +6,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import { confirm } from '@/modules_shared/common/components/ui/confirm'
-import { assetsApi } from '../services/assetsApi'
-import { useLightboxStore } from '../state/lightboxStore'
+import { assetsApi } from '@/modules/media-library/services/assetsApi'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import type { Asset } from '../types'
 import { applyStudioOp } from './useStudioEvents'
 

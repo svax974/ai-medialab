@@ -31,7 +31,12 @@ describe('engineCardView', () => {
     expect(engineCardView(status({ state: 'ready' }), null, null)).toMatchObject({ name: null, labelKey: 'thread.engine.ready' })
   })
 
-  it('counts the queue', () => {
-    expect(engineCardView(status({ queue: ['a', 'b'] }), null, null).queued).toBe(2)
+  it('counts the waiting messages of every conversation', () => {
+    expect(engineCardView(status(), null, null, ['a', 'b', 'c']).queued).toBe(3)
+    expect(engineCardView(status(), null, null).queued).toBe(0)
+  })
+
+  it('adds the jobs only the engine lists (the former interface), once when in both', () => {
+    expect(engineCardView(status({ queue: ['a', 'x'] }), null, null, ['a', 'b']).queued).toBe(3)
   })
 })

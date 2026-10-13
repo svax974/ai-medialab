@@ -4,7 +4,7 @@
  */
 
 import { studioRequest } from '@/modules/studio-shell/services/studioHttp'
-import type { Message, RetryRequest, SendMessageRequest, SendMessageResponse } from '../types'
+import type { Message, QueueState, RetryRequest, SendMessageRequest, SendMessageResponse } from '../types'
 
 const path = (id: string, action = '') => `/messages/${encodeURIComponent(id)}${action}`
 
@@ -23,5 +23,9 @@ export const messagesApi = {
   /** Deleting a prompt takes its generations with it. */
   remove(id: string): Promise<{ ok: true; deleted: string[] }> {
     return studioRequest<{ ok: true; deleted: string[] }>('delete', path(id))
+  },
+  /** The generation queue (running message and waiting ones, in order): initial state, then `studio.queue.updated`. */
+  queue(): Promise<QueueState> {
+    return studioRequest<QueueState>('get', '/queue')
   },
 }

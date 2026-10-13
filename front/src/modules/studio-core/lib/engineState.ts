@@ -21,10 +21,11 @@ export interface EngineCardView {
 
 /**
  * What the engine card shows: loading the model (with a clock), generating, ready (model in memory, quantization) or
- * nothing loaded; the number waiting in the engine's own queue; the unload button only when idle with a model.
+ * nothing loaded; the number waiting (the generation queue of Nest, plus the jobs the engine itself still lists: the former
+ * interface, counted once when in both); the unload button only when idle with a model.
  */
-export function engineCardView(status: EngineStatus, modelName: string | null, modelKind: string | null): EngineCardView {
-  const queued = status.queue.length
+export function engineCardView(status: EngineStatus, modelName: string | null, modelKind: string | null, waiting: readonly string[] = []): EngineCardView {
+  const queued = new Set([...waiting, ...status.queue]).size
   switch (status.state) {
     case 'loading':
       return { tone: 'warn', pulse: true, labelKey: 'thread.engine.loading', name: null, detail: status.load_started_at ? { clockFrom: status.load_started_at } : null, queued, canUnload: false }

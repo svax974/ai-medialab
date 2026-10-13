@@ -5,12 +5,11 @@
 
 import { Box } from '@mui/material'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
-import { useEngineStatus } from '@/modules/hardware'
 import { useModels } from '@/modules/model-catalog'
 import { Mark } from '@/modules/studio-shell/components/Mark'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { buildSlots, developingFilter, isActive, isFresh, messageRatio, progressFraction, tileLayout } from '../lib/messageState'
-import { useLightboxStore } from '../state/lightboxStore'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import { useLiveStore } from '../state/liveStore'
 import type { Message } from '../types'
 import { DevelopingTile, ImageTile } from './ImageTile'
@@ -18,10 +17,9 @@ import { MessageFooter } from './MessageFooter'
 import { StatusLine } from './StatusLine'
 
 /** A generation: model and state, the grid of images (produced, developing, waiting), the error or cancellation, the actions. */
-export function AssistantMessage({ message, siblings }: { message: Message; siblings: readonly Message[] }) {
+export function AssistantMessage({ message }: { message: Message; siblings?: readonly Message[] }) {
   const t = useT()
   const { data: catalog } = useModels()
-  const { data: status } = useEngineStatus()
   const progress = useLiveStore((s) => s.progress[message.id])
   const show = useLightboxStore((s) => s.show)
   const model = catalog?.models.find((m) => m.id === message.model_id)
@@ -39,7 +37,7 @@ export function AssistantMessage({ message, siblings }: { message: Message; sibl
       <Box sx={{ minWidth: 0, flex: 1 }}>
         <Box sx={{ mb: 1, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '2px 8px' }}>
           <Box component="span" sx={{ fontSize: 13.5, fontWeight: 500, color: 'var(--ink)' }}>{model?.name ?? message.model_id}</Box>
-          <StatusLine message={message} model={model} siblings={siblings} engineQueue={status?.queue} />
+          <StatusLine message={message} model={model} />
         </Box>
         {slots.length > 0 && (
           <Box sx={{ display: 'grid', gap: 1, gridTemplateColumns: cols === 2 ? '1fr 1fr' : '1fr', maxWidth }}>

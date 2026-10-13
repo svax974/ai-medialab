@@ -6,8 +6,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import type { Asset } from '../types'
 import { useImageDraftStore } from './imageDraftStore'
-import { useLightboxStore } from './lightboxStore'
 import { useLiveStore } from './liveStore'
+import { useQueueStore } from './queueStore'
 
 const asset = (id: string, favorite = false) => ({ id, favorite }) as Asset
 
@@ -28,35 +28,6 @@ describe('liveStore', () => {
     const before = useLiveStore.getState().progress
     useLiveStore.getState().clearProgress('zz')
     expect(useLiveStore.getState().progress).toBe(before)
-  })
-})
-
-describe('lightboxStore', () => {
-  beforeEach(() => useLightboxStore.getState().close())
-
-  it('opens on a valid position and ignores an empty list', () => {
-    useLightboxStore.getState().show([], 0)
-    expect(useLightboxStore.getState().open).toBe(false)
-    useLightboxStore.getState().show([asset('a'), asset('b')], 9)
-    expect(useLightboxStore.getState()).toMatchObject({ open: true, index: 1 })
-  })
-
-  it('moves within the list and patches an asset', () => {
-    const { show, setIndex, patch } = useLightboxStore.getState()
-    show([asset('a'), asset('b')], 0)
-    setIndex(5)
-    expect(useLightboxStore.getState().index).toBe(1)
-    patch(asset('a', true))
-    expect(useLightboxStore.getState().items[0].favorite).toBe(true)
-  })
-
-  it('drops an asset, keeps the position valid and closes when empty', () => {
-    const { show, drop } = useLightboxStore.getState()
-    show([asset('a'), asset('b')], 1)
-    drop('b')
-    expect(useLightboxStore.getState()).toMatchObject({ open: true, index: 0 })
-    drop('a')
-    expect(useLightboxStore.getState()).toMatchObject({ open: false, items: [] })
   })
 })
 
@@ -82,5 +53,17 @@ describe('imageDraftStore', () => {
     expect(useImageDraftStore.getState().paramsByModel['flux']).toEqual({ steps: 4, aspect: '16:9' })
     resetParams('flux')
     expect(Object.keys(useImageDraftStore.getState().paramsByModel)).toEqual(['sdxl'])
+  })
+})
+
+describe('queueStore', () => {
+  beforeEach(() => useQueueStore.setState({ current: null, queue: [], loaded: false }))
+
+  it('is unknown until the first state, then follows the queue', () => {
+    expect(useQueueStore.getState().loaded).toBe(false)
+    useQueueStore.getState().set({ current: 'a', queue: ['b', 'c'] })
+    expect(useQueueStore.getState()).toMatchObject({ loaded: true, current: 'a', queue: ['b', 'c'] })
+    useQueueStore.getState().set({ current: null, queue: [] })
+    expect(useQueueStore.getState().queue).toEqual([])
   })
 })

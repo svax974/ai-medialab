@@ -9,7 +9,7 @@ import { focusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useModelSelectionStore } from '@/modules/model-catalog/state/modelSelectionStore'
 import type { Asset, Message } from '../types'
 import { useImageDraftStore } from '../state/imageDraftStore'
-import { useLightboxStore } from '../state/lightboxStore'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import { reusedSettings } from './messageState'
 
 /** Adds an image (generated or imported) as a reference of the next message, closes the viewer and focuses the composer. */

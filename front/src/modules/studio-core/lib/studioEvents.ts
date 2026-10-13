@@ -5,9 +5,9 @@
 
 import type { ConversationSummary } from '@/modules/studio-shell/types'
 import { studioKeys } from '@/modules/studio-shell/lib/queryKeys'
-import type { Asset, AssetPage, ConversationDetail, JobProgress, Message } from '../types'
+import type { Asset, ConversationDetail, JobProgress, Message, QueueState } from '../types'
 import { isActive } from './messageState'
-import { assetKeys } from './studioKeys'
+import { assetKeys } from '@/modules/media-library/lib/assetKeys'
 
 /**
  * Topics published by Nest (`studio.<name>`, same names and shapes as the former SSE of the engine;
@@ -22,6 +22,7 @@ export const STUDIO_TOPICS = [
   'studio.conversation.deleted',
   'studio.asset.updated',
   'studio.asset.deleted',
+  'studio.queue.updated',
 ] as const
 
 export interface StudioEventLike {
@@ -36,6 +37,9 @@ export type StudioOp =
   | { type: 'progress'; progress: JobProgress }
   | { type: 'clearProgress'; messageId: string }
   | { type: 'asset'; asset: Asset }
+  /** An asset was deleted: it leaves the lists and the viewer. */
+  | { type: 'assetDeleted'; id: string }
+  | { type: 'queue'; state: QueueState }
   | { type: 'invalidate'; key: readonly unknown[] }
   | { type: 'remove'; key: readonly unknown[] }
 
@@ -75,9 +79,6 @@ export function patchAssetInConversation(conversation: ConversationDetail, asset
   return { ...conversation, messages: conversation.messages.map((m) => ({ ...m, references: m.references.map(patch), outputs: m.outputs.map(patch) })) }
 }
 
-export function patchAssetInPage(page: AssetPage, asset: Asset): AssetPage {
-  return { ...page, items: page.items.map((a) => (a.id === asset.id ? { ...a, ...asset } : a)) }
-}
 
 // --- Events to operations -----------------------------------------------------------------------------------------
 
@@ -125,7 +126,13 @@ export function opsOfStudioEvent(event: StudioEventLike): StudioOp[] {
     case 'studio.asset.updated':
       return isAsset(data) ? [{ type: 'asset', asset: data }] : []
     case 'studio.asset.deleted':
-      return [...(isString(data['conversation_id']) ? [{ type: 'invalidate', key: studioKeys.conversation(data['conversation_id']) } as const] : []), assets]
+      return [
+        ...(isString(data['id']) ? [{ type: 'assetDeleted', id: data['id'] } as const] : []),
+        ...(isString(data['conversation_id']) ? [{ type: 'invalidate', key: studioKeys.conversation(data['conversation_id']) } as const] : []),
+        assets,
+      ]
+    case 'studio.queue.updated':
+      return Array.isArray(data['queue']) ? [{ type: 'queue', state: { current: isString(data['current']) ? data['current'] : null, queue: (data['queue'] as unknown[]).filter(isString) } }] : []
     default:
       return []
   }

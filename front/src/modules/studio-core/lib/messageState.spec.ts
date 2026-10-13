@@ -83,20 +83,14 @@ describe('layout and preview', () => {
 })
 
 describe('queueIndex', () => {
-  const list = [
-    { id: 'b', status: 'queued' as const, created_at: 2 },
-    { id: 'a', status: 'queued' as const, created_at: 1 },
-    { id: 'c', status: 'running' as const, created_at: 0 },
-  ]
-
-  it('prefers the engine queue', () => {
-    expect(queueIndex(list, 'b', ['x', 'b'])).toBe(1)
+  it('is the position in the generation queue, zero-based', () => {
+    expect(queueIndex(['a', 'b', 'c'], 'a')).toBe(0)
+    expect(queueIndex(['a', 'b', 'c'], 'c')).toBe(2)
   })
 
-  it('falls back to the rank among the waiting messages of the conversation', () => {
-    expect(queueIndex(list, 'a', [])).toBe(0)
-    expect(queueIndex(list, 'b', undefined)).toBe(1)
-    expect(queueIndex(list, 'c', [])).toBe(-1)
+  it('is -1 for a message that does not wait (or while the queue is not known)', () => {
+    expect(queueIndex(['a'], 'z')).toBe(-1)
+    expect(queueIndex([], 'a')).toBe(-1)
   })
 })
 

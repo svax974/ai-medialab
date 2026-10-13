@@ -15,6 +15,7 @@ import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useToggleFavorite } from '../hooks/useAssetActions'
 import { addAsReference } from '../lib/draftActions'
 import { downloadAsset } from '../lib/clipboard'
+import { assetPrompt } from '../lib/viewerDetails'
 import { ASSET_DRAG_TYPE } from '../lib/assetDrag'
 import type { Asset } from '../types'
 
@@ -59,8 +60,11 @@ export function TileActions({ asset, onOpen }: { asset: Asset; onOpen?: () => vo
   )
 }
 
-/** A produced image: thumbnail (the full file for large screens), opens the viewer, draggable to the composer. */
-export function ImageTile({ asset, ratio, fresh, onOpen }: { asset: Asset; ratio: number; fresh: boolean; onOpen: () => void }) {
+/**
+ * A produced image: thumbnail (the full file for large screens), opens the viewer, draggable to the composer. In a gallery,
+ * `caption` (the prompt) rises over the bottom of the tile on hover and `sizes` tells the browser how wide the tile is.
+ */
+export function ImageTile({ asset, ratio, fresh, onOpen, caption, sizes = '(max-width: 900px) 90vw, 640px' }: { asset: Asset; ratio: number; fresh: boolean; onOpen: () => void; caption?: string | null; sizes?: string }) {
   const t = useT()
   const thumb = resolveMediaUrl(asset.thumb_url)
   const full = resolveMediaUrl(asset.url)
@@ -72,8 +76,8 @@ export function ImageTile({ asset, ratio, fresh, onOpen }: { asset: Asset; ratio
           component="img"
           src={thumb}
           srcSet={`${thumb} 640w, ${full} ${asset.width ?? 1024}w`}
-          sizes="(max-width: 900px) 90vw, 640px"
-          alt={String(asset.meta?.['prompt'] ?? '')}
+          sizes={sizes}
+          alt={assetPrompt(asset) ?? ''}
           loading="lazy"
           draggable
           onDragStart={(event) => event.dataTransfer.setData(ASSET_DRAG_TYPE, JSON.stringify(asset))}
@@ -81,6 +85,11 @@ export function ImageTile({ asset, ratio, fresh, onOpen }: { asset: Asset; ratio
         />
       </Box>
       <TileActions asset={asset} onOpen={onOpen} />
+      {caption && (
+        <Box className="caption" sx={{ ...show, pointerEvents: 'none', position: 'absolute', inset: 'auto 0 0 0', background: 'linear-gradient(to top, rgba(0,0,0,0.75), transparent)', px: 1.5, pb: 1.25, pt: 4 }}>
+          <Box sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', fontSize: 12, lineHeight: 1.35, color: 'rgba(255,255,255,0.9)' }}>{caption}</Box>
+        </Box>
+      )}
     </Box>
   )
 }

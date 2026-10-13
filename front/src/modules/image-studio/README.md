@@ -11,7 +11,7 @@ réglages du modèle générés depuis ses paramètres, graine, nombre d'images,
 
 ```
 image-studio/
-  index.ts                       exports : ImageHome, Composer, ImageDropLayer, imageStudioAdapter
+  index.ts                       exports : ImageHome, ImageGallery, Composer, ImageDropLayer, imageStudioAdapter
   imageStudioAdapter.tsx         ce que le mode image branche sur le fil de studio-core (composeur, génération, reprise d'un prompt)
   hooks/useSendMessage.ts        envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
   hooks/useImageDrop.ts          dépôt sur la fenêtre : fichiers (useWindowDrop de `common`) et images de la conversation glissées
@@ -21,11 +21,11 @@ image-studio/
   lib/uploadReferences.ts        import des références (filtre d'images, aperçus, HttpService.upload) (testé)
   lib/sendRequest.ts             corps de POST /api/messages (testé)
   lib/help.ts                    info-bulles propres à l'image, prompts de départ
-  components/                    ImageHome, Composer, ReferenceStrip, AspectPicker, GenerationParams, CountPicker, DropOverlay (ImageDropLayer)
+  components/                    ImageHome, ImageGallery (H4.4 : `AssetGallery` de `media-library` + `ImageTile` de `studio-core`), Composer, ReferenceStrip, AspectPicker, GenerationParams, CountPicker, DropOverlay (ImageDropLayer)
   locales/                       locales.fr.json, locales.en.json (clés imageStudio.*)
 ```
 
-Montage : `studio-shell/pages/{HomePage,ConversationPage}.tsx` (pages minces) ; `StudioShell` monte `ImageDropLayer` en mode image.
+Montage : `studio-shell/pages/{HomePage,ConversationPage,GalleryPage}.tsx` (pages minces) ; `StudioShell` monte `ImageDropLayer` en mode image.
 
 ## Composeur
 
@@ -46,7 +46,7 @@ sans, `auto` retombe sur 1:1. La graine fixée n'est pas conservée entre deux c
 ## Dépôt de fichiers
 
 `useImageDrop` (monté par `ImageDropLayer`, en mode image) : fichiers déposés n'importe où sur la fenêtre (`useWindowDrop`, images seulement, les autres ignorés avec un avertissement) et images de la conversation
-glissées depuis une vignette (type `application/x-cn-asset`) deviennent des références. Surcouche « Déposez vos images ». Envoi par `assetsApi.upload` (`HttpService.upload`, champ multipart `files`).
+glissées depuis une vignette (type `application/x-cn-asset`) deviennent des références. Surcouche « Déposez vos images » (`DropVeil` de `media-library`). Envoi par `assetsApi.upload` (`HttpService.upload`, champ multipart `files`).
 
 ## Correspondance avec l'ancienne interface
 

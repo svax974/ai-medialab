@@ -15,13 +15,13 @@ Back : `back/src/modules/studio-core/README.md` (routes, file des générations,
 studio-core/
   index.ts                         exports
   types.ts                         Asset, Message, MessageStatus, GenParams, JobProgress, ConversationDetail, SendMessageRequest/Response...
-  services/messagesApi.ts          POST /messages, POST /messages/:id/retry, POST /messages/:id/cancel, DELETE /messages/:id
-  services/assetsApi.ts            GET /assets (images récentes), POST /assets (multipart, HttpService.upload), PATCH /assets/:id (favori), DELETE /assets/:id
+  services/messagesApi.ts          POST /messages, POST /messages/:id/retry, POST /messages/:id/cancel, DELETE /messages/:id, GET /queue
+  services/assetsApi.ts            (déplacé dans `media-library` en H4.4 ; types `Asset`, `AssetPage` réexportés par `types.ts`)
   hooks/useStudioEvents.ts         abonnement aux sujets studio.* et application au cache (monté par StudioShell)
   hooks/useMessageActions.ts       relance, annulation, suppression (confirmation)
   hooks/useAssetActions.ts         favori, suppression depuis la visionneuse
   hooks/useNow.ts                  horloge (secondes) rafraîchie chaque seconde tant qu'un chargement dure
-  lib/messageState.ts              logique pure : états, cellules d'une génération, mise en page, ligne d'état, position en file,
+  lib/messageState.ts              logique pure : états, cellules d'une génération, mise en page, ligne d'état, position en file (`queueIndex`),
                                    réglages repris, nom de fichier (testé)
   lib/studioEvents.ts              logique pure : événement studio.* vers opérations sur le cache (testé)
   lib/engineState.ts               logique pure : ce que montre la carte du moteur (testé)
@@ -31,7 +31,8 @@ studio-core/
   lib/scroll.ts                    défilement du fil, édition du titre (testé)
   lib/format.ts, clipboard.ts, assetDrag.ts, studioKeys.ts, modeAdapter.ts
   state/liveStore.ts               progression en direct par message (Zustand)
-  state/lightboxStore.ts           liste et position de la visionneuse (Zustand)
+  state/queueStore.ts              file des générations (message courant, messages en attente), tenue à jour par studio.queue.updated (Zustand)
+  (lightboxStore : déplacé dans `media-library`, la galerie ouvre la même visionneuse)
   state/imageDraftStore.ts         brouillon du composeur image (Zustand, persisté sous `cn-composer`)
   components/                      ConversationView, TitleEditor, UserMessage, AssistantMessage, StatusLine, MessageFooter, ImageTile (+ TileActions,
                                    DevelopingTile), StudioLightbox, EngineCard, HelpTooltip (+ LabelTooltip)
@@ -42,7 +43,7 @@ studio-core/
 
 `ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox`, `useStudioEvents`, `useToggleFavorite`,
 `addAsReference` / `reuseUserMessage` / `reuseGenerationSettings` (actions sur le brouillon), `PARAM_HELP` / `paramHelp`, `HelpTooltip` / `LabelTooltip`,
-`messagesApi`, `assetsApi`, `assetKeys`, `upsertMessage`, `useImageDraftStore`, `useLightboxStore`, `useLiveStore`, `ModeAdapter`, types.
+`messagesApi`, `upsertMessage`, `useImageDraftStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
 
 `ModeAdapter` (`lib/modeAdapter.ts`) : ce qu'un mode branche sur le fil : `Composer`, `AssistantMessage`, `reuseUserMessage`. La page
 `/c/:id` (`studio-shell/pages/ConversationPage.tsx`) passe `{ image: imageStudioAdapter }` ; une conversation d'un mode sans adaptateur (audio, vidéo)
@@ -62,8 +63,9 @@ affiche « Ce type de conversation sera repris… » sans composeur.
   | `studio.message.deleted` | messages retirés de la conversation |
   | `studio.conversation.updated` | résumé fusionné (titre, épingle, vignette, compteur, occupé) sans toucher aux messages ; listes relues |
   | `studio.conversation.deleted` | conversation retirée du cache ; listes et assets relus |
-  | `studio.asset.updated` | asset remplacé partout où il apparaît (références, sorties, listes d'assets, visionneuse) |
-  | `studio.asset.deleted` | conversation et assets relus |
+  | `studio.asset.updated` | asset remplacé partout où il apparaît (références, sorties, listes d'assets dont les pages de la galerie, visionneuse) |
+  | `studio.asset.deleted` | asset retiré des listes et de la visionneuse ; conversation et assets relus |
+  | `studio.queue.updated` | `queueStore` : `{ current, queue }` (messages en attente dans l'ordre d'exécution, toutes conversations) ; lu aussi au chargement et après une reprise de flux (`GET /api/queue`) |
 
   Les relectures de listes sont regroupées sur 250 ms. Une reprise de flux impossible (`resync`) relit conversations et assets. Le cache n'est écrit que
   pour une conversation déjà chargée. `engine.*` (modèles, installateurs, statut du moteur) reste traité par `studio-shell/lib/eventEffects.ts` : le moteur
@@ -74,7 +76,7 @@ affiche « Ce type de conversation sera repris… » sans composeur.
 
 | État | Affichage |
 |---|---|
-| `queued` | « en file d'attente » (+ « position N » à partir de la deuxième : voir écarts), cellules « en attente », bouton Annuler |
+| `queued` | « en file d'attente » (+ « position N » à partir de la deuxième : rang dans la file de Nest, toutes conversations), cellules « en attente », bouton Annuler |
 | `loading` | « chargement du modèle en mémoire · m:ss » (+ « téléchargement possible » si le modèle n'est pas installé), Annuler |
 | `running` | « étape n/total » (ou « préparation… »), « image i/n » s'il y en a plusieurs, « ~durée restantes » ; la cellule courante « se développe » (aperçu flouté et teinté qui s'éclaircit avec la fraction, barre fine), les suivantes attendent ; Annuler |
 | `done` | taille, étapes, références, durée, heure ; images avec animation de « développement » si elles ont moins de 8 s ; Varier, mêmes graines, plus d'actions |
@@ -91,12 +93,12 @@ Une vignette (`ImageTile`) : miniature (le fichier complet pour les grands écra
 (en haut à gauche), utiliser comme référence / télécharger / agrandir (en haut à droite), graine (en bas à gauche).
 `StudioLightbox` (monté par `StudioShell`) : composant `Lightbox` de `common` ; actions : utiliser comme référence, favori (`F`), télécharger ; panneau de détails (bascule `I`) : prompt (copiable),
 modèle, fichier, taille, graine (copiable, avec info-bulle), étapes, guidance, influence, durée de calcul, date ; ouvrir la conversation ; supprimer l'image (confirmation).
-La galerie complète est la tâche H4.4. `I` agit en pressant le bouton « Détails » du `Lightbox` commun (qui n'a pas de raccourci propre).
+La galerie complète est dans `media-library` (H4.4) : elle ouvre cette visionneuse sur les assets chargés. `I` agit en pressant le bouton « Détails » du `Lightbox` commun (qui n'a pas de raccourci propre).
 
 ## Carte du moteur (`EngineCard`)
 
 Dans le pied de la barre latérale (`studio-shell/SidebarFooter`) : point d'état, nom du modèle, détail. Chargement (« Chargement du modèle » + horloge), génération (« en cours », « rendu vidéo en cours »),
-prêt (« N bits · en mémoire » ou « en mémoire » ; bouton « Décharger le modèle » avec message de confirmation), rien de chargé (« chargé à la demande ») ; « N en attente » selon la file du moteur.
+prêt (« N bits · en mémoire » ou « en mémoire » ; bouton « Décharger le modèle » avec message de confirmation), rien de chargé (« chargé à la demande ») ; « N en attente » = messages en attente dans la file de Nest (toutes conversations) plus les jobs que le moteur est seul à lister (ancienne interface), comptés une fois.
 Hooks `useEngineStatus` / `useUnloadEngine` du module `hardware` ; le statut est relu à chaque `engine.engine.status`.
 
 ## Info-bulles
@@ -117,6 +119,7 @@ remarque du modèle (« Ce modèle : … », écrite par le moteur, donc non tra
 | `components/EngineCard.tsx` | `components/EngineCard`, `lib/engineState` (`useNow` : `hooks/useNow`) |
 | `components/Lightbox.tsx` (images) | `components/StudioLightbox` sur le `Lightbox` de `common` (vidéo : H4.6) |
 | `lib/queries.ts` : `upsertMessage`, `useServerEvents` (partie conversations) | `lib/studioEvents`, `hooks/useStudioEvents` |
+| `engine.queue` (statut du moteur) | `state/queueStore` (`studio.queue.updated`) |
 | `lib/store.ts` : `progress`, `lightbox`, brouillon du composeur image | `state/liveStore`, `state/lightboxStore`, `state/imageDraftStore` |
 | `lib/composer.ts` : `addAsReference`, `uploadFiles` | `lib/draftActions`, `image-studio/lib/uploadReferences` |
 | `lib/help.ts` (paramètres génériques) | `lib/paramHelp`, locales `thread.help.*` |
@@ -124,13 +127,12 @@ remarque du modèle (« Ce modèle : … », écrite par le moteur, donc non tra
 
 ## Écarts avec l'ancienne interface
 
-- **Position dans la file** : la file des générations est dans Nest et n'est pas publiée ; le moteur ne voit qu'une génération à la fois (`GET /api/status` : `queue` vide ou presque). « position N » est donc
-  calculée parmi les messages en attente **de la même conversation** (borne basse : les autres conversations ne sont pas connues) et « N en attente » de la carte du moteur ne compte que la file du moteur.
+- **Position dans la file** : exacte depuis H4.4. Nest publie la file (`studio.queue.updated`) ; « position N » est le rang du message dans la file globale (le premier en attente n'affiche pas de position, comme avant) ; tant que la file n'est pas connue (premier chargement), aucune position n'est affichée.
 - Les messages d'erreur sont ceux du serveur (français, non traduits en anglais) ; les remarques « Ce modèle : … » viennent du moteur.
 - Les messages (`toast`) passent par react-toastify ; la visionneuse est celle de `common` (barre d'actions et panneau latéral du composant commun ; l'index de vignettes, le zoom au clic et les flèches y sont aussi).
 - Libellé du favori de la visionneuse : « Ajouter aux favoris » / « Retirer des favoris » (l'ancien disait « Favori »).
 - Une conversation audio ou vidéo ouverte avant H4.5/H4.6 affiche un avis au lieu du fil.
-- Les fonctions de l'ancienne visionneuse propres à la vidéo (source, dernière image) et à la galerie arrivent avec H4.4 et H4.6.
+- La galerie et la liste de la visionneuse sont dans `media-library` (H4.4) ; les fonctions de l'ancienne visionneuse propres à la vidéo (source, dernière image) arrivent avec H4.6.
 
 ## Tests
 
@@ -140,5 +142,5 @@ Un fichier à la fois, depuis `front/`, sous garde mémoire :
 ../docs/migration/tools/guarded_run.sh 3 npx vitest run src/modules/studio-core/lib/messageState.spec.ts
 ```
 
-`lib/{messageState,studioEvents,engineState,viewerDetails,paramHelp,draftActions,scroll,format,assetDrag}.spec.ts`, `services/services.spec.ts`, `state/stores.spec.ts`,
+`lib/{messageState,studioEvents,engineState,viewerDetails,paramHelp,draftActions,scroll,format,assetDrag}.spec.ts`, `services/services.spec.ts`, `state/stores.spec.ts` (live, file, brouillon),
 `locales/locales.spec.ts` ; le rendu côté serveur de l'écran est vérifié par `image-studio/components/render.smoke.spec.ts` (pas de DOM : voir le README d'`image-studio`).

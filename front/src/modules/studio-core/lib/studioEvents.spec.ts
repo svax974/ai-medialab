@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Asset, ConversationDetail, Message } from '../types'
 import {
-  STUDIO_TOPICS, addOutput, mergeSummary, opsOfStudioEvent, patchAssetInConversation, patchAssetInPage, removeMessages, upsertMessage, type StudioOp,
+  STUDIO_TOPICS, addOutput, mergeSummary, opsOfStudioEvent, patchAssetInConversation, removeMessages, upsertMessage, type StudioOp,
 } from './studioEvents'
 
 const asset = (id: string, extra: Partial<Asset> = {}): Asset =>
@@ -66,15 +66,11 @@ describe('asset patches', () => {
     expect(next.messages[1].outputs[0].favorite).toBe(true)
     expect(next.messages[0].references[0].favorite).toBe(true)
   })
-
-  it('patches a page of the gallery', () => {
-    expect(patchAssetInPage({ items: [asset('i1'), asset('i2')], next_before: null }, asset('i2', { favorite: true })).items.map((a) => a.favorite)).toEqual([false, true])
-  })
 })
 
 describe('opsOfStudioEvent', () => {
-  it('subscribes to the eight studio topics', () => {
-    expect(STUDIO_TOPICS).toHaveLength(8)
+  it('subscribes to the nine studio topics', () => {
+    expect(STUDIO_TOPICS).toHaveLength(9)
     expect(STUDIO_TOPICS.every((topic) => topic.startsWith('studio.'))).toBe(true)
   })
 
@@ -124,10 +120,17 @@ describe('opsOfStudioEvent', () => {
   it('patches an updated asset and re-reads the conversation of a deleted one', () => {
     expect(opsOfStudioEvent({ topic: 'studio.asset.updated', data: asset('i1') as unknown as Record<string, unknown> })).toEqual([{ type: 'asset', asset: asset('i1') }])
     expect(opsOfStudioEvent({ topic: 'studio.asset.deleted', data: { id: 'i1', message_id: 'a1', conversation_id: 'c1' } })).toEqual([
+      { type: 'assetDeleted', id: 'i1' },
       { type: 'invalidate', key: ['conversation', 'c1'] },
       { type: 'invalidate', key: ['assets'] },
     ])
-    expect(opsOfStudioEvent({ topic: 'studio.asset.deleted', data: { id: 'i1', conversation_id: null } })).toEqual([{ type: 'invalidate', key: ['assets'] }])
+    expect(opsOfStudioEvent({ topic: 'studio.asset.deleted', data: { id: 'i1', conversation_id: null } })).toEqual([{ type: 'assetDeleted', id: 'i1' }, { type: 'invalidate', key: ['assets'] }])
+  })
+
+  it('turns the queue event into the new queue, ignoring malformed payloads', () => {
+    expect(opsOfStudioEvent({ topic: 'studio.queue.updated', data: { current: 'a1', queue: ['a2', 'a3'] } })).toEqual([{ type: 'queue', state: { current: 'a1', queue: ['a2', 'a3'] } }])
+    expect(opsOfStudioEvent({ topic: 'studio.queue.updated', data: { current: null, queue: [] } })).toEqual([{ type: 'queue', state: { current: null, queue: [] } }])
+    expect(opsOfStudioEvent({ topic: 'studio.queue.updated', data: { queue: 'x' } })).toEqual([])
   })
 
   it('ignores malformed and unknown events', () => {

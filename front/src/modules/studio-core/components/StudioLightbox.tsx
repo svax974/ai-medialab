@@ -25,7 +25,7 @@ import { useDeleteAsset, useToggleFavorite } from '../hooks/useAssetActions'
 import { copyText, downloadAsset } from '../lib/clipboard'
 import { addAsReference } from '../lib/draftActions'
 import { assetModelId, assetPrompt, viewerDetails } from '../lib/viewerDetails'
-import { useLightboxStore } from '../state/lightboxStore'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import type { Asset } from '../types'
 
 const toItem = (asset: Asset): LightboxItem => ({

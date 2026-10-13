@@ -8,32 +8,8 @@ import type { Conversation } from '@/modules/studio-shell/types'
 /** Message states (machine described in back/src/modules/studio-core/README.md). */
 export type MessageStatus = 'queued' | 'loading' | 'running' | 'done' | 'error' | 'cancelled'
 
-export type AssetMedia = 'image' | 'audio' | 'video'
-
-/** Public shape of an asset (`/api/assets`, same as the legacy API). */
-export interface Asset {
-  id: string
-  kind: 'upload' | 'generated'
-  media: AssetMedia
-  /** Seconds (audio, video). */
-  duration: number | null
-  fps?: number | null
-  url: string
-  thumb_url: string
-  width: number | null
-  height: number | null
-  seed: number | null
-  original_name: string | null
-  favorite: boolean
-  meta: Record<string, unknown>
-  conversation_id: string | null
-  message_id: string | null
-  created_at: number
-  /** Gallery results only. */
-  conversation_title?: string | null
-  prompt?: string | null
-  model_id?: string | null
-}
+export type { Asset, AssetMedia, AssetPage } from '@/modules/media-library/types'
+import type { Asset } from '@/modules/media-library/types'
 
 /** Generation parameters of a message (resolved by the engine once the job started). */
 export interface GenParams {
@@ -109,7 +85,9 @@ export interface RetryRequest {
   model_id?: string
 }
 
-export interface AssetPage {
-  items: Asset[]
-  next_before: number | null
+/** The generation queue as Nest publishes it (`studio.queue.updated`, `GET /api/queue`): the message being generated and the waiting ones. */
+export interface QueueState {
+  current: string | null
+  /** Waiting messages in order; the running one is not listed. */
+  queue: string[]
 }

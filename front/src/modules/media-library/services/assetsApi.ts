@@ -4,19 +4,11 @@
  */
 
 import { studioRequest, studioUpload, type StudioUploadOptions } from '@/modules/studio-shell/services/studioHttp'
-import type { Asset, AssetMedia, AssetPage } from '../types'
-
-export interface AssetListQuery {
-  media?: AssetMedia
-  favorites?: boolean
-  q?: string
-  before?: number | null
-  limit?: number
-}
+import type { Asset, AssetListQuery, AssetPage } from '../types'
 
 /**
- * `/api/assets*` (Nest, module `media-library`). H4.3 needs the upload of references, the favorite toggle, the deletion
- * from the viewer and the recent images of the home page; the gallery (H4.4) extends this file's callers.
+ * `/api/assets*` (Nest, module `media-library`): the gallery pages (generated assets, newest first, cursor `before`),
+ * the upload of files, the favorite toggle and the deletion.
  */
 export const assetsApi = {
   list(query: AssetListQuery = {}): Promise<AssetPage> {

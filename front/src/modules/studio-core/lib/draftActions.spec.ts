@@ -14,7 +14,7 @@ vi.mock('@/modules/studio-shell/lib/focusRegistry', () => ({ focusTarget }))
 import type { Asset } from '../types'
 import { useModelSelectionStore } from '@/modules/model-catalog/state/modelSelectionStore'
 import { useImageDraftStore } from '../state/imageDraftStore'
-import { useLightboxStore } from '../state/lightboxStore'
+import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import { addAsReference, reuseGenerationSettings, reuseUserMessage } from './draftActions'
 
 const asset = (id: string) => ({ id }) as Asset

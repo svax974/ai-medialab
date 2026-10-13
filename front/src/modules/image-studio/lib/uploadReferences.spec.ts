@@ -11,7 +11,7 @@ const focusTarget = vi.hoisted(() => vi.fn())
 vi.mock('react-toastify', () => ({ toast }))
 vi.mock('@/modules_shared/common/core/i18n/I18n', () => ({ i18n: { get: (key: string, params?: unknown[]) => (params ? `${key}:${params.join(',')}` : key) } }))
 vi.mock('@/modules/studio-shell/lib/focusRegistry', () => ({ focusTarget }))
-vi.mock('@/modules/studio-core/services/assetsApi', () => ({ assetsApi: { upload } }))
+vi.mock('@/modules/media-library/services/assetsApi', () => ({ assetsApi: { upload } }))
 
 import { useImageDraftStore } from '@/modules/studio-core/state/imageDraftStore'
 import { IMAGE_ACCEPT, uploadReferences } from './uploadReferences'

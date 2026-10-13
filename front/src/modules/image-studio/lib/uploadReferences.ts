@@ -7,7 +7,7 @@ import { toast } from 'react-toastify'
 import { filterFiles } from '@/modules_shared/common/components/ui/filedrop/fileFilter'
 import { i18n } from '@/modules_shared/common/core/i18n/I18n'
 import { focusTarget } from '@/modules/studio-shell/lib/focusRegistry'
-import { assetsApi } from '@/modules/studio-core/services/assetsApi'
+import { assetsApi } from '@/modules/media-library/services/assetsApi'
 import { useImageDraftStore, type PendingUpload } from '@/modules/studio-core/state/imageDraftStore'
 
 /** Image types accepted as references (what the engine can read), as MIME types and extensions. */

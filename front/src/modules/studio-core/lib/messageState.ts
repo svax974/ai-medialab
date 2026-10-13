@@ -66,15 +66,12 @@ export function isFresh(asset: Pick<Asset, 'created_at'>, nowSeconds: number): b
 }
 
 /**
- * Position of a waiting message: the engine's own queue when it lists it, else its rank among the waiting messages of
- * the same conversation (the waiting list lives in Nest, which does not publish it: other conversations are unknown).
- * Zero-based; -1 when not waiting.
+ * Zero-based position of a waiting message in the generation queue (`useQueueStore`: every conversation and mode, in the
+ * order they will run; the running message is not in it), -1 when it is not waiting (or the queue is not known yet).
+ * The first waiting message shows no position, the second shows "position 2": same rule as the former interface.
  */
-export function queueIndex(messages: readonly Pick<Message, 'id' | 'status' | 'created_at'>[], id: string, engineQueue: readonly string[] | undefined): number {
-  const inEngine = engineQueue?.indexOf(id) ?? -1
-  if (inEngine >= 0) return inEngine
-  const waiting = messages.filter((m) => m.status === 'queued').sort((a, b) => a.created_at - b.created_at)
-  return waiting.findIndex((m) => m.id === id)
+export function queueIndex(queue: readonly string[], id: string): number {
+  return queue.indexOf(id)
 }
 
 /** What the line under the model name says. The component turns each kind into text. */
