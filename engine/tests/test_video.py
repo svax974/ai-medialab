@@ -195,6 +195,26 @@ class TestFilesAndServing:
         info = probe_video(tmp_path / "a.mp4")
         assert (info["width"], info["height"], info["fps"], info["has_audio"]) == (48, 32, 8.0, True)
 
+    def test_h264_encoder_skips_the_ones_this_build_lacks(self, monkeypatch, tmp_path):
+        import av
+
+        from app import media
+
+        known = media.H264_ENCODERS
+        media.h264_encoder.cache_clear()
+        monkeypatch.setattr(media, "H264_ENCODERS", ("no_such_encoder", *known))
+        try:
+            name, _, _ = media.h264_encoder(48, 32, 8)
+            encode_mp4(np.zeros((9, 32, 48, 3), np.uint8), 8, tmp_path / "v.mp4")
+            monkeypatch.setattr(media, "H264_ENCODERS", ("no_such_encoder",))
+            with pytest.raises(RuntimeError, match="H.264"):
+                media.h264_encoder(64, 32, 8)
+        finally:
+            media.h264_encoder.cache_clear()
+        assert name in known
+        with av.open(str(tmp_path / "v.mp4")) as container:
+            assert container.streams.video[0].codec_context.name == "h264"
+
 
 class TestLtx:
     def test_memory_numbers_add_up(self):

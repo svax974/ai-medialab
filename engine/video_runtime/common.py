@@ -8,6 +8,7 @@ Runs inside a pack's environment (PyAV, Pillow and numpy only), so it must not i
 
 from __future__ import annotations
 
+from fractions import Fraction
 from pathlib import Path
 
 import numpy as np
@@ -50,17 +51,48 @@ def read_frames_at(path: str, fps: float, count: int, size: tuple[int, int] | No
     return frames
 
 
+# H.264 encoders, preferred first (LGPL-friendly ones, libx264 last). Same list and reasons as `H264_ENCODERS` in
+# app/media.py; licensing: docs/components/ffmpeg.md.
+H264_ENCODERS = ("h264_videotoolbox", "libopenh264", "libx264")
+
+
+def h264_encoder(width: int, height: int, fps: int) -> tuple[str, dict[str, str], int]:
+    """First encoder of `H264_ENCODERS` this FFmpeg build has and that opens at this size: (name, options, bit rate)."""
+    import av
+
+    for name in H264_ENCODERS:
+        if name == "libx264":
+            options, bit_rate = {"crf": "18", "preset": "medium"}, 0
+        else:
+            options = {"profile": "high"} if name == "h264_videotoolbox" else {}
+            bit_rate = max(2_000_000, int(width * height * fps * 0.25))
+        try:
+            ctx = av.CodecContext.create(name, "w")
+            ctx.width, ctx.height, ctx.pix_fmt = width, height, "yuv420p"
+            ctx.time_base, ctx.framerate = Fraction(1, fps), Fraction(fps, 1)
+            ctx.bit_rate, ctx.options = bit_rate, dict(options)
+            ctx.open()
+        except (ValueError, av.FFmpegError):  # unknown in this build, or no hardware session for this size
+            continue
+        return name, options, bit_rate
+    raise RuntimeError("Aucun encodeur H.264 disponible dans cette version de FFmpeg.")
+
+
 def write_mp4(frames, fps: int, path: str) -> dict:
-    """Write PIL images or a uint8 [F, H, W, 3] array as a web-friendly H.264 MP4; returns the clip description."""
+    """Write PIL images or a uint8 [F, H, W, 3] array as a web-friendly H.264 MP4 (encoder: `h264_encoder`); returns
+    the clip description."""
     import av
 
     arrays = [np.asarray(f.convert("RGB")) if isinstance(f, Image.Image) else np.asarray(f) for f in frames]
     height, width = arrays[0].shape[:2]
     container = av.open(str(path), mode="w", options={"movflags": "+faststart"})
     try:
-        stream = container.add_stream("libx264", rate=int(fps))
+        name, options, bit_rate = h264_encoder(width, height, int(fps))
+        stream = container.add_stream(name, rate=int(fps))
         stream.width, stream.height, stream.pix_fmt = width, height, "yuv420p"
-        stream.options = {"crf": "18", "preset": "medium"}
+        stream.options = options
+        if bit_rate:
+            stream.bit_rate = bit_rate
         for arr in arrays:
             for packet in stream.encode(av.VideoFrame.from_ndarray(arr, format="rgb24")):
                 container.mux(packet)

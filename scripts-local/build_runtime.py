@@ -59,6 +59,11 @@ UV_PLATFORMS = {"windows": "x86_64-pc-windows-msvc", "linux": "x86_64-manylinux_
 PRUNE_DIR_NAMES = {"tests", "test", "testing_utils", "__pycache__"}
 # Big torch folders not needed at runtime (C++ headers, CMake).
 PRUNE_PATHS = ["torch/include", "torch/share/cmake"]  # torch/bin (torch_shm_manager) is required
+# GPL-only codec libraries that PyAV's PyPI wheels link into their FFmpeg: with them the bundled FFmpeg is GPL, not
+# LGPL. Folders where the wheels keep their shared libraries (macOS, Linux, Windows).
+# Decision: docs/components/ffmpeg.md.
+GPL_FFMPEG_MARKERS = ("x264", "x265")
+AV_LIB_DIRS = ("av/.dylibs", "av.libs", "av")
 # Parts of the stdlib we don't need.
 PRUNE_STDLIB = ["test", "idlelib", "tkinter", "turtledemo", "ensurepip/_bundled"]
 
@@ -257,6 +262,17 @@ def prune_site_packages(site: Path) -> None:
     print(f"  {human(before)} → {human(du(site))}")
 
 
+def report_ffmpeg_license(site: Path) -> None:
+    """Warns when the bundled FFmpeg (PyAV) carries GPL codecs: distributing it then brings the GPL obligations."""
+    found = sorted({p.name for d in AV_LIB_DIRS if (site / d).is_dir() for p in (site / d).iterdir()
+                    if p.is_file() and any(m in p.name.lower() for m in GPL_FFMPEG_MARKERS)})
+    if found:
+        log("ATTENTION : le FFmpeg de PyAV embarque des bibliothèques GPL (" + ", ".join(found) + ") : "
+            "build GPL, à ne pas distribuer sans ses sources (docs/components/ffmpeg.md).")
+    else:
+        log("FFmpeg de PyAV sans libx264 / libx265 (build LGPL).")
+
+
 def compile_bytecode(py: Path, *dirs: Path) -> None:
     """Precompiles with the bundled interpreter (right magic number). unchecked-hash because the app is frozen
     and runs with PYTHONDONTWRITEBYTECODE=1, so the .pyc files must never depend on timestamps."""
@@ -406,6 +422,7 @@ def main() -> None:
     prune_stdlib(out / "engine-runtime" / "python", profile["python"], profile["os"])
     site = install_dependencies(py, profile, out, build, cross)
     prune_site_packages(site)
+    report_ffmpeg_license(site)
     compile_bytecode(host_python(profile["python"]) if cross else py, site, out / "engine")
     if profile["os"] == "macos":
         adhoc_sign_macos(out / "engine-runtime")

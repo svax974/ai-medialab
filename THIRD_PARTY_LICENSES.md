@@ -31,7 +31,7 @@ les métadonnées des paquets de `engine/.venv` (version installée le 2026-10-1
 | huggingface_hub | Apache-2.0 | téléchargement et recherche de modèles |
 | psutil | BSD-3-Clause | mémoire, processus |
 | NumPy, SoundFile | BSD-3-Clause | audio, tableaux |
-| PyAV (`av`) | BSD-3-Clause | encodage et décodage vidéo ; ses roues embarquent des bibliothèques FFmpeg dont la licence (LGPL ou GPL selon la compilation) **n'a pas été vérifiée** : à contrôler avant une distribution publique |
+| PyAV (`av`) | BSD-3-Clause | encodage et décodage vidéo ; la roue PyPI embarque un **FFmpeg lié à libx264 et libx265 (GPL)** : à remplacer par un build LGPL avant toute distribution, voir `docs/components/ffmpeg.md` |
 | diffusers, transformers, accelerate | Apache-2.0 | moteur torch (extra `torch`) |
 | PyTorch, torchvision | BSD-3-Clause (et licences des composants embarqués, voir le paquet) | extra `torch` |
 | gguf, safetensors, sentencepiece, protobuf | MIT, Apache-2.0, Apache-2.0, BSD-3-Clause | formats de modèles |

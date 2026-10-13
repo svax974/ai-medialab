@@ -20,7 +20,7 @@ n'existe pas ; une nouvelle annexe s'y ajoute avec son chemin (règle « un fait
 | `front/src/themes/chambre-noire/README.md` | Thème « chambre noire » : jetons, surcharges MUI |
 | `desktop/README.md` | Coquille de bureau (Tauri) : configuration, lancement, empaquetage, signature, CI |
 | `engine/openapi.json` | Contrat de l'API interne du moteur (**généré** : `scripts-local/export_engine_openapi.py`) |
-| `docs/components/README.md` | Registre des composants tiers intégrés et procédure de revue ; fiches `audiocpp.md`, `pytorch-gpu.md`, `audiocpp-tests-manuels.md` |
+| `docs/components/README.md` | Registre des composants tiers intégrés et procédure de revue ; fiches `audiocpp.md`, `pytorch-gpu.md`, `ffmpeg.md` (build et licence de FFmpeg), `audiocpp-tests-manuels.md` |
 | `THIRD_PARTY_LICENSES.md` | Licences des composants et des modèles |
 | `docs/migration/` | Plan et suivi de la migration vers le gabarit vx-public (historique) |
 | `back/.libs/vx-public/template/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Conventions du gabarit et lanceur (hors de ce dépôt : sous-modules) |

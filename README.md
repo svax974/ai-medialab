@@ -215,7 +215,8 @@ plus récente de sa famille (LTX-2.3 `distilled-1.1` reste disponible sans compt
 
 **Moteurs.** La vidéo passe de préférence par le moteur **GGUF** (`sd-cli -M vid_gen`, stable-diffusion.cpp, version épinglée
 `master-956`), donc sur Metal, CUDA, ROCm et Vulkan avec des poids quantifiés en 4 bits ; `sd-cli` ne produit pas de MP4, l'application
-convertit sa sortie (et le son de LTX). Sur Mac, une build de `sd-cli` antérieure à `master-745` est refusée (Wan n'y fonctionnait pas).
+convertit sa sortie (et le son de LTX) en MP4 H.264 + AAC avec FFmpeg (PyAV ; sur Mac, encodeur matériel VideoToolbox ; build et
+licence : `docs/components/ffmpeg.md`). Sur Mac, une build de `sd-cli` antérieure à `master-745` est refusée (Wan n'y fonctionnait pas).
 Les versions PyTorch + diffusers restent en alternative (CogVideoX n'existe que là). **Kiwi-Edit et Bernini** ont besoin du code
 officiel et de dépendances épinglées : ils tournent dans un **environnement Python isolé** (« pack », créé à la demande dans
 `<données>/engines/video/`) et exigent une carte NVIDIA (ou AMD sous Linux) ; sinon ils sont listés comme incompatibles avec la raison.

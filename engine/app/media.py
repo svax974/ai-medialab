@@ -5,10 +5,12 @@
 
 from __future__ import annotations
 
+import functools
 import io
 import math
 import secrets
 import time
+from fractions import Fraction
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -244,8 +246,44 @@ def video_thumb(src: Path, asset_id: str) -> str:
     return filename
 
 
+# H.264 encoders, preferred first: Apple's VideoToolbox and Cisco's OpenH264 keep FFmpeg under the LGPL, libx264
+# (GPL) is only a fallback for GPL builds such as PyAV's PyPI wheels. Why, and which build ships:
+# docs/components/ffmpeg.md.
+# Same list in video_runtime/common.py (pack environments cannot import the app).
+H264_ENCODERS = ("h264_videotoolbox", "libopenh264", "libx264")
+
+
+def _h264_settings(name: str, width: int, height: int, fps: int) -> tuple[dict[str, str], int]:
+    """(encoder options, bit rate in bit/s, 0 = the encoder's own quality setting) for one H.264 encoder."""
+    if name == "libx264":
+        return {"crf": "18", "preset": "medium"}, 0
+    # No CRF outside x264: a generous bit rate (0.25 bit per pixel per frame, at least 2 Mbit/s) keeps details.
+    bit_rate = max(2_000_000, int(width * height * fps * 0.25))
+    return ({"profile": "high"} if name == "h264_videotoolbox" else {}), bit_rate
+
+
+@functools.lru_cache(maxsize=32)
+def h264_encoder(width: int, height: int, fps: int) -> tuple[str, dict[str, str], int]:
+    """First encoder of `H264_ENCODERS` this FFmpeg build has and that opens at this size: (name, options, bit rate)."""
+    import av
+
+    for name in H264_ENCODERS:
+        options, bit_rate = _h264_settings(name, width, height, fps)
+        try:
+            ctx = av.CodecContext.create(name, "w")
+            ctx.width, ctx.height, ctx.pix_fmt = width, height, "yuv420p"
+            ctx.time_base, ctx.framerate = Fraction(1, fps), Fraction(fps, 1)
+            ctx.bit_rate, ctx.options = bit_rate, dict(options)
+            ctx.open()
+        except (ValueError, av.FFmpegError):  # unknown in this build, or no hardware session for this size
+            continue
+        return name, options, bit_rate
+    raise RuntimeError("Aucun encodeur H.264 disponible dans cette version de FFmpeg.")
+
+
 def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None = None) -> None:
-    """Write H.264 (yuv420p) frames, with an optional AAC track, as a web-friendly MP4.
+    """Write H.264 (yuv420p, encoder from `h264_encoder`) frames, with an optional AAC track (FFmpeg's native
+    encoder), as a web-friendly MP4.
 
     `frames`: uint8 array [F, H, W, 3]. `audio`: float array [channels, samples] in [-1, 1]."""
     import av
@@ -255,9 +293,12 @@ def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None
     _, height, width, _ = frames.shape
     container = av.open(str(path), mode="w", options={"movflags": "+faststart"})
     try:
-        stream = container.add_stream("libx264", rate=int(fps))
+        name, options, bit_rate = h264_encoder(width, height, int(fps))
+        stream = container.add_stream(name, rate=int(fps))
         stream.width, stream.height, stream.pix_fmt = width, height, "yuv420p"
-        stream.options = {"crf": "18", "preset": "medium"}
+        stream.options = dict(options)
+        if bit_rate:
+            stream.bit_rate = bit_rate
         astream = None
         if audio is not None and sample_rate:
             astream = container.add_stream("aac", rate=int(sample_rate))
