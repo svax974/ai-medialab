@@ -1,26 +1,29 @@
 <!doctype html>
 <!--
-  Copyright (c) 2026 Stéphane Vaxelaire
+  VXFramework
+
+  Copyright (c) 2025-2026 Stéphane VAXELAIRE <svax974@gmail.com>
   SPDX-License-Identifier: MIT
+
+  Licensed under the MIT License. See LICENSE in the project root.
 -->
 
 <html lang="fr">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="dark" />
-  <title>AI MediaLab</title>
+  <meta name="color-scheme" content="dark light" />
+  <title>Starting…</title>
   <style>
+    /* Theme « chambre noire » of AI MediaLab: serif italic title and the soft safelight glow. */
     @font-face {
       font-family: "Instrument Serif";
       font-style: italic;
       font-weight: 400;
       src: url("fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
     }
-    :root {
-      --bg: #0d0b0a; --ink: #efe8e1; --muted: #8d827a; --faint: #5e5550;
-      --line: #2f2826; --safe: #ff5b37; --danger: #ff6b6b; --surface: #191514;
-    }
+    /* Colors come from desktop.config.json (splash.brand), applied by init(). */
+    :root { --bg: #0d0b0a; --ink: #efe8e1; --accent: #ff5b37; --danger: #ff6b6b; }
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); }
     body {
@@ -28,37 +31,34 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased; user-select: none; cursor: default;
       background:
-        radial-gradient(60% 50% at 50% 38%, rgb(255 91 55 / 0.10), transparent 70%),
+        radial-gradient(60% 50% at 50% 38%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
         var(--bg);
     }
     main { width: min(560px, calc(100vw - 48px)); text-align: center; }
     .mark { width: 64px; height: 64px; margin: 0 auto 22px; animation: breathe 2.6s ease-in-out infinite; }
-    h1 {
-      margin: 0; font: italic 400 clamp(40px, 7vw, 58px)/1 "Instrument Serif", Georgia, serif;
-      letter-spacing: -0.01em;
-    }
+    .mark circle { stroke: var(--accent); }
+    .mark .dot { fill: var(--accent); }
+    h1 { margin: 0; font: italic 400 clamp(40px, 7vw, 58px)/1 "Instrument Serif", Georgia, serif; letter-spacing: -0.01em; }
     .status {
-      margin-top: 18px; min-height: 1.4em; color: var(--muted);
-      font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-      letter-spacing: 0.08em; text-transform: uppercase;
+      margin-top: 18px; min-height: 1.4em; opacity: .65;
+      font: 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: 0.08em; text-transform: uppercase;
     }
-    .bar { width: 140px; height: 2px; margin: 18px auto 0; background: var(--line); overflow: hidden; border-radius: 2px; }
+    .bar { width: 140px; height: 2px; margin: 18px auto 0; background: color-mix(in srgb, var(--ink) 18%, transparent); overflow: hidden; border-radius: 2px; }
     .bar::after {
-      content: ""; display: block; width: 40%; height: 100%; background: var(--safe);
-      box-shadow: 0 0 12px var(--safe); animation: slide 1.5s ease-in-out infinite;
+      content: ""; display: block; width: 40%; height: 100%; background: var(--accent);
+      box-shadow: 0 0 12px var(--accent); animation: slide 1.5s ease-in-out infinite;
     }
     .error { display: none; margin-top: 26px; text-align: left; }
     body.failed .error { display: block; animation: rise .4s ease both; }
     body.failed .bar, body.failed .mark { display: none; }
     body.failed h1 { font-size: 40px; }
     .error h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; color: var(--danger); }
-    .error p { margin: 0 0 12px; color: var(--muted); font-size: 13.5px; line-height: 1.55; user-select: text; }
+    .error p { margin: 0 0 12px; opacity: .7; font-size: 13.5px; line-height: 1.55; user-select: text; }
     .error pre {
       margin: 0; padding: 12px 14px; max-height: 38vh; overflow: auto; white-space: pre-wrap; word-break: break-word;
-      background: var(--surface); border: 1px solid var(--line); border-radius: 12px;
-      font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #c4b9af; user-select: text;
+      background: color-mix(in srgb, var(--ink) 7%, transparent); border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+      border-radius: 12px; font: 11.5px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace; user-select: text;
     }
-    .error code { color: var(--ink); user-select: text; }
     @keyframes breathe { 0%, 100% { opacity: .55; transform: scale(.97); } 50% { opacity: 1; transform: scale(1); } }
     @keyframes slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
     @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
@@ -68,11 +68,11 @@
 <body>
   <main>
     <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
-      <circle cx="16" cy="16" r="10.5" fill="none" stroke="#ff5b37" stroke-width="3" />
-      <circle cx="16" cy="16" r="3.5" fill="#ff5b37" />
+      <circle cx="16" cy="16" r="10.5" fill="none" stroke-width="3" />
+      <circle class="dot" cx="16" cy="16" r="3.5" />
     </svg>
-    <h1>AI MediaLab</h1>
-    <div class="status" id="status">Démarrage du moteur…</div>
+    <h1 id="title"></h1>
+    <div class="status" id="status"></div>
     <div class="bar" aria-hidden="true"></div>
     <section class="error" id="error" role="alert">
       <h2 id="error-title"></h2>
@@ -81,22 +81,44 @@
     </section>
   </main>
   <script>
-    // Driven by the Rust shell through webview.eval().
-    window.cnSplash = {
-      status(text) {
-        document.body.classList.remove("failed");
-        document.getElementById("status").textContent = text;
-      },
-      error(title, detail, log) {
-        document.body.classList.add("failed");
-        document.getElementById("status").textContent = "";
-        document.getElementById("error-title").textContent = title;
-        document.getElementById("error-detail").textContent = detail || "";
-        const pre = document.getElementById("error-log");
-        pre.textContent = log || "";
-        pre.style.display = log ? "block" : "none";
-      },
-    };
+    // Driven by the Rust shell through webview.eval(): init() once, then status() / error().
+    // Messages arrive as ids + parameters and are translated here (language: navigator.language, fallback en).
+    (function () {
+      var texts = {};
+      var $ = function (id) { return document.getElementById(id); };
+
+      function t(id, params) {
+        var lang = (navigator.language || "en").slice(0, 2);
+        var table = texts[lang] && texts[lang][id] !== undefined ? texts[lang] : texts.en || {};
+        var text = table[id] !== undefined ? table[id] : id;
+        return text.replace(/\{(\w+)\}/g, function (m, key) { return params && key in params ? params[key] : m; });
+      }
+
+      window.desktopSplash = {
+        init: function (cfg) {
+          texts = cfg.texts || {};
+          var root = document.documentElement.style;
+          root.setProperty("--bg", cfg.brand.background);
+          root.setProperty("--ink", cfg.brand.foreground);
+          root.setProperty("--accent", cfg.brand.accent);
+          document.title = cfg.productName;
+          $("title").textContent = cfg.productName;
+        },
+        status: function (id, params) {
+          document.body.classList.remove("failed");
+          $("status").textContent = t(id, params);
+        },
+        error: function (titleId, detailId, params, log) {
+          document.body.classList.add("failed");
+          $("status").textContent = "";
+          $("error-title").textContent = t(titleId, params);
+          $("error-detail").textContent = t(detailId, params);
+          var pre = $("error-log");
+          pre.textContent = log || "";
+          pre.style.display = log ? "block" : "none";
+        },
+      };
+    })();
   </script>
 </body>
 </html>

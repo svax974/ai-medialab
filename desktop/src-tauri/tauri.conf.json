@@ -20,7 +20,7 @@
       "dmg"
     ],
     "category": "public.app-category.graphics-design",
-    "shortDescription": "Studio local de création et d'édition d'images",
+    "shortDescription": "Studio local de création d'images, d'audio et de vidéo",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -28,12 +28,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../build/resources/engine": "engine",
-      "../build/resources/frontend": "frontend",
-      "../build/resources/runtime": "runtime",
-      "../build/resources/engines": "engines"
-    },
     "macOS": {
       "minimumSystemVersion": "14.0",
       "signingIdentity": "-",

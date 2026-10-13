@@ -1,0 +1,80 @@
+{
+  "productName": "AI MediaLab",
+  "identifier": "app.aimedialab.studio",
+  "window": {
+    "title": null,
+    "width": 1440,
+    "height": 900,
+    "minWidth": 960,
+    "minHeight": 640,
+    "theme": "dark"
+  },
+  "resources": {
+    "marker": "back/dist/main.js",
+    "frontDir": "front/dist"
+  },
+  "dbFile": "app.db",
+  "server": {
+    "command": ["{resources}/runtime/node/node", "node"],
+    "args": ["dist/main.js"],
+    "cwd": "{resources}/back",
+    "env": {
+      "ENGINE_URL": "http://127.0.0.1:{port:engine}"
+    },
+    "healthPath": "/api/v1/health",
+    "readyTimeoutSec": 120,
+    "sharedToken": "ENGINE_TOKEN"
+  },
+  "sidecars": [
+    {
+      "name": "engine",
+      "label": "engine",
+      "command": [
+        "{resources}/engine-runtime/python/bin/python3",
+        "{resources}/engine-runtime/python/python",
+        "{resources}/engine/.venv/bin/python"
+      ],
+      "args": [
+        "-m", "uvicorn",
+        "--host", "127.0.0.1",
+        "--port", "{port}",
+        "--timeout-graceful-shutdown", "3",
+        "--no-access-log",
+        "app.main:app"
+      ],
+      "cwd": "{resources}/engine",
+      "env": {
+        "PYTHONPATH": "{resources}/engine-runtime/site-packages",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "IMAGEGEN_DATA_DIR": "{dataDir}",
+        "IMAGEGEN_ENGINES_DIR": "{resources}/engines",
+        "IMAGEGEN_LEGACY_DATA_DIRS": "{dataDir}/../app.chambrenoire.studio"
+      },
+      "port": true,
+      "healthPath": "/engine/v1/status",
+      "readyTimeoutSec": 240,
+      "sharedToken": "ENGINE_TOKEN"
+    }
+  ],
+  "packaging": {
+    "nodeVersion": null,
+    "extraResources": [
+      { "from": "desktop/build/engine-bundle/engine", "to": "engine" },
+      { "from": "desktop/build/engine-bundle/engine-runtime", "to": "engine-runtime" },
+      { "from": "desktop/build/engine-bundle/engines", "to": "engines" }
+    ]
+  },
+  "splash": {
+    "brand": { "background": "#0d0b0a", "foreground": "#efe8e1", "accent": "#ff5b37" },
+    "texts": {
+      "fr": {
+        "status.startingProcess": "Démarrage du {name}…",
+        "status.slowStart": "Premier démarrage, chargement des bibliothèques…"
+      },
+      "en": {}
+    }
+  }
+}

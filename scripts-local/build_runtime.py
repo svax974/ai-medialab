@@ -2,16 +2,19 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Assembles the desktop app's bundled resources for one runtime profile.
+"""Assembles the Python engine sidecar of the desktop app for one runtime profile.
 
-    python3 scripts-local/build_runtime.py --profile mac-arm64 --out desktop/build/resources
+    python3 scripts-local/build_runtime.py --profile mac-arm64          # -> desktop/build/engine-bundle
 
-Output layout (what engine/app/config.py and the Tauri shell expect):
+This is the packaging hook of the `engine` sidecar declared in desktop/desktop.config.json: its output is copied into
+the resources folder by `scripts/desktop/build-desktop.mjs` (`packaging.extraResources`). The back, the front and
+Node are assembled by that script, not here. Output layout (what engine/app/config.py and the sidecar command expect;
+`ROOT_DIR` of the engine is the folder that holds `engine/` and `engines/`):
 
-    <out>/engine/app/...            server code
-    <out>/frontend/dist/...          built UI
-    <out>/runtime/python/...         python-build-standalone interpreter (relocatable)
-    <out>/runtime/site-packages/...  profile dependencies (uv pip install --target)
+    <out>/engine/app/...                 engine code (+ audio_runtime/, video_runtime/)
+    <out>/engine-runtime/python/...      python-build-standalone interpreter (relocatable)
+    <out>/engine-runtime/site-packages/...  profile dependencies (uv pip install --target)
+    <out>/engines/sdcpp/<variant>/...    stable-diffusion.cpp binaries (fetch_sdcpp.py)
 
 Profiles (pip index, extras, torch versions) live in desktop/runtime/profiles.json.
 Requires uv, network access (Python and wheel downloads), and npm if the UI is not already built.
@@ -90,30 +93,21 @@ def host_os() -> str:
 
 
 def py_rel(target_os: str) -> str:
-    """Interpreter path inside runtime/python, based on the TARGET OS."""
+    """Interpreter path inside engine-runtime/python, based on the TARGET OS."""
     return "python.exe" if target_os == "windows" else "bin/python3"
 
 
 # --- Steps ---
 
-def ensure_frontend(force: bool) -> Path:
-    dist = ROOT / "frontend" / "dist"
-    if force or not (dist / "index.html").is_file():
-        log("Compilation de l'interface…")
-        fe = ROOT / "frontend"
-        npm = shutil.which("npm") or "npm"  # npm.cmd on Windows
-        if not (fe / "node_modules").is_dir():
-            run([npm, "install", "--silent"], cwd=fe)
-        run([npm, "run", "build", "--silent"], cwd=fe)
-    return dist
-
-
 def copy_backend(out: Path) -> None:
     log("Copie du moteur…")
+    # The whole engine/ folder: app/ plus the audio and video runtimes that config.py resolves next to it.
     shutil.copytree(
-        ROOT / "engine" / "app",
-        out / "engine" / "app",
-        ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "tests", "test"),
+        ROOT / "engine",
+        out / "engine",
+        ignore=shutil.ignore_patterns(
+            "__pycache__", "*.pyc", "tests", "test", ".venv", ".pytest_cache", ".ruff_cache", "uv.lock", "openapi.json"
+        ),
     )
 
 
@@ -144,7 +138,7 @@ def install_python_cross(target_os: str, version: str, cache: Path, out: Path) -
     filename = f"cpython-{PBS_VERSION}+{PBS_RELEASE}-{triple}-install_only_stripped.tar.gz"
     base = f"https://github.com/astral-sh/python-build-standalone/releases/download/{PBS_RELEASE}"
     archive = download_verified(f"{base}/{filename.replace('+', '%2B')}", f"{base}/SHA256SUMS", filename, cache / triple)
-    dest = out / "runtime" / "python"
+    dest = out / "engine-runtime" / "python"
     with tempfile.TemporaryDirectory(dir=cache) as tmp:
         with tarfile.open(archive) as tf:
             tf.extractall(tmp, filter="data")  # rejects absolute paths, escaping links, special files
@@ -166,7 +160,7 @@ def install_python(version: str, cache: Path, out: Path, target_os: str | None =
     if not candidates:
         sys.exit(f"Python {version} introuvable dans {cache}")
     src = candidates[-1]
-    dest = out / "runtime" / "python"
+    dest = out / "engine-runtime" / "python"
     shutil.copytree(src, dest, symlinks=True)
     for rel in ("EXTERNALLY-MANAGED", "lib/python{v}/EXTERNALLY-MANAGED"):
         f = dest / rel.format(v=version)
@@ -219,12 +213,12 @@ def read_requirements(profile: dict) -> list[str]:
 
 
 def install_dependencies(py: Path, profile: dict, out: Path, build: Path, cross: bool = False) -> Path:
-    site = out / "runtime" / "site-packages"
+    site = out / "engine-runtime" / "site-packages"
     site.mkdir(parents=True, exist_ok=True)
     reqs = read_requirements(profile)
     req_file = build / f"requirements-{profile['name']}.txt"
     req_file.write_text("\n".join(reqs) + "\n")
-    log(f"Installation de {len(reqs)} dépendances directes dans runtime/site-packages…")
+    log(f"Installation de {len(reqs)} dépendances directes dans engine-runtime/site-packages…")
     if cross:
         # Target-platform wheels, nothing executed. No sdist builds (--no-build): a dependency with no
         # wheel for the target fails the install instead of producing a host binary.
@@ -282,13 +276,12 @@ def host_python(version: str) -> Path:
 def static_check(out: Path, profile: dict) -> None:
     """Static check of a cross-built runtime (nothing is executed)."""
     log("Contrôle statique du runtime cross-construit…")
-    rt = out / "runtime"
+    rt = out / "engine-runtime"
     site = rt / "site-packages"
     windows = profile["os"] == "windows"
     required = [
         rt / "python" / py_rel(profile["os"]),
         out / "engine" / "app" / "main.py",
-        out / "frontend" / "dist" / "index.html",
         site / "fastapi" / "__init__.py", site / "uvicorn" / "__init__.py", site / "PIL" / "__init__.py",
         site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py", site / "av" / "__init__.py",
     ]
@@ -364,13 +357,12 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     profiles = json.loads(PROFILES_FILE.read_text())["profiles"]
     ap.add_argument("--profile", required=True, choices=sorted(profiles))
-    ap.add_argument("--out", default=str(DESKTOP / "build" / "resources"))
-    ap.add_argument("--build-frontend", action="store_true", help="recompile l'interface même si dist/ existe")
+    ap.add_argument("--out", default=str(DESKTOP / "build" / "engine-bundle"))
     ap.add_argument("--skip-smoke", action="store_true")
     ap.add_argument(
         "--refresh-app",
         action="store_true",
-        help="ne recopie que engine/ et frontend/dist (+ bytecode) dans un dossier déjà assemblé : "
+        help="ne recopie que engine/ et engines/ (+ bytecode) dans un dossier déjà assemblé : "
         "quelques secondes au lieu de réinstaller Python et les dépendances",
     )
     args = ap.parse_args()
@@ -391,46 +383,40 @@ def main() -> None:
     out = Path(args.out).resolve()
     build = out.parent
     if args.refresh_app:
-        py = out / "runtime" / "python" / py_rel(profile["os"])
+        py = out / "engine-runtime" / "python" / py_rel(profile["os"])
         if not py.is_file():
             sys.exit(f"{out} n'est pas assemblé : lancez d'abord sans --refresh-app.")
-        dist = ensure_frontend(args.build_frontend)
-        for sub in ("engine", "frontend"):
-            shutil.rmtree(out / sub, ignore_errors=True)
-        shutil.copytree(dist, out / "frontend" / "dist")
+        shutil.rmtree(out / "engine", ignore_errors=True)
         copy_backend(out)
         shutil.rmtree(out / "engines", ignore_errors=True)
         copy_engines(out, profile, build)
         compile_bytecode(host_python(profile["python"]) if cross else py, out / "engine")
         if not args.skip_smoke:
-            static_check(out, profile) if cross else smoke_test(py, out / "runtime", out, profile)
+            static_check(out, profile) if cross else smoke_test(py, out / "engine-runtime", out, profile)
         log("Backend et interface rafraîchis.")
         return
     if out.exists():
         shutil.rmtree(out)
     out.mkdir(parents=True)
 
-    dist = ensure_frontend(args.build_frontend)
-    log("Copie de l'interface…")
-    shutil.copytree(dist, out / "frontend" / "dist")
     copy_backend(out)
     copy_engines(out, profile, build)
 
     py = install_python(profile["python"], build / "python-cache", out, profile["os"])
-    prune_stdlib(out / "runtime" / "python", profile["python"], profile["os"])
+    prune_stdlib(out / "engine-runtime" / "python", profile["python"], profile["os"])
     site = install_dependencies(py, profile, out, build, cross)
     prune_site_packages(site)
     compile_bytecode(host_python(profile["python"]) if cross else py, site, out / "engine")
     if profile["os"] == "macos":
-        adhoc_sign_macos(out / "runtime")
+        adhoc_sign_macos(out / "engine-runtime")
         if (out / "engines").is_dir():
             adhoc_sign_macos(out / "engines")
     if not args.skip_smoke:
-        static_check(out, profile) if cross else smoke_test(py, out / "runtime", out, profile)
+        static_check(out, profile) if cross else smoke_test(py, out / "engine-runtime", out, profile)
 
     print()
     log(f"Ressources prêtes : {out}")
-    for part in ("runtime/python", "runtime/site-packages", "engines", "engine", "frontend"):
+    for part in ("engine-runtime/python", "engine-runtime/site-packages", "engines", "engine"):
         if (out / part).exists():
             print(f"  {part:24s} {human(du(out / part))}")
     print(f"  {'TOTAL':24s} {human(du(out))}")

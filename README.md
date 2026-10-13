@@ -362,49 +362,84 @@ modèle libère vraiment la mémoire, et un plantage (mémoire insuffisante…) 
 
 ## Application de bureau
 
-Application autonome (coque [Tauri](https://tauri.app) v2 + interpréteur Python et dépendances **embarqués** + serveur + interface).
-Aucune installation de Python, Node ou uv n'est nécessaire pour l'utiliser ; interface en thème sombre.
+Application autonome : coque [Tauri](https://tauri.app) v2 **du gabarit** (`desktop/`, documentée dans `desktop/README.md`),
+qui supervise **deux processus** : le moteur Python (processus annexe `engine`, interpréteur et dépendances **embarqués**)
+et le serveur Nest (Node embarqué), qui sert aussi le front. Aucune installation de Python, Node ou uv n'est nécessaire
+pour l'utiliser ; interface en thème sombre.
+
+Tout ce qui est propre à ai-medialab tient dans `desktop/desktop.config.json` :
+
+| Processus | Commande | Santé | Variables |
+|---|---|---|---|
+| `engine` (démarré **avant** Nest) | `engine-runtime/python` : `-m uvicorn app.main:app --host 127.0.0.1 --port {port}` | `/engine/v1/status` (240 s max) | `ENGINE_TOKEN` (jeton du lancement), `IMAGEGEN_DATA_DIR={dataDir}`, `IMAGEGEN_ENGINES_DIR={resources}/engines`, `IMAGEGEN_LEGACY_DATA_DIRS`, `PYTHONPATH` |
+| `server` (Nest) | `runtime/node/node dist/main.js` | `/api/v1/health` | `ENGINE_URL=http://127.0.0.1:{port:engine}`, `ENGINE_TOKEN` (même valeur), puis tout ce que la coque injecte (`APP_DATA_DIR`, `DB_PATH=<données>/app.db`, `SERVE_FRONT_DIR`, `LOCAL_TRUST`, etc.) |
+
+La coque ouvre la page d'attente (thème « chambre noire » : `desktop/splash/`), alloue deux ports libres, génère le
+jeton, démarre le moteur, attend `/engine/v1/status`, démarre Nest, attend sa santé (qui inclut celle du moteur), puis
+navigue vers `http://127.0.0.1:<port>/`. À la fermeture elle arrête les deux groupes de processus (moteur, worker de
+génération, Nest) ; un sentinelle les arrête aussi si la coque meurt brutalement.
+
+Profils d'exécution (un installateur = un profil ; le build de PyTorch dépend du GPU), dans `desktop/runtime/profiles.json` :
 
 | Profil | Cible | État |
 |---|---|---|
-| `mac-arm64` | macOS Apple Silicon — Metal (MLX) et PyTorch/MPS | **construit et testé** |
+| `mac-arm64` | macOS Apple Silicon — Metal (MLX) et PyTorch/MPS | assemblé et testé avec l'ancienne coque ; **la chaîne de la coque du gabarit n'a pas été reconstruite** |
 | `win-cuda` | Windows + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
 | `linux-cuda` | Linux + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
 | `linux-rocm` | Linux + AMD (ROCm 7.2) | scripté, **non vérifié** |
 | `win-rocm` | Windows + AMD Radeon (ROCm 7.2.1, préversion AMD) | scripté, **expérimental, non vérifié** |
 
-Un installateur = un profil (le build de PyTorch dépend du GPU). Les profils (index pip, versions) sont dans
-`desktop/runtime/profiles.json` ; le workflow `.github/workflows/build-desktop.yml` (jamais exécuté) les construit sur
-macOS, Windows et Linux — **un profil ne se construit que sur son propre OS**.
-
 ### Construire (macOS Apple Silicon)
 
-Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20, Rust (`rustup`), Xcode Command Line Tools. ~6 Go d'espace libre.
+Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 22, Rust (`rustup`), Xcode Command Line Tools, accès réseau (Python
+standalone, wheels, Node officiel, binaires de better-sqlite3 et de stable-diffusion.cpp). ~15 Go d'espace libre.
 
 ```sh
-cd frontend && npm install && npm run build && cd ..        # interface (si dist/ absent)
-python3 scripts-local/build_runtime.py --profile mac-arm64        # → desktop/build/resources (Python + dépendances, ~1,3 Go)
-cd desktop && npm install && npx tauri build --bundles app,dmg
-# → desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app
-# → desktop/src-tauri/target/release/bundle/dmg/AI MediaLab_0.1.0_aarch64.dmg
+cd back && npm run desktop:build        # tout enchaîné, ou les étapes ci-dessous
 ```
 
-Après une modification du moteur ou de l'interface, `python3 scripts-local/build_runtime.py --profile mac-arm64 --refresh-app`
-ne recopie que `engine/` et `frontend/dist` (quelques secondes), puis `npx tauri build` régénère l'application.
+1. `cd back && npm ci && npm run build` : `back/dist`.
+2. `cd front && npm ci && npm run build` : `front/dist`.
+3. `python3 scripts-local/build_runtime.py --profile mac-arm64` (`npm run desktop:runtime`, variable `DESKTOP_PROFILE`) :
+   crochet du processus annexe, écrit `desktop/build/engine-bundle/` = `engine/` (code, runtimes audio et vidéo),
+   `engine-runtime/{python,site-packages}` et `engines/sdcpp/<variante>` (via `fetch_sdcpp.py`).
+4. `cd desktop && npm ci`, puis `node scripts/desktop/build-desktop.mjs --bundle` (depuis la racine) : assemble
+   `desktop/build/resources/` (back, `node_modules` de production, locales, front, Node épinglé vérifié par SHA-256, plus
+   `packaging.extraResources` = le dossier de l'étape 3), signe ad hoc, lance `tauri build`, fait le DMG.
+   `--dry-run` imprime le plan sans rien écrire.
 
-### Fonctionnement
+Résultat : `desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app` et `.../dmg/AI MediaLab_<version>_aarch64.dmg`.
+Windows et Linux : `build_runtime.py --profile win-cuda|linux-cuda` (cross-construction, rien n'est exécuté), puis
+`build-desktop.mjs --target win-x64|linux-x64` et `package-cross.mjs --target …` (zip ou tar.gz portable) ; non vérifié.
+Le workflow `.github/workflows/build-desktop.yml` (jamais exécuté) fait la même chaîne sur chaque OS.
 
-- Au lancement, la coque choisit un port local libre, démarre le serveur avec le Python embarqué, affiche un écran de
-  démarrage, puis charge l'interface. À la fermeture elle arrête le serveur **et** le worker de génération.
-- Données (base, images, journaux) : `~/Library/Application Support/app.aimedialab.studio/`
-  (journal du serveur : `logs/backend.log`). Une installation faite sous l'ancien nom « Chambre noire » est migrée
-  automatiquement (dossier de données et base). Les modèles restent dans le cache Hugging Face habituel (`~/.cache/huggingface`).
-- Signature **ad hoc** uniquement (pas de compte développeur Apple) : une application téléchargée est mise en quarantaine
-  par Gatekeeper. Pour l'ouvrir : clic droit → Ouvrir, ou `xattr -dr com.apple.quarantine "/Applications/AI MediaLab.app"`.
-  Une distribution publique demande un certificat « Developer ID » et la notarisation.
-- Itérer sans réassembler le bundle : `AI_MEDIALAB_RESOURCES=$PWD/desktop/build/resources desktop/src-tauri/target/release/ai-medialab`
-  (la coque utilise alors ces ressources au lieu de celles du `.app`).
-- Nettoyage (≈ 5 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
+Après une modification du moteur seul : `build_runtime.py --profile mac-arm64 --refresh-app` (recopie `engine/` et `engines/`,
+quelques secondes), puis `build-desktop.mjs --skip-install --bundle`.
+Itérer sans empaqueter : `cd back && npm run desktop:dev` (la racine du dépôt sert de ressources : `back/dist`, `front/dist`,
+`engine/.venv` créé par `uv sync`, Node du système ; `DESKTOP_RESOURCES`).
+
+### Données et premier lancement
+
+- Dossier de données = dossier local de l'OS de l'identifiant `app.aimedialab.studio` (macOS :
+  `~/Library/Application Support/app.aimedialab.studio/`), **le même que celui de l'ancienne application** : la coque l'exporte
+  en `APP_DATA_DIR` à Nest et le moteur le lit en `IMAGEGEN_DATA_DIR` (`{dataDir}`). Contenu : `app.db` (Nest), `ai-medialab.db`
+  (ancienne base, que le moteur utilise encore jusqu'à H6), `uploads/`, `outputs/`, `thumbs/`, `previews/`, `engines/`
+  (moteurs et packs installés depuis l'application), `secrets.json` (clés de la coque), `logs/` (`shell.log`, `engine.log`,
+  `server.log`, `*.previous.log`). Les modèles restent dans le cache Hugging Face habituel.
+- **Import de l'ancienne base** : au premier lancement de la version de bureau, le module `legacy-import` de Nest trouve
+  `<APP_DATA_DIR>/ai-medialab.db` (ou `chambre-noire.db`) et l'importe dans `app.db` ; rien à faire (voir plus haut).
+- **Ancien dossier « Chambre noire »** (`app.chambrenoire.studio`) : la coque générique ne sait pas le renommer (elle crée le
+  dossier de données, avec `logs/` et `secrets.json`, avant de lancer quoi que ce soit). Le moteur, démarré en premier, le
+  reprend : `engine/app/legacy_data.py` déplace ses entrées une à une dans le dossier courant à l'import de `config.py`,
+  avant toute ouverture de la base, sauf si le dossier courant contient déjà une base ; rien n'est écrasé, `logs/` et
+  `secrets.json` ne sont pas repris. Le dossier ancien est supprimé s'il est vide. Variable : `IMAGEGEN_LEGACY_DATA_DIRS`.
+- Signature **ad hoc** uniquement : une application téléchargée est mise en quarantaine par Gatekeeper (clic droit, Ouvrir, ou
+  `xattr -dr com.apple.quarantine "/Applications/AI MediaLab.app"`). Distribution publique : Developer ID et notarisation
+  (décrit dans `desktop/README.md`, non automatisé).
+- Nettoyage (≈ 10 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
+
+**Mémoire au repos** (mesurée le 2026-10-13 sans Tauri, mêmes variables que la coque, aucun modèle) : moteur ≈ 80 Mo, Nest
+≈ 157 Mo, soit ≈ 235 Mo pour les deux, comme en H1b (77 + 155 Mo). La coque Tauri et la fenêtre de rendu ne sont pas comptées.
 
 ## Quantifications
 

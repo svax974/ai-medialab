@@ -1,8 +1,13 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-# UNVERIFIED: this workflow has never run (it was written on a Mac without access to GitHub Actions).
-# Only the mac-arm64 profile has been built and tested, locally, with scripts-local/build_runtime.py + `tauri build`.
+# UNVERIFIED: this workflow has never run (no access to GitHub Actions). Built from the template's skeleton plus the
+# Python engine sidecar. Only the mac-arm64 profile was ever assembled locally (before the migration to the shell of
+# the template); nothing of this chain was run since.
+#
+# Order matters: the engine bundle (scripts-local/build_runtime.py, hook of the `engine` sidecar) is written to
+# desktop/build/engine-bundle, then scripts/desktop/build-desktop.mjs copies it (packaging.extraResources of
+# desktop/desktop.config.json) next to the back, the front and Node, and runs `tauri build`.
 name: build-desktop
 
 on:
@@ -19,12 +24,17 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { profile: mac-arm64,  runner: macos-14,      bundles: "app,dmg", experimental: false }
-          - { profile: win-cuda,   runner: windows-2022,  bundles: "nsis",    experimental: false }
-          - { profile: win-rocm,   runner: windows-2022,  bundles: "nsis",    experimental: true }
-          - { profile: linux-cuda, runner: ubuntu-22.04,  bundles: "appimage,deb", experimental: false }
+          - { profile: mac-arm64,  target: darwin-arm64, runner: macos-14,     experimental: false }
+          - { profile: win-cuda,   target: win-x64,      runner: windows-2022, experimental: false }
+          - { profile: win-rocm,   target: win-x64,      runner: windows-2022, experimental: true }
+          - { profile: linux-cuda, target: linux-x64,    runner: ubuntu-22.04, experimental: false }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
       - uses: astral-sh/setup-uv@v5
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
@@ -34,14 +44,19 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      - name: Interface
-        working-directory: frontend
+      - name: Back (NestJS)
+        working-directory: back
         run: npm ci && npm run build
-      - name: Runtime embarqué (${{ matrix.profile }})
-        run: python scripts-local/build_runtime.py --profile ${{ matrix.profile }} --out desktop/build/resources
-      - name: Application
+      - name: Front (React)
+        working-directory: front
+        run: npm ci && npm run build
+      - name: Moteur Python embarqué (${{ matrix.profile }})
+        run: python scripts-local/build_runtime.py --profile ${{ matrix.profile }}
+      - name: Outillage bureau
         working-directory: desktop
-        run: npm ci && npx tauri build --bundles ${{ matrix.bundles }}
+        run: npm ci
+      - name: Ressources et paquet
+        run: node scripts/desktop/build-desktop.mjs --target ${{ matrix.target }} --bundle
       - uses: actions/upload-artifact@v4
         with:
           name: ai-medialab-${{ matrix.profile }}
