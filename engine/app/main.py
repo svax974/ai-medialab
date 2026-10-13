@@ -1,17 +1,18 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Entry point: `uv run uvicorn app.main:app` from backend/ (see ../start.sh)."""
+"""Entry point: `uv run uvicorn app.main:app` from engine/ (see ../start.sh)."""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import db
+from .api.auth import require_engine_token
 from .api.routes import router
 from .config import FRONTEND_DIST, MEDIA_DIRS, ensure_dirs
 from .downloads import downloads
@@ -31,7 +32,10 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AI MediaLab", lifespan=lifespan)
-app.include_router(router)
+# `/engine/v1` is the contract with the NestJS server (token-protected, in the OpenAPI schema); `/api` is the same
+# router for the legacy UI (no token, kept until it is removed) and stays out of the schema (duplicate operation ids).
+app.include_router(router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
+app.include_router(router, prefix="/api", include_in_schema=False)
 
 ensure_dirs()
 for name, directory in MEDIA_DIRS.items():
@@ -44,7 +48,7 @@ if (FRONTEND_DIST / "assets").is_dir():
 @app.get("/{path:path}", include_in_schema=False)
 async def spa(path: str):
     """Serve the built frontend; unknown paths fall back to index.html (SPA routing)."""
-    if path.startswith(("api/", "media/")):
+    if path.startswith(("api/", "engine/", "media/")):
         return JSONResponse({"detail": "Introuvable"}, status_code=404)
     candidate = (FRONTEND_DIST / path).resolve()
     if path and candidate.is_file() and FRONTEND_DIST.resolve() in candidate.parents:

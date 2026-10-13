@@ -10,7 +10,7 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 ## Procédure de revue (toutes les 3 à 4 semaines, ou avant une release)
 
 1. Lancer le rapport (réseau requis, ne modifie rien) :
-   `backend/.venv/bin/python scripts/review_components.py`
+   `engine/.venv/bin/python scripts/review_components.py`
    Il compare ce qui est épinglé à la dernière version amont et liste, pour audio.cpp, les familles nouvelles ou dont le
    statut ou la licence ont changé depuis le dernier instantané.
 2. Pour chaque ligne « NOUVELLE VERSION » ou chaque famille nouvelle : lire les notes de version amont, puis la section
@@ -24,13 +24,13 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 
 | Composant | Rôle | Où est l'épinglage | Licence | Fiche | Dernière revue |
 |---|---|---|---|---|---|
-| **audio.cpp** (ggml) | synthèse vocale GGUF sur Metal, CUDA, Vulkan ou CPU (puis transcription, voir fiche) | `backend/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md) ; tests à faire à la main : [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
-| **Accélération PyTorch** (CUDA, ROCm, XPU, Vulkan) | quels GPU les packs audio PyTorch peuvent utiliser, et le marqueur « lent · processeur » | `backend/app/audio_packs.py` (`torch_acceleration`, `_torch_index`) | – | [pytorch-gpu.md](pytorch-gpu.md) | 2026-10-13 |
-| **stable-diffusion.cpp** | images et vidéo GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `backend/app/engine_install.py` (`PINNED_TAG`) ; raison de l'épinglage dans le commentaire au-dessus | MIT | à écrire | – |
-| **mflux / MLX** | images sur Apple Silicon | `backend/pyproject.toml` | MIT | à écrire | – |
-| **PyTorch, diffusers, transformers** | moteur torch (images, vidéo, packs) | `backend/pyproject.toml`, `backend/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
-| **qwen-tts** | Qwen3-TTS en PyTorch | `backend/app/audio_packs.py` (pack `qwen3`) | Apache-2.0 | à écrire | – |
-| **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | pack audio « speech » | `backend/app/audio_packs.py` (pack `speech`) | voir `THIRD_PARTY_LICENSES.md` | à écrire | – |
+| **audio.cpp** (ggml) | synthèse vocale GGUF sur Metal, CUDA, Vulkan ou CPU (puis transcription, voir fiche) | `engine/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md) ; tests à faire à la main : [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
+| **Accélération PyTorch** (CUDA, ROCm, XPU, Vulkan) | quels GPU les packs audio PyTorch peuvent utiliser, et le marqueur « lent · processeur » | `engine/app/audio_packs.py` (`torch_acceleration`, `_torch_index`) | – | [pytorch-gpu.md](pytorch-gpu.md) | 2026-10-13 |
+| **stable-diffusion.cpp** | images et vidéo GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/engine_install.py` (`PINNED_TAG`) ; raison de l'épinglage dans le commentaire au-dessus | MIT | à écrire | – |
+| **mflux / MLX** | images sur Apple Silicon | `engine/pyproject.toml` | MIT | à écrire | – |
+| **PyTorch, diffusers, transformers** | moteur torch (images, vidéo, packs) | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
+| **qwen-tts** | Qwen3-TTS en PyTorch | `engine/app/audio_packs.py` (pack `qwen3`) | Apache-2.0 | à écrire | – |
+| **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | pack audio « speech » | `engine/app/audio_packs.py` (pack `speech`) | voir `THIRD_PARTY_LICENSES.md` | à écrire | – |
 
 Les lignes « à écrire » n'ont pas encore de fiche détaillée : le script de revue les vérifie déjà (versions), la fiche
 viendra quand on les revisitera. Ne pas recopier ici ce que `THIRD_PARTY_LICENSES.md` dit déjà.

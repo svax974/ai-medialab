@@ -4,8 +4,8 @@
 
 """Periodic review of the third-party components the app integrates (see docs/components/README.md).
 
-    backend/.venv/bin/python scripts/review_components.py            # report only, changes nothing
-    backend/.venv/bin/python scripts/review_components.py --snapshot # also refresh docs/components/audiocpp-families.json
+    engine/.venv/bin/python scripts/review_components.py            # report only, changes nothing
+    engine/.venv/bin/python scripts/review_components.py --snapshot # also refresh docs/components/audiocpp-families.json
 
 For each component: what the app pins, the latest upstream version, and (audio.cpp) which model families are new,
 changed status or changed licence since the last snapshot. Needs network access; `GITHUB_TOKEN` lifts the GitHub
@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "backend"))
+sys.path.insert(0, str(ROOT / "engine"))
 
 from app import audio_packs, audiocpp, engine_install  # noqa: E402
 

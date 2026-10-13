@@ -196,13 +196,13 @@ fn splash_error(app: &AppHandle, title: &str, detail: &str, log: &str) {
 
 // --- Backend startup ---
 
-/// Folder holding backend/, frontend/ and runtime/. `AI_MEDIALAB_RESOURCES` can point to
+/// Folder holding engine/, frontend/ and runtime/. `AI_MEDIALAB_RESOURCES` can point to
 /// desktop/build/resources during development (`tauri dev`).
 fn resources_dir(app: &AppHandle) -> Option<PathBuf> {
     if let Some(p) = env::var_os("AI_MEDIALAB_RESOURCES") {
         return Some(PathBuf::from(p));
     }
-    // Portable layout (Windows/Linux): backend/, frontend/ and runtime/ sit next to the executable.
+    // Portable layout (Windows/Linux): engine/, frontend/ and runtime/ sit next to the executable.
     if let Some(dir) = env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf)) {
         if python_path(&dir).is_file() {
             return Some(dir);
@@ -274,7 +274,7 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
     let pythonpath = format!(
         "{}{sep}{}",
         res.join("runtime").join("site-packages").display(),
-        res.join("backend").display()
+        res.join("engine").display()
     );
 
     let mut cmd = Command::new(&python);
@@ -292,7 +292,7 @@ fn spawn_backend(res: &Path, data_dir: &Path, log_path: &Path, port: u16) -> Res
         "--no-access-log",
         "app.main:app",
     ])
-    .current_dir(res.join("backend"))
+    .current_dir(res.join("engine"))
     .env_remove("VIRTUAL_ENV")
     .env_remove("PYTHONHOME")
     .env("PYTHONPATH", OsString::from(pythonpath))

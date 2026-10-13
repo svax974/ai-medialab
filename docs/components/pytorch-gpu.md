@@ -4,8 +4,8 @@
 Registre et procédure de revue : [README.md](README.md).
 
 Les packs audio PyTorch (Qwen3-TTS, Kokoro, Pocket TTS, Whisper) installent leur **propre** PyTorch (`_torch_index` dans
-`backend/app/audio_packs.py`). La règle « ce GPU est-il utilisable ? » est `torch_acceleration()` dans le même fichier ; le
-marqueur « lent · processeur » du catalogue (`_degraded` dans `backend/app/catalog.py`) en découle.
+`engine/app/audio_packs.py`). La règle « ce GPU est-il utilisable ? » est `torch_acceleration()` dans le même fichier ; le
+marqueur « lent · processeur » du catalogue (`_degraded` dans `engine/app/catalog.py`) en découle.
 
 ## Ce qui est vérifié
 

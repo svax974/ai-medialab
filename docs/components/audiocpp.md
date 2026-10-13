@@ -10,18 +10,18 @@ Apache-2.0) fait tourner plus de cent modèles audio au format GGUF sur Metal, C
 des binaires précompilés. C'est le même principe que stable-diffusion.cpp pour les images et la vidéo.
 
 Pas de cas par cas par modèle : un seul binaire, une CLI commune (`--family`, `--model`, `--backend`), et chaque modèle
-supplémentaire se réduit à une fiche dans `backend/app/engines/audiocpp_specs.py`.
+supplémentaire se réduit à une fiche dans `engine/app/engines/audiocpp_specs.py`.
 
 ## Ce qui est intégré
 
 | Élément | Où | Rôle |
 |---|---|---|
-| Installation et choix du build | `backend/app/audiocpp.py` | télécharge la version épinglée (`PINNED_TAG`), vérifie le SHA-256 publié par GitHub, extrait sans sortir du dossier cible, vérifie qu'un GPU est vu, sinon essaie le build suivant jusqu'au CPU |
-| Pack « natif » | `backend/app/audio_packs.py` (pack `audiocpp`, champ `native`) | réutilise tel quel le bouton d'installation, la progression et les événements des packs Python, sans environnement Python |
-| Moteur du worker | `backend/audio_runtime/engines/audiocpp_engine.py` | un appel `audiocpp_cli` par morceau de texte ; annulation = arrêt du processus |
-| Modèles | `backend/app/engines/audiocpp_specs.py` | quatre variantes Qwen3-TTS, Chatterbox, Pocket TTS FR/EN et Qwen3-ASR (voir plus bas) |
-| Transcription | `backend/app/transcription.py`, `audiocpp.run_transcribe` | choisit le modèle (poids **et** moteur présents, Whisper d'abord) et lance Whisper ou audio.cpp |
-| Recherche de compatibilité | `backend/app/catalog.py` (`engine_for`, `engine_compat`) | la même règle sert aux modèles du catalogue et aux résultats de recherche Hugging Face |
+| Installation et choix du build | `engine/app/audiocpp.py` | télécharge la version épinglée (`PINNED_TAG`), vérifie le SHA-256 publié par GitHub, extrait sans sortir du dossier cible, vérifie qu'un GPU est vu, sinon essaie le build suivant jusqu'au CPU |
+| Pack « natif » | `engine/app/audio_packs.py` (pack `audiocpp`, champ `native`) | réutilise tel quel le bouton d'installation, la progression et les événements des packs Python, sans environnement Python |
+| Moteur du worker | `engine/audio_runtime/engines/audiocpp_engine.py` | un appel `audiocpp_cli` par morceau de texte ; annulation = arrêt du processus |
+| Modèles | `engine/app/engines/audiocpp_specs.py` | quatre variantes Qwen3-TTS, Chatterbox, Pocket TTS FR/EN et Qwen3-ASR (voir plus bas) |
+| Transcription | `engine/app/transcription.py`, `audiocpp.run_transcribe` | choisit le modèle (poids **et** moteur présents, Whisper d'abord) et lance Whisper ou audio.cpp |
+| Recherche de compatibilité | `engine/app/catalog.py` (`engine_for`, `engine_compat`) | la même règle sert aux modèles du catalogue et aux résultats de recherche Hugging Face |
 | Revue périodique | `scripts/review_components.py`, `docs/components/audiocpp-families.json` | nouvelles versions et familles |
 
 Où vivent les choses sur disque : binaires dans `<engines>/audiocpp/<variante>/` (variable `IMAGEGEN_AUDIOCPP_DIR`

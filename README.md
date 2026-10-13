@@ -23,7 +23,7 @@ le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hug
 ```
 
 Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20. Sur Mac Apple Silicon `start.sh` installe MLX et PyTorch ;
-le premier lancement installe les dépendances dans `backend/.venv`. Pour une application autonome (aucun prérequis),
+le premier lancement installe les dépendances dans `engine/.venv`. Pour une application autonome (aucun prérequis),
 voir « Application de bureau » plus bas.
 
 Variables utiles :
@@ -34,6 +34,7 @@ Variables utiles :
 | `IMAGEGEN_DATA_DIR` | Dossier des données (défaut `./data` : base SQLite, images) |
 | `HF_HOME` / `HF_HUB_CACHE` | Emplacement des modèles (défaut `~/.cache/huggingface/hub`, partagé avec mflux/diffusers) |
 | `IMAGEGEN_DEMO=1` | Ajoute un modèle « Démo » instantané, sans GPU, pour tester l'interface |
+| `ENGINE_TOKEN` | Secret partagé avec le serveur NestJS (migration en cours) : s'il est défini, toutes les routes `/engine/v1/*` exigent l'en-tête `X-Engine-Token`, sauf `/engine/v1/status`. Les routes `/api` (ancienne interface) ne l'exigent pas. Non défini : aucune vérification (développement) |
 
 Développement (rechargement à chaud) : `./dev.sh` puis http://localhost:5173.
 
@@ -115,11 +116,11 @@ fait swapper la machine. À désactiver dans Réglages sur une machine très dot
 
 ### Ajouter un modèle
 
-- **Modèle diffusers** (le plus courant) : ajouter une `ModelSpec` dans `backend/app/engines/torch_models.py`
+- **Modèle diffusers** (le plus courant) : ajouter une `ModelSpec` dans `engine/app/engines/torch_models.py`
   — dépôt Hugging Face, motifs de fichiers à télécharger, classe de pipeline, paramètres exposés. Aucun code de
   moteur à écrire : les arguments inconnus du pipeline sont ignorés.
-- **Autre moteur** : une classe `Engine` (`load()` + `generate()`) dans `backend/app/engines/`, voir `qwen21.py`
-  pour MLX. Puis l'inscrire dans `backend/app/engines/__init__.py`.
+- **Autre moteur** : une classe `Engine` (`load()` + `generate()`) dans `engine/app/engines/`, voir `qwen21.py`
+  pour MLX. Puis l'inscrire dans `engine/app/engines/__init__.py`.
 
 L'interface s'adapte seule : sélecteur, curseurs, règles sur les images de référence, état d'installation.
 
@@ -151,7 +152,7 @@ Les sorties ont été vérifiées en les retranscrivant avec Whisper. Non testé
 **Packs de moteurs.** Les bibliothèques audio épinglent des versions incompatibles entre elles (Qwen3-TTS exige
 `transformers==4.57.3`, le moteur image `>=5.17`). Chaque famille tourne donc dans son **propre environnement Python**, créé
 à la demande depuis l'application (`uv` si présent, sinon `venv` + `pip` en Python 3.12) sous `<données>/engines/audio/<pack>/`,
-et piloté par `backend/audio_runtime/worker.py` (protocole JSON ligne à ligne). Ajouter un modèle = une classe dans
+et piloté par `engine/audio_runtime/worker.py` (protocole JSON ligne à ligne). Ajouter un modèle = une classe dans
 `audio_runtime/engines/` + une spec dans `app/engines/audio_specs.py` (+ un pack si les dépendances diffèrent).
 **Pack natif audio.cpp.** Un pack peut aussi être un programme précompilé sans Python : `audiocpp` installe le build d'audio.cpp
 adapté à la machine (Metal, CUDA, Vulkan ou processeur, vérifié par somme de contrôle) et fait tourner des modèles GGUF sur
@@ -221,9 +222,11 @@ code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 ## Architecture
 
 ```
-backend/   FastAPI · SQLite · worker MLX dans un processus séparé
+engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus séparé
+  app/api/auth.py    contrôle du jeton `X-Engine-Token`
+  openapi.json       schéma de `/engine/v1` (généré, voir ci-dessous)
   app/main.py        application, fichiers statiques, interface compilée
-  app/api/routes.py  API REST + flux SSE (/api/events)
+  app/api/routes.py  API REST + flux SSE, montée sous `/api` (ancienne interface) et `/engine/v1` (serveur NestJS, jeton)
   app/jobs.py        file d'attente, cycle de vie du worker, progression
   app/worker.py      processus qui charge le modèle et génère
   app/engines/       registre, moteurs MLX et diffusers, catalogue des modèles
@@ -232,6 +235,13 @@ backend/   FastAPI · SQLite · worker MLX dans un processus séparé
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
 data/      base SQLite, références importées, images générées, vignettes (créé au démarrage)
 ```
+
+Contrat avec le serveur NestJS (en cours de migration, voir `docs/migration/`) : `/engine/v1/*`, mêmes routes que
+`/api`. Le schéma OpenAPI est `engine/openapi.json` ; après toute modification des routes ou de leurs modèles :
+`engine/.venv/bin/python scripts/export_engine_openapi.py` (`--check` pour vérifier sans écrire ; un test échoue si le
+fichier est périmé). Aucun serveur n'est démarré par ce script.
+
+Tests : un fichier à la fois, par exemple `cd engine && .venv/bin/python -m pytest -q tests/test_core.py`.
 
 Le worker tourne dans son propre processus : le serveur reste réactif pendant le calcul, décharger un
 modèle libère vraiment la mémoire, et un plantage (mémoire insuffisante…) n'emporte pas l'application.
@@ -265,8 +275,8 @@ cd desktop && npm install && npx tauri build --bundles app,dmg
 # → desktop/src-tauri/target/release/bundle/dmg/AI MediaLab_0.1.0_aarch64.dmg
 ```
 
-Après une modification du backend ou de l'interface, `python3 scripts/build_runtime.py --profile mac-arm64 --refresh-app`
-ne recopie que `backend/` et `frontend/dist` (quelques secondes), puis `npx tauri build` régénère l'application.
+Après une modification du moteur ou de l'interface, `python3 scripts/build_runtime.py --profile mac-arm64 --refresh-app`
+ne recopie que `engine/` et `frontend/dist` (quelques secondes), puis `npx tauri build` régénère l'application.
 
 ### Fonctionnement
 

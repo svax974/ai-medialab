@@ -6,9 +6,9 @@
 
     python3 scripts/build_runtime.py --profile mac-arm64 --out desktop/build/resources
 
-Output layout (what backend/app/config.py and the Tauri shell expect):
+Output layout (what engine/app/config.py and the Tauri shell expect):
 
-    <out>/backend/app/...            server code
+    <out>/engine/app/...            server code
     <out>/frontend/dist/...          built UI
     <out>/runtime/python/...         python-build-standalone interpreter (relocatable)
     <out>/runtime/site-packages/...  profile dependencies (uv pip install --target)
@@ -109,10 +109,10 @@ def ensure_frontend(force: bool) -> Path:
 
 
 def copy_backend(out: Path) -> None:
-    log("Copie du backend…")
+    log("Copie du moteur…")
     shutil.copytree(
-        ROOT / "backend" / "app",
-        out / "backend" / "app",
+        ROOT / "engine" / "app",
+        out / "engine" / "app",
         ignore=shutil.ignore_patterns("__pycache__", "*.pyc", "tests", "test"),
     )
 
@@ -208,8 +208,8 @@ def prune_stdlib(py_root: Path, version: str, target_os: str | None = None) -> N
 
 
 def read_requirements(profile: dict) -> list[str]:
-    """Base dependencies + profile extras (from backend/pyproject.toml) + profile pins."""
-    project = tomllib.loads((ROOT / "backend" / "pyproject.toml").read_text())["project"]
+    """Base dependencies + profile extras (from engine/pyproject.toml) + profile pins."""
+    project = tomllib.loads((ROOT / "engine" / "pyproject.toml").read_text())["project"]
     reqs = list(project.get("dependencies", []))
     optional = project.get("optional-dependencies", {})
     for extra in profile.get("extras", []):
@@ -287,7 +287,7 @@ def static_check(out: Path, profile: dict) -> None:
     windows = profile["os"] == "windows"
     required = [
         rt / "python" / py_rel(profile["os"]),
-        out / "backend" / "app" / "main.py",
+        out / "engine" / "app" / "main.py",
         out / "frontend" / "dist" / "index.html",
         site / "fastapi" / "__init__.py", site / "uvicorn" / "__init__.py", site / "PIL" / "__init__.py",
         site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py", site / "av" / "__init__.py",
@@ -343,7 +343,7 @@ def smoke_test(py: Path, runtime: Path, out: Path, profile: dict) -> None:
     log("Test de fumée de l'environnement embarqué…")
     env = {
         **os.environ,
-        "PYTHONPATH": os.pathsep.join([str(runtime / "site-packages"), str(out / "backend")]),
+        "PYTHONPATH": os.pathsep.join([str(runtime / "site-packages"), str(out / "engine")]),
         "PYTHONDONTWRITEBYTECODE": "1",
         "IMAGEGEN_DATA_DIR": str(out.parent / "smoke-data"),
     }
@@ -370,7 +370,7 @@ def main() -> None:
     ap.add_argument(
         "--refresh-app",
         action="store_true",
-        help="ne recopie que backend/ et frontend/dist (+ bytecode) dans un dossier déjà assemblé : "
+        help="ne recopie que engine/ et frontend/dist (+ bytecode) dans un dossier déjà assemblé : "
         "quelques secondes au lieu de réinstaller Python et les dépendances",
     )
     args = ap.parse_args()
@@ -395,13 +395,13 @@ def main() -> None:
         if not py.is_file():
             sys.exit(f"{out} n'est pas assemblé : lancez d'abord sans --refresh-app.")
         dist = ensure_frontend(args.build_frontend)
-        for sub in ("backend", "frontend"):
+        for sub in ("engine", "frontend"):
             shutil.rmtree(out / sub, ignore_errors=True)
         shutil.copytree(dist, out / "frontend" / "dist")
         copy_backend(out)
         shutil.rmtree(out / "engines", ignore_errors=True)
         copy_engines(out, profile, build)
-        compile_bytecode(host_python(profile["python"]) if cross else py, out / "backend")
+        compile_bytecode(host_python(profile["python"]) if cross else py, out / "engine")
         if not args.skip_smoke:
             static_check(out, profile) if cross else smoke_test(py, out / "runtime", out, profile)
         log("Backend et interface rafraîchis.")
@@ -420,7 +420,7 @@ def main() -> None:
     prune_stdlib(out / "runtime" / "python", profile["python"], profile["os"])
     site = install_dependencies(py, profile, out, build, cross)
     prune_site_packages(site)
-    compile_bytecode(host_python(profile["python"]) if cross else py, site, out / "backend")
+    compile_bytecode(host_python(profile["python"]) if cross else py, site, out / "engine")
     if profile["os"] == "macos":
         adhoc_sign_macos(out / "runtime")
         if (out / "engines").is_dir():
@@ -430,7 +430,7 @@ def main() -> None:
 
     print()
     log(f"Ressources prêtes : {out}")
-    for part in ("runtime/python", "runtime/site-packages", "engines", "backend", "frontend"):
+    for part in ("runtime/python", "runtime/site-packages", "engines", "engine", "frontend"):
         if (out / part).exists():
             print(f"  {part:24s} {human(du(out / part))}")
     print(f"  {'TOTAL':24s} {human(du(out))}")

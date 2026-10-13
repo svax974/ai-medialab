@@ -17,11 +17,11 @@ command -v npm >/dev/null 2>&1 || { echo "Node.js/npm est requis." >&2; exit 1; 
 echo "› Dépendances Python…"
 EXTRAS="--extra torch"
 [ "$(uname -s)-$(uname -m)" = "Darwin-arm64" ] && EXTRAS="--extra mlx --extra torch"
-(cd backend && uv sync --quiet $EXTRAS)
+(cd engine && uv sync --quiet $EXTRAS)
 
 echo "› Interface…"
 (cd frontend && { [ -d node_modules ] || npm install --silent; } && npm run build --silent >/dev/null)
 
 echo "› AI MediaLab sur http://$HOST:$PORT"
-cd backend
+cd engine
 exec uv run uvicorn app.main:app --host "$HOST" --port "$PORT" --log-level warning --timeout-graceful-shutdown 3

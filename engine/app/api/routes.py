@@ -27,7 +27,8 @@ from ..media import (MAX_VIDEO_UPLOAD, VIDEO_EXTENSIONS, is_video_upload, make_t
 from ..system import get_system
 from ..config import UPLOADS_DIR
 
-router = APIRouter(prefix="/api")
+# Mounted twice by main.py: `/api` (legacy UI, no token) and `/engine/v1` (NestJS, `X-Engine-Token`).
+router = APIRouter()
 
 MAX_COUNT = 4
 MAX_VIDEO_COUNT = 2  # a video takes minutes to hours, so batches stay small

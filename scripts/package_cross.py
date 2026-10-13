@@ -170,7 +170,7 @@ def write_zip(archive: Path, top: str, entries: list[tuple[Path, str]], resource
             zf.write(src, f"{top}/{name}")
         for name, text in extra_text.items():
             zf.writestr(f"{top}/{name}", text.replace("\n", "\r\n"))
-        files = [p for sub in ("backend", "frontend", "runtime") for p in sorted((resources / sub).rglob("*")) if p.is_file()]
+        files = [p for sub in ("engine", "frontend", "runtime") for p in sorted((resources / sub).rglob("*")) if p.is_file()]
         for i, p in enumerate(files, 1):
             zf.write(p, f"{top}/{p.relative_to(resources).as_posix()}")
             if i % 5000 == 0:
@@ -255,7 +255,7 @@ def write_tar(archive: Path, top: str, binary: Path, resources: Path, readme: st
         tf.add(binary, f"{top}/{BINARY}", filter=lambda i: (setattr(i, "mode", 0o755), i)[1])
         add_bytes(tf, "ai-medialab.sh", LAUNCHER.encode(), 0o755)
         add_bytes(tf, "LISEZMOI.txt", readme.encode(), 0o644)
-        for sub in ("backend", "frontend", "runtime"):
+        for sub in ("engine", "frontend", "runtime"):
             tf.add(resources / sub, f"{top}/{sub}")
 
 
