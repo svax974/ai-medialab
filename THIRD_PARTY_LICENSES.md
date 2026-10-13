@@ -25,7 +25,7 @@ que l'application affiche dans le sélecteur de modèles. Vérifiez-la avant tou
 | Kokoro 82M | Apache-2.0 |
 | Pocket TTS (Kyutai) | CC-BY-4.0 (attribution requise) |
 | Qwen3-TTS (0.6B / 1.7B), y compris les conversions GGUF d'audio.cpp | Apache-2.0 |
-| Chatterbox (Resemble AI), conversion GGUF d'audio.cpp | MIT (sorties filigranées par l'éditeur) |
+| Chatterbox (Resemble AI), conversion GGUF d'audio.cpp | MIT (l'implémentation d'origine filigrane ses sorties, pas le portage audio.cpp) |
 | Whisper (small, large-v3-turbo) | MIT |
 | Modèles d'image | variables : voir la licence indiquée par modèle (certains sont non commerciaux, p. ex. Qwen Image 2.1 « Research ») |
 

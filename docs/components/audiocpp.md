@@ -42,7 +42,9 @@ l'audio.
 | Fichier GGUF | 1,99 Go |
 | 4,2 s d'audio générées (CLI directe, modèle chargé puis libéré à chaque appel) | 2,4 s de temps mural (1,7× le temps réel) |
 | Empreinte mémoire réelle (`phys_footprint`) | 3,1 Go (le RSS annoncé, 4,9 Go, compte des mappages partagés) |
-| Via le moteur de l'application | 4,1 s d'audio en 8,1 s ; pic RSS 3,6 Go. Écart à comprendre (premier lancement à froid ?) |
+| Via le moteur de l'application, en régime établi | 3,0 s par appel (5 appels, ±0,1 s) pour 4,1 s d'audio, contre 2,9 s en direct par la CLI (dont ≈ 0,8 s de démarrage et de chargement) : **pas de surcoût du moteur** |
+| Premier appel d'un binaire fraîchement installé | ≈ 12 s au lieu de 3 s, dont ≈ 10 s avant la génération (initialisation de Metal, une fois par binaire ; `--list-devices` prend à lui seul ≈ 8 s à froid). L'installateur le paie à l'installation, car il appelle cette commande pour vérifier le GPU |
+| Mesure isolée de 8,1 s | vue une seule fois, non reproduite ; la machine était alors très chargée (charge moyenne de 5 à 8 à cause d'autres projets). Un même appel est aussi passé de 2,9 s à 5,8 s quand la mémoire libre est tombée à 13 Go |
 
 Le planificateur de mémoire du catalogue (`_pack_plan`) prend 1,6 × la taille des poids + 1,5 Go : cohérent avec la mesure.
 La qualité sonore n'a pas été évaluée à l'oreille ; le fichier de test est resté hors du dépôt.
@@ -75,7 +77,7 @@ La qualité sonore n'a pas été évaluée à l'oreille ; le fichier de test est
 
 **Pocket TTS** (Kyutai). Mesuré le 2026-10-13 : français sur CPU à 6,5× le temps réel, ≈ 0,6 Go ; clonage à 4,4× ; un modèle GGUF par langue, choisi selon la langue de la génération. La fiche amont de la v0.9.1 ne déclare pas le français (seule la branche `main` le fait) mais le binaire v0.9.1 le lit : à revérifier quand une version publiée le déclarera. **Piège corrigé** : audio.cpp résout les liens symboliques ; le cache Hugging Face stocke les fichiers comme liens vers `blobs/`, donc `--voice-id` cherchait les voix au mauvais endroit. Le moteur passe le chemin de la voix (`voice_embedding_path`) à l'intérieur de l'instantané.
 
-**Chatterbox** (Resemble AI). Mesuré le 2026-10-13 sur Metal : 5,1 s d'audio en 5,4 s (≈ 0,95× le temps réel), empreinte mémoire 1,9 Go. Particularités : audio.cpp ne l'expose que comme tâche de **clonage** (`clon`), donc un échantillon de voix est obligatoire (aucune voix intégrée ; la variante Turbo en a une mais n'est qu'en anglais et en « testing ») ; **19 langues** implémentées côté audio.cpp, alors que l'amont annonce 23 (Multilingual V3) ; la langue se choisit à chaque génération ; réglages exposés : expressivité (`exaggeration`), fidélité à la voix (`guidance_scale`, à 0 si l'échantillon n'est pas dans la langue générée, d'après la fiche amont), variabilité. L'amont ajoute un filigrane inaudible (Perth) à chaque sortie : **non vérifié** que le portage audio.cpp le conserve ; la description du modèle dans l'application l'annonce, à corriger si ce n'est pas le cas.
+**Chatterbox** (Resemble AI). Mesuré le 2026-10-13 sur Metal : 5,1 s d'audio en 5,4 s (≈ 0,95× le temps réel), empreinte mémoire 1,9 Go. Particularités : audio.cpp ne l'expose que comme tâche de **clonage** (`clon`), donc un échantillon de voix est obligatoire (aucune voix intégrée ; la variante Turbo en a une mais n'est qu'en anglais et en « testing ») ; **19 langues** implémentées côté audio.cpp, alors que l'amont annonce 23 (Multilingual V3) ; la langue se choisit à chaque génération ; réglages exposés : expressivité (`exaggeration`), fidélité à la voix (`guidance_scale`, à 0 si l'échantillon n'est pas dans la langue générée, d'après la fiche amont), variabilité. **Filigrane : absent du portage.** L'implémentation d'origine (Resemble AI, Python) applique un filigrane inaudible (Perth) dans `generate()`, après le décodeur et indépendamment des poids ; les 52 fichiers Chatterbox d'audio.cpp (sources, en-têtes, fiche) n'en contiennent aucune trace (vérifié le 2026-10-13 en lisant tous les fichiers, pas seulement par la recherche de code de GitHub). Les sorties ne sont donc **pas** filigranées, et rien ne permet de les reconnaître comme synthétiques : à garder à l'esprit pour un outil de clonage de voix. Non testé empiriquement avec le détecteur Perth.
 ## Candidats non intégrés (instantané `audiocpp-families.json`, v0.9.1)
 
 Seules les familles à licence permissive et à statut « supported » sont listées comme pistes. Chacune demande ses propres
@@ -111,7 +113,7 @@ application MIT), détection de fin de tour (Smart Turn, BSD-2).
 3. Le serveur persistant (`audiocpp_server`) est-il devenu assez stable pour remplacer un processus par morceau ?
 4. Un modèle « community » ou « experimental » est-il passé à « supported » (Kokoro, Moonshine) ?
 5. Seed-VC : voir « Politique de licences » ci-dessous avant toute intégration.
-6. Chatterbox : l'implémentation audio.cpp couvre-t-elle les 23 langues de l'amont, a-t-elle une voix intégrée, garde-t-elle le filigrane ?
+6. Chatterbox : l'implémentation audio.cpp couvre-t-elle les 23 langues de l'amont, a-t-elle une voix intégrée, a-t-elle ajouté un filigrane ?
    Pocket TTS GGUF français : la fiche de la v0.9.1 ne le déclare pas mais le binaire le lit ; vérifier qu'une version publiée le déclare.
 7. Re-mesurer mémoire et vitesse du modèle de référence (tableau ci-dessus) si le build change.
 8. Valider Vulkan, CUDA et CPU sur une machine réelle (voir limites) et noter le résultat ici.

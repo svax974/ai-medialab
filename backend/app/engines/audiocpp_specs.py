@@ -81,7 +81,7 @@ CHATTERBOX_GGUF = ModelSpec(
     id="chatterbox-gguf", name="Chatterbox · Clonage expressif (GGUF)", family="Chatterbox", kind="audio",
     description="Clonage de voix expressif en 19 langues (français inclus), avec réglage de l'expressivité. Exige un "
                 "échantillon de voix (une dizaine de secondes, dans la langue visée de préférence). Tourne sur toute "
-                "carte graphique ou sur processeur. Chaque sortie porte un filigrane inaudible de l'éditeur (Perth).",
+                "carte graphique ou sur processeur. Contrairement à l'implémentation d'origine de l'éditeur, ce portage n'ajoute pas de filigrane inaudible aux sorties : à vous de signaler qu'une voix est synthétique.",
     engine=ENGINE, backend="pack",
     options={"pack": "audiocpp", "family": "chatterbox", "repo": REPO, "file": "Chatterbox-GGUF/chatterbox-q8_0.gguf",
              "mode": "clone", "task": "clon", "request": ["seed", "temperature", "exaggeration", "guidance_scale"],

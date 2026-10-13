@@ -24,7 +24,7 @@ Pour chaque modèle, télécharger puis générer une phrase de 2 à 3 lignes. N
   - Attendu : la langue choisie est respectée, voix intelligible, bien plus rapide que le temps réel. Temps : ________
 - [ ] **Chatterbox · Clonage expressif (GGUF)** (≈ 2,1 Go) : choisir une voix de la bibliothèque, générer en **français**, puis en **anglais** et en **allemand** sans changer de voix.
   - Attendu : la langue suit le sélecteur ; sans voix choisie, le modèle demande une voix de référence. Régler « Expressivité » à 0,5 puis 0,9 : la diction change. Noter l'accent résiduel de l'échantillon : ________
-  - Question ouverte : l'audio généré contient-il le filigrane de l'éditeur ? (non vérifiable à l'oreille ; laisser vide si inconnu)
+  - Le portage n'ajoute pas le filigrane de l'éditeur (vérifié dans le code, voir audiocpp.md) : rien à contrôler ici.
 - [ ] **Qwen3-TTS · Clonage 0.6B (GGUF)** : cloner une voix en français.
   - Attendu : voix proche de l'échantillon ; avec la transcription de l'échantillon renseignée, la fidélité est meilleure.
 - [ ] **Qwen3-TTS 1.7B (GGUF) : Voix & style, Création de voix, Clonage** (≈ 2,7 à 2,8 Go chacun)
