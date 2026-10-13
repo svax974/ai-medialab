@@ -21,11 +21,12 @@ export type StudioEventName =
   | 'conversation.updated'
   | 'conversation.deleted'
   | 'asset.updated'
-  | 'asset.deleted';
+  | 'asset.deleted'
+  | 'queue.updated';
 
 export const STUDIO_EVENT_NAMES: StudioEventName[] = [
   'job.progress', 'job.image', 'message.updated', 'message.deleted',
-  'conversation.updated', 'conversation.deleted', 'asset.updated', 'asset.deleted',
+  'conversation.updated', 'conversation.deleted', 'asset.updated', 'asset.deleted', 'queue.updated',
 ];
 
 /** Single-user app: every principal that can read the stream is an admin (`local-trust` included). */

@@ -12,7 +12,7 @@ l'ancienne base. Couche basse : `studio-core` en dépend, jamais l'inverse.
 suppression avec fichiers) et l'éditeur d'événements `studio.*`. **Écart au plan** : ces routes étaient prévues en H4.4 ; elles
 passent à Nest dès H4.3a par **cohérence** : les assets générés sont maintenant enregistrés dans la base de Nest, et une
 génération qui référence une image envoyée par l'ancien chemin (`/api/assets` du moteur, base du moteur) ne la trouverait pas.
-Restent pour H4.4 : le front (galeries, visionneuse, dépôt global).
+Le front (galerie d'images, visionneuse, dépôt global) est dans `front/src/modules/media-library/README.md` (H4.4) ; la galerie lit `GET /api/assets` page par page (curseur `next_before`).
 
 ## Architecture
 
@@ -74,6 +74,6 @@ favorite, meta, conversation_id, message_id, created_at`.
 
 ## Points d'extension
 
-- H4.4 : le front des galeries, la visionneuse et le dépôt global (le back est fait ici).
+- H4.4 (fait) : le front des galeries ; H4.5 et H4.6 réutilisent la même route avec `media=audio` / `media=video`. `StudioEvents` publie aussi `studio.queue.updated` (file des générations, voir `studio-core`).
 - `AssetService.remove` renvoie l'entité supprimée pour que l'appelant retire les fichiers ; `AssetService.purge` est
   l'équivalent de `purge_assets` du moteur (un asset encore référencé par un message restant perd seulement son lien au message).

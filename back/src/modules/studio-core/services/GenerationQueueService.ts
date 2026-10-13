@@ -22,6 +22,12 @@ export interface QueueSnapshot {
   pending: string[];
 }
 
+/** Payload of `studio.queue.updated` and of `GET /api/queue`: the running message and the waiting ones, in order. */
+export interface QueuePublic {
+  current: string | null;
+  queue: string[];
+}
+
 /**
  * The queue of generations ("which message next") and the job runner on the Nest side.
  *
@@ -40,6 +46,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   private current: QueueEntry | null = null;
   private readonly progress = new Map<string, ProgressState>();
   private chain: Promise<void> = Promise.resolve();
+  private lastQueueKey = '';
   private readonly subscriptions: Subscription[] = [];
 
   constructor(
@@ -70,6 +77,21 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     return { current: this.current?.messageId ?? null, pending: this.pending.map((e) => e.messageId) };
   }
 
+  /** The queue in its public form (the waiting messages exclude the running one, like the former engine status). */
+  publicQueue(): QueuePublic {
+    const { current, pending } = this.snapshot();
+    return { current, queue: pending };
+  }
+
+  /** Tells the browser the position of every waiting message, only when the order or the running message changed. */
+  private publishQueue(): void {
+    const queue = this.publicQueue();
+    const key = JSON.stringify(queue);
+    if (key === this.lastQueueKey) return;
+    this.lastQueueKey = key;
+    this.events.publish('queue.updated', queue);
+  }
+
   /** Progress of the running generation (what a reconnecting browser needs), in the browser shape. */
   progressSnapshot(): Record<string, unknown>[] {
     const entry = this.current;
@@ -80,6 +102,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   /** Adds a `queued` assistant message to the queue; it is submitted as soon as the engine is free. */
   enqueue(message: { id: string; conversationId: string }, kind: JobKind): void {
     this.pending.push({ messageId: message.id, conversationId: message.conversationId, kind, running: false, submitted: false, cancelRequested: false });
+    this.publishQueue();
     this.serial(() => this.pump());
   }
 
@@ -91,6 +114,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     const index = this.pending.findIndex((e) => e.messageId === messageId);
     if (index >= 0) {
       this.pending.splice(index, 1);
+      this.publishQueue();
       await this.finishMessage(messageId, 'cancelled', null);
       return true;
     }
@@ -116,7 +140,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   private serial(task: () => Promise<void>): void {
     this.chain = this.chain.then(task).catch((error: unknown) => {
       this.logger.error(`generation queue: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-    });
+    }).then(() => this.publishQueue());
   }
 
   /** Test hook: resolves when everything queued so far was handled. */

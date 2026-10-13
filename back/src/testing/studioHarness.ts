@@ -80,16 +80,18 @@ export function buildStudio(dataSource: DataSource, engineOverride?: unknown, re
   const fakeRelay = { events$: new Subject<EngineEvent>(), linkChanges$: new Subject<boolean>(), connected: false };
   const relay = (relayOverride ?? fakeRelay) as typeof fakeRelay;
   const published: { topic: string; type: string; data: Record<string, unknown> }[] = [];
+  /** `studio.queue.updated` goes to its own list so that the exact event lists asserted elsewhere stay about messages and assets. */
+  const queueEvents: Record<string, unknown>[] = [];
   const stream = {
     publish: (topic: string, event: { type: string; data: Record<string, unknown> }) =>
-      published.push({ topic, type: event.type, data: event.data }),
+      topic === 'studio.queue.updated' ? queueEvents.push(event.data) : published.push({ topic, type: event.type, data: event.data }),
   };
   const events = new StudioEvents(stream as never);
   const files = new AssetFileService(s.assets, engine);
   const queue = new GenerationQueueService(s.messages, s.assets, files, new JobRequestBuilder(s.messages), engine, relay as never, events);
   const generations = new GenerationService(s.conversations, s.messages, s.assets, files, queue, engine, events);
   const emit = (name: string, data: Record<string, unknown>) => relay.events$.next({ name, data });
-  return { ...s, engine: scripted, client: engine, relay, published, events, files, queue, generations, emit };
+  return { ...s, engine: scripted, client: engine, relay, published, queueEvents, events, files, queue, generations, emit };
 }
 
 export type Studio = ReturnType<typeof buildStudio>;

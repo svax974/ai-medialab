@@ -25,6 +25,7 @@ navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations :
 | Mappeurs | `mappers/conversationMapper.ts`, `mappers/messageMapper.ts` | Entités vers formes publiques. |
 | Contrôleur | `controllers/ConversationController.ts` | `/api/conversations*` (liste, création, détail, titre et épingle, suppression). |
 | Contrôleur | `controllers/MessageController.ts` | `/api/messages*` (création, relance, annulation, suppression). |
+| Contrôleur | `controllers/QueueController.ts` | `GET /api/queue` : la file des générations (état initial d'un navigateur). |
 | Service | `services/ConversationService.ts` | `list`, `get`, `getSummary`, `create`, `update`, `touch`, `remove`. |
 | Service | `services/MessageService.ts` | `get`, `listByConversation`, `create`, `update`, `remove`, `removeMany`, `failInterrupted`, `toDtos`, requêtes de la file et de la purge (`referencesOf`, `assetsOfMessages`, `assetsOfConversation`, `busyIds`, `childIds`). |
 | Service | `services/GenerationService.ts` | Création, relance, annulation et suppression des générations ; suppression d'une conversation (assets et fichiers purgés). |
@@ -61,6 +62,7 @@ erreurs ont la forme de Nest (`{ statusCode, message }`) avec les mêmes statuts
 | `POST` | `/api/messages/:id/retry` `{ model_id?, params?, keep_seed? }` | le nouveau message `queued` ; publie `message.updated` | 404, 422 |
 | `POST` | `/api/messages/:id/cancel` | `{ ok: true }` | 409 « Cette génération n'est plus en cours. » |
 | `DELETE` | `/api/messages/:id` | `{ ok: true, deleted: [ids] }` (un prompt emporte ses générations) ; publie `message.deleted` et `conversation.updated` | 404 |
+| `GET` | `/api/queue` | `{ current, queue }` : le message en cours et les messages en attente dans l'ordre d'exécution (H4.4) | |
 
 Création : le moteur dit si le modèle sait faire (`POST /engine/v1/jobs/check` : modèle connu, références exigées, tâche
 vocale, image de départ ou vidéo source), renvoie `max_count` et les paramètres par défaut du modèle ; Nest fusionne
@@ -118,9 +120,10 @@ Publiés par `StudioEvents` (module `media-library`) sur `EventStreamService`, a
 | `studio.conversation.updated` | résumé public (`cover`, `generation_count`, `busy`) |
 | `studio.conversation.deleted` | `{ id }` |
 | `studio.asset.updated` / `studio.asset.deleted` | asset public / `{ id, message_id, conversation_id }` (publiés par `media-library`) |
+| `studio.queue.updated` | `{ current, queue }` : `current` = message en cours de génération (ou `null`), `queue` = ids des messages en attente, **dans l'ordre d'exécution, tous modes et toutes conversations** (le message en cours n'y figure pas). Publié à chaque changement (ajout, annulation, passage au suivant, fin), jamais deux fois de suite la même file. **Nouveau en H4.4** : l'ancien SSE n'avait pas cet événement, l'ancienne interface lisait `queue` dans le statut du moteur (`GET /api/status`, liste `pending`) ; le client en déduit « position N » (rang dans `queue`, la première en attente n'affiche pas de position) et « N en attente » (taille de `queue`) |
 
 Limite du flux : un événement de plus de 16 Ko est abandonné (journalisé) ; un `message.updated` de plusieurs prises audio avec
-formes d'onde peut s'en approcher (le front relit alors le message). Les événements du moteur (`engine.job.*`, `engine.engine.status`…)
+formes d'onde peut s'en approcher (le front relit alors le message). La file est un événement à part (et non un champ de `message.updated`) parce qu'un changement de file touche tous les messages en attente à la fois, pas seulement celui qui change d'état. Les événements du moteur (`engine.job.*`, `engine.engine.status`…)
 restent relayés tels quels par le module `engine` : les composants migrés consomment `studio.*`.
 
 ## Entités
@@ -158,7 +161,7 @@ Formes publiques (snake_case, champs absents à `null`) :
 Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh 3` (2 pour le bout en bout) :
 
 ```sh
-npx jest --runInBand src/modules/studio-core/services/GenerationQueueService.spec.ts   # file, machine d'état, reprise, rapprochement
+npx jest --runInBand src/modules/studio-core/services/GenerationQueueService.spec.ts   # file, machine d'état, reprise, rapprochement, événement de file et GET /api/queue
 npx jest --runInBand src/modules/studio-core/services/GenerationService.spec.ts        # création, relance, annulation, suppressions
 npx jest --runInBand src/modules/studio-core/services/generationParams.spec.ts         # validation, titre, graines
 npx jest --runInBand src/modules/studio-core/mappers/jobEventMapper.spec.ts            # correspondance des événements
@@ -167,7 +170,7 @@ npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts       
 ```
 
 - `src/testing/studioHarness.ts` : services câblés à la main sur une base SQLite en mémoire, avec un moteur scripté
-  (`ScriptedEngine`), un relais factice (`relay.events$`) et la capture des événements publiés.
+  (`ScriptedEngine`), un relais factice (`relay.events$`) et la capture des événements publiés (`published`, et `queueEvents` à part pour `studio.queue.updated`, afin que les listes exactes assertées ailleurs restent celles des messages et des assets).
 - `studioRoutes.spec.ts` charge la base de démonstration de `legacy-import` et compare les réponses HTTP aux sorties du moteur
   capturées par `scripts-local/capture_legacy_fixtures.py`.
 - `studioEngine.e2e.spec.ts` lance le **moteur Python en sous-processus** (`IMAGEGEN_DEMO=1` : images synthétiques, aucun modèle,

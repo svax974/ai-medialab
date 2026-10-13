@@ -6,6 +6,7 @@
 export * from './StudioCoreModule';
 export * from './controllers/ConversationController';
 export * from './controllers/MessageController';
+export * from './controllers/QueueController';
 export * from './dto/ConversationDetailDto';
 export * from './dto/ConversationDto';
 export * from './dto/MessageDto';

@@ -7,6 +7,7 @@ import 'src/testing/sqliteEnv';
 import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { DataSource } from 'typeorm';
 import { createTestDataSource } from 'src/testing/testDataSource';
+import { QueueController } from '../controllers/QueueController';
 import { INTERRUPTED_BY_ENGINE } from '../types/jobTypes';
 import { buildStudio, engineDown, engineError, type Studio } from 'src/testing/studioHarness';
 import { INTERRUPTED_MESSAGE } from './MessageService';
@@ -111,6 +112,31 @@ describe('GenerationQueueService', () => {
     await emit('job.cancelled', { job_id: 'a3' });
     expect(await status('a3')).toBe('cancelled');
     expect(s.queue.snapshot()).toEqual({ current: null, pending: [] });
+  });
+
+  it('publishes the position of every waiting message when the queue changes', async () => {
+    const queueEvents = () => s.queueEvents;
+    await enqueue('a1');
+    await enqueue('a2');
+    await enqueue('a3');
+    expect(queueEvents().at(-1)).toEqual({ current: 'a1', queue: ['a2', 'a3'] });
+    expect(queueEvents()[0]).toEqual({ current: null, queue: ['a1'] });
+    expect(s.queue.publicQueue()).toEqual({ current: 'a1', queue: ['a2', 'a3'] });
+    expect(new QueueController(s.queue).get()).toEqual({ current: 'a1', queue: ['a2', 'a3'] }); // GET /api/queue
+    await s.queue.cancel('a2');
+    await s.queue.idle();
+    expect(queueEvents().at(-1)).toEqual({ current: 'a1', queue: ['a3'] });
+    await emit('job.done', { job_id: 'a1', outputs: 0 });
+    expect(queueEvents().at(-1)).toEqual({ current: 'a3', queue: [] });
+    await emit('job.done', { job_id: 'a3', outputs: 0 });
+    expect(queueEvents().at(-1)).toEqual({ current: null, queue: [] });
+  });
+
+  it('does not repeat a queue event when nothing changed', async () => {
+    await enqueue('a1');
+    const before = s.queueEvents.length;
+    await emit('job.progress', { job_id: 'a1', phase: 'running', step: 1, total: 4 });
+    expect(s.queueEvents).toHaveLength(before);
   });
 
   it('cancels a waiting generation at once without telling the engine', async () => {
