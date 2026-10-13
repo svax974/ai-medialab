@@ -907,8 +907,19 @@
         "title": "SettingsPatch",
         "type": "object"
       },
-      "TranscribeBody": {
+      "Transcription": {
         "properties": {
+          "duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration"
+          },
           "language": {
             "anyOf": [
               {
@@ -920,19 +931,20 @@
             ],
             "title": "Language"
           },
-          "model_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Id"
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
           }
         },
-        "title": "TranscribeBody",
+        "required": [
+          "text",
+          "model"
+        ],
+        "title": "Transcription",
         "type": "object"
       },
       "ValidationError": {
@@ -1023,6 +1035,121 @@
           }
         },
         "title": "VoicePatch",
+        "type": "object"
+      },
+      "VoiceReference": {
+        "properties": {
+          "duration": {
+            "title": "Duration",
+            "type": "number"
+          },
+          "filename": {
+            "description": "`voice_<id>.wav` in the uploads folder (mono, 24 kHz, edges trimmed).",
+            "title": "Filename",
+            "type": "string"
+          },
+          "peaks": {
+            "description": "120 waveform values in [0, 1].",
+            "items": {
+              "type": "number"
+            },
+            "title": "Peaks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "filename",
+          "duration",
+          "peaks"
+        ],
+        "title": "VoiceReference",
+        "type": "object"
+      },
+      "VoiceReferenceBody": {
+        "properties": {
+          "source_path": {
+            "description": "Audio file (WAV, MP3, FLAC, OGG) inside the data folder; left in place.",
+            "title": "Source Path",
+            "type": "string"
+          },
+          "voice_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Voice Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_path",
+          "voice_id"
+        ],
+        "title": "VoiceReferenceBody",
+        "type": "object"
+      },
+      "app__api__routes__TranscribeBody": {
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          }
+        },
+        "title": "TranscribeBody",
+        "type": "object"
+      },
+      "app__api__voice_media__TranscribeBody": {
+        "properties": {
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A transcription model; by default the first one installed.",
+            "title": "Model Id"
+          },
+          "path": {
+            "description": "Audio file inside the data folder.",
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "title": "TranscribeBody",
         "type": "object"
       }
     }
@@ -2051,6 +2178,90 @@
         ]
       }
     },
+    "/engine/v1/media/transcribe": {
+      "post": {
+        "description": "Suggests a transcript for a clip (the user can always correct it). 409 with the reason to show when no\ntranscription model or engine is installed; 500 when the model fails.",
+        "operationId": "transcribe_clip_engine_v1_media_transcribe_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/app__api__voice_media__TranscribeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transcription"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcribe Clip",
+        "tags": [
+          "voices"
+        ]
+      }
+    },
+    "/engine/v1/media/voice-reference": {
+      "post": {
+        "description": "Turns an audio file into a cloning reference clip and writes it to the uploads folder. 422 when the clip is\nunreadable, shorter than one second or the source is outside the data folder. The source is not removed.",
+        "operationId": "prepare_voice_reference_engine_v1_media_voice_reference_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoiceReferenceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceReference"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare Voice Reference",
+        "tags": [
+          "voices"
+        ]
+      }
+    },
     "/engine/v1/messages": {
       "post": {
         "operationId": "create_message_engine_v1_messages_post",
@@ -2821,7 +3032,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/TranscribeBody"
+                "$ref": "#/components/schemas/app__api__routes__TranscribeBody"
               }
             }
           },

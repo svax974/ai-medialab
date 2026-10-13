@@ -4,6 +4,7 @@
  */
 
 export * from './MediaLibraryModule';
+export * from './StudioEventLimitsModule';
 export * from './dto/AssetDto';
 export * from './dto/AssetListItemDto';
 export * from './entities/AssetEntity';
@@ -15,3 +16,4 @@ export * from './services/StudioEvents';
 export * from './types/assetTypes';
 export * from './utils/dataDir';
 export * from './utils/ids';
+export * from './utils/uploadStorage';

@@ -88,7 +88,7 @@ export function buildStudio(dataSource: DataSource, engineOverride?: unknown, re
   };
   const events = new StudioEvents(stream as never);
   const files = new AssetFileService(s.assets, engine);
-  const queue = new GenerationQueueService(s.messages, s.assets, files, new JobRequestBuilder(s.messages), engine, relay as never, events);
+  const queue = new GenerationQueueService(s.messages, s.assets, files, new JobRequestBuilder(s.messages, s.voices), engine, relay as never, events);
   const generations = new GenerationService(s.conversations, s.messages, s.assets, files, queue, engine, events);
   const emit = (name: string, data: Record<string, unknown>) => relay.events$.next({ name, data });
   return { ...s, engine: scripted, client: engine, relay, published, queueEvents, events, files, queue, generations, emit };

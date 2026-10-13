@@ -20,6 +20,7 @@ export * from './services/ConversationService';
 export * from './services/GenerationQueueService';
 export * from './services/GenerationService';
 export * from './services/JobRequestBuilder';
+export * from './services/jobVoices';
 export * from './services/MessageService';
 export * from './services/generationParams';
 export * from './types/jobTypes';

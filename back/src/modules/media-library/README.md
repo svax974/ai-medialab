@@ -25,7 +25,9 @@ Le front (galerie d'images, visionneuse, dépôt global) est dans `front/src/mod
 | Mappeur | `mappers/assetMapper.ts` | `toAssetDto`, `toAssetListItemDto`, `mediaUrl` (`/media/<dossier>/<fichier>`). |
 | Service | `services/AssetService.ts` | `get`, `getEntity`, `create`, `setFavorite`, `remove` (ligne seulement), `purge` (`purge_assets` : ligne seulement), `adoptOrphans`, `list` (filtres et curseur de l'ancienne API). |
 | Service | `services/AssetFileService.ts` | `ingest` (envoi : le moteur décode et fait la vignette, Nest enregistre la ligne), `purge` / `removeFiles` (fichiers et vignettes retirés par le moteur). |
-| Service | `services/StudioEvents.ts` | Publie les événements `studio.<nom>` (mêmes noms et formes que l'ancien SSE) ; utilisé aussi par `studio-core`. |
+| Service | `services/StudioEvents.ts` | Publie les événements `studio.<nom>` (mêmes noms et formes que l'ancien SSE) ; utilisé aussi par `studio-core` et `audio-studio` (`voices.changed`). |
+| Module | `StudioEventLimitsModule.ts` | Module **global** qui fournit `EVENT_STREAM_OPTIONS` au flux partagé : `maxEventBytes` = 256 Ko au lieu de 16 Ko (voir « Taille des événements »). |
+| Utilitaires | `utils/uploadStorage.ts` | `uploadStorage` (multer sur disque, `uploads/tmp_<aléa>`) et `decodeUploadName`, partagés avec `audio-studio`. |
 | Contrôleur | `controllers/AssetController.ts` | `/api/assets*`. |
 | Utilitaires | `utils/dataDir.ts` | Dossier de données partagé avec le moteur (`APP_DATA_DIR`, sinon `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
 | Types | `types/assetTypes.ts` | `CreateAssetInput`, `ListAssetsQuery`. |
@@ -58,6 +60,20 @@ Administrateur (`local-trust` inclus), JSON en clair, mêmes URLs et formes que 
 puis le moteur le transforme (`POST /engine/v1/media/ingest` : image réencodée en PNG, orientation EXIF appliquée, transparence
 aplatie, 4096 px au plus ; vidéo conservée, dimensions, durée et fps lus ; vignette WebP) et supprime le brut ; Nest enregistre la
 ligne avec l'id et les noms de fichiers rendus. Le nom d'origine est relu en UTF-8 (multer le lit en latin1).
+
+## Taille des événements
+
+`EventStreamService` abandonne (en le journalisant) tout événement de plus de 16 Ko. Un `message.updated` audio final
+(jusqu'à 4 prises, chacune avec 240 pics de forme d'onde, un marqueur par tour de parole et le texte) mesure **~8 Ko** pour
+un texte court, **~33 Ko** pour un dialogue de 40 répliques et **~105 Ko** pour 8000 caractères (mesuré par
+`studio-core/services/AudioGeneration.spec.ts`) : sans réglage, l'interface ne verrait jamais la fin d'une génération
+audio longue. **Solution retenue : relever la limite pour cette application** (`StudioEventLimitsModule`, 256 Ko, soit plus de
+deux fois le pire cas ; le tampon de reprise garde ses 500 événements). Raisons : la limite protège un serveur multi-utilisateur
+d'un contenu venu de l'extérieur, or ici tous les événements sont produits par notre propre serveur pour une seule personne ;
+l'alternative (événements d'invalidation, relecture REST) changerait la forme de tous les événements `studio.*` déjà
+consommés par le front, obligerait à relire chaque message à chaque changement d'état et laisserait une fenêtre où l'interface
+est en retard. Le module doit être **global** parce que `EventStreamService` est déclaré dans `CommonModule`, qui ne voit
+que ses propres imports et les modules globaux (`StudioEventLimitsModule.spec.ts` le vérifie, avec le cas témoin sans le module).
 
 ## Entités
 

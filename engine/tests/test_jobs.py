@@ -383,3 +383,15 @@ class TestPlans:
         assert voice == {"kind": "clone", "ref_audio": "/data/uploads/v.wav", "ref_text": "bonjour", "label": "Moi"}
         with pytest.raises(ValueError, match="n'existe plus"):
             resolve_voice(spec, {"source": "library", "id": "other"}, "fr", "", lib)
+
+    def test_a_library_given_by_the_caller_hides_the_engine_database(self, monkeypatch):
+        from app import voices
+        from app.engines import MODELS
+
+        spec = next((s for s in MODELS.values() if s.kind == "audio" and s.audio.clone != "none"), None)
+        if spec is None:
+            pytest.skip("no cloning audio model registered")
+        monkeypatch.setattr(voices, "get_voice", lambda _id: {"url": "/media/uploads/x.wav", "transcript": "", "name": "x"})
+        with pytest.raises(ValueError, match="n'existe plus"):
+            voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "", {})
+        assert voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "")["kind"] == "clone"

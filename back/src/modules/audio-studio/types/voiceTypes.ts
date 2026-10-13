@@ -9,6 +9,8 @@ export const MAX_VOICE_NAME_LENGTH = 80;
 export const DEFAULT_VOICE_NAME = 'Voix sans nom';
 
 export interface CreateVoiceInput {
+  /** Chosen by the caller when the sample file is named after it (`voice_<id>.wav`). */
+  id?: string;
   /** Trimmed and cut to 80 characters; empty gives `Voix sans nom`. */
   name: string;
   kind: VoiceKind;
@@ -26,4 +28,33 @@ export interface UpdateVoiceInput {
   transcript?: string;
   description?: string;
   language?: string;
+}
+
+export const MAX_TRANSCRIPT_LENGTH = 600;
+export const DEFAULT_UPLOADED_VOICE_NAME = 'Ma voix';
+export const DEFAULT_SAVED_VOICE_NAME = 'Voix enregistrée';
+
+/** Fields of `POST /api/voices` (multipart) after validation. */
+export interface UploadVoiceInput {
+  name: string;
+  transcript: string;
+  language: string | null;
+  description: string;
+  kind: VoiceKind;
+}
+
+/** Body of `POST /api/voices/from-asset` after validation. */
+export interface VoiceFromAssetInput {
+  assetId: string;
+  name: string;
+  description: string;
+  transcript: string;
+  language: string | null;
+  kind: VoiceKind;
+}
+
+/** Body of `POST /api/voices/:id/transcribe` after validation. */
+export interface TranscribeVoiceInput {
+  language: string | null;
+  modelId: string | null;
 }

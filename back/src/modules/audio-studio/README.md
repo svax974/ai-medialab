@@ -2,33 +2,62 @@
 
 ## Rôle
 
-Persistance de la **bibliothèque de voix** : échantillons de clonage (`clone`) et voix inventées à partir d'une
-description (`design`). Le fichier d'échantillon (WAV 24 kHz, `voice_<id>.wav`) reste dans `<données>/uploads/` ;
-la base ne garde son nom. Le composeur audio, les prises, la transcription et les routes arrivent en H4.5.
+La **bibliothèque de voix** : échantillons de clonage (`clone`) et voix inventées à partir d'une description (`design`),
+avec leurs routes `/api/voices*` et leurs fichiers. Le fichier d'échantillon (WAV 24 kHz, `voice_<id>.wav`) reste dans
+`<données>/uploads/` ; la base ne garde son nom. **Le moteur prépare le clip et calcule la transcription** (il décode
+l'audio et exécute les modèles) ; Nest garde la ligne, le nom, la transcription **modifiable** et supprime le fichier.
 
-État (tâche H2) : entité, DTO, mappeur, service de lecture/écriture de base. **Aucun contrôleur** : l'ancienne API
-(`/api/voices`) est servie par le proxy transitoire du module `engine`.
+État (tâche H4.5) : routes, fichiers, événement `studio.voices.changed`, voix passées aux jobs audio (voir `studio-core`).
+Les composeurs, les prises et les galeries audio sont côté front (`front/src/modules/audio-studio`, `voices`) ; les
+messages audio sont des messages ordinaires de `studio-core` (conversations de mode `audio`).
 
 ## Architecture
 
 | Type | Fichier | Description |
 |---|---|---|
-| Module | `AudioStudioModule.ts` | Déclare `VoiceEntity`, fournit et exporte `VoiceService`. |
+| Module | `AudioStudioModule.ts` | Importe `MediaLibraryModule`, déclare `VoiceEntity`, fournit et exporte `VoiceService` et `VoiceFileService`. |
 | Entité | `entities/VoiceEntity.ts` | Table `voices`. |
 | DTO | `dto/VoiceDto.ts` | Forme publique (identique à `voice_public` de `engine/app/voices.py`). |
+| DTO | `dto/VoiceTranscriptionDto.ts` | Réponse de `transcribe` : `{ text, language?, duration?, model }`. |
 | Mappeur | `mappers/voiceMapper.ts` | `toVoiceDto`. |
-| Service | `services/VoiceService.ts` | `list`, `get`, `create`, `update`, `remove` (ligne seulement, renvoyée pour effacer le fichier). |
-| Types | `types/voiceTypes.ts` | `CreateVoiceInput`, `UpdateVoiceInput`, limites (nom : 80 caractères). |
+| Service | `services/VoiceService.ts` | `list`, `get`, `findByIds`, `create` (id imposé possible), `update`, `remove` (ligne seulement, renvoyée). |
+| Service | `services/VoiceFileService.ts` | `createFromUpload`, `createFromAsset`, `update`, `remove` (ligne puis fichier via `POST /engine/v1/media/purge`), `transcribe` ; publie `voices.changed`. |
+| Pures | `services/voiceParams.ts` | Validation des corps (422) : `parseUploadVoice`, `parseVoiceFromAsset`, `parseUpdateVoice`, `parseTranscribeVoice`. |
+| Contrôleur | `controllers/VoiceController.ts` | `/api/voices*`. |
+| Types | `types/voiceTypes.ts` | Entrées des services, limites (nom : 80 caractères, transcription issue d'une prise : 600). |
 
-Tests : `services/VoiceService.spec.ts` ; parité avec le moteur : `legacy-import/publicShapes.spec.ts`.
+Tests : `controllers/VoiceController.spec.ts` (routes sur un faux moteur HTTP : formes, erreurs, événements, fichiers),
+`services/VoiceService.spec.ts`, `services/voiceParams.spec.ts` ; parité avec le moteur : `legacy-import/publicShapes.spec.ts`.
 
 ## Dépendances
 
-- `media-library` (`newId`, `nowSeconds`) ; `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`).
+- `media-library` (`AssetService`, `StudioEvents`, `uploadStorage`, `newId`, dossiers de données) ; `engine` (`EngineClient`,
+  `engineErrorToHttp`) ; `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`, `AdminOnlyInterceptor`).
+- Appels au moteur (`/engine/v1`, réservés à Nest) : `POST /media/voice-reference` (clip mono 24 kHz, bords de silence
+  retirés, 1 à 30 s, formes d'onde de 120 valeurs ; la source n'est pas supprimée), `POST /media/transcribe`,
+  `POST /media/purge`.
 
 ## Endpoints exposés (exhaustif)
 
-Aucun pour l'instant (H4.5).
+Tous **administrateur** (`local-trust` inclus), JSON en clair, mêmes URLs, formes et textes d'erreur que l'ancienne API du
+moteur (`/api/voices*` n'est plus relayé par le proxy transitoire).
+
+| Méthode | Endpoint | Réponse | Erreurs |
+|---|---|---|---|
+| `GET` | `/api/voices` | liste de voix (plus récentes d'abord) | |
+| `POST` | `/api/voices` (multipart : `file`, `name?`, `transcript?`, `language?`, `description?`, `kind?` = `clone` \| `design`) | la voix ; publie `voices.changed` | 422 (aucun fichier, clip illisible ou « Extrait trop court : il faut au moins une seconde de parole. ») |
+| `POST` | `/api/voices/from-asset` `{ asset_id, name?, description?, transcript?, language?, kind? }` | la voix ; sans `name` : voix de la prise ou « Voix enregistrée » ; sans `transcript` : texte de la prise (600 caractères) ; `kind` : `design` par défaut | 404 « Prise audio introuvable. », 422 |
+| `PATCH` | `/api/voices/:id` `{ name?, transcript?, description?, language? }` | la voix ; publie `voices.changed` | 404 « Voix introuvable. », 422 |
+| `DELETE` | `/api/voices/:id` | `{ ok: true }` ; la ligne puis le fichier ; publie `voices.changed` | 404 |
+| `POST` | `/api/voices/:id/transcribe` `{ language?, model_id? }` | `{ text, language, duration, model }` : **une suggestion, rien n'est enregistré** (l'utilisateur la corrige puis enregistre par `PATCH`) | 404, 409 (aucun modèle de transcription ou moteur absent), 500 |
+
+Nom d'une voix envoyée : `name`, sinon le nom du fichier sans extension, sinon « Ma voix ». Le fichier brut reçu est écrit
+dans `<données>/uploads/tmp_<aléa>` (multer, sur disque, 100 Mo au plus) puis **toujours supprimé par Nest** une fois le clip préparé.
+
+## Événement navigateur
+
+`studio.voices.changed` (`type` `voices.changed`, charge utile `{}`) : événement d'**invalidation** (nouveau en H4.5 ; l'ancien
+SSE du moteur publiait déjà `voices.changed`). Le client relit `GET /api/voices`.
 
 ## Entités
 
@@ -39,5 +68,5 @@ url (/media/uploads/<fichier> ou null), created_at`. Liste : plus récentes d'ab
 
 ## Points d'extension
 
-- H4.5 : contrôleur, création depuis un envoi ou une prise (le moteur prépare le clip : `prepare_reference`), suggestion de
-  transcription, effacement du fichier d'échantillon après `VoiceService.remove`.
+- `studio-core` lit `VoiceService.findByIds` pour résoudre les voix d'un job audio (`jobVoices`).
+- Une voix sans fichier (`filename` nul) n'est pas transmise au moteur.

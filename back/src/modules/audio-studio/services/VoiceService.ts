@@ -5,14 +5,14 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { newId, nowSeconds } from 'src/modules/media-library';
 import { VoiceDto } from '../dto/VoiceDto';
 import { VoiceEntity } from '../entities/VoiceEntity';
 import { toVoiceDto } from '../mappers/voiceMapper';
 import { CreateVoiceInput, DEFAULT_VOICE_NAME, MAX_VOICE_NAME_LENGTH, UpdateVoiceInput } from '../types/voiceTypes';
 
-/** Reads and writes the voice library. Writing the sample file and transcribing are the engine's job (H4.5). */
+/** Reads and writes the voice library. The sample file and the transcription belong to the engine (`VoiceFileService`). */
 @Injectable()
 export class VoiceService {
   constructor(@InjectRepository(VoiceEntity) private readonly voices: Repository<VoiceEntity>) {}
@@ -20,6 +20,11 @@ export class VoiceService {
   /** Newest first. */
   async list(): Promise<VoiceDto[]> {
     return (await this.voices.find({ order: { createdAt: 'DESC' } })).map(toVoiceDto);
+  }
+
+  /** The rows of these voices (unknown ids are absent): what a generation needs to resolve its voices. */
+  async findByIds(ids: string[]): Promise<VoiceEntity[]> {
+    return ids.length ? this.voices.findBy({ id: In(ids) }) : [];
   }
 
   async get(id: string): Promise<VoiceDto | null> {
@@ -30,7 +35,7 @@ export class VoiceService {
   async create(input: CreateVoiceInput): Promise<VoiceDto> {
     const voice = await this.voices.save(
       this.voices.create({
-        id: newId(),
+        id: input.id ?? newId(),
         name: input.name.trim().slice(0, MAX_VOICE_NAME_LENGTH) || DEFAULT_VOICE_NAME,
         kind: input.kind,
         filename: input.filename ?? null,

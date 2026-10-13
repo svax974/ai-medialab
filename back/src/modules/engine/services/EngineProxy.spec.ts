@@ -37,8 +37,8 @@ class FakeAuthInterceptor implements NestInterceptor {
 
 describe('toEnginePath', () => {
   it('maps proxied segments to /engine/v1 and media to /media', () => {
-    expect(toEnginePath('/api/voices?x=1')).toBe('/engine/v1/voices?x=1');
-    expect(toEnginePath('/api/voices/abc/transcribe')).toBe('/engine/v1/voices/abc/transcribe');
+    expect(toEnginePath('/api/events/x?x=1')).toBe('/engine/v1/events/x?x=1');
+    expect(toEnginePath('/api/events/abc/more')).toBe('/engine/v1/events/abc/more');
     expect(toEnginePath('/api/media/outputs/a.png')).toBe('/media/outputs/a.png');
   });
 
@@ -83,9 +83,9 @@ describe('EngineProxy (fake engine)', () => {
 
   it('refuses a request without an admin principal', async () => {
     principal = undefined;
-    await request(app.getHttpServer()).get('/api/voices').expect(401);
+    await request(app.getHttpServer()).get('/api/events/x').expect(401);
     principal = { id: 5, admin: false, kind: 'user' };
-    await request(app.getHttpServer()).get('/api/voices').expect(401);
+    await request(app.getHttpServer()).get('/api/events/x').expect(401);
     expect(engine.requests).toHaveLength(0);
   });
 
@@ -94,10 +94,10 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(200, { 'content-type': 'application/json', 'x-from': 'engine' });
       res.end(JSON.stringify({ models: [] }));
     });
-    const res = await request(app.getHttpServer()).get('/api/voices?refresh=true').set('Authorization', 'Bearer admin-secret').expect(200);
+    const res = await request(app.getHttpServer()).get('/api/events/x?refresh=true').set('Authorization', 'Bearer admin-secret').expect(200);
     expect(res.body).toEqual({ models: [] });
     expect(res.headers['x-from']).toBe('engine');
-    expect(engine.requests[0].url).toBe('/engine/v1/voices?refresh=true');
+    expect(engine.requests[0].url).toBe('/engine/v1/events/x?refresh=true');
     expect(engine.requests[0].headers['x-engine-token']).toBe(TEST_TOKEN);
     expect(engine.requests[0].headers.authorization).toBeUndefined();
   });
@@ -107,7 +107,7 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(201, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ id: 'c1' }));
     });
-    const res = await request(app.getHttpServer()).post('/api/voices').send({ mode: 'image', title: 'T' }).expect(201);
+    const res = await request(app.getHttpServer()).post('/api/events/x').send({ mode: 'image', title: 'T' }).expect(201);
     expect(res.body).toEqual({ id: 'c1' });
     const sent = JSON.parse(engine.requests[0].body.toString()) as Record<string, unknown>;
     expect(sent).toEqual({ mode: 'image', title: 'T' });
@@ -116,9 +116,9 @@ describe('EngineProxy (fake engine)', () => {
 
   it('streams a multipart upload to the engine untouched', async () => {
     const payload = Buffer.alloc(300_000, 7);
-    await request(app.getHttpServer()).post('/api/voices').attach('files', payload, 'big.bin').expect(200);
+    await request(app.getHttpServer()).post('/api/events/x').attach('files', payload, 'big.bin').expect(200);
     const rec = engine.requests[0];
-    expect(rec.url).toBe('/engine/v1/voices');
+    expect(rec.url).toBe('/engine/v1/events/x');
     expect(rec.headers['content-type']).toMatch(/^multipart\/form-data; boundary=/);
     expect(rec.body.length).toBeGreaterThan(300_000);
     expect(rec.body.includes(payload)).toBe(true);
@@ -168,7 +168,7 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(404, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ detail: 'Modèle inconnu.' }));
     });
-    const res = await request(app.getHttpServer()).get('/api/voices/nope').expect(404);
+    const res = await request(app.getHttpServer()).get('/api/events/nope').expect(404);
     expect(res.body).toEqual({ detail: 'Modèle inconnu.' });
   });
 
@@ -192,7 +192,7 @@ describe('EngineProxy (fake engine)', () => {
       next();
     });
     await downApp.init();
-    await request(downApp.getHttpServer()).get('/api/voices').expect(502, { statusCode: 502, message: 'Engine unavailable' });
+    await request(downApp.getHttpServer()).get('/api/events/x').expect(502, { statusCode: 502, message: 'Engine unavailable' });
     await downApp.close();
   });
 

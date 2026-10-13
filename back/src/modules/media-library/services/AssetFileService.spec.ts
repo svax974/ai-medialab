@@ -91,6 +91,6 @@ describe('AssetFileService, asset purge and data folder', () => {
     for (const name of STUDIO_EVENT_NAMES) events.publish(name, { id: 1 });
     expect(sent).toHaveLength(STUDIO_EVENT_NAMES.length);
     expect(sent[0]).toEqual(['studio.job.progress', { type: 'job.progress', data: { id: 1 } }, { admin: true }]);
-    expect(STUDIO_EVENT_NAMES).toEqual(['job.progress', 'job.image', 'message.updated', 'message.deleted', 'conversation.updated', 'conversation.deleted', 'asset.updated', 'asset.deleted', 'queue.updated']);
+    expect(STUDIO_EVENT_NAMES).toEqual(['job.progress', 'job.image', 'message.updated', 'message.deleted', 'conversation.updated', 'conversation.deleted', 'asset.updated', 'asset.deleted', 'queue.updated', 'voices.changed']);
   });
 });

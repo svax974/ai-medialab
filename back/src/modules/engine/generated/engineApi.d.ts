@@ -339,6 +339,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/media/transcribe": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Transcribe Clip
+         * @description Suggests a transcript for a clip (the user can always correct it). 409 with the reason to show when no
+         *     transcription model or engine is installed; 500 when the model fails.
+         */
+        post: operations["transcribe_clip_engine_v1_media_transcribe_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/media/voice-reference": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Prepare Voice Reference
+         * @description Turns an audio file into a cloning reference clip and writes it to the uploads folder. 422 when the clip is
+         *     unreadable, shorter than one second or the source is outside the data folder. The source is not removed.
+         */
+        post: operations["prepare_voice_reference_engine_v1_media_voice_reference_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/messages": {
         parameters: {
             query?: never;
@@ -1036,12 +1078,16 @@ export interface components {
                 [key: string]: string;
             } | null;
         };
-        /** TranscribeBody */
-        TranscribeBody: {
+        /** Transcription */
+        Transcription: {
+            /** Duration */
+            duration?: number | null;
             /** Language */
             language?: string | null;
-            /** Model Id */
-            model_id?: string | null;
+            /** Model */
+            model: string;
+            /** Text */
+            text: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -1066,6 +1112,53 @@ export interface components {
             name?: string | null;
             /** Transcript */
             transcript?: string | null;
+        };
+        /** VoiceReference */
+        VoiceReference: {
+            /** Duration */
+            duration: number;
+            /**
+             * Filename
+             * @description `voice_<id>.wav` in the uploads folder (mono, 24 kHz, edges trimmed).
+             */
+            filename: string;
+            /**
+             * Peaks
+             * @description 120 waveform values in [0, 1].
+             */
+            peaks: number[];
+        };
+        /** VoiceReferenceBody */
+        VoiceReferenceBody: {
+            /**
+             * Source Path
+             * @description Audio file (WAV, MP3, FLAC, OGG) inside the data folder; left in place.
+             */
+            source_path: string;
+            /** Voice Id */
+            voice_id: string;
+        };
+        /** TranscribeBody */
+        app__api__routes__TranscribeBody: {
+            /** Language */
+            language?: string | null;
+            /** Model Id */
+            model_id?: string | null;
+        };
+        /** TranscribeBody */
+        app__api__voice_media__TranscribeBody: {
+            /** Language */
+            language?: string | null;
+            /**
+             * Model Id
+             * @description A transcription model; by default the first one installed.
+             */
+            model_id?: string | null;
+            /**
+             * Path
+             * @description Audio file inside the data folder.
+             */
+            path: string;
         };
     };
     responses: never;
@@ -1850,6 +1943,72 @@ export interface operations {
             };
         };
     };
+    transcribe_clip_engine_v1_media_transcribe_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["app__api__voice_media__TranscribeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Transcription"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    prepare_voice_reference_engine_v1_media_voice_reference_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoiceReferenceBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceReference"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     create_message_engine_v1_messages_post: {
         parameters: {
             query?: never;
@@ -2497,7 +2656,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["TranscribeBody"];
+                "application/json": components["schemas"]["app__api__routes__TranscribeBody"];
             };
         };
         responses: {

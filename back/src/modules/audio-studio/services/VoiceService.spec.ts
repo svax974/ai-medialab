@@ -50,4 +50,12 @@ describe('VoiceService', () => {
     expect(await s.voices.remove(a.id)).toBeNull();
     expect(await s.voices.get(a.id)).toBeNull();
   });
+
+  it('keeps the id the caller chose (the sample file is named after it) and finds voices by ids', async () => {
+    const a = await s.voices.create({ id: 'chosen', name: 'a', kind: 'clone', filename: 'voice_chosen.wav' });
+    const b = await s.voices.create({ name: 'b', kind: 'design' });
+    expect(a.id).toBe('chosen');
+    expect((await s.voices.findByIds(['chosen', b.id, 'ghost'])).map((v) => v.id).sort()).toEqual([b.id, 'chosen'].sort());
+    expect(await s.voices.findByIds([])).toEqual([]);
+  });
 });

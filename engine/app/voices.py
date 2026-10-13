@@ -89,13 +89,19 @@ def prepare_reference(data: bytes) -> tuple[np.ndarray, float]:
     return audio.astype(np.float32), duration
 
 
-def save_voice(*, name: str, kind: str, audio: np.ndarray, transcript: str = "", description: str = "",
-               language: str | None = None) -> dict[str, Any]:
+def store_reference(voice_id: str, audio: np.ndarray) -> str:
+    """Writes the prepared clip as `voice_<id>.wav` in the uploads folder and returns the file name."""
     import soundfile as sf
 
-    voice_id = db.new_id()
     filename = f"voice_{voice_id}.wav"
     sf.write(str(voice_path(filename)), audio, REF_SAMPLE_RATE, subtype="PCM_16")
+    return filename
+
+
+def save_voice(*, name: str, kind: str, audio: np.ndarray, transcript: str = "", description: str = "",
+               language: str | None = None) -> dict[str, Any]:
+    voice_id = db.new_id()
+    filename = store_reference(voice_id, audio)
     with db.connect() as conn:
         conn.execute(
             "INSERT INTO voices (id, name, kind, filename, transcript, description, language, duration, peaks, "
@@ -122,12 +128,14 @@ def resolve_voice(spec, ref: dict[str, Any] | None, language: str, instruct: str
     """Effective voice in the format the worker expects: preset | clone | design.
 
     `ref` is {"source": "preset", "id": "ff_siwis"}, {"source": "library", "id": "<voice>"} or None.
-    `library` (voices the caller resolved: id -> {"path", "transcript", "name"}) is looked at before the engine's own."""
+    `library` (voices the caller resolved: id -> {"path", "transcript", "name"}) is looked at before the engine's own;
+    when it is given the engine's own library is ignored."""
     caps = spec.audio
     ref = ref or {}
     if ref.get("source") == "library":
         given = (library or {}).get(ref.get("id", ""))
-        voice = get_voice(ref.get("id", "")) if given is None else None
+        # A caller that passes its library (NestJS, even an empty one) owns the voices: no fallback to the engine's own.
+        voice = get_voice(ref.get("id", "")) if given is None and library is None else None
         if given is None and not voice:
             raise ValueError("Cette voix n'existe plus dans votre bibliothèque.")
         if caps.clone == "none":

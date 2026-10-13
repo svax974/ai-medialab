@@ -39,7 +39,7 @@ Tests : voir « Tests » plus bas.
 
 ## Dépendances
 
-- `media-library` (`AssetEntity`, `AssetService`, `AssetFileService`, `StudioEvents`, `toAssetDto`, `newId`, `nowSeconds`, dossiers de données). Pas l'inverse.
+- `audio-studio` (`VoiceService`, pour les `voices` des jobs audio) ; `media-library` (`AssetEntity`, `AssetService`, `AssetFileService`, `StudioEvents`, `toAssetDto`, `newId`, `nowSeconds`, dossiers de données). Pas l'inverse.
 - `engine` (global) : `EngineClient` (typé), `EngineEventRelay` (`events$`, `linkChanges$`), `engineErrorToHttp`.
 - `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`, `EventStreamService` via `StudioEvents`).
 - Variable d'environnement : `APP_DATA_DIR` (ou `IMAGEGEN_DATA_DIR`), le dossier de données que le moteur lit aussi
@@ -122,8 +122,9 @@ Publiés par `StudioEvents` (module `media-library`) sur `EventStreamService`, a
 | `studio.asset.updated` / `studio.asset.deleted` | asset public / `{ id, message_id, conversation_id }` (publiés par `media-library`) |
 | `studio.queue.updated` | `{ current, queue }` : `current` = message en cours de génération (ou `null`), `queue` = ids des messages en attente, **dans l'ordre d'exécution, tous modes et toutes conversations** (le message en cours n'y figure pas). Publié à chaque changement (ajout, annulation, passage au suivant, fin), jamais deux fois de suite la même file. **Nouveau en H4.4** : l'ancien SSE n'avait pas cet événement, l'ancienne interface lisait `queue` dans le statut du moteur (`GET /api/status`, liste `pending`) ; le client en déduit « position N » (rang dans `queue`, la première en attente n'affiche pas de position) et « N en attente » (taille de `queue`) |
 
-Limite du flux : un événement de plus de 16 Ko est abandonné (journalisé) ; un `message.updated` de plusieurs prises audio avec
-formes d'onde peut s'en approcher (le front relit alors le message). La file est un événement à part (et non un champ de `message.updated`) parce qu'un changement de file touche tous les messages en attente à la fois, pas seulement celui qui change d'état. Les événements du moteur (`engine.job.*`, `engine.engine.status`…)
+Limite du flux : le défaut de 16 Ko est relevé à 256 Ko pour cette application (`StudioEventLimitsModule` de `media-library`,
+mesures dans son README) : un `message.updated` de plusieurs prises audio avec formes d'onde dépasse 16 Ko (33 Ko pour un
+dialogue de 40 répliques, 105 Ko au pire). La file est un événement à part (et non un champ de `message.updated`) parce qu'un changement de file touche tous les messages en attente à la fois, pas seulement celui qui change d'état. Les événements du moteur (`engine.job.*`, `engine.engine.status`…)
 restent relayés tels quels par le module `engine` : les composants migrés consomment `studio.*`.
 
 ## Entités
@@ -151,9 +152,11 @@ Formes publiques (snake_case, champs absents à `null`) :
 
 - `ConversationService.remove` et `MessageService.remove` ne suppriment que les lignes et leurs cascades ; la purge des assets
   et des fichiers est faite par `GenerationService` (`AssetFileService.purge`).
-- Audio et vidéo (H4.5, H4.6) : le contrat de jobs est déjà général (`kind`, `inputs`, `voices` de la bibliothèque) ; il reste à
-  fournir les composeurs. Les voix de la bibliothèque sont encore résolues par le moteur dans sa propre base (H4.5 les déplace :
-  `JobRequestBuilder` passera alors `voices`, `{ id: { path, transcript, name } }`).
+- Audio (H4.5, fait) : `JobRequestBuilder` joint aux jobs `audio` la clé `voices` : pour chaque voix de la bibliothèque utilisée
+  (`params.voice` et `params.cast` de la distribution d'un dialogue, `{ source: 'library', id }`), `{ id: { path, transcript, name } }`
+  (`services/jobVoices.ts`, lecture par `VoiceService.findByIds` du module `audio-studio`). Un `voices` vide (aucune voix de la
+  bibliothèque) dit au moteur de **ne pas** consulter sa propre base ; une voix supprimée est absente et le moteur répond « Cette
+  voix n'existe plus dans votre bibliothèque. ». Vidéo (H4.6) : même contrat, il reste à fournir le composeur.
 - Plusieurs moteurs en parallèle : non prévu (un seul GPU) ; la file est globale.
 
 ## Tests
@@ -164,6 +167,7 @@ Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh
 npx jest --runInBand src/modules/studio-core/services/GenerationQueueService.spec.ts   # file, machine d'état, reprise, rapprochement, événement de file et GET /api/queue
 npx jest --runInBand src/modules/studio-core/services/GenerationService.spec.ts        # création, relance, annulation, suppressions
 npx jest --runInBand src/modules/studio-core/services/generationParams.spec.ts         # validation, titre, graines
+npx jest --runInBand src/modules/studio-core/services/AudioGeneration.spec.ts           # voix des jobs audio, mesure de la taille des événements audio
 npx jest --runInBand src/modules/studio-core/mappers/jobEventMapper.spec.ts            # correspondance des événements
 npx jest --runInBand src/modules/studio-core/controllers/studioRoutes.spec.ts          # formes publiques identiques à l'ancienne API
 npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts              # bout en bout avec le vrai moteur (démo)
