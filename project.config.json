@@ -17,7 +17,7 @@
   "schema": 1,
   "ports": {
     "back": 3000,
-    "front": 5174
+    "front": 5173
   },
   "multiUser": false,
   "modules": [],
