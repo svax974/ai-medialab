@@ -28,7 +28,7 @@ function release(video: HTMLVideoElement): void {
 export function captureFrame(url: string, at: 'last' | number = 'last'): Promise<File> {
   return new Promise((resolve, reject) => {
     const video = document.createElement('video')
-    // The page and the media may be on two origins (dev: front 5174, back 3000): the canvas stays readable only if the server allows it (CORS).
+    // The page and the media may be on two origins (dev: front 5173, back 3000): the canvas stays readable only if the server allows it (CORS).
     video.crossOrigin = 'anonymous'
     video.muted = true
     video.preload = 'auto'

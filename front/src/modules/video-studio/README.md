@@ -109,7 +109,7 @@ Cases cochées = vérifiées par la logique testée (`lib/*.spec.ts`) et le rend
 - Les actions de la visionneuse propres à la vidéo s'appliquent à tout clip, quel que soit le mode affiché (avant : idem) ; elles sont fournies par `video-studio` à `StudioLightbox` (`modeActions`) pour que `studio-core` ne dépende pas de la vidéo.
 - Le brouillon est propre au mode (`cn-video-composer`) ; les anciennes préférences (`cn-prefs`) ne sont pas reprises (comme pour l'image et l'audio).
 - L'avatar d'un message est l'icône MUI « clap » (`MovieCreationOutlined`) au lieu de celle de lucide.
-- La capture d'une image demande la vidéo avec `crossOrigin = 'anonymous'` : en développement (front 5174, back 3000) elle dépend de l'en-tête CORS du back sur `/api/media` (non vérifié) ; empaqueté, tout est de la même origine.
+- La capture d'une image demande la vidéo avec `crossOrigin = 'anonymous'` : en développement (front 5173, back 3000) elle dépend de l'en-tête CORS du back sur `/api/media` (non vérifié) ; empaqueté, tout est de la même origine.
 - Les messages d'erreur du serveur, le texte de la note du plan et l'`engine_reason` ne sont pas traduits.
 
 **À valider à l'œil** (aucun navigateur lancé) : lecture réelle des clips (contrôles natifs, pause des autres, affiche, boucle, 16:9 et 9:16), animation « développement », plateau et barre d'un clip en attente, mise en page de la grille (un clip / deux),

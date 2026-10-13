@@ -10,9 +10,8 @@ import { jsonColumnType } from 'src/modules_shared/common/utils/dbEngine';
 export const LEGACY_IMPORT_MARKER_ID = 'legacy-ai-medialab-db';
 
 /**
- * Proof that a legacy database was imported: its presence stops the importer for good. The legacy file itself is never
- * renamed or deleted by the importer (the engine still uses it until H6); this row replaces the planned `.imported`
- * renaming.
+ * Proof that a legacy database was imported: its presence stops the importer for good. Once the import is complete
+ * the legacy file is renamed to `<name>.imported` (never deleted); the marker also covers a copy of it put back later.
  */
 @Entity({ name: 'import_markers' })
 export class ImportMarkerEntity {
