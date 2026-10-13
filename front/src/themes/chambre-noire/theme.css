@@ -1,0 +1,206 @@
+/*
+ * Copyright (c) 2026 Stéphane Vaxelaire
+ * SPDX-License-Identifier: MIT
+ *
+ * "Chambre noire" visual theme: palette tokens, global base styles and film grain.
+ * Token values are taken verbatim from the former interface (frontend/src/styles.css); see README.md for the
+ * old -> new mapping. The same hex values live in tokens.ts (MUI palette): tokens.spec.ts keeps both in sync.
+ *
+ * Mode is carried by `data-color-scheme` on <html> (template convention), set by the anti-flash script of index.html
+ * and kept by ThemeModeProvider. The tokens are scoped to :root, not to `data-theme`, so they also apply when the
+ * template falls back to its `default` theme id.
+ */
+
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource-variable/hanken-grotesk";
+@import "@fontsource-variable/jetbrains-mono";
+
+/* Palette: dark (warm black, safelight red) and light (paper). */
+:root,
+:root[data-color-scheme="dark"] {
+  --bg: #0d0b0a;
+  --bg-elev: #141110;
+  --surface: #191514;
+  --surface-2: #221d1b;
+  --surface-3: #2c2624;
+  --line: #2f2826;
+  --line-strong: #43392f;
+  --ink: #efe8e1;
+  --ink-2: #c4b9af;
+  --muted: #8d827a;
+  --faint: #5e5550;
+  --safe: #ff5b37;
+  --safe-ink: #1a0a05;
+  --safe-soft: color-mix(in oklab, var(--safe) 16%, transparent);
+  --safe-glow: color-mix(in oklab, var(--safe) 45%, transparent);
+  --ok: #8fc28a;
+  --warn: #f2b84b;
+  --danger: #ff6b6b;
+  --tray: #070605;
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 20px 50px -20px rgb(0 0 0 / 0.7);
+  --grain-opacity: 0.05;
+  color-scheme: dark;
+}
+
+:root[data-color-scheme="light"] {
+  --bg: #f3eee6;
+  --bg-elev: #f8f4ee;
+  --surface: #fffcf7;
+  --surface-2: #f1ebe2;
+  --surface-3: #e7dfd4;
+  --line: #e2d9cd;
+  --line-strong: #cbbfae;
+  --ink: #1c1815;
+  --ink-2: #463d36;
+  --muted: #776b61;
+  --faint: #a69a8e;
+  --safe: #d8401f;
+  --safe-ink: #fff6f1;
+  --safe-soft: color-mix(in oklab, var(--safe) 11%, transparent);
+  --safe-glow: color-mix(in oklab, var(--safe) 30%, transparent);
+  --ok: #3f8a3a;
+  --warn: #b7791f;
+  --danger: #c43d3d;
+  --tray: #e9e2d7;
+  --shadow: 0 1px 0 rgb(255 255 255 / 0.6) inset, 0 18px 40px -22px rgb(60 40 20 / 0.35);
+  --grain-opacity: 0.035;
+  color-scheme: light;
+}
+
+/* Typefaces and motion (former Tailwind @theme block, now plain variables). */
+:root {
+  --font-sans: "Hanken Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  --animate-rise: rise 0.45s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-fade: fade 0.3s ease both;
+  --animate-develop: develop 1.4s cubic-bezier(0.3, 0.6, 0.2, 1) both;
+  --animate-breathe: breathe 2.4s ease-in-out infinite;
+  --animate-shimmer: shimmer 2.2s linear infinite;
+}
+
+/*
+ * Aliases. First the former Tailwind color aliases (`--color-bg` ...), then the template variables read by shared
+ * components and by ThemeModeProvider (`--color-text`, `--color-border` ...), all pointing at the tokens above.
+ * `:root[data-color-scheme]` out-ranks the template's own `[data-color-scheme]` / `:root` rules (colors.css).
+ */
+:root,
+:root[data-color-scheme="dark"],
+:root[data-color-scheme="light"] {
+  --color-bg: var(--bg);
+  --color-bg-elev: var(--bg-elev);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-safe: var(--safe);
+  --color-safe-ink: var(--safe-ink);
+  --color-safe-soft: var(--safe-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-danger: var(--danger);
+  --color-tray: var(--tray);
+
+  --color-text: var(--ink);
+  --color-text-muted: var(--muted);
+  --color-border: var(--line);
+  --color-border-strong: var(--line-strong);
+  --color-primary: var(--safe);
+  --color-primary-strong: var(--safe);
+  --color-success: var(--ok);
+  --color-warning: var(--warn);
+  --accent-strong: var(--safe);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+/* Darkroom-style reveal: the image emerges from black, first warm and blurred. */
+@keyframes develop {
+  0% { opacity: 0; filter: blur(18px) sepia(1) saturate(2.2) hue-rotate(-18deg) brightness(0.35); transform: scale(1.015); }
+  45% { opacity: 1; filter: blur(4px) sepia(0.6) saturate(1.6) hue-rotate(-10deg) brightness(0.8); }
+  100% { opacity: 1; filter: none; transform: none; }
+}
+@keyframes slide {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+@keyframes shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Base rules live in a layer so that component styles (emotion, unlayered) always win, as utilities did before. */
+@layer base {
+  html, body, #root { height: 100%; }
+  body {
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  /* Very light film grain over the whole UI. Above MUI modals (1300) and tooltips (1500), like the former z-100. */
+  body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2000;
+    opacity: var(--grain-opacity);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  }
+  ::selection { background: var(--safe-glow); }
+  :focus-visible { outline: 2px solid var(--safe); outline-offset: 2px; border-radius: 6px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  /* Shared components (Kbd) hard-code `monospace`; !important in a layer out-ranks their unlayered inline rule. */
+  kbd { font-family: var(--font-mono) !important; }
+
+  * { scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+}
+
+/* Helpers kept from the former `components` layer (borders, never shadows, for surfaces: see muiTheme.ts). */
+.cn-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cn-tray {
+  background:
+    radial-gradient(120% 90% at 50% 110%, var(--safe-soft), transparent 60%),
+    var(--tray);
+}
+.cn-shimmer {
+  background: linear-gradient(100deg, transparent 30%, color-mix(in oklab, var(--safe) 14%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
+}
+.cn-checker {
+  background-color: var(--surface-2);
+  background-image: linear-gradient(45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface-3) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--surface-3) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--surface-3) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

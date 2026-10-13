@@ -72,6 +72,24 @@ sera renommée en `.imported` (jamais supprimée automatiquement). Pour rejouer 
 `frontend/` occupe 5173 ; retour à 5173 en H6. Sans le lanceur : `cd back && npm run start:dev`, `cd front && npm run dev`
 et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
 
+### Nouveau front (`front/`, migration)
+
+React + MUI sur le gabarit vx-public. Thème « chambre noire » (sombre par défaut, clair « papier » en option, polices Hanken
+Grotesk / JetBrains Mono / Instrument Serif) : `front/src/themes/chambre-noire/README.md` (correspondance des jetons avec
+l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conversations, raccourcis ⌘B, ⌘⇧O, ⌘K, `/`,
+routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; les écrans eux-mêmes
+(composeurs, galeries, voix, modèles, réglages) sont des pages « à venir » jusqu'aux tâches H4. Français et anglais
+(`locales/` des modules, `npm run i18n:check`). TanStack Query et Zustand (écart assumé au gabarit) portent le cache alimenté
+par le flux d'événements (`engine.*` relayés par Nest).
+
+```sh
+cd front
+../docs/migration/tools/guarded_run.sh 5 npx tsc -p tsconfig.app.json        # types
+../docs/migration/tools/guarded_run.sh 5 npx vite build                      # construction
+../docs/migration/tools/guarded_run.sh 3 npx vitest run <fichier.spec.ts>    # un fichier à la fois
+npm run i18n:check
+```
+
 ## Premier lancement : rien à chercher ni à compiler
 
 L'application vérifie elle-même ce qu'il faut pour générer, et propose d'installer tout ce qui manque, en un clic,

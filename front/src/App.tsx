@@ -8,8 +8,9 @@
  */
 
 import type { ReactNode } from 'react';
-import { CssBaseline } from '@mui/material';
 import { ThemeModeProvider } from '@/modules_shared/common/components/ui/theme/ThemeModeProvider';
+import { AppMuiTheme } from '@/themes/AppMuiTheme';
+import { StudioProviders } from '@/modules/studio-shell';
 import { VisualThemeProvider } from '@/modules_shared/common/theme/VisualThemeContext';
 import { ThemeShell } from '@/modules_shared/common/theme/ThemeShell';
 import Router from './components/Router';
@@ -45,22 +46,25 @@ function App({ children }: AppProps) {
     <>
       {withPluginProviders(
         <ThemeModeProvider>
-          <CssBaseline />
-          <BrowserRouter>
-            <PreloaderGate services={preloadPlan.blocking} background={preloadPlan.background}>
-              <VisualThemeProvider>
-                <ThemeShell appName="AI MediaLab">
-                  {withPluginProviders(
-                    <PageLayout>
-                      {children ?? <Router />}
-                    </PageLayout>,
-                    appPlugins,
-                    'inner',
-                  )}
-                </ThemeShell>
-              </VisualThemeProvider>
-            </PreloaderGate>
-          </BrowserRouter>
+          <AppMuiTheme>
+            <BrowserRouter>
+              <PreloaderGate services={preloadPlan.blocking} background={preloadPlan.background}>
+                <StudioProviders>
+                  <VisualThemeProvider>
+                    <ThemeShell appName="AI MediaLab">
+                      {withPluginProviders(
+                        <PageLayout>
+                          {children ?? <Router />}
+                        </PageLayout>,
+                        appPlugins,
+                        'inner',
+                      )}
+                    </ThemeShell>
+                  </VisualThemeProvider>
+                </StudioProviders>
+              </PreloaderGate>
+            </BrowserRouter>
+          </AppMuiTheme>
         </ThemeModeProvider>,
         appPlugins,
       )}

@@ -1,10 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="fr" data-theme="chambre-noire" data-color-scheme="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="dark light" />
     <title>AI MediaLab</title>
+    <script>
+      // Anti-flash: apply the theme before the first paint. Dark by default whatever the system setting; light only when
+      // explicitly chosen (key `cn-theme`, written by themes/AppMuiTheme.tsx; keep both in step).
+      (function () {
+        var mode = 'dark';
+        try { if (localStorage.getItem('cn-theme') === 'light') mode = 'light'; } catch (e) { /* storage blocked */ }
+        var root = document.documentElement;
+        root.setAttribute('data-theme', 'chambre-noire');
+        root.setAttribute('data-color-scheme', mode);
+        root.style.colorScheme = mode;
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

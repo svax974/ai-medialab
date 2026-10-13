@@ -14,6 +14,7 @@ import { useTheme } from '@mui/material/styles';
 import { Header } from './Header';
 import { AppSidebar } from './AppSidebar';
 import { resolvedRoutes } from './Router';
+import { StudioShell, matchStudioRoute } from '@/modules/studio-shell';
 import { layoutForPath } from '@/modules_shared/common/plugins/routeLayout';
 
 import '@/styles/theme_default.css';
@@ -32,10 +33,17 @@ export function PageLayout({ children }: PageLayoutProps) {
   // only way a layout-level subscription can propagate (re-runs all page effects too).
   const sessionKey = sessionAuth.isAuth() ? String(sessionAuth.get()?.id ?? 'auth') : 'anon';
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const layout = layoutForPath(resolvedRoutes, useLocation().pathname);
+  const { pathname } = useLocation();
+  const layout = layoutForPath(resolvedRoutes, pathname);
   const theme = useTheme();
   const layoutBg =
     theme.palette.mode === 'dark' ? 'var(--background-dark)' : 'var(--background-light)';
+
+  // Studio pages sit in the studio shell (own sidebar); the template's header, sidebar and footer are not used there.
+  // The shell stays mounted across studio navigations (same element position), so the list and search persist.
+  if (matchStudioRoute(pathname)) {
+    return <StudioShell><Box key={sessionKey} sx={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>{children}</Box></StudioShell>;
+  }
 
   // `fullscreen` routes (see Router.tsx) render alone: no header, sidebar or footer.
   if (layout === 'fullscreen') {
