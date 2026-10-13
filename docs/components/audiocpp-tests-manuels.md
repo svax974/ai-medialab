@@ -4,6 +4,8 @@
 Cochez chaque étape une fois faite : `[ ]` à faire · `[x]` OK · `[~]` OK avec réserve (noter laquelle) · `[!]` échec (noter l'erreur).
 Fiche du composant : [audiocpp.md](audiocpp.md). Machine, système, GPU et date : à noter en tête de chaque passage.
 
+*Dernière vérification contre les sources : 2026-10-13 (aucune référence à un chemin ou à une route périmée après la migration).*
+
 Passage du ____ / ____ / ______ — machine : ______________________ — GPU : ______________________
 
 ## A. Installation du moteur (toute machine)

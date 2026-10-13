@@ -2,12 +2,13 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-# Extra dev service of ai-medialab, started by `scripts/run.sh dev` (hook of the template, see scripts/README):
+# Extra dev service of ai-medialab, started by `scripts/run.sh dev` (hook of the template, see front/.libs/apptemplate/README.md):
 # the Python engine (engine/, FastAPI) that Nest talks to. Runs with back/.env.dev already loaded:
 #   ENGINE_TOKEN   shared secret (required; generate with `openssl rand -hex 32`, same value for Nest)
 #   ENGINE_PORT    port on 127.0.0.1 (default 8000)
 #   APP_DATA_DIR   data folder shared with Nest (default <repo>/data); the engine reads it as IMAGEGEN_DATA_DIR
 #   ENGINE_RELOAD  0 disables auto-reload (default 1)
+#   IMAGEGEN_DEMO  1 adds a GPU-less "Démo" model (synthetic images) to try the interface; put it in back/.env.dev
 set -eu
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 : "${ENGINE_TOKEN:?ENGINE_TOKEN is not set: add it to back/.env.dev (openssl rand -hex 32)}"

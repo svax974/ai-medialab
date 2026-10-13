@@ -3,6 +3,8 @@
 Ce dossier décrit **chaque composant externe que l'application installe ou pilote**, pour pouvoir les passer en revue de
 temps en temps : une version corrigée, un modèle amélioré, une famille nouvelle, une licence qui change.
 
+*Dernière vérification contre les sources : 2026-10-13 (épinglages et chemins relus après la migration : le moteur est dans `engine/`).*
+
 Règle de ce dossier : **un fait, un seul endroit**. Les versions épinglées ne sont jamais recopiées ici, on cite le
 fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les licences des modèles sont dans
 `THIRD_PARTY_LICENSES.md` (résumé) et dans la fiche du composant (détail et statut amont).
@@ -11,8 +13,9 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 
 1. Lancer le rapport (réseau requis, ne modifie rien) :
    `engine/.venv/bin/python scripts-local/review_components.py`
-   Il compare ce qui est épinglé à la dernière version amont et liste, pour audio.cpp, les familles nouvelles ou dont le
-   statut ou la licence ont changé depuis le dernier instantané.
+   Il compare ce qui est épinglé à la dernière version amont (moteurs natifs, bibliothèques des packs audio, **pile web de
+   `front/` et `back/`**, Tauri) et liste, pour audio.cpp, les familles nouvelles ou dont le statut ou la licence ont changé
+   depuis le dernier instantané.
 2. Pour chaque ligne « NOUVELLE VERSION » ou chaque famille nouvelle : lire les notes de version amont, puis la section
    « À vérifier à la revue » de la fiche du composant.
 3. Si on met à jour un épinglage : changer la constante (fichier indiqué dans le registre), relancer les tests du composant
@@ -31,9 +34,14 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 | **PyTorch, diffusers, transformers** | moteur torch (images, vidéo, packs) | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
 | **qwen-tts** | Qwen3-TTS en PyTorch | `engine/app/audio_packs.py` (pack `qwen3`) | Apache-2.0 | à écrire | – |
 | **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | pack audio « speech » | `engine/app/audio_packs.py` (pack `speech`) | voir `THIRD_PARTY_LICENSES.md` | à écrire | – |
+| **MUI, Emotion, TanStack Query, Zustand, polices Fontsource** | interface (composants et thème, cache des données, état, polices embarquées) | `front/package.json` (plages), `front/package.local.json` (écarts au gabarit) | MIT (MUI, Emotion, TanStack, Zustand), OFL-1.1 (polices) | à écrire | – |
+| **NestJS, TypeORM, better-sqlite3** | serveur applicatif, accès aux données, base SQLite | `back/package.json` (plages), `back/package.local.json` | MIT | à écrire | – |
+| **openapi-typescript** | types du contrat Nest ↔ moteur (`engine/openapi.json`) | `back/package.json` (`devDependencies`) | MIT | à écrire | – |
+| **Tauri 2** | coquille de bureau | `desktop/src-tauri/Cargo.toml`, `desktop/package.json` | Apache-2.0 OR MIT | à écrire | – |
 
-Les lignes « à écrire » n'ont pas encore de fiche détaillée : le script de revue les vérifie déjà (versions), la fiche
-viendra quand on les revisitera. Ne pas recopier ici ce que `THIRD_PARTY_LICENSES.md` dit déjà.
+Les lignes « à écrire » n'ont pas encore de fiche détaillée : le script de revue les vérifie déjà (versions installées contre
+la dernière version publiée), la fiche viendra quand on les revisitera. Pour la pile web, une montée de version majeure de MUI ou
+de TypeORM se lit dans leurs notes de version avant d'élargir la plage de `package.json`. Ne pas recopier ici ce que `THIRD_PARTY_LICENSES.md` dit déjà.
 
 ## Ajouter un composant
 
