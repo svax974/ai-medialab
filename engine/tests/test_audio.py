@@ -77,12 +77,10 @@ class TestResolveVoice:
         with pytest.raises(ValueError):
             resolve_voice(MODELS["qwen3-tts-clone"], None, "fr", "")
 
-    def test_non_cloning_model_rejects_library_voice(self, monkeypatch):
-        from app import voices
-
-        monkeypatch.setattr(voices, "get_voice", lambda _id: {"url": "/media/uploads/x.wav", "transcript": "", "name": "x"})
+    def test_non_cloning_model_rejects_library_voice(self):
+        lib = {"x": {"path": "/data/uploads/x.wav", "transcript": "", "name": "x"}}
         with pytest.raises(ValueError):
-            resolve_voice(MODELS["kokoro-82m"], {"source": "library", "id": "x"}, "fr", "")
+            resolve_voice(MODELS["kokoro-82m"], {"source": "library", "id": "x"}, "fr", "", lib)
 
 
 class TestCatalog:

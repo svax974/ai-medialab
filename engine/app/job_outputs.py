@@ -4,7 +4,7 @@
 """Description of a file a job produced: what the caller needs to register it as an asset.
 
 The engine owns the media files, so it also makes the thumbnail and probes dimensions and duration. The caller
-(NestJS, or the legacy adapter) stores the row; `asset_id` is chosen here because the thumbnail is named after it.
+(NestJS) stores the row; `asset_id` is chosen here because the thumbnail is named after it.
 """
 
 from __future__ import annotations
@@ -12,15 +12,14 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from . import db
-from .media import make_thumb, video_thumb
+from .media import make_thumb, new_id, video_thumb
 
 
 def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]:
     """`evt` is the worker's `image` / `audio` / `video` event; blocking (image decoding), run in a thread."""
     media = evt["type"]
     path = Path(evt["path"])
-    asset_id = db.new_id()
+    asset_id = new_id()
     params = plan["params"]
     out: dict[str, Any] = {
         "index": evt["index"], "media": media, "asset_id": asset_id, "path": str(path), "filename": path.name,

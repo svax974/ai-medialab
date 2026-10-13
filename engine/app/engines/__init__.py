@@ -22,13 +22,10 @@ DEFAULT_MODEL_ID = qwen21.SPEC.id
 
 
 def selected_variants() -> dict[str, str]:
-    """Quantization picked per model (from settings)."""
+    """Quantization picked per model (from the settings Nest pushed; default variants until then)."""
     from .. import runtime_settings
 
-    try:
-        return dict(runtime_settings.get_settings().get("variant", {}))
-    except Exception:  # no database yet: use default variants
-        return {}
+    return dict(runtime_settings.get_settings().get("variant", {}))
 
 
 def resolve(spec: ModelSpec, chosen: dict[str, str] | None = None) -> ModelSpec:

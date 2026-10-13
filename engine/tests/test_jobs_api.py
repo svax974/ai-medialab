@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""`/engine/v1/jobs`, media ingest and purge, and the legacy `/api/messages` adapter on the shared manager. No model."""
+"""`/engine/v1/jobs`, media ingest and purge, on the shared manager. No model."""
 
 import asyncio
 import json
@@ -16,7 +16,7 @@ import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from app import db, jobs as jobs_module, legacy_jobs, repo, runtime_settings  # noqa: E402
+from app import jobs as jobs_module, runtime_settings  # noqa: E402
 from app.api import jobs as jobs_api  # noqa: E402
 from app.config import DATA_DIR, OUTPUTS_DIR, THUMBS_DIR, UPLOADS_DIR, ensure_dirs  # noqa: E402
 from app.events import bus  # noqa: E402
@@ -32,11 +32,10 @@ H = {"X-Engine-Token": TOKEN}
 @pytest.fixture()
 def manager(monkeypatch):
     ensure_dirs()
-    db.init_db()
     runtime_settings.apply({"keep_alive_minutes": -1, "previews": True, "low_memory": True, "quantize": {}, "variant": {}})
     monkeypatch.setenv("ENGINE_TOKEN", TOKEN)
     fresh = JobManager()
-    for module in (jobs_api, legacy_jobs, jobs_module):
+    for module in (jobs_api, jobs_module):
         monkeypatch.setattr(module, "jobs", fresh)
     monkeypatch.setattr(jobs_module, "WorkerHandle", FakeWorker)
     FakeWorker.mode = "ok"
@@ -107,12 +106,12 @@ class TestJobsApi:
         assert client.post("/engine/v1/jobs/ghost/cancel", headers=H).status_code == 404
         assert client.get("/engine/v1/jobs/ghost", headers=H).status_code == 404
 
-    def test_the_jobs_routes_are_in_the_schema_and_not_on_the_legacy_prefix(self, client):
+    def test_the_jobs_routes_are_in_the_schema(self, client):
         paths = app.openapi()["paths"]
         for path in ("/engine/v1/jobs", "/engine/v1/jobs/check", "/engine/v1/jobs/{job_id}", "/engine/v1/jobs/{job_id}/cancel",
                      "/engine/v1/media/ingest", "/engine/v1/media/purge"):
             assert path in paths
-        assert client.get("/api/jobs").status_code in (404, 503)
+        assert client.get("/api/jobs").status_code == 404
 
     def test_a_submitted_job_runs_to_the_end_and_emits_events_on_the_bus(self, manager):
         FakeWorker.mode = "ok"
@@ -195,101 +194,3 @@ class TestMedia:
         assert not (UPLOADS_DIR / "p.png").exists() and not (THUMBS_DIR / "q.webp").exists()
         bad = {"files": [{"folder": "uploads", "filename": "../x.png"}]}
         assert client.post("/engine/v1/media/purge", headers=H, json=bad).status_code == 422
-
-
-class TestLegacyAdapter:
-    """The old `/api/messages` path: message and asset rows are written by the sink, old event names are published."""
-
-    @staticmethod
-    def _seed(prompt="un chat", model="demo", ref=None):
-        ts = db.now()
-        with db.connect() as conn:
-            conn.execute("INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES ('c', 't', 'image', ?, ?)", (ts, ts))
-            conn.execute("INSERT INTO messages (id, conversation_id, role, prompt, created_at) VALUES ('u', 'c', 'user', ?, ?)", (prompt, ts))
-            if ref:
-                conn.execute("INSERT INTO assets (id, kind, filename, created_at) VALUES ('r', 'upload', ?, ?)", (ref, ts))
-                conn.execute("INSERT INTO message_refs (message_id, asset_id, position) VALUES ('u', 'r', 0)")
-            conn.execute("INSERT INTO messages (id, conversation_id, parent_id, role, prompt, model_id, params, status, created_at) "
-                         "VALUES ('m', 'c', 'u', 'assistant', ?, ?, ?, 'queued', ?)",
-                         (prompt, model, json.dumps({"seeds": [5], "steps": 2, "megapixels": 0.1}), ts))
-
-    @staticmethod
-    def _drive(manager, until):
-        got: list[tuple[str, dict]] = []
-
-        async def scenario():
-            q = bus.subscribe()
-            await manager.start()
-            legacy_jobs.enqueue("m")
-            for _ in range(300):
-                await asyncio.sleep(0.02)
-                if until():
-                    break
-            while not q.empty():
-                frame = q.get_nowait().split("\n")
-                if len(frame) > 1 and frame[1].startswith("data: "):
-                    got.append((frame[0].removeprefix("event: "), json.loads(frame[1].removeprefix("data: "))))
-            bus.unsubscribe(q)
-            await manager.shutdown()
-
-        asyncio.run(scenario())
-        return got
-
-    @pytest.fixture(autouse=True)
-    def clean(self, manager):
-        with db.connect() as conn:
-            for table in ("message_refs", "assets", "messages", "conversations"):
-                conn.execute(f"DELETE FROM {table}")
-
-    def test_a_message_is_generated_and_its_rows_and_events_are_written_as_before(self, manager):
-        self._seed()
-        got = self._drive(manager, lambda: (repo.get_message("m") or {}).get("status") == "done")
-        msg = repo.get_message("m")
-        assert msg["status"] == "done" and msg["started_at"] and msg["finished_at"] and msg["error"] is None
-        assert msg["params"]["width"] > 0 and msg["params"]["seeds"] == [5]
-        out = msg["outputs"][0]
-        assert out["media"] == "image" and out["seed"] == 5 and out["conversation_id"] == "c" and out["message_id"] == "m"
-        assert out["url"] == "/media/outputs/m_0.png" and out["thumb_url"].startswith("/media/thumbs/")
-        assert (out["width"], out["height"]) == Image.open(OUTPUTS_DIR / "m_0.png").size
-        assert out["meta"]["model_id"] == "demo" and out["meta"]["steps"] == 2
-        kinds = [n for n, _ in got]
-        assert "message.updated" in kinds and "job.image" in kinds and "job.progress" in kinds
-        assert not any(n in ("job.started", "job.output", "job.done") for n in kinds), "new-API names stay off the legacy path"
-        statuses = [d["status"] for n, d in got if n == "message.updated"]
-        assert statuses[:2] == ["loading", "running"] and statuses[-1] == "done"
-        progress = [d for n, d in got if n == "job.progress"]
-        assert all(d["message_id"] == "m" and d["conversation_id"] == "c" for d in progress)
-        image = next(d for n, d in got if n == "job.image")
-        assert image["message_id"] == "m" and image["conversation_id"] == "c" and image["asset"]["id"] == out["id"]
-
-    def test_references_of_the_prompt_reach_the_job_in_order(self, manager):
-        Image.new("RGB", (64, 64)).save(UPLOADS_DIR / "legacy_ref.png")
-        self._seed(ref="legacy_ref.png")
-        req = legacy_jobs.request_from_message(repo.get_message("m"))
-        assert req.inputs == [str(UPLOADS_DIR / "legacy_ref.png")] and req.job_id == "m"
-        assert req.extra == {"message_id": "m", "conversation_id": "c"}
-
-    def test_an_invalid_prompt_ends_the_message_in_error(self, manager):
-        self._seed(prompt="   ")
-        self._drive(manager, lambda: (repo.get_message("m") or {}).get("status") == "error")
-        msg = repo.get_message("m")
-        assert msg["status"] == "error" and msg["error"] == "Le prompt est vide." and msg["finished_at"]
-
-    def test_an_unknown_model_fails_at_once_without_queueing(self, manager):
-        self._seed(model="ghost")
-        legacy_jobs.enqueue("m")
-        msg = repo.get_message("m")
-        assert msg["status"] == "error" and "ghost" in msg["error"] and manager.pending == []
-
-    def test_a_message_that_is_not_queued_is_ignored(self, manager):
-        self._seed()
-        repo.update_message("m", status="done")
-        legacy_jobs.enqueue("m")
-        assert manager.pending == []
-
-    def test_cancelling_a_queued_message_marks_it_cancelled(self, manager):
-        self._seed()
-        legacy_jobs.enqueue("m")
-        assert manager.pending == ["m"]
-        asyncio.run(manager.cancel("m"))
-        assert repo.get_message("m")["status"] == "cancelled"

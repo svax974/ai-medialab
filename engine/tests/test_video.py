@@ -10,7 +10,7 @@ import pytest
 
 os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
-from app import db, hf_search  # noqa: E402
+from app import hf_search  # noqa: E402
 from app.engines import MODELS, custom, get_spec, video_specs  # noqa: E402
 from app.engines.base import with_variant  # noqa: E402
 from app.media import encode_mp4, probe_video, video_frame_count, video_size  # noqa: E402
@@ -139,49 +139,34 @@ class TestRecipes:
         assert round(spec.download_size_gb, 1) == round(14.2 + 3.81, 1)
 
 
-@pytest.fixture
-def database(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "test.db")
-    db.init_db()
-    return tmp_path
+def _request(model_id, params, refs, prompt):
+    """A job like the one Nest sends: the reference files (in order) are the inputs."""
+    from app.config import OUTPUTS_DIR, UPLOADS_DIR
+    from app.job_plans import JobRequest
 
-
-def _asset(conn, media, filename, kind="upload"):
-    aid = db.new_id()
-    conn.execute("INSERT INTO assets (id, kind, media, filename, created_at) VALUES (?, ?, ?, ?, ?)",
-                 (aid, kind, media, filename, db.now()))
-    return aid
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    return JobRequest(job_id="m", model_id=model_id, prompt=prompt, params=dict(params),
+                      inputs=[str(UPLOADS_DIR / name) for _media, name in refs], output_dir=str(OUTPUTS_DIR))
 
 
 class TestPlan:
     def _plan(self, model_id, params, refs=(), tmp=None):
-        from app.config import UPLOADS_DIR
         from app.job_plans import build_plan
-        from app.legacy_jobs import request_from_message
 
-        UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-        with db.connect() as conn:
-            conn.execute("INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES ('c', 't', 'video', 0, 0)")
-            conn.execute("INSERT INTO messages (id, conversation_id, role, prompt, created_at) VALUES ('u', 'c', 'user', 'p', 0)")
-            for pos, (media, name) in enumerate(refs):
-                aid = _asset(conn, media, name)
-                conn.execute("INSERT INTO message_refs (message_id, asset_id, position) VALUES ('u', ?, ?)", (aid, pos))
-        msg = {"id": "m", "conversation_id": "c", "parent_id": "u", "prompt": "un chat qui court", "model_id": model_id,
-               "params": params}
-        return build_plan(request_from_message(msg))
+        return build_plan(_request(model_id, params, refs, "un chat qui court"))
 
-    def test_text_to_video_plan(self, database):
+    def test_text_to_video_plan(self):
         plan = self._plan("wan-2.2-ti2v-5b", {"seeds": [1, 2, 3]})
         p = plan["params"]
         assert plan["kind"] == "video" and p["task"] == "t2v" and p["frames"] == 121 and p["fps"] == 24
         assert (p["width"], p["height"]) == (1248, 704) and len(plan["items"]) == 2  # capped at 2 clips
         assert plan["items"][0]["output"].endswith("m_0.mp4") and plan["items"][0]["request"]["extra"]["frames"] == 121
 
-    def test_aspect_resolution_and_seconds(self, database):
+    def test_aspect_resolution_and_seconds(self):
         p = self._plan("cogvideox-2b", {"aspect": "9:16", "resolution": "480p", "seconds": 3, "seeds": [5]})["params"]
         assert p["frames"] == 25 and (p["width"], p["height"]) == (400, 720)  # 9:16 capped by the long side
 
-    def test_start_image_makes_image_to_video(self, database, tmp_path):
+    def test_start_image_makes_image_to_video(self, tmp_path):
         from app.config import UPLOADS_DIR
         from PIL import Image
 
@@ -189,11 +174,11 @@ class TestPlan:
         plan = self._plan("wan-2.2-ti2v-5b", {"seeds": [1]}, [("image", "start.png")])
         assert plan["params"]["task"] == "i2v" and plan["items"][0]["request"]["references"][0].endswith("start.png")
 
-    def test_required_inputs(self, database):
+    def test_required_inputs(self):
         with pytest.raises(ValueError, match="image de départ"):
             self._plan("hunyuan-video-1.5-i2v", {"seeds": [1]})
 
-    def test_video_edits_with_cogvideox(self, database):
+    def test_video_edits_with_cogvideox(self):
         from app.config import UPLOADS_DIR
 
         encode_mp4(np.zeros((9, 32, 48, 3), np.uint8), 8, UPLOADS_DIR / "src.mp4")
@@ -209,35 +194,6 @@ class TestFilesAndServing:
         encode_mp4(frames, 8, tmp_path / "a.mp4", audio, 16000)
         info = probe_video(tmp_path / "a.mp4")
         assert (info["width"], info["height"], info["fps"], info["has_audio"]) == (48, 32, 8.0, True)
-
-    def test_upload_video_and_range_requests(self, database, tmp_path):
-        from fastapi.testclient import TestClient
-
-        from app.main import app
-
-        src = tmp_path / "clip.mp4"
-        encode_mp4(np.random.randint(0, 255, (17, 64, 96, 3), dtype=np.uint8), 8, src)
-        client = TestClient(app)
-        r = client.post("/api/assets", files=[("files", ("clip.mp4", src.read_bytes(), "video/mp4"))])
-        assert r.status_code == 200, r.text
-        a = r.json()[0]
-        assert a["media"] == "video" and a["width"] == 96 and a["height"] == 64 and abs(a["duration"] - 2.125) < 0.2
-        assert a["fps"] == 8.0 and a["thumb_url"].endswith(".webp") and a["url"].endswith(".mp4")
-        assert client.get(a["thumb_url"]).status_code == 200
-        ranged = client.get(a["url"], headers={"Range": "bytes=0-99"})
-        assert ranged.status_code == 206 and len(ranged.content) == 100
-        assert client.get("/api/assets", params={"kind": "upload", "media": "video"}).json()["items"][0]["id"] == a["id"]
-        assert client.post("/api/assets", files=[("files", ("bad.mp4", b"not a video", "video/mp4"))]).status_code == 422
-
-    def test_video_conversation_mode(self, database):
-        from fastapi.testclient import TestClient
-
-        from app.main import app
-
-        client = TestClient(app)
-        cid = client.post("/api/conversations", json={"mode": "video"}).json()["id"]
-        assert [c["id"] for c in client.get("/api/conversations", params={"mode": "video"}).json()] == [cid]
-        assert client.get("/api/conversations", params={"mode": "image"}).json() == []
 
 
 class TestLtx:

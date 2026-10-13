@@ -8,7 +8,6 @@ from .legacy_data import legacy_dirs_from_env, migrate_legacy_data
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("IMAGEGEN_DATA_DIR", ROOT_DIR / "data")).expanduser().resolve()
-FRONTEND_DIST = ROOT_DIR / "frontend" / "dist"
 
 # Engines installed from within the app (the app itself may live on a read-only volume).
 ENGINES_DIR = DATA_DIR / "engines"
@@ -20,7 +19,6 @@ AUDIO_RUNTIME_DIR = ROOT_DIR / "engine" / "audio_runtime"
 VIDEO_PACKS_DIR = ENGINES_DIR / "video"
 VIDEO_RUNTIME_DIR = ROOT_DIR / "engine" / "video_runtime"
 
-DB_PATH = DATA_DIR / "ai-medialab.db"
 UPLOADS_DIR = DATA_DIR / "uploads"
 OUTPUTS_DIR = DATA_DIR / "outputs"
 THUMBS_DIR = DATA_DIR / "thumbs"
@@ -52,10 +50,3 @@ adopt_legacy_data_dir()
 def ensure_dirs() -> None:
     for d in (DATA_DIR, *MEDIA_DIRS.values()):
         d.mkdir(parents=True, exist_ok=True)
-    # Migration: the DB was named chambre-noire.db before the project rename (including the SQLite WAL/SHM files).
-    legacy = DATA_DIR / "chambre-noire.db"
-    if legacy.exists() and not DB_PATH.exists():
-        for suffix in ("", "-wal", "-shm"):
-            old = legacy.with_name(legacy.name + suffix)
-            if old.exists():
-                old.rename(DB_PATH.with_name(DB_PATH.name + suffix))

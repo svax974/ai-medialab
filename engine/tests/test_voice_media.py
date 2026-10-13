@@ -65,10 +65,10 @@ class TestVoiceReference:
         assert post(UPLOADS_DIR / "missing").status_code == 422
         assert not (UPLOADS_DIR / "voice_v2.wav").exists()
 
-    def test_the_route_is_in_the_schema_and_not_on_the_legacy_prefix(self, client):
+    def test_the_route_is_in_the_schema(self, client):
         paths = client.get("/openapi.json").json()["paths"]
         assert "/engine/v1/media/voice-reference" in paths and "/engine/v1/media/transcribe" in paths
-        assert client.post("/api/media/voice-reference", json={}).status_code != 200
+        assert client.post("/api/media/voice-reference", json={}).status_code == 404
 
 
 class TestTranscribe:

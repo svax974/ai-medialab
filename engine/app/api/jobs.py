@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token, never under the legacy `/api`):
+"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token):
 generation jobs and the engine-side handling of media files.
 
 A job is submitted with everything the engine needs (model, prompt, parameters, input file paths, output folder) and

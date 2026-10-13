@@ -14,7 +14,7 @@ os.environ["IMAGEGEN_DEMO"] = "1"
 import pytest  # noqa: E402
 from PIL import Image  # noqa: E402
 
-from app import db, jobs as jobs_module, runtime_settings  # noqa: E402
+from app import jobs as jobs_module, runtime_settings  # noqa: E402
 from app.config import OUTPUTS_DIR, PREVIEWS_DIR, UPLOADS_DIR, ensure_dirs  # noqa: E402
 from app.events import bus  # noqa: E402
 from app.job_outputs import describe_output  # noqa: E402
@@ -89,7 +89,6 @@ class _Flag:
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
     ensure_dirs()
-    db.init_db()
     runtime_settings.apply({"keep_alive_minutes": -1, "previews": True, "low_memory": True, "quantize": {}, "variant": {}})
     FakeWorker.instances.clear()
     FakeWorker.mode = "ok"
@@ -337,11 +336,11 @@ def test_default_sink_publishes_on_the_event_bus():
     assert "event: job.started" in received and "event: job.output" in received and "event: job.done" in received
 
 
-def test_snapshot_replays_progress_of_running_jobs_with_the_job_extras():
-    manager, job = JobManager(), make_job(extra={"message_id": "m"})
+def test_snapshot_replays_progress_of_running_jobs():
+    manager, job = JobManager(), make_job()
     manager.jobs["j1"] = job
     manager.progress["j1"] = {"job_id": "j1", "phase": "running"}
-    assert manager.snapshot() == [{"job_id": "j1", "phase": "running", "message_id": "m"}]
+    assert manager.snapshot() == [{"job_id": "j1", "phase": "running"}]
 
 
 class TestPlans:
@@ -384,17 +383,16 @@ class TestPlans:
         with pytest.raises(ValueError, match="n'existe plus"):
             resolve_voice(spec, {"source": "library", "id": "other"}, "fr", "", lib)
 
-    def test_a_library_given_by_the_caller_hides_the_engine_database(self, monkeypatch):
+    def test_without_a_library_the_voice_does_not_exist(self):
         from app import voices
         from app.engines import MODELS
 
         spec = next((s for s in MODELS.values() if s.kind == "audio" and s.audio.clone != "none"), None)
         if spec is None:
             pytest.skip("no cloning audio model registered")
-        monkeypatch.setattr(voices, "get_voice", lambda _id: {"url": "/media/uploads/x.wav", "transcript": "", "name": "x"})
-        with pytest.raises(ValueError, match="n'existe plus"):
-            voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "", {})
-        assert voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "")["kind"] == "clone"
+        for library in ({}, None):  # the engine has no voice library of its own
+            with pytest.raises(ValueError, match="n'existe plus"):
+                voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "", library)
 
 
 def _video_job(model_id: str, inputs: list[str], params: dict | None = None) -> JobRequest:

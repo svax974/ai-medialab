@@ -7,7 +7,7 @@ os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from app import db, runtime_settings  # noqa: E402
+from app import runtime_settings  # noqa: E402
 from app.config import ensure_dirs  # noqa: E402
 from app.engines import selected_variants  # noqa: E402
 from app.jobs import jobs, load_settings  # noqa: E402
@@ -22,7 +22,6 @@ PUSH = {"keep_alive_minutes": 30, "previews": False, "low_memory": False, "hf_to
 @pytest.fixture()
 def client(monkeypatch):
     ensure_dirs()
-    db.init_db()
     runtime_settings.reset()
     monkeypatch.setattr(jobs, "worker", None)
     monkeypatch.setattr(jobs, "current", None)
@@ -30,21 +29,21 @@ def client(monkeypatch):
     runtime_settings.reset()
 
 
-def test_database_values_apply_until_nest_pushes(client, monkeypatch):
-    monkeypatch.setattr(db, "get_settings", lambda: {"keep_alive_minutes": 3, "hf_token": "from-db"})
+def test_defaults_apply_until_nest_pushes(client):
     assert not runtime_settings.received()
-    assert load_settings()["keep_alive_minutes"] == 3
-    assert runtime_settings.get_settings()["hf_token"] == "from-db"
+    assert runtime_settings.get_settings() == {}
+    assert load_settings()["keep_alive_minutes"] == 10
 
 
-def test_push_replaces_studio_keys_and_ignores_the_database(client, monkeypatch):
-    monkeypatch.setattr(db, "get_settings", lambda: {"keep_alive_minutes": 3, "hf_token": "from-db", "custom_models": [1]})
+def test_push_replaces_studio_keys_and_ignores_unknown_ones(client):
     res = client.put(URL, json=PUSH)
     assert res.status_code == 200
     assert runtime_settings.received()
     st = runtime_settings.get_settings()
     assert st["keep_alive_minutes"] == 30 and st["hf_token"] == "hf_abc"
-    assert st["custom_models"] == [1]  # not a studio key: still from the database
+    runtime_settings.apply({"keep_alive_minutes": 5, "custom_models": [1]})
+    assert runtime_settings.get_settings() == {"keep_alive_minutes": 5}
+    runtime_settings.apply(PUSH)
     assert load_settings()["previews"] is False
     assert selected_variants() == {"wan-2.2-ti2v-5b": "Q8_0"}
 
@@ -87,8 +86,8 @@ def test_variant_change_unloads_the_loaded_model(client, monkeypatch):
     assert unloaded == [True]
 
 
-def test_route_needs_the_engine_token_and_is_not_on_the_legacy_prefix(client, monkeypatch):
+def test_route_needs_the_engine_token(client, monkeypatch):
     monkeypatch.setenv("ENGINE_TOKEN", TOKEN)
     assert client.put(URL, json=PUSH).status_code == 401
     assert client.put(URL, json=PUSH, headers={"X-Engine-Token": TOKEN}).status_code == 200
-    assert client.put("/api/runtime/settings", json=PUSH).status_code in (404, 405)
+    assert client.put("/api/runtime/settings", json=PUSH).status_code == 404  # no `/api` prefix any more

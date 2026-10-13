@@ -5,7 +5,7 @@
 
 A `JobRequest` is everything the engine needs to run one generation: the model, the prompt, the free-form
 parameters, the input files (absolute paths) and the folder to write to. Nothing here reads or writes the studio
-database, so the same planning serves the `/engine/v1/jobs` API and the legacy `/api/messages` adapter.
+database.
 """
 
 from __future__ import annotations
@@ -36,10 +36,9 @@ class JobRequest:
     params: dict[str, Any]
     inputs: list[str] = field(default_factory=list)  # absolute paths: reference images, source clip, ...
     output_dir: str = ""
-    # Voices of the caller's library by id (`{"path", "transcript", "name"}`); absent ids fall back to the engine's own.
+    # Voices of the caller's library by id (`{"path", "transcript", "name"}`); the engine has no library of its own.
     voices: dict[str, dict[str, Any]] | None = None
     sink: JobSink | None = None  # None: publish on the event bus
-    extra: dict[str, Any] = field(default_factory=dict)  # merged into every `job.progress` payload (legacy adapter)
 
     # Runtime state, owned by the JobManager.
     state: str = "queued"  # queued | loading | running | done | failed | cancelled

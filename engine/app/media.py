@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import io
 import math
+import secrets
+import time
 from pathlib import Path
 
 from PIL import Image, ImageOps
@@ -20,6 +22,11 @@ MAX_UPLOAD_SIDE = 4096
 NATIVE_MAX_MP = 1.6
 
 Image.MAX_IMAGE_PIXELS = 120_000_000
+
+
+def new_id() -> str:
+    """Time-sortable id (ms timestamp + random suffix), the form of every asset id."""
+    return f"{int(time.time() * 1000):011x}{secrets.token_hex(5)}"
 
 
 def media_url(kind: str, filename: str | None) -> str | None:

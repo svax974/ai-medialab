@@ -25,7 +25,7 @@ import pytest
 
 os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
-from app import audio_packs, db  # noqa: E402
+from app import audio_packs  # noqa: E402
 from app.audio_packs import PackArchive, PackInstaller  # noqa: E402
 from app.engines import MODELS, get_spec, video_specs  # noqa: E402
 
@@ -44,12 +44,6 @@ def _load(name: str, path: Path):
     sys.modules[name] = mod
     spec.loader.exec_module(mod)
     return mod
-
-
-@pytest.fixture
-def database(tmp_path, monkeypatch):
-    monkeypatch.setattr(db, "DB_PATH", tmp_path / "test.db")
-    db.init_db()
 
 
 class TestSpecs:
@@ -176,7 +170,7 @@ class TestHardwareGate:
         with pytest.raises(RuntimeError, match="NVIDIA"):
             asyncio.run(PackInstaller().start("kiwi"))
 
-    def test_catalog_marks_them_incompatible_but_lists_them(self, monkeypatch, database):
+    def test_catalog_marks_them_incompatible_but_lists_them(self, monkeypatch):
         from app import catalog
 
         monkeypatch.setattr("app.system.get_system", lambda refresh=False: MAC)
@@ -436,24 +430,12 @@ def audio_packs_matches(rel, patterns):
 
 class TestPlans:
     def _plan(self, model_id, refs):
-        from app.config import UPLOADS_DIR
         from app.job_plans import build_plan
-        from app.legacy_jobs import request_from_message
+        from test_video import _request
 
-        UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
-        with db.connect() as conn:
-            conn.execute("INSERT INTO conversations (id, title, mode, created_at, updated_at) VALUES ('c', 't', 'video', 0, 0)")
-            conn.execute("INSERT INTO messages (id, conversation_id, role, prompt, created_at) VALUES ('u', 'c', 'user', 'p', 0)")
-            for pos, (media, name) in enumerate(refs):
-                aid = db.new_id()
-                conn.execute("INSERT INTO assets (id, kind, media, filename, created_at) VALUES (?, 'upload', ?, ?, ?)",
-                             (aid, media, name, db.now()))
-                conn.execute("INSERT INTO message_refs (message_id, asset_id, position) VALUES ('u', ?, ?)", (aid, pos))
-        msg = {"id": "m", "conversation_id": "c", "parent_id": "u", "prompt": "make it snow", "model_id": model_id,
-               "params": {"seeds": [3]}}
-        return build_plan(request_from_message(msg))
+        return build_plan(_request(model_id, {"seeds": [3]}, refs, "make it snow"))
 
-    def test_kiwi_keeps_the_reference_image_next_to_the_video(self, database):
+    def test_kiwi_keeps_the_reference_image_next_to_the_video(self):
         from PIL import Image
 
         from app.config import UPLOADS_DIR, ensure_dirs
@@ -469,11 +451,11 @@ class TestPlans:
         assert plan["params"]["fps"] == 15 and (plan["params"]["frames"] - 1) % 4 == 0
         assert plan["params"]["width"] % 32 == 0 and plan["params"]["height"] % 32 == 0
 
-    def test_kiwi_needs_a_source_video(self, database):
+    def test_kiwi_needs_a_source_video(self):
         with pytest.raises(ValueError, match="vidéo source"):
             self._plan("kiwi-edit-5b", [])
 
-    def test_models_that_take_no_reference_still_drop_images_when_editing(self, database):
+    def test_models_that_take_no_reference_still_drop_images_when_editing(self):
         from PIL import Image
 
         from app.config import UPLOADS_DIR

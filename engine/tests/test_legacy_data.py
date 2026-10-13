@@ -48,3 +48,10 @@ def test_same_folder_and_env_parsing(tmp_path):
     assert migrate_legacy_data(tmp_path, [tmp_path]) == []
     assert legacy_dirs_from_env({}) == []
     assert [str(p) for p in legacy_dirs_from_env({"IMAGEGEN_LEGACY_DATA_DIRS": "/a"})] == ["/a"]
+
+
+def test_a_folder_holding_the_renamed_database_is_in_use(tmp_path):
+    data, legacy = make(tmp_path)
+    (data / "ai-medialab.db.imported").write_text("imported")
+    assert migrate_legacy_data(data, [legacy]) == []
+    assert (legacy / "ai-medialab.db").exists()

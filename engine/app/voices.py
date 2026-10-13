@@ -1,18 +1,19 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Voice library (cloning) and resolution of the voice to use for a generation."""
+"""Voice reference clips (cloning) and resolution of the voice to use for a generation.
+
+The voice library itself belongs to the NestJS server (`audio-studio`); the engine prepares the clips and resolves
+the voice from the library the caller passes with the job."""
 
 from __future__ import annotations
 
 import io
-import json
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from . import db
 from .config import UPLOADS_DIR
 
 MAX_REF_SECONDS = 30.0
@@ -22,28 +23,6 @@ REF_SAMPLE_RATE = 24000
 
 def voice_path(filename: str) -> Path:
     return UPLOADS_DIR / filename
-
-
-def voice_public(row: Any) -> dict[str, Any]:
-    v = db.row_to_dict(row)
-    return {
-        "id": v["id"], "name": v["name"], "kind": v["kind"], "transcript": v["transcript"],
-        "description": v["description"], "language": v["language"], "duration": v["duration"],
-        "peaks": v["peaks"], "url": f"/media/uploads/{v['filename']}" if v["filename"] else None,
-        "created_at": v["created_at"],
-    }
-
-
-def list_voices() -> list[dict[str, Any]]:
-    with db.connect() as conn:
-        rows = conn.execute("SELECT * FROM voices ORDER BY created_at DESC").fetchall()
-    return [voice_public(r) for r in rows]
-
-
-def get_voice(voice_id: str) -> dict[str, Any] | None:
-    with db.connect() as conn:
-        row = conn.execute("SELECT * FROM voices WHERE id = ?", (voice_id,)).fetchone()
-    return voice_public(row) if row else None
 
 
 def decode_audio(data: bytes) -> tuple[np.ndarray, int]:
@@ -98,54 +77,24 @@ def store_reference(voice_id: str, audio: np.ndarray) -> str:
     return filename
 
 
-def save_voice(*, name: str, kind: str, audio: np.ndarray, transcript: str = "", description: str = "",
-               language: str | None = None) -> dict[str, Any]:
-    voice_id = db.new_id()
-    filename = store_reference(voice_id, audio)
-    with db.connect() as conn:
-        conn.execute(
-            "INSERT INTO voices (id, name, kind, filename, transcript, description, language, duration, peaks, "
-            "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (voice_id, name.strip()[:80] or "Voix sans nom", kind, filename, transcript.strip(), description.strip(),
-             language, round(audio.size / REF_SAMPLE_RATE, 2), json.dumps(peaks_of(audio)), db.now()),
-        )
-    return get_voice(voice_id)  # type: ignore[return-value]
-
-
-def delete_voice(voice_id: str) -> bool:
-    with db.connect() as conn:
-        row = conn.execute("SELECT * FROM voices WHERE id = ?", (voice_id,)).fetchone()
-        if not row:
-            return False
-        conn.execute("DELETE FROM voices WHERE id = ?", (voice_id,))
-    if row["filename"]:
-        voice_path(row["filename"]).unlink(missing_ok=True)
-    return True
-
-
 def resolve_voice(spec, ref: dict[str, Any] | None, language: str, instruct: str,
                   library: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     """Effective voice in the format the worker expects: preset | clone | design.
 
     `ref` is {"source": "preset", "id": "ff_siwis"}, {"source": "library", "id": "<voice>"} or None.
     `library` (voices the caller resolved: id -> {"path", "transcript", "name"}) is looked at before the engine's own;
-    when it is given the engine's own library is ignored."""
+    the engine has no library of its own: without the voice there, it no longer exists."""
     caps = spec.audio
     ref = ref or {}
     if ref.get("source") == "library":
         given = (library or {}).get(ref.get("id", ""))
-        # A caller that passes its library (NestJS, even an empty one) owns the voices: no fallback to the engine's own.
-        voice = get_voice(ref.get("id", "")) if given is None and library is None else None
-        if given is None and not voice:
+        if given is None:
             raise ValueError("Cette voix n'existe plus dans votre bibliothèque.")
         if caps.clone == "none":
             raise ValueError(f"{spec.name} ne sait pas cloner une voix : choisissez un modèle de clonage "
                              "ou l'une de ses voix intégrées.")
-        if given is not None:
-            return {"kind": "clone", "ref_audio": str(given["path"]), "ref_text": given.get("transcript") or None,
-                    "label": given.get("name") or ""}
-        return {"kind": "clone", "ref_audio": str(voice_path(Path(voice["url"]).name)),
-                "ref_text": voice["transcript"] or None, "label": voice["name"]}
+        return {"kind": "clone", "ref_audio": str(given["path"]), "ref_text": given.get("transcript") or None,
+                "label": given.get("name") or ""}
     if caps.design:
         if not instruct:
             raise ValueError("Décrivez la voix à créer (âge, timbre, caractère…).")

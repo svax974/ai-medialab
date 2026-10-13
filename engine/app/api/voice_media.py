@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token, never under the legacy `/api`):
+"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token):
 the audio side of the voice library. The caller owns the library rows (name, transcript, language); the engine only
 prepares reference clips and transcribes them, because both need audio decoding and models.
 """

@@ -17,7 +17,7 @@ from pathlib import Path
 
 ENV_VAR = "IMAGEGEN_LEGACY_DATA_DIRS"
 # Database names that mean « this folder already holds real data ».
-DB_NAMES = ("ai-medialab.db", "chambre-noire.db")
+DB_NAMES = ("ai-medialab.db", "chambre-noire.db", "ai-medialab.db.imported", "chambre-noire.db.imported")
 # Written by the desktop shell in every data folder: never taken from the old one.
 SHELL_ENTRIES = frozenset({"logs", "secrets.json"})
 

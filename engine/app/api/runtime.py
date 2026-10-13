@@ -1,7 +1,7 @@
 # Copyright (c) 2026 Stéphane Vaxelaire
 # SPDX-License-Identifier: MIT
 
-"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token, never under the legacy `/api`)."""
+"""Routes only the NestJS server calls (mounted under `/engine/v1` with the token)."""
 
 from __future__ import annotations
 
@@ -30,9 +30,9 @@ class RuntimeSettings(BaseModel):
 
 @runtime_router.put("/settings")
 async def push_settings(settings: RuntimeSettings) -> dict[str, Any]:
-    """Keeps the studio settings in memory (the engine then stops reading them in its database).
+    """Keeps the studio settings in memory (never written to disk).
 
-    Same checks as the legacy `PUT /settings`: unknown model or quantization is a 422, a variant change while a
+    Checks: unknown model or quantization is a 422, a variant change while a
     generation runs is a 409 (nothing is applied then); the loaded model is unloaded when its variant changed.
     """
     values = settings.model_dump()

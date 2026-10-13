@@ -18,7 +18,7 @@ import pytest
 
 os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
-from app import db, sdcpp  # noqa: E402
+from app import sdcpp  # noqa: E402
 from app.engines import MODELS, custom, get_spec, video_gguf  # noqa: E402
 from app.engines.base import GenerationCancelled, GenerationRequest, Hooks, with_variant  # noqa: E402
 from app.engines.sdcpp_video_engine import (ProgressTracker, SdcppVideoEngine, build_command, offload_enabled,  # noqa: E402
@@ -462,13 +462,13 @@ class TestMedia:
 
 
 class TestGating:
-    def test_download_needs_a_token_for_gated_models(self, tmp_path, monkeypatch):
+    def test_download_needs_a_token_for_gated_models(self, monkeypatch):
         import asyncio
 
+        from app import runtime_settings
         from app.downloads import GATED_MESSAGE, downloads
 
-        monkeypatch.setattr(db, "DB_PATH", tmp_path / "t.db")
-        db.init_db()
+        runtime_settings.reset()  # no token pushed
         assert get_spec("ltx-2.5-distilled-gguf").gated
         with pytest.raises(RuntimeError, match="accès restreint"):
             asyncio.run(downloads.start("ltx-2.5-distilled-gguf"))

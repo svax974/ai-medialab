@@ -16,7 +16,7 @@ OPEN_PATHS = frozenset({"/engine/v1/status"})
 
 
 def require_engine_token(request: Request) -> None:
-    """Reject the request unless it carries `ENGINE_TOKEN`; no-op when the variable is unset (dev, legacy UI).
+    """Reject the request unless it carries `ENGINE_TOKEN`; no-op when the variable is unset (standalone dev).
 
     The variable is read per request so tests and launchers can set it after import. The comparison is
     constant-time. `/engine/v1/status` stays open (liveness probe).

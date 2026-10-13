@@ -10,7 +10,7 @@ configurable idle delay.
 The manager is stateless with respect to the studio: it runs `JobRequest`s (see `job_plans.py`) and reports
 `job.started`, `job.progress`, `job.preview`, `job.output`, `job.done`, `job.failed` and `job.cancelled` events to the
 job's sink (the event bus by default). It never touches conversations, messages or assets; the callers do
-(`api/jobs.py` for NestJS, `legacy_jobs.py` for the legacy `/api/messages` routes).
+(`api/jobs.py` for NestJS).
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ from .config import PREVIEWS_DIR
 from .engines import get_spec
 from .events import bus
 from .job_outputs import describe_output
-from .job_plans import JobRequest, build_plan, new_seed  # noqa: F401  (new_seed re-exported for the routes)
+from .job_plans import JobRequest, build_plan
 from .media import delete_previews, media_url
 from .worker import run_worker
 
@@ -204,7 +204,7 @@ class JobManager:
         self._publish_status()
 
     def snapshot(self) -> list[dict]:
-        return [{**p, **self.jobs[i].extra} for i, p in self.progress.items() if i in self.jobs]
+        return [dict(p) for i, p in self.progress.items() if i in self.jobs]
 
     async def _run(self) -> None:
         while True:

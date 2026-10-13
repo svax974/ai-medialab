@@ -3,7 +3,7 @@
 
 """Models the user adds from Hugging Face.
 
-A custom model is just a "recipe" (repo, chosen file, family) stored in the settings. The matching
+A custom model is just a "recipe" (repo, chosen file, family) stored in the engine's state file (`engine_state.py`). The matching
 `ModelSpec` is rebuilt without network access, worker processes included. Only families the app knows
 how to run are accepted:
 
@@ -25,7 +25,8 @@ import dataclasses
 import re
 from typing import Any
 
-from .. import db
+from .. import engine_state
+from ..config import DATA_DIR
 from . import audio_specs, gguf_models, video_gguf, video_specs
 from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
 
@@ -280,10 +281,7 @@ def build(recipe: dict[str, Any]) -> ModelSpec:
 # Persistence and registration
 
 def load_recipes() -> list[dict[str, Any]]:
-    try:
-        return list(db.get_settings().get(SETTINGS_KEY, []))
-    except Exception:  # missing or unreadable database: no custom models
-        return []
+    return list(engine_state.load(DATA_DIR).get(SETTINGS_KEY, []))
 
 
 def register_all(models: dict[str, ModelSpec]) -> None:
@@ -297,11 +295,11 @@ def register_all(models: dict[str, ModelSpec]) -> None:
 def add(models: dict[str, ModelSpec], recipe: dict[str, Any]) -> ModelSpec:
     spec = build(recipe)
     recipes = [r for r in load_recipes() if r["id"] != recipe["id"]] + [recipe]
-    db.put_settings({SETTINGS_KEY: recipes})
+    engine_state.update(DATA_DIR, **{SETTINGS_KEY: recipes})
     models[spec.id] = spec
     return spec
 
 
 def remove(models: dict[str, ModelSpec], model_id: str) -> None:
-    db.put_settings({SETTINGS_KEY: [r for r in load_recipes() if r["id"] != model_id]})
+    engine_state.update(DATA_DIR, **{SETTINGS_KEY: [r for r in load_recipes() if r["id"] != model_id]})
     models.pop(model_id, None)
