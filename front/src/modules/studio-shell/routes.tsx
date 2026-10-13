@@ -5,16 +5,22 @@
 
 import type { PluginRoute } from '@/modules_shared/common/plugins/AppPlugin'
 import { STUDIO_ROUTES, type StudioRouteDef } from './lib/routes'
+import { AudioHomePage } from './pages/AudioHomePage'
+import { AudioLibraryPage } from './pages/AudioLibraryPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
 import { GalleryPage } from './pages/GalleryPage'
 import { ConversationPage } from './pages/ConversationPage'
 import { HomePage } from './pages/HomePage'
+import { VoicesPage } from './pages/VoicesPage'
 
-/** Page of a route: the image studio's home and conversation (H4.3) and gallery (H4.4); the others are still provisional (`ComingSoonPage`). */
+/** Page of a route: the image studio's home and conversation (H4.3) and gallery (H4.4), the audio studio's home, voices and library (H4.5); the video ones are still provisional (`ComingSoonPage`). */
 function pageOf(route: StudioRouteDef) {
   if (route.name === 'home') return <HomePage />
   if (route.name === 'conversation') return <ConversationPage />
   if (route.name === 'gallery') return <GalleryPage />
+  if (route.name === 'audio-home') return <AudioHomePage />
+  if (route.name === 'voices') return <VoicesPage />
+  if (route.name === 'audio-library') return <AudioLibraryPage />
   return <ComingSoonPage titleKey={route.titleKey} />
 }
 

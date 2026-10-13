@@ -14,8 +14,8 @@ const entry = (name: string, withTip: boolean): Help => ({
 
 /**
  * Explanations of the generation parameters shared by the creation modes (texts of the former `lib/help.ts`: `steps`,
- * `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`). The keys of the audio and video
- * parameters arrive with their studios (H4.5, H4.6). Locale keys: `Help` of `InfoTip`/`HelpBody`.
+ * `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`) and the audio ones (`speed`, `temperature`,
+ * `count_takes`, H4.5). The video parameters arrive with H4.6. Locale keys: `Help` of `InfoTip`/`HelpBody`.
  */
 export const PARAM_HELP: Record<string, Help> = {
   steps: entry('steps', true),
@@ -25,6 +25,9 @@ export const PARAM_HELP: Record<string, Help> = {
   seed: entry('seed', true),
   fast_decode: entry('fast_decode', true),
   count_images: entry('count_images', false),
+  speed: entry('speed', false),
+  temperature: entry('temperature', true),
+  count_takes: entry('count_takes', true),
 }
 
 /** Texts of the engine that only repeat the generic explanation (they are not shown as "this model:"). */

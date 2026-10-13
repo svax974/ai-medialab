@@ -6,7 +6,7 @@ Le **fil de conversation** commun aux trois studios et ce qui l'entoure : conver
 messages de l'utilisateur et générations de l'assistant, progression en direct avec aperçus, états de la machine d'état des messages
 (en file, chargement, calcul, terminé, erreur, annulé), relance (nouvelles variantes ou mêmes graines), annulation, suppression, vignettes
 et leurs actions, visionneuse d'images, carte d'état du moteur dans la barre latérale, et **application des événements `studio.*` au cache**.
-Seule la génération d'**images** est dessinée ici (`AssistantMessage`) ; l'audio et la vidéo apportent leur `ModeAdapter` avec H4.5 et H4.6.
+Seule la génération d'**images** est dessinée ici (`AssistantMessage`) ; l'audio (`audio-studio`, H4.5) et la vidéo (H4.6) apportent leur `ModeAdapter`.
 Back : `back/src/modules/studio-core/README.md` (routes, file des générations, machine d'état, événements). Tâche H4.3b.
 
 ## Structure
@@ -46,7 +46,7 @@ studio-core/
 `messagesApi`, `upsertMessage`, `useImageDraftStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
 
 `ModeAdapter` (`lib/modeAdapter.ts`) : ce qu'un mode branche sur le fil : `Composer`, `AssistantMessage`, `reuseUserMessage`. La page
-`/c/:id` (`studio-shell/pages/ConversationPage.tsx`) passe `{ image: imageStudioAdapter }` ; une conversation d'un mode sans adaptateur (audio, vidéo)
+`/c/:id` (`studio-shell/pages/ConversationPage.tsx`) passe `{ image: imageStudioAdapter, audio: audioStudioAdapter }` ; une conversation d'un mode sans adaptateur (vidéo, jusqu'à H4.6)
 affiche « Ce type de conversation sera repris… » sans composeur.
 
 ## Données et événements
@@ -105,7 +105,7 @@ Hooks `useEngineStatus` / `useUnloadEngine` du module `hardware` ; le statut est
 
 Textes de `frontend/src/lib/help.ts` repris à l'identique en français (`thread.help.*` : `steps`, `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`) ; `paramHelp(spec, kind, t)` ajoute la
 remarque du modèle (« Ce modèle : … », écrite par le moteur, donc non traduite) sauf quand elle répète le texte générique. Les textes propres à l'image sont dans `image-studio`
-(`imageStudio.help.*`) ; ceux de l'audio et de la vidéo arrivent avec H4.5 et H4.6. Info-bulles du fil : « Nouvelles variantes (graines aléatoires) », « Relancer avec les mêmes graines » (avec explication).
+(`imageStudio.help.*`) ; ceux de l'audio : `thread.help.{speed,temperature,count_takes}` (H4.5) et `audioStudio.help.*` ; ceux de la vidéo arrivent avec H4.6. Info-bulles du fil : « Nouvelles variantes (graines aléatoires) », « Relancer avec les mêmes graines » (avec explication).
 
 ## Correspondance avec l'ancienne interface
 
@@ -131,7 +131,7 @@ remarque du modèle (« Ce modèle : … », écrite par le moteur, donc non tra
 - Les messages d'erreur sont ceux du serveur (français, non traduits en anglais) ; les remarques « Ce modèle : … » viennent du moteur.
 - Les messages (`toast`) passent par react-toastify ; la visionneuse est celle de `common` (barre d'actions et panneau latéral du composant commun ; l'index de vignettes, le zoom au clic et les flèches y sont aussi).
 - Libellé du favori de la visionneuse : « Ajouter aux favoris » / « Retirer des favoris » (l'ancien disait « Favori »).
-- Une conversation audio ou vidéo ouverte avant H4.5/H4.6 affiche un avis au lieu du fil.
+- Une conversation vidéo ouverte avant H4.6 affiche un avis au lieu du fil ; l'audio a son fil depuis H4.5 (`audio-studio`).
 - La galerie et la liste de la visionneuse sont dans `media-library` (H4.4) ; les fonctions de l'ancienne visionneuse propres à la vidéo (source, dernière image) arrivent avec H4.6.
 
 ## Tests

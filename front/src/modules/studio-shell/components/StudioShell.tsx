@@ -17,14 +17,15 @@ import { EnginesPanel, startSetup, useEnginesSync } from '@/modules/engines'
 import { ModelsDialog, useDownloadEvents } from '@/modules/model-catalog'
 import { SettingsDialog } from '@/modules/settings'
 import { ImageDropLayer } from '@/modules/image-studio'
+import { useVoiceEvents, VoiceDropLayer, VoiceStudioDialog } from '@/modules/voices'
 import { StudioLightbox, useStudioEvents } from '@/modules/studio-core'
 import { Sidebar } from './Sidebar'
 
 /**
  * Layout of the studio: the sidebar (hideable, Cmd+B) and the page. Mounted once above the routes, so the list and
- * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the `engine.*` and `studio.*` event subscriptions and the
+ * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the `engine.*`, `studio.*` and voice-library event subscriptions and the
  * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`), the image
- * viewer and the window drop of images (image mode).
+ * viewer, the window drop of images (image mode) and of a voice sample (audio mode), and the voice studio dialog.
  */
 export function StudioShell({ children }: { children: ReactNode }) {
   useShortcuts()
@@ -33,6 +34,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
   useStudioEvents()
   useDownloadEvents()
   useEnginesSync()
+  useVoiceEvents()
   const mode = useStudioStore((s) => s.mode)
   const sidebarOpen = useStudioStore((s) => s.sidebarOpen)
   const toggleSidebar = useStudioStore((s) => s.toggleSidebar)
@@ -63,6 +65,8 @@ export function StudioShell({ children }: { children: ReactNode }) {
       />
       <StudioLightbox />
       {mode === 'image' && <ImageDropLayer />}
+      {mode === 'audio' && <VoiceDropLayer />}
+      <VoiceStudioDialog />
       <ConfirmHost />
     </Box>
   )

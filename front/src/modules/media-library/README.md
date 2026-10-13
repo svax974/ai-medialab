@@ -75,7 +75,7 @@ Cases cochées = vérifiées par la logique testée et le rendu côté serveur (
 
 **Dépôt global** (`App.tsx` `useFileDrop`)
 - [x] Image : fichiers déposés n'importe où (y compris sur `/galerie`) = références du prochain message (images seulement, les autres ignorés avec un avertissement), images de la conversation glissées idem ; surcouche « Déposez vos images ». (Fait en H4.3b ; la surcouche passe maintenant par `DropVeil`.)
-- [x] Audio et vidéo : types acceptés, tri du dépôt (audio : le premier fichier sonore ; vidéo : images et vidéos), avertissements et textes de la surcouche (`dropRules.ts`, locales `library.drop.*`) prêts ; **le branchement (voix, source vidéo) est dans H4.5 et H4.6**.
+- [x] Audio et vidéo : types acceptés, tri du dépôt (audio : le premier fichier sonore ; vidéo : images et vidéos), avertissements et textes de la surcouche (`dropRules.ts`, locales `library.drop.*`) prêts ; **le branchement des voix est fait en H4.5 (`voices/hooks/useVoiceDrop.ts`, qui reçoit tout et trie avec `classifyDrop`), celui de la source vidéo reste à faire en H4.6**.
 
 **Position dans la file** (écart de H4.3b, traité ici avec `studio-core`)
 - [x] « en file d'attente · position N » exact (toutes conversations et tous modes), « N en attente » de la carte du moteur exact : voir le README de `studio-core`.

@@ -83,7 +83,8 @@ l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conv
 routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; le studio image est fait (H4.3b) : l'accueil et le
 composeur (références, modèle, proportions, réglages, nombre d'images) dans `front/src/modules/image-studio/README.md`, le fil de conversation
 (messages, progression avec aperçus, relance, annulation, suppression, vignettes, visionneuse, carte du moteur) dans `front/src/modules/studio-core/README.md` ;
-la galerie d'images (`/galerie`) est faite (H4.4, `front/src/modules/media-library/README.md`) ; les autres écrans (bibliothèques audio et vidéo, voix, audio, vidéo) sont des pages « à venir » jusqu'aux tâches H4.5 et H4.6 ; le dialogue Réglages
+la galerie d'images (`/galerie`) est faite (H4.4, `front/src/modules/media-library/README.md`)  ; le studio audio est fait (H4.5) : l'accueil, le composeur (texte ou dialogue avec distribution des voix, voix, langue, style, prises), les prises avec lecteur et forme d'onde et la bibliothèque audio (`/audio`, `/audio/bibliotheque`) dans `front/src/modules/audio-studio/README.md`,
+la bibliothèque de voix et le studio de voix (micro, import, transcription modifiable, `/audio/voix`) dans `front/src/modules/voices/README.md` ; la vidéo reste une page « à venir » jusqu'à la tâche H4.6 ; le dialogue Réglages
 (`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
 (catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
 installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
@@ -337,6 +338,13 @@ génération à la fois (un modèle chargé à la fois, déchargement après ina
 (`back/src/modules/studio-core/README.md`) ; le contrat détaillé est dans le README du module `engine`. L'ancienne interface
 `frontend/`, qui parle directement au moteur sur `/api`, continue de marcher : `/api/messages*` passe par `app/legacy_jobs.py`,
 qui soumet le même job et écrit la base du moteur comme avant.
+
+**Voix et audio (H4.5).** Les voix sont dans Nest (`back/src/modules/audio-studio/README.md` : `/api/voices*`, fichiers dans `uploads/`, événement
+`studio.voices.changed`) ; le moteur prépare le clip de référence (`POST /engine/v1/media/voice-reference`) et propose la transcription
+(`POST /engine/v1/media/transcribe`), que l'utilisateur corrige avant de l'enregistrer. Un job audio porte les voix de la bibliothèque qu'il utilise
+(`voices`) ; le proxy transitoire ne relaie plus que `events`. Un `message.updated` audio (4 prises avec formes d'onde et repères) pèse de 8 Ko (texte court) à
+plus de 100 Ko (8000 caractères) : la limite d'événement du flux, 16 Ko par défaut, est portée à 256 Ko pour cette application
+(`StudioEventLimitsModule`, `back/src/modules/media-library/README.md`).
 
 **File des générations (H4.4).** Nest publie la file (message en cours et messages en attente, tous modes et toutes conversations) par
 `studio.queue.updated` et `GET /api/queue` : le front en tire « position N » et « N en attente » exacts (l'ancienne interface lisait `queue`

@@ -11,7 +11,7 @@ réglages du modèle générés depuis ses paramètres, graine, nombre d'images,
 
 ```
 image-studio/
-  index.ts                       exports : ImageHome, ImageGallery, Composer, ImageDropLayer, imageStudioAdapter
+  index.ts                       exports : ImageHome, ImageGallery, Composer, GenerationParams (réutilisé par `audio-studio`), ImageDropLayer, imageStudioAdapter
   imageStudioAdapter.tsx         ce que le mode image branche sur le fil de studio-core (composeur, génération, reprise d'un prompt)
   hooks/useSendMessage.ts        envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
   hooks/useImageDrop.ts          dépôt sur la fenêtre : fichiers (useWindowDrop de `common`) et images de la conversation glissées
@@ -66,7 +66,7 @@ glissées depuis une vignette (type `application/x-cn-asset`) deviennent des ré
 
 - Le titre du panneau de réglages est « Réglages » (le formulaire commun n'accepte pas de nom de modèle dans son titre) ; le nombre d'étapes, le cadenas de la graine et le point « modifié » sont dans le bouton.
 - « Valeurs par défaut » est repéré à partir de ce que le formulaire commun envoie (tous les champs à leur défaut, au moins deux champs) ; il libère la graine comme l'ancien bouton « Défauts ».
-- Le dépôt de fichiers ne s'applique qu'en mode image (comme avant) ; l'audio et la vidéo auront le leur (H4.5, H4.6).
+- Le dépôt de fichiers ne s'applique qu'en mode image (comme avant) ; l'audio a le sien depuis H4.5 (module `voices` : un son ouvre le studio de voix), la vidéo aura le sien (H4.6).
 - Les libellés des réglages d'un modèle et les remarques « Ce modèle : » viennent du moteur (français).
 - Pas de barre de progression de l'envoi des images (l'ancien composeur n'en avait pas non plus pour les images : indicateur seulement).
 

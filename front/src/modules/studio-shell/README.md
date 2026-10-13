@@ -6,7 +6,7 @@ Coquille du studio dans le nouveau front : barre latérale (mode image / audio /
 conversations épinglées et groupées par période, carte du moteur, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
 abonnements au flux d'événements (`engine.*` du moteur, `studio.*` de Nest). Les écrans eux-mêmes sont des **pages minces** : l'accueil et la conversation
-sont ceux du studio image (modules `image-studio` et `studio-core`, H4.3b) ; la galerie d'images est celle de `media-library` (H4.4) ; les bibliothèques audio et vidéo, les voix, l'audio et la vidéo restent « à venir » jusqu'aux tâches H4.5 et H4.6 ;
+sont ceux du studio image (modules `image-studio` et `studio-core`, H4.3b) ; la galerie d'images est celle de `media-library` (H4.4) ; l'accueil audio, la bibliothèque audio et les voix sont ceux des modules `audio-studio` et `voices` (H4.5) ; la vidéo reste « à venir » jusqu'à la tâche H4.6 ;
 le dialogue Réglages est celui du module `settings` (H4.1), le dialogue Modèles celui du module `model-catalog` avec les installateurs du module `engines` (H4.2).
 
 Module d'application (`front/src/modules/`), pas un module partagé. Thème : `front/src/themes/chambre-noire/README.md`.
@@ -21,7 +21,7 @@ studio-shell/
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
   components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem,
                            SidebarFooter, Mark, modeIcons
-  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), ConversationPage (ConversationView + adaptateurs de modes), ComingSoonPage (pages provisoires)
+  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), ConversationPage (ConversationView + adaptateurs image et audio), ComingSoonPage (pages provisoires : vidéo)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
   services/                studioHttp (proxy transitoire), conversationsApi
@@ -38,11 +38,11 @@ gabarit ; la coquille reste montée d'une page à l'autre, donc la recherche et 
 | Chemin | Page | Mode | Tâche qui la remplit |
 |---|---|---|---|
 | `/` | Accueil du studio image (`ImageHome`) | image | H4.3b (fait) |
-| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait ; audio, vidéo : H4.5, H4.6) |
+| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait), audio : H4.5 (fait), vidéo : H4.6 |
 | `/galerie` | Galerie (`ImageGallery`) | image | H4.4 (fait) |
-| `/audio` | Nouvel audio | audio | H4.5 |
-| `/audio/voix` | Mes voix | audio | H4.5 |
-| `/audio/bibliotheque` | Bibliothèque audio | audio | H4.5 |
+| `/audio` | Accueil audio (`AudioHome`) | audio | H4.5 (fait) |
+| `/audio/voix` | Mes voix (`VoicesLibrary`) | audio | H4.5 (fait) |
+| `/audio/bibliotheque` | Bibliothèque audio (`AudioGallery`) | audio | H4.5 (fait) |
 | `/video` | Nouvelle vidéo | vidéo | H4.6 |
 | `/video/bibliotheque` | Bibliothèque vidéo | vidéo | H4.6 |
 
