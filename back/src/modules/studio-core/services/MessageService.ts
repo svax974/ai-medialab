@@ -15,7 +15,7 @@ import { BUSY_STATUSES, CreateMessageInput, UpdateMessageInput } from '../types/
 
 export const INTERRUPTED_MESSAGE = "Interrompu par l'arrêt du serveur";
 
-/** Reads and writes messages and their references. Queueing and cancelling jobs arrive with H4.3. */
+/** Reads and writes messages and their references. Queueing and running them is `GenerationQueueService`. */
 @Injectable()
 export class MessageService {
   constructor(
@@ -27,6 +27,56 @@ export class MessageService {
   async get(id: string): Promise<MessageDto | null> {
     const message = await this.messages.findOneBy({ id });
     return message ? (await this.toDtos([message]))[0] : null;
+  }
+
+  async getEntity(id: string): Promise<MessageEntity | null> {
+    return this.messages.findOneBy({ id });
+  }
+
+  async hasMessages(conversationId: string): Promise<boolean> {
+    return (await this.messages.countBy({ conversationId })) > 0;
+  }
+
+  /** Ids of the generations answering a prompt. */
+  async childIds(parentId: string): Promise<string[]> {
+    return (await this.messages.find({ where: { parentId }, select: { id: true } })).map((m) => m.id);
+  }
+
+  /** Ids of the messages of a conversation that are still queued or running. */
+  async busyIds(conversationId: string): Promise<string[]> {
+    const rows = await this.messages.find({ where: { conversationId, status: In(BUSY_STATUSES) }, select: { id: true } });
+    return rows.map((m) => m.id);
+  }
+
+  /** Reference assets of a prompt, in display order. */
+  async referencesOf(parentId: string): Promise<AssetEntity[]> {
+    const refs = await this.refs.find({ where: { messageId: parentId }, order: { position: 'ASC' } });
+    if (!refs.length) return [];
+    const found = await this.assets.findBy({ id: In(refs.map((r) => r.assetId)) });
+    const byId = new Map(found.map((a) => [a.id, a]));
+    return refs.map((r) => byId.get(r.assetId)).filter((a): a is AssetEntity => Boolean(a));
+  }
+
+  /** Assets that go with these messages: their outputs and the uploads they reference (`purge_assets` candidates). */
+  async assetsOfMessages(ids: string[]): Promise<AssetEntity[]> {
+    if (!ids.length) return [];
+    const refs = await this.refs.find({ where: { messageId: In(ids) } });
+    const uploads = refs.length ? await this.assets.findBy({ id: In(refs.map((r) => r.assetId)), kind: 'upload' }) : [];
+    const outputs = await this.assets.findBy({ messageId: In(ids) });
+    return [...new Map([...outputs, ...uploads].map((a) => [a.id, a])).values()];
+  }
+
+  /** Assets of a conversation: those linked to it and those of its messages. */
+  async assetsOfConversation(conversationId: string): Promise<AssetEntity[]> {
+    const ids = (await this.messages.find({ where: { conversationId }, select: { id: true } })).map((m) => m.id);
+    const linked = await this.assets.findBy({ conversationId });
+    const ofMessages = ids.length ? await this.assets.findBy({ messageId: In(ids) }) : [];
+    return [...new Map([...linked, ...ofMessages].map((a) => [a.id, a])).values()];
+  }
+
+  /** Deletes these messages (and, by cascade, the generations answering them and their reference links). */
+  async removeMany(ids: string[]): Promise<void> {
+    if (ids.length) await this.messages.delete({ id: In(ids) });
   }
 
   /** Messages of a conversation, oldest first. */

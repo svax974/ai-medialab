@@ -12,19 +12,13 @@ import { ENGINE_API_PREFIX, ENGINE_CONFIG, ENGINE_TOKEN_HEADER, type EngineConfi
  * TRANSITIONAL (removed in H6): first path segments of `/api/*` that Nest does not serve yet and relays to the engine.
  * A test checks that this list covers every first segment of `engine/openapi.json`.
  */
-export const PROXIED_SEGMENTS = [
-  'assets',
-  'conversations',
-  'events',
-  'messages',
-  'voices',
-] as const;
+export const PROXIED_SEGMENTS = ['events', 'voices'] as const;
 
 /**
  * First segments of the engine API that Nest serves itself (a module takes the route over, the proxy no longer relays it)
- * or that only Nest may call (`runtime`). Together with `PROXIED_SEGMENTS` they cover `engine/openapi.json`.
+ * or that only Nest may call (`runtime`, `jobs` and the engine-side `media` routes: ingestion and purge; `/api/media` is the static proxy). Together with `PROXIED_SEGMENTS` they cover `engine/openapi.json`.
  */
-export const NEST_SERVED_SEGMENTS = ['engine', 'engines', 'hf', 'models', 'runtime', 'settings', 'status', 'system'] as const;
+export const NEST_SERVED_SEGMENTS = ['assets', 'conversations', 'engine', 'engines', 'hf', 'jobs', 'media', 'messages', 'models', 'runtime', 'settings', 'status', 'system'] as const;
 
 /** `/api/media/<kind>/<file>` -> the engine's static media mounts (`/media/...`, no token). */
 export const MEDIA_SEGMENT = 'media';

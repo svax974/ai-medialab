@@ -5,17 +5,24 @@
 
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CommonModule } from 'src/modules_shared/common/CommonModule';
 import { MediaLibraryModule } from 'src/modules/media-library';
+import { ConversationController } from './controllers/ConversationController';
+import { MessageController } from './controllers/MessageController';
 import { ConversationEntity } from './entities/ConversationEntity';
 import { MessageEntity } from './entities/MessageEntity';
 import { MessageRefEntity } from './entities/MessageRefEntity';
 import { ConversationService } from './services/ConversationService';
+import { GenerationQueueService } from './services/GenerationQueueService';
+import { GenerationService } from './services/GenerationService';
+import { JobRequestBuilder } from './services/JobRequestBuilder';
 import { MessageService } from './services/MessageService';
 
-/** Conversations and messages: persistence only for now, routes and the job queue arrive with H4.3. See README.md. */
+/** Conversations, messages, the generation queue and their routes (`/api/conversations*`, `/api/messages*`). See README.md. */
 @Module({
-  imports: [MediaLibraryModule, TypeOrmModule.forFeature([ConversationEntity, MessageEntity, MessageRefEntity])],
-  providers: [ConversationService, MessageService],
-  exports: [TypeOrmModule, ConversationService, MessageService],
+  imports: [CommonModule, MediaLibraryModule, TypeOrmModule.forFeature([ConversationEntity, MessageEntity, MessageRefEntity])],
+  controllers: [ConversationController, MessageController],
+  providers: [ConversationService, MessageService, JobRequestBuilder, GenerationQueueService, GenerationService],
+  exports: [TypeOrmModule, ConversationService, MessageService, GenerationQueueService, GenerationService],
 })
 export class StudioCoreModule {}

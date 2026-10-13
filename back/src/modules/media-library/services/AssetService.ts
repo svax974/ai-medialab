@@ -5,7 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { AssetDto } from '../dto/AssetDto';
 import { AssetPageDto } from '../dto/AssetListItemDto';
 import { AssetEntity } from '../entities/AssetEntity';
@@ -62,6 +62,40 @@ export class AssetService {
     if (!asset) return null;
     await this.assets.delete({ id });
     return asset;
+  }
+
+  /** Gives assets that belong to no conversation yet (an upload used as reference) to `conversationId`. */
+  async adoptOrphans(ids: string[], conversationId: string): Promise<void> {
+    if (ids.length) await this.assets.update({ id: In(ids), conversationId: IsNull() }, { conversationId });
+  }
+
+  async getEntity(id: string): Promise<AssetEntity | null> {
+    return this.assets.findOneBy({ id });
+  }
+
+  /**
+   * Row side of `purge_assets` of the legacy engine: an asset still used as reference by a remaining message keeps
+   * its row and only loses its message link; every other one is deleted. Returns the deleted ones (their files are
+   * to be removed). Call after the related messages or conversations were deleted (their reference links cascade).
+   */
+  async purge(assets: AssetEntity[]): Promise<AssetEntity[]> {
+    const removed: AssetEntity[] = [];
+    for (const asset of assets) {
+      const used = await this.assets.manager
+        .createQueryBuilder()
+        .select('1')
+        .from('message_refs', 'r')
+        .where('r.asset_id = :id', { id: asset.id })
+        .limit(1)
+        .getRawOne();
+      if (used) {
+        await this.assets.update({ id: asset.id }, { messageId: null });
+      } else {
+        await this.assets.delete({ id: asset.id });
+        removed.push(asset);
+      }
+    }
+    return removed;
   }
 
   /** Gallery page, newest first. Same filters and cursor as the legacy `GET /assets`. */

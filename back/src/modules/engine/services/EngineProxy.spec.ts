@@ -38,12 +38,12 @@ class FakeAuthInterceptor implements NestInterceptor {
 describe('toEnginePath', () => {
   it('maps proxied segments to /engine/v1 and media to /media', () => {
     expect(toEnginePath('/api/voices?x=1')).toBe('/engine/v1/voices?x=1');
-    expect(toEnginePath('/api/messages/abc/cancel')).toBe('/engine/v1/messages/abc/cancel');
+    expect(toEnginePath('/api/voices/abc/transcribe')).toBe('/engine/v1/voices/abc/transcribe');
     expect(toEnginePath('/api/media/outputs/a.png')).toBe('/media/outputs/a.png');
   });
 
   it('leaves Nest routes, Swagger and unknown segments alone', () => {
-    for (const url of ['/api/settings', '/api/system', '/api/status', '/api/engine/unload', '/api/runtime/settings', '/api/models', '/api/models/custom', '/api/hf/search', '/api/engines/sdcpp/install']) expect(toEnginePath(url)).toBeNull();
+    for (const url of ['/api/settings', '/api/system', '/api/status', '/api/engine/unload', '/api/runtime/settings', '/api/models', '/api/models/custom', '/api/hf/search', '/api/engines/sdcpp/install', '/api/assets', '/api/assets/x', '/api/conversations', '/api/messages/abc/cancel']) expect(toEnginePath(url)).toBeNull();
     for (const url of ['/api', '/api/v1/health', '/api/unknown', '/models', '/api-json']) expect(toEnginePath(url)).toBeNull();
   });
 });
@@ -107,7 +107,7 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(201, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ id: 'c1' }));
     });
-    const res = await request(app.getHttpServer()).post('/api/conversations').send({ mode: 'image', title: 'T' }).expect(201);
+    const res = await request(app.getHttpServer()).post('/api/voices').send({ mode: 'image', title: 'T' }).expect(201);
     expect(res.body).toEqual({ id: 'c1' });
     const sent = JSON.parse(engine.requests[0].body.toString()) as Record<string, unknown>;
     expect(sent).toEqual({ mode: 'image', title: 'T' });
@@ -116,9 +116,9 @@ describe('EngineProxy (fake engine)', () => {
 
   it('streams a multipart upload to the engine untouched', async () => {
     const payload = Buffer.alloc(300_000, 7);
-    await request(app.getHttpServer()).post('/api/assets').attach('files', payload, 'big.bin').expect(200);
+    await request(app.getHttpServer()).post('/api/voices').attach('files', payload, 'big.bin').expect(200);
     const rec = engine.requests[0];
-    expect(rec.url).toBe('/engine/v1/assets');
+    expect(rec.url).toBe('/engine/v1/voices');
     expect(rec.headers['content-type']).toMatch(/^multipart\/form-data; boundary=/);
     expect(rec.body.length).toBeGreaterThan(300_000);
     expect(rec.body.includes(payload)).toBe(true);

@@ -4,3 +4,4 @@ export { EngineEventRelay, ENGINE_LINK_TOPIC, type EngineEvent } from './service
 export { EngineError, EngineUnavailableError } from './services/EngineError';
 export type { paths as EnginePaths } from './types/engineTypes';
 export { engineErrorToHttp } from './services/engineHttpError';
+export type { components as EngineSchemas } from './generated/engineApi';

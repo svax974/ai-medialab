@@ -214,6 +214,131 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Jobs
+         * @description Jobs that are queued or running.
+         */
+        get: operations["list_jobs_engine_v1_jobs_get"];
+        put?: never;
+        /**
+         * Submit Job
+         * @description Queues a generation. Validation of the content (empty prompt, missing reference...) is reported by `job.failed`.
+         */
+        post: operations["submit_job_engine_v1_jobs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/jobs/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check Job
+         * @description Refuses (422, with the message to show) a generation the model cannot do, before anything is stored.
+         */
+        post: operations["check_job_engine_v1_jobs_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Job
+         * @description State of a job, including how one of the last 100 finished jobs ended (its outputs too); 404 otherwise.
+         */
+        get: operations["get_job_engine_v1_jobs__job_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Job
+         * @description Stops a queued job at once; a running one stops after its current step (the worker is killed while loading).
+         */
+        post: operations["cancel_job_engine_v1_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/media/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ingest Upload
+         * @description Turns a raw upload into a stored reference: images are re-encoded as PNG (EXIF orientation, transparency
+         *     flattened, 4096 px at most), videos are kept and probed; both get a thumbnail. 422 on an unreadable file.
+         */
+        post: operations["ingest_upload_engine_v1_media_ingest_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/media/purge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Purge Files
+         * @description Deletes media files and their thumbnails (names only: no path separators); missing files are not an error.
+         */
+        post: operations["purge_files_engine_v1_media_purge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/messages": {
         parameters: {
             query?: never;
@@ -625,6 +750,188 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** IngestBody */
+        IngestBody: {
+            /** Asset Id */
+            asset_id: string;
+            /** Content Type */
+            content_type?: string | null;
+            /** Original Name */
+            original_name?: string | null;
+            /**
+             * Source Path
+             * @description Raw uploaded file, inside the data folder; consumed.
+             */
+            source_path: string;
+        };
+        /** IngestResult */
+        IngestResult: {
+            /** Duration */
+            duration?: number | null;
+            /** Filename */
+            filename: string;
+            /** Height */
+            height?: number | null;
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "image" | "video";
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            };
+            /** Thumb */
+            thumb: string;
+            /** Width */
+            width?: number | null;
+        };
+        /** JobCheck */
+        JobCheck: {
+            /**
+             * Default Params
+             * @description Defaults of the model's parameters, to merge under the user's.
+             */
+            default_params: {
+                [key: string]: unknown;
+            };
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "audio" | "video";
+            /**
+             * Max Count
+             * @description Most results one generation may ask for.
+             */
+            max_count: number;
+            /** Name */
+            name: string;
+        };
+        /** JobCheckBody */
+        JobCheckBody: {
+            /** Model Id */
+            model_id: string;
+            /**
+             * Reference Media
+             * @description Media of each attached asset, in order.
+             */
+            reference_media?: ("image" | "audio" | "video")[];
+        };
+        /** JobList */
+        JobList: {
+            /** Jobs */
+            jobs: components["schemas"]["JobState"][];
+        };
+        /**
+         * JobOutput
+         * @description A produced file, with what the caller needs to register it as an asset.
+         */
+        JobOutput: {
+            /** Asset Id */
+            asset_id: string;
+            /** Duration */
+            duration?: number | null;
+            /** Filename */
+            filename: string;
+            /** Height */
+            height?: number | null;
+            /** Index */
+            index: number;
+            /**
+             * Media
+             * @enum {string}
+             */
+            media: "image" | "audio" | "video";
+            /** Meta */
+            meta?: {
+                [key: string]: unknown;
+            };
+            /** Path */
+            path: string;
+            /** Seed */
+            seed?: number | null;
+            /** Thumb */
+            thumb?: string | null;
+            /** Width */
+            width?: number | null;
+        };
+        /** JobState */
+        JobState: {
+            /** Error */
+            error?: string | null;
+            /** Job Id */
+            job_id: string;
+            /** Outputs */
+            outputs?: components["schemas"]["JobOutput"][];
+            /** Progress */
+            progress?: {
+                [key: string]: unknown;
+            } | null;
+            /** Queue Position */
+            queue_position?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "queued" | "loading" | "running" | "done" | "failed" | "cancelled";
+        };
+        /** JobSubmit */
+        JobSubmit: {
+            /**
+             * Inputs
+             * @description Absolute paths (inside the data folder).
+             */
+            inputs?: string[];
+            /** Job Id */
+            job_id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "image" | "audio" | "video";
+            /** Model Id */
+            model_id: string;
+            /**
+             * Output Dir
+             * @description Absolute folder (inside the data folder) the files are written to.
+             */
+            output_dir: string;
+            /** Params */
+            params?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Prompt
+             * @default
+             */
+            prompt: string;
+            /**
+             * Voices
+             * @description Library voices by id (audio).
+             */
+            voices?: {
+                [key: string]: components["schemas"]["LibraryVoice"];
+            } | null;
+        };
+        /**
+         * LibraryVoice
+         * @description A voice of the caller's library: its reference clip and transcript.
+         */
+        LibraryVoice: {
+            /**
+             * Name
+             * @default
+             */
+            name: string;
+            /** Path */
+            path: string;
+            /**
+             * Transcript
+             * @default
+             */
+            transcript: string;
+        };
         /** MessageCreate */
         MessageCreate: {
             /** Conversation Id */
@@ -644,6 +951,23 @@ export interface components {
             prompt: string;
             /** Reference Ids */
             reference_ids?: string[];
+        };
+        /** PurgeBody */
+        PurgeBody: {
+            /** Files */
+            files: components["schemas"]["PurgeFile"][];
+        };
+        /** PurgeFile */
+        PurgeFile: {
+            /** Filename */
+            filename: string;
+            /**
+             * Folder
+             * @enum {string}
+             */
+            folder: "uploads" | "outputs";
+            /** Thumb */
+            thumb?: string | null;
         };
         /** RetryBody */
         RetryBody: {
@@ -1294,6 +1618,224 @@ export interface operations {
                 content: {
                     "application/json": {
                         [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_jobs_engine_v1_jobs_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobList"];
+                };
+            };
+        };
+    };
+    submit_job_engine_v1_jobs_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobSubmit"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_job_engine_v1_jobs_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JobCheckBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobCheck"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_job_engine_v1_jobs__job_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JobState"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_job_engine_v1_jobs__job_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ingest_upload_engine_v1_media_ingest_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    purge_files_engine_v1_media_purge_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PurgeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
                     };
                 };
             };
