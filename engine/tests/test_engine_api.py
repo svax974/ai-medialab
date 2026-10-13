@@ -63,8 +63,8 @@ def test_committed_openapi_is_current():
     import importlib.util
     from pathlib import Path
 
-    script = Path(__file__).resolve().parents[2] / "scripts" / "export_engine_openapi.py"
+    script = Path(__file__).resolve().parents[2] / "scripts-local" / "export_engine_openapi.py"
     spec = importlib.util.spec_from_file_location("export_engine_openapi", script)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    assert mod.TARGET.read_text() == mod.render(), "engine/openapi.json is stale: run scripts/export_engine_openapi.py"
+    assert mod.TARGET.read_text() == mod.render(), "engine/openapi.json is stale: run scripts-local/export_engine_openapi.py"

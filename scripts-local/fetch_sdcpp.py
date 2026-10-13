@@ -4,10 +4,10 @@
 
 """Downloads an official stable-diffusion.cpp build (GGUF engine) into engines/sdcpp/<variant>/.
 
-    python3 scripts/fetch_sdcpp.py --variant metal                # macOS Apple Silicon
-    python3 scripts/fetch_sdcpp.py --variant vulkan --os windows  # any GPU (NVIDIA, AMD, Intel)
-    python3 scripts/fetch_sdcpp.py --variant cuda   --os windows  # NVIDIA (includes the CUDA 12 runtime)
-    python3 scripts/fetch_sdcpp.py --variant rocm   --os windows  # AMD
+    python3 scripts-local/fetch_sdcpp.py --variant metal                # macOS Apple Silicon
+    python3 scripts-local/fetch_sdcpp.py --variant vulkan --os windows  # any GPU (NVIDIA, AMD, Intel)
+    python3 scripts-local/fetch_sdcpp.py --variant cuda   --os windows  # NVIDIA (includes the CUDA 12 runtime)
+    python3 scripts-local/fetch_sdcpp.py --variant rocm   --os windows  # AMD
 
 For development and packaging only; the app installs the engine itself ("Modèles" screen).
 Same code as the app (engine/app/engine_install.py): SHA-256 checked against the sum GitHub publishes,

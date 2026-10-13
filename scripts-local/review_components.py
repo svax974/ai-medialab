@@ -4,8 +4,8 @@
 
 """Periodic review of the third-party components the app integrates (see docs/components/README.md).
 
-    engine/.venv/bin/python scripts/review_components.py            # report only, changes nothing
-    engine/.venv/bin/python scripts/review_components.py --snapshot # also refresh docs/components/audiocpp-families.json
+    engine/.venv/bin/python scripts-local/review_components.py            # report only, changes nothing
+    engine/.venv/bin/python scripts-local/review_components.py --snapshot # also refresh docs/components/audiocpp-families.json
 
 For each component: what the app pins, the latest upstream version, and (audio.cpp) which model families are new,
 changed status or changed licence since the last snapshot. Needs network access; `GITHUB_TOKEN` lifts the GitHub

@@ -1,7 +1,13 @@
 {
   "name": "ai-medialab-back",
   "version": "0.1.0",
+  "scripts": {
+    "engine:types": "openapi-typescript ../engine/openapi.json -o src/modules/engine/generated/engineApi.d.ts"
+  },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0"
   }
 }

@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: MIT
 
 # Builds the macOS .dmg with hdiutil (no AppleScript/Finder, so it works in CI and over SSH).
-# Usage: scripts/make_dmg_macos.sh [chemin/vers/AI\ MediaLab.app] [sortie.dmg]
+# Usage: scripts-local/make_dmg_macos.sh [chemin/vers/AI\ MediaLab.app] [sortie.dmg]
 set -eu
 cd "$(dirname "$0")/.."
 BUNDLE_DIR="desktop/src-tauri/target/release/bundle"

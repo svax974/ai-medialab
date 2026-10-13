@@ -35,6 +35,6 @@ Pocket, Whisper) et les moteurs natifs ne sont jamais marqués.
 
 ## À vérifier à la revue
 
-`scripts/review_components.py` affiche, pour l'index ROCm le plus récent et pour `xpu`, la dernière version par système.
+`scripts-local/review_components.py` affiche, pour l'index ROCm le plus récent et pour `xpu`, la dernière version par système.
 Si **ROCm apparaît pour Windows sur pytorch.org**, ou si la version `xpu` Windows rattrape celle de Linux, revoir
 `torch_acceleration()`. Noter aussi : un index `rocm7.14` existe alors que le profil `linux-rocm` épingle `rocm7.2`.

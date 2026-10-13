@@ -4,10 +4,10 @@
 
 """Cross-builds a PORTABLE (no installer) AI MediaLab package for Windows or Linux x86_64.
 
-    python3 scripts/package_cross.py --profile win-cuda      # → desktop/dist/AI-MediaLab-win-cuda.zip
-    python3 scripts/package_cross.py --profile linux-cuda    # → desktop/dist/AI-MediaLab-linux-cuda.tar.gz
+    python3 scripts-local/package_cross.py --profile win-cuda      # → desktop/dist/AI-MediaLab-win-cuda.zip
+    python3 scripts-local/package_cross.py --profile linux-cuda    # → desktop/dist/AI-MediaLab-linux-cuda.tar.gz
 
-Steps: (1) target Python runtime + dependencies (scripts/build_runtime.py, cross mode), (2) target Tauri shell,
+Steps: (1) target Python runtime + dependencies (scripts-local/build_runtime.py, cross mode), (2) target Tauri shell,
 (3) archive + SHA-256 sum.
 
 - Windows: shell built with mingw-w64 (Rust target x86_64-pc-windows-gnu; `brew install mingw-w64`).
@@ -132,7 +132,7 @@ def ensure_runtime(profile_name: str, resources: Path) -> None:
     if (resources / "runtime" / "python").is_dir() and (resources / "runtime" / "site-packages").is_dir():
         log(f"Runtime déjà assemblé : {resources}")
         return
-    run([sys.executable, ROOT / "scripts" / "build_runtime.py", "--profile", profile_name, "--out", resources])
+    run([sys.executable, ROOT / "scripts-local" / "build_runtime.py", "--profile", profile_name, "--out", resources])
 
 
 # --- Windows ---

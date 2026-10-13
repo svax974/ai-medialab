@@ -36,7 +36,27 @@ Variables utiles :
 | `IMAGEGEN_DEMO=1` | Ajoute un modèle « Démo » instantané, sans GPU, pour tester l'interface |
 | `ENGINE_TOKEN` | Secret partagé avec le serveur NestJS (migration en cours) : s'il est défini, toutes les routes `/engine/v1/*` exigent l'en-tête `X-Engine-Token`, sauf `/engine/v1/status`. Les routes `/api` (ancienne interface) ne l'exigent pas. Non défini : aucune vérification (développement) |
 
-Développement (rechargement à chaud) : `./dev.sh` puis http://localhost:5173.
+Développement (rechargement à chaud, ancienne interface) : `./dev.sh` puis http://localhost:5173.
+
+### Développement avec le serveur NestJS (migration)
+
+`back/` (NestJS) et `front/` (React + MUI) sont lancés par le lanceur du gabarit, qui démarre aussi le moteur Python
+par le crochet `scripts-local/dev-services.sh` (dossier des scripts propres au projet ; `scripts/` est le lien du
+gabarit vers `front/.libs/apptemplate/scripts`) :
+
+```sh
+./scripts/run.sh dev     # Nest (port 3000) + Vite (port 5174) + moteur (127.0.0.1:8000), Ctrl+C arrête tout
+```
+
+Prérequis : `npm install` dans `back/` et `front/`, `uv` pour le moteur. Variables dans `back/.env.dev` (non versionné,
+modèle : `back/.env.example`, section « ai-medialab ») : `ENGINE_TOKEN` (secret partagé, `openssl rand -hex 32`),
+`ENGINE_PORT` (défaut 8000), `APP_DATA_DIR` (dossier de données commun ; le moteur le lit sous le nom
+`IMAGEGEN_DATA_DIR`, posé par `dev-services.sh`) et `DB_PATH=app.db` (base de Nest, distincte de l'ancienne
+`ai-medialab.db`). Le moteur n'écoute que sur `127.0.0.1` ; le navigateur ne parle qu'à Nest.
+
+**Ports** : le nouveau front est sur **5174** (`front/.env.dev`, `FRONT_PORT` de `back/.env.dev`) tant que l'ancien
+`frontend/` occupe 5173 ; retour à 5173 en H6. Sans le lanceur : `cd back && npm run start:dev`, `cd front && npm run dev`
+et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
 
 ## Premier lancement : rien à chercher ni à compiler
 
@@ -69,7 +89,7 @@ Trois moteurs d'inférence, choisis selon la machine et le modèle :
 Le moteur GGUF pilote le programme `sd-cli` (un processus par génération : annulation immédiate, mémoire intégralement
 rendue). Le backend est choisi d'après le GPU détecté — CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon
 (`IMAGEGEN_SDCPP_VARIANT=vulkan` impose un backend, utile pour comparer les vitesses). Les binaires officiels se
-récupèrent avec `python3 scripts/fetch_sdcpp.py --variant metal|vulkan|cuda|rocm [--os windows|linux]` (somme SHA-256
+récupèrent avec `python3 scripts-local/fetch_sdcpp.py --variant metal|vulkan|cuda|rocm [--os windows|linux]` (somme SHA-256
 vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarque.
 
 | Modèle | Moteur | Usage | Références | Téléchargement |
@@ -225,7 +245,8 @@ code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 > l'application passe sur le gabarit vx-public. `back/` (NestJS) et `front/` (React + MUI) sont l'échafaudage cible,
 > `engine/` (ex-`backend/`) devient le moteur interne derrière Nest, et `frontend/` reste l'ancienne interface
 > jusqu'à la tâche H6. **Le lancement ci-dessus (`./start.sh`, `./dev.sh`) est encore celui de l'ancienne interface** ;
-> `back/` et `front/` ne sont pas encore lancés. Les bibliothèques du gabarit sont des sous-modules
+> `back/` (module `engine`, voir `back/src/modules/engine/README.md`) relaie le moteur ; `front/` est encore vide.
+> Les bibliothèques du gabarit sont des sous-modules
 > (`back/.libs/vx-public`, `front/.libs/vx-public`, `.libs/apptemplate`) ; après un clone :
 > `git submodule update --init`, puis `npm install` dans `back/` et `front/`. Règles de travail (mémoire unifiée,
 > commandes sous garde) : `CLAUDE.md`.
@@ -243,7 +264,8 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
   app/downloads.py   téléchargement des modèles (processus dédié, reprise, annulation)
   app/system.py      détection GPU / mémoire / disque, planificateur mémoire
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
-back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif, vide pour l'instant
+back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif ; pour l'instant le module
+           `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé)
 front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
 desktop/   application Tauri
 docs/      components/ (registre des composants tiers), migration/ (plan de migration)
@@ -251,9 +273,16 @@ data/      base SQLite, références importées, images générées, vignettes (
 ```
 
 Contrat avec le serveur NestJS (en cours de migration, voir `docs/migration/`) : `/engine/v1/*`, mêmes routes que
-`/api`. Le schéma OpenAPI est `engine/openapi.json` ; après toute modification des routes ou de leurs modèles :
-`engine/.venv/bin/python scripts/export_engine_openapi.py` (`--check` pour vérifier sans écrire ; un test échoue si le
+`/api`, flux `/engine/v1/events`, jeton `X-Engine-Token`. Nest en tire des types TypeScript
+(`cd back && npm run engine:types`, un test échoue s'ils sont périmés) : voir `back/src/modules/engine/README.md`. Le schéma OpenAPI est `engine/openapi.json` ; après toute modification des routes ou de leurs modèles :
+`engine/.venv/bin/python scripts-local/export_engine_openapi.py` (`--check` pour vérifier sans écrire ; un test échoue si le
 fichier est périmé). Aucun serveur n'est démarré par ce script.
+
+**Mémoire au repos** (mesure H1b du 13/10/2026, macOS arm64, `nest build` puis `node dist/main.js`, aucun modèle chargé,
+aucune génération) : moteur seul **≈ 77 Mo** de RSS ; Nest (`node dist/main.js`, SQLite, après connexion au flux du moteur
+et quelques requêtes) **≈ 155 Mo**, soit **≈ 232 Mo** pour les deux (Vite non mesuré ici). Pic du moteur au démarrage :
+≈ 0,40 Go (sonde PyTorch lancée en sous-processus par `warm_up`, qui se termine) ; pic de Nest ≈ 0,15 Go. Ces chiffres
+seront repris dans `ARCHITECTURE.md` (H6) et comparés à l'application empaquetée (H5).
 
 Tests : un fichier à la fois, par exemple `cd engine && .venv/bin/python -m pytest -q tests/test_core.py`.
 
@@ -283,13 +312,13 @@ Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20, Rust (`rustup`), 
 
 ```sh
 cd frontend && npm install && npm run build && cd ..        # interface (si dist/ absent)
-python3 scripts/build_runtime.py --profile mac-arm64        # → desktop/build/resources (Python + dépendances, ~1,3 Go)
+python3 scripts-local/build_runtime.py --profile mac-arm64        # → desktop/build/resources (Python + dépendances, ~1,3 Go)
 cd desktop && npm install && npx tauri build --bundles app,dmg
 # → desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app
 # → desktop/src-tauri/target/release/bundle/dmg/AI MediaLab_0.1.0_aarch64.dmg
 ```
 
-Après une modification du moteur ou de l'interface, `python3 scripts/build_runtime.py --profile mac-arm64 --refresh-app`
+Après une modification du moteur ou de l'interface, `python3 scripts-local/build_runtime.py --profile mac-arm64 --refresh-app`
 ne recopie que `engine/` et `frontend/dist` (quelques secondes), puis `npx tauri build` régénère l'application.
 
 ### Fonctionnement

@@ -5,7 +5,7 @@
 
 A "variant" is a build of the same program for one compute backend: metal (macOS), cuda, rocm,
 vulkan (any GPU, including NVIDIA, AMD and Intel) or cpu. They live in `<engines>/sdcpp/<variant>/`;
-`scripts/fetch_sdcpp.py` downloads them from the official releases (checksum verified).
+`scripts-local/fetch_sdcpp.py` downloads them from the official releases (checksum verified).
 
 The variant follows the detected GPU (CUDA on NVIDIA, ROCm on AMD, Metal on Apple, Vulkan otherwise),
 falling back to Vulkan. `IMAGEGEN_SDCPP_VARIANT` forces one, handy for comparing speeds.

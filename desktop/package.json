@@ -6,7 +6,7 @@
   "author": "Stéphane Vaxelaire",
   "scripts": {
     "tauri": "tauri",
-    "runtime": "python3 ../scripts/build_runtime.py --profile mac-arm64 --out build/resources",
+    "runtime": "python3 ../scripts-local/build_runtime.py --profile mac-arm64 --out build/resources",
     "build": "tauri build",
     "dev": "tauri dev"
   },

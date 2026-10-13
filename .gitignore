@@ -18,7 +18,7 @@ desktop/src-tauri/icons/ios/
 desktop/build-cross/
 desktop/dist/
 
-# Moteurs d'inférence externes (binaires stable-diffusion.cpp, voir scripts/fetch_sdcpp.py)
+# Moteurs d'inférence externes (binaires stable-diffusion.cpp, voir scripts-local/fetch_sdcpp.py)
 /engines/
 
 # Gabarit vx-public (create-project.mjs)

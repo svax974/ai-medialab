@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # UNVERIFIED: this workflow has never run (it was written on a Mac without access to GitHub Actions).
-# Only the mac-arm64 profile has been built and tested, locally, with scripts/build_runtime.py + `tauri build`.
+# Only the mac-arm64 profile has been built and tested, locally, with scripts-local/build_runtime.py + `tauri build`.
 name: build-desktop
 
 on:
@@ -38,7 +38,7 @@ jobs:
         working-directory: frontend
         run: npm ci && npm run build
       - name: Runtime embarqué (${{ matrix.profile }})
-        run: python scripts/build_runtime.py --profile ${{ matrix.profile }} --out desktop/build/resources
+        run: python scripts-local/build_runtime.py --profile ${{ matrix.profile }} --out desktop/build/resources
       - name: Application
         working-directory: desktop
         run: npm ci && npx tauri build --bundles ${{ matrix.bundles }}

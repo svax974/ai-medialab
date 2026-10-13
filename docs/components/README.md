@@ -10,7 +10,7 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 ## Procédure de revue (toutes les 3 à 4 semaines, ou avant une release)
 
 1. Lancer le rapport (réseau requis, ne modifie rien) :
-   `engine/.venv/bin/python scripts/review_components.py`
+   `engine/.venv/bin/python scripts-local/review_components.py`
    Il compare ce qui est épinglé à la dernière version amont et liste, pour audio.cpp, les familles nouvelles ou dont le
    statut ou la licence ont changé depuis le dernier instantané.
 2. Pour chaque ligne « NOUVELLE VERSION » ou chaque famille nouvelle : lire les notes de version amont, puis la section
@@ -40,4 +40,4 @@ viendra quand on les revisitera. Ne pas recopier ici ce que `THIRD_PARTY_LICENSE
 1. Une fiche `docs/components/<nom>.md` sur le modèle d'`audiocpp.md` (pourquoi, ce qui est intégré, comment ça tourne,
    limites mesurées, candidats non intégrés, à vérifier à la revue).
 2. Une ligne dans le registre ci-dessus et une dans `THIRD_PARTY_LICENSES.md`.
-3. Si le composant a des versions ou un catalogue de modèles amont, l'ajouter à `scripts/review_components.py`.
+3. Si le composant a des versions ou un catalogue de modèles amont, l'ajouter à `scripts-local/review_components.py`.

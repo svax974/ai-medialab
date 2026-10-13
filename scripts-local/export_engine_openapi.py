@@ -5,8 +5,8 @@
 
 The NestJS back end generates its TypeScript types from this file (openapi-typescript). Run it from the repo root:
 
-    engine/.venv/bin/python scripts/export_engine_openapi.py            # rewrite engine/openapi.json
-    engine/.venv/bin/python scripts/export_engine_openapi.py --check    # exit 1 if the committed file is stale
+    engine/.venv/bin/python scripts-local/export_engine_openapi.py            # rewrite engine/openapi.json
+    engine/.venv/bin/python scripts-local/export_engine_openapi.py --check    # exit 1 if the committed file is stale
 """
 
 from __future__ import annotations
@@ -35,7 +35,7 @@ def main() -> int:
     text = render()
     if "--check" in sys.argv:
         if not TARGET.is_file() or TARGET.read_text() != text:
-            print(f"{TARGET} est périmé : relancez scripts/export_engine_openapi.py", file=sys.stderr)
+            print(f"{TARGET} est périmé : relancez scripts-local/export_engine_openapi.py", file=sys.stderr)
             return 1
         return 0
     TARGET.write_text(text)

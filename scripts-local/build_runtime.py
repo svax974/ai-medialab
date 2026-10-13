@@ -4,7 +4,7 @@
 
 """Assembles the desktop app's bundled resources for one runtime profile.
 
-    python3 scripts/build_runtime.py --profile mac-arm64 --out desktop/build/resources
+    python3 scripts-local/build_runtime.py --profile mac-arm64 --out desktop/build/resources
 
 Output layout (what engine/app/config.py and the Tauri shell expect):
 
@@ -179,7 +179,7 @@ def copy_engines(out: Path, profile: dict, build: Path) -> None:
     """Bundles the profile's stable-diffusion.cpp (GGUF engine) binaries into <out>/engines/sdcpp/<variant>/.
 
     Not in the repo: they are downloaded from the official release (SHA-256 checked,
-    see scripts/fetch_sdcpp.py). For a cross-build they go to a build cache."""
+    see scripts-local/fetch_sdcpp.py). For a cross-build they go to a build cache."""
     variants = profile.get("sdcpp_variants", [])
     (out / "engines").mkdir(parents=True, exist_ok=True)  # the shell always declares this resource folder
     if not variants:
@@ -190,7 +190,7 @@ def copy_engines(out: Path, profile: dict, build: Path) -> None:
     for v in variants:
         src = base / v
         if not (src / exe).is_file():
-            run([sys.executable, ROOT / "scripts" / "fetch_sdcpp.py", "--variant", v, "--os", profile["os"],
+            run([sys.executable, ROOT / "scripts-local" / "fetch_sdcpp.py", "--variant", v, "--os", profile["os"],
                  "--dest", base])
         shutil.copytree(src, out / "engines" / "sdcpp" / v, dirs_exist_ok=True)
 

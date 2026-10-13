@@ -22,7 +22,7 @@ supplémentaire se réduit à une fiche dans `engine/app/engines/audiocpp_specs.
 | Modèles | `engine/app/engines/audiocpp_specs.py` | quatre variantes Qwen3-TTS, Chatterbox, Pocket TTS FR/EN et Qwen3-ASR (voir plus bas) |
 | Transcription | `engine/app/transcription.py`, `audiocpp.run_transcribe` | choisit le modèle (poids **et** moteur présents, Whisper d'abord) et lance Whisper ou audio.cpp |
 | Recherche de compatibilité | `engine/app/catalog.py` (`engine_for`, `engine_compat`) | la même règle sert aux modèles du catalogue et aux résultats de recherche Hugging Face |
-| Revue périodique | `scripts/review_components.py`, `docs/components/audiocpp-families.json` | nouvelles versions et familles |
+| Revue périodique | `scripts-local/review_components.py`, `docs/components/audiocpp-families.json` | nouvelles versions et familles |
 
 Où vivent les choses sur disque : binaires dans `<engines>/audiocpp/<variante>/` (variable `IMAGEGEN_AUDIOCPP_DIR`
 pour la changer) ; poids dans le cache Hugging Face, dépôt `audio-cpp/audio.cpp-gguf` (conversions GGUF publiées par
@@ -108,7 +108,7 @@ application MIT), détection de fin de tour (Smart Turn, BSD-2).
 ## À vérifier à la revue
 
 0. Avant tout : refaire les [tests manuels](audiocpp-tests-manuels.md) si le build ou une famille intégrée change.
-1. `scripts/review_components.py` : nouvelle version, familles nouvelles, changements de statut ou de licence.
+1. `scripts-local/review_components.py` : nouvelle version, familles nouvelles, changements de statut ou de licence.
 2. Les notes de version amont : correctifs Vulkan, couverture par modèle, build ROCm, build Linux CUDA non « colab ».
 3. Le serveur persistant (`audiocpp_server`) est-il devenu assez stable pour remplacer un processus par morceau ?
 4. Un modèle « community » ou « experimental » est-il passé à « supported » (Kokoro, Moonshine) ?
