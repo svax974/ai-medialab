@@ -4,6 +4,8 @@
 import os
 from pathlib import Path
 
+from .legacy_data import legacy_dirs_from_env, migrate_legacy_data
+
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DATA_DIR = Path(os.environ.get("IMAGEGEN_DATA_DIR", ROOT_DIR / "data")).expanduser().resolve()
 FRONTEND_DIST = ROOT_DIR / "frontend" / "dist"
@@ -33,6 +35,18 @@ MEDIA_DIRS = {
     "thumbs": THUMBS_DIR,
     "previews": PREVIEWS_DIR,
 }
+
+
+def adopt_legacy_data_dir() -> None:
+    """Desktop: moves in an old data folder (identifier before the rename), see legacy_data.py.
+
+    Runs when this module is imported, i.e. before any other module can open (and so create) the database."""
+    moved = migrate_legacy_data(DATA_DIR, legacy_dirs_from_env())
+    if moved:
+        print(f"[engine] données de l'ancien dossier reprises : {', '.join(moved)}", flush=True)
+
+
+adopt_legacy_data_dir()
 
 
 def ensure_dirs() -> None:
