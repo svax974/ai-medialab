@@ -72,12 +72,13 @@ export const engineError = (status: number, detail: unknown) => new EngineError(
 export const engineDown = () => new EngineUnavailableError('/engine/v1/x', new Error('ECONNREFUSED'));
 
 /** Everything of the studio wired by hand on a test data source, with a scripted engine and a captured event stream. */
-export function buildStudio(dataSource: DataSource, engineOverride?: unknown) {
+export function buildStudio(dataSource: DataSource, engineOverride?: unknown, relayOverride?: unknown) {
   process.env.APP_DATA_DIR = process.env.APP_DATA_DIR ?? mkdtempSync(join(tmpdir(), 'studio-data-'));
   const s = buildServices(dataSource);
   const scripted = new ScriptedEngine();
   const engine = (engineOverride ?? scripted) as never;
-  const relay = { events$: new Subject<EngineEvent>(), linkChanges$: new Subject<boolean>(), connected: false };
+  const fakeRelay = { events$: new Subject<EngineEvent>(), linkChanges$: new Subject<boolean>(), connected: false };
+  const relay = (relayOverride ?? fakeRelay) as typeof fakeRelay;
   const published: { topic: string; type: string; data: Record<string, unknown> }[] = [];
   const stream = {
     publish: (topic: string, event: { type: string; data: Record<string, unknown> }) =>

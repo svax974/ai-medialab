@@ -296,7 +296,10 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
   openapi.json       schéma de `/engine/v1` (généré, voir ci-dessous)
   app/main.py        application, fichiers statiques, interface compilée
   app/api/routes.py  API REST + flux SSE, montée sous `/api` (ancienne interface) et `/engine/v1` (serveur NestJS, jeton)
-  app/jobs.py        file d'attente, cycle de vie du worker, progression
+  app/jobs.py        gestionnaire de jobs sans état applicatif : file, cycle de vie du worker, progression, événements `job.*`
+  app/job_plans.py   `JobRequest` et planification pure d'une génération (image, audio, vidéo)
+  app/api/jobs.py    `/engine/v1/jobs` (soumettre, vérifier, état, annuler), `/engine/v1/media/{ingest,purge}` (Nest seulement)
+  app/legacy_jobs.py adaptateur de l'ancien chemin `/api/messages` (écrit la base du moteur comme avant ; supprimé en H6)
   app/worker.py      processus qui charge le modèle et génère
   app/engines/       registre, moteurs MLX et diffusers, catalogue des modèles
   app/downloads.py   téléchargement des modèles (processus dédié, reprise, annulation)
@@ -304,7 +307,7 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
 back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif ; pour l'instant le module
            `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé), la persistance
-           (`studio-core`, `media-library`, `audio-studio`, `settings`), l'état matériel (`hardware`), le catalogue des modèles (`model-catalog`), les installateurs (`engines`) et l'import de l'ancienne base (`legacy-import`)
+           (`studio-core`, `media-library`, `audio-studio`, `settings`), les conversations, messages et assets avec la file des générations (`studio-core`, `media-library`, H4.3a), l'état matériel (`hardware`), le catalogue des modèles (`model-catalog`), les installateurs (`engines`) et l'import de l'ancienne base (`legacy-import`)
 front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
 desktop/   application Tauri
 docs/      components/ (registre des composants tiers), migration/ (plan de migration)
@@ -322,6 +325,15 @@ aucune génération) : moteur seul **≈ 77 Mo** de RSS ; Nest (`node dist/main.
 et quelques requêtes) **≈ 155 Mo**, soit **≈ 232 Mo** pour les deux (Vite non mesuré ici). Pic du moteur au démarrage :
 ≈ 0,40 Go (sonde PyTorch lancée en sous-processus par `warm_up`, qui se termine) ; pic de Nest ≈ 0,15 Go. Ces chiffres
 seront repris dans `ARCHITECTURE.md` (H6) et comparés à l'application empaquetée (H5).
+
+**Jobs (H4.3a).** Le moteur ne connaît ni conversations, ni messages, ni assets pour les jobs qui viennent de Nest : il reçoit
+`POST /engine/v1/jobs` (`job_id`, `kind`, `model_id`, `prompt`, `params`, `inputs` = chemins absolus, `output_dir`), exécute une
+génération à la fois (un modèle chargé à la fois, déchargement après inactivité, annulation) et émet sur `/engine/v1/events`
+`job.started`, `job.progress`, `job.preview`, `job.output` (fichier produit : chemin, vignette, dimensions, durée, métadonnées),
+`job.done`, `job.failed`, `job.cancelled`, tous porteurs de `job_id`. Nest porte la file des messages et enregistre les assets
+(`back/src/modules/studio-core/README.md`) ; le contrat détaillé est dans le README du module `engine`. L'ancienne interface
+`frontend/`, qui parle directement au moteur sur `/api`, continue de marcher : `/api/messages*` passe par `app/legacy_jobs.py`,
+qui soumet le même job et écrit la base du moteur comme avant.
 
 Tests : un fichier à la fois, par exemple `cd engine && .venv/bin/python -m pytest -q tests/test_core.py`.
 

@@ -104,6 +104,41 @@ test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json`
 
 Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`.
 
+## Contrat de jobs (H4.3a)
+
+Le moteur est **sans état applicatif** pour les jobs soumis par Nest : il ne lit ni n'écrit conversations, messages ni assets. Routes
+réservées à Nest (jeton `X-Engine-Token`, absentes de l'ancien préfixe `/api`) :
+
+| Route | Rôle |
+|---|---|
+| `POST /engine/v1/jobs/check` `{ model_id, reference_media }` | Refuse (422, message à afficher tel quel) une génération que le modèle ne sait pas faire ; renvoie `{ kind, name, max_count, default_params }`. |
+| `POST /engine/v1/jobs` `{ job_id, kind, model_id, prompt, params, inputs, output_dir, voices? }` (202) | Met le job en file. `inputs`, `output_dir` et les chemins de `voices` : absolus et **dans le dossier de données** (422 sinon). `job_id` déjà actif : 409. Le contenu (prompt vide, référence absente, modèle non installé…) est vérifié à l'exécution et signalé par `job.failed`. |
+| `GET /engine/v1/jobs` / `GET /engine/v1/jobs/{id}` | Jobs actifs / état d'un job (`queued`, `loading`, `running`, `done`, `failed`, `cancelled`, `outputs`, `error`) ; les 100 derniers jobs terminés restent consultables (404 sinon). |
+| `POST /engine/v1/jobs/{id}/cancel` | Un job en file s'arrête aussitôt ; un job en cours s'arrête après l'étape courante (pendant le chargement du modèle, le worker est tué ; `sd-cli` est arrêté par son moteur). 409 s'il n'est plus en cours, 404 s'il est inconnu. |
+| `POST /engine/v1/media/ingest` `{ source_path, asset_id, original_name, content_type }` | Transforme un envoi brut en référence stockée (PNG ou vidéo conservée, vignette) ; renvoie `{ media, filename, thumb, width, height, duration, meta }` ; consomme le fichier source. |
+| `POST /engine/v1/media/purge` `{ files: [{ folder, filename, thumb? }] }` | Supprime des fichiers médias et leurs vignettes (noms seuls). |
+
+Événements du job (sur `/engine/v1/events`, tous avec `job_id`) :
+
+| Événement | Charge utile (en plus de `job_id`) |
+|---|---|
+| `job.started` | `kind`, `model_id`, `params` (résolus : dimensions, graines, étapes, tâche vidéo…), `started_at` |
+| `job.progress` | `phase` (`loading` pendant le chargement du modèle, `running`), `count`, `index`, `step`, `total`, `eta`, `seconds_per_step`, `stage`, `preview_url`, `load_started_at` (rejoué à la connexion pour les jobs actifs) |
+| `job.preview` | `index`, `path`, `filename`, `url` (`/media/previews/…`) |
+| `job.output` | un fichier produit : `index`, `media` (`image`, `audio`, `video`), `asset_id` (choisi par le moteur : la vignette en porte le nom), `path`, `filename`, `thumb`, `width`, `height`, `seed`, `duration`, `meta` (modèle, prompt, étapes, graine, durée de calcul ; fps, voix, formes d'onde, marqueurs selon le média) |
+| `job.done` | `outputs` (nombre de fichiers) |
+| `job.failed` | `error` (texte à afficher) |
+| `job.cancelled` | `outputs` |
+
+Garde-fous conservés : un modèle chargé à la fois, une génération à la fois, déchargement après inactivité (`keep_alive_minutes`),
+annulation. Les vignettes et le sondage des médias restent au moteur (`media.py`, `job_outputs.py`).
+
+**Ancien chemin.** L'ancienne interface (`frontend/`, jusqu'à H6) parle directement au moteur : `POST /api/messages` écrit toujours
+la base du moteur, mais ne génère plus lui-même : `engine/app/legacy_jobs.py` construit le même `JobRequest` (références de la
+base, `outputs/`) avec un *sink* qui écrit les messages et assets et publie les anciens événements (`message.updated`, `job.progress`
+avec `message_id` et `conversation_id`, `job.image`) ; ces jobs n'émettent pas les événements `job.*` du nouveau contrat.
+Les deux bases (celle du moteur et celle de Nest) sont indépendantes : un message créé par l'une n'existe pas dans l'autre.
+
 Côté navigateur : `GET /api/v1/events/stream?topics=engine.job.progress,engine.link`. Côté serveur, `events$` donne les
 événements (`{ name, data }`) à un service Nest (H4.3 en dépend pour mettre les messages à jour). Reconnexion : délai
 `min * 2^n` plafonné, aléa +-20 %, remis à zéro après une ouverture réussie ; coupure silencieuse détectée par le délai
@@ -115,11 +150,16 @@ Limites : un événement de plus de 16 Ko est abandonné par `EventStreamService
 
 Pour que l'ancienne interface (et le nouveau front, avant que Nest ne porte chaque fonctionnalité) fonctionne dès
 maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est dans `PROXIED_SEGMENTS`
-(`assets, conversations, events, messages, voices`) est relayée à
+(`events, voices`) est relayée à
 `/engine/v1/<segment>[/...]` avec `X-Engine-Token`. Un test vérifie que cette liste et `NEST_SERVED_SEGMENTS` (segments servis par Nest ou réservés à Nest : `engine`, `runtime`,
-`settings`, `status`, `system` repris par `settings` et `hardware` en H4.1 ; `engines`, `hf`, `models` repris par `engines` et `model-catalog` en H4.2) couvrent tous les premiers segments de
+`settings`, `status`, `system` repris par `settings` et `hardware` en H4.1 ; `engines`, `hf`, `models` repris par `engines` et `model-catalog` en H4.2 ; `assets`, `conversations`, `messages` repris par `media-library` et `studio-core` en H4.3a, avec `jobs` et `media` qui ne sont appelés que par Nest) couvrent tous les premiers segments de
 `engine/openapi.json`. Chaque tâche H4 retire de `PROXIED_SEGMENTS` les routes qu'elle reprend (et les ajoute à `NEST_SERVED_SEGMENTS`).
 
+- **Ce qui reste au proxy (H4.3a)** : `events` (flux historique du moteur, que les composants migrés ne consomment plus : ils
+  lisent `studio.*` et `engine.*`) et `voices`, qui appartiennent à H4.5 : la bibliothèque de voix est toujours celle de la base du
+  moteur, que les jobs audio de Nest consultent eux aussi (le contrat accepte `voices`, mais Nest n'en passe pas encore). Limite
+  connue jusqu'à H4.5 : `POST /api/voices/from-asset` cherche l'asset dans la base du moteur, donc un asset créé par Nest
+  depuis H4.3a (génération ou envoi) n'y est pas trouvé.
 - **Médias** : `/api/media/<kind>/<fichier>` → `/media/<kind>/<fichier>` du moteur (sans jeton, plages `Range` transmises).
   Le préfixe `/api` évite que le repli SPA de `serveFrontend` (qui sert `index.html` à tout `GET` acceptant du HTML hors
   `/api`) ne masque un média ouvert dans un onglet.
@@ -139,7 +179,7 @@ maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est da
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/v1/health` | Public | Route de `common` ; ce module y ajoute `checks.engine` : `{ status, events, engine }`. |
-| `ALL` | `/api/<assets\|conversations\|events\|messages\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
+| `ALL` | `/api/<events\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
 | `ALL` | `/api/media/...` | Admin | Proxy transitoire vers les médias du moteur (`/media/...`). |
 
 Santé : `status: ok` si `/engine/v1/status` répond sous 2 s, sinon **`degraded`** (HTTP 200 : le serveur et l'interface

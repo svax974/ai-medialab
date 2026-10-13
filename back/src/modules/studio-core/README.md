@@ -2,12 +2,14 @@
 
 ## Rôle
 
-Persistance des **conversations** et des **messages** (prompts de l'utilisateur et générations de l'assistant), avec les
-liens vers leurs assets de référence. Les trois studios (image, audio, vidéo) partagent ces tables ; `mode` distingue
-la conversation. C'est la base de la file « quel message ensuite », qui arrive en H4.3.
+Les **conversations** et les **messages** (prompts de l'utilisateur et générations de l'assistant), avec les liens vers leurs
+assets de référence, **et la file des générations** (« quel message ensuite ») qui pilote le moteur. Les trois studios
+(image, audio, vidéo) partagent ces tables ; `mode` distingue la conversation.
 
-État (tâche H2) : entités, DTO, mappeurs et services de lecture/écriture de base. **Aucun contrôleur** : l'ancienne API
-(`/api/conversations`, `/api/messages`) est servie par le proxy transitoire du module `engine`.
+État (tâche H4.3a) : persistance (H2), routes `/api/conversations*` et `/api/messages*` (mêmes URLs et mêmes formes publiques
+que l'ancienne API du moteur), file des générations, relais des événements du moteur vers les messages, les assets et le
+navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations : Nest lui soumet un job par message
+(`/engine/v1/jobs`, `job_id` = id du message) et reçoit ses événements par `EngineEventRelay`.
 
 ## Architecture
 
@@ -21,21 +23,105 @@ la conversation. C'est la base de la file « quel message ensuite », qui arrive
 | DTO | `dto/ConversationDetailDto.ts` | Résumé + `messages`. |
 | DTO | `dto/MessageDto.ts` | Forme publique d'un message (identique à `message_public`). |
 | Mappeurs | `mappers/conversationMapper.ts`, `mappers/messageMapper.ts` | Entités vers formes publiques. |
+| Contrôleur | `controllers/ConversationController.ts` | `/api/conversations*` (liste, création, détail, titre et épingle, suppression). |
+| Contrôleur | `controllers/MessageController.ts` | `/api/messages*` (création, relance, annulation, suppression). |
 | Service | `services/ConversationService.ts` | `list`, `get`, `getSummary`, `create`, `update`, `touch`, `remove`. |
-| Service | `services/MessageService.ts` | `get`, `listByConversation`, `create`, `update`, `remove`, `failInterrupted`, `toDtos`. |
-| Types | `types/studioTypes.ts` | Entrées des services, constantes (`BUSY_STATUSES`, titre par défaut). |
+| Service | `services/MessageService.ts` | `get`, `listByConversation`, `create`, `update`, `remove`, `removeMany`, `failInterrupted`, `toDtos`, requêtes de la file et de la purge (`referencesOf`, `assetsOfMessages`, `assetsOfConversation`, `busyIds`, `childIds`). |
+| Service | `services/GenerationService.ts` | Création, relance, annulation et suppression des générations ; suppression d'une conversation (assets et fichiers purgés). |
+| Service | `services/GenerationQueueService.ts` | **File et exécuteur** : une génération à la fois, soumission au moteur, machine d'état des messages, événements navigateur, reprise. |
+| Service | `services/JobRequestBuilder.ts` | Message vers corps de `POST /engine/v1/jobs` (chemins absolus des références, dossier de sortie). |
+| Pures | `services/generationParams.ts` | `parseCreateMessage`, `parseRetry` (422), `titleFromPrompt`, `seedsFor`. |
+| Pures | `mappers/jobEventMapper.ts` | Fusion de la progression, forme navigateur de `job.progress`, `job.output` vers une ligne d'asset. |
+| Types | `types/studioTypes.ts`, `types/jobTypes.ts` | Entrées des services, constantes (`BUSY_STATUSES`, titre par défaut), types du contrat de jobs (générés depuis l'OpenAPI du moteur). |
 
-Tests : `services/StudioCoreServices.spec.ts` (services) ; parité des formes publiques avec le moteur :
-`legacy-import/publicShapes.spec.ts`.
+Tests : voir « Tests » plus bas.
 
 ## Dépendances
 
-- `media-library` (`AssetEntity`, `toAssetDto`, `newId`, `nowSeconds`). Pas l'inverse.
-- `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`).
+- `media-library` (`AssetEntity`, `AssetService`, `AssetFileService`, `StudioEvents`, `toAssetDto`, `newId`, `nowSeconds`, dossiers de données). Pas l'inverse.
+- `engine` (global) : `EngineClient` (typé), `EngineEventRelay` (`events$`, `linkChanges$`), `engineErrorToHttp`.
+- `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`, `EventStreamService` via `StudioEvents`).
+- Variable d'environnement : `APP_DATA_DIR` (ou `IMAGEGEN_DATA_DIR`), le dossier de données que le moteur lit aussi
+  (`uploads/`, `outputs/`, `thumbs/`) ; sans lui, aucune génération ne peut être soumise (erreur explicite).
 
 ## Endpoints exposés (exhaustif)
 
-Aucun pour l'instant (H4.3).
+Tous **administrateur** (le principal `local-trust` l'est), JSON en clair (`NoTransportCrypt`), même URL et même forme publique
+que l'ancienne API du moteur (comparées aux sorties capturées de `repo.py` dans `controllers/studioRoutes.spec.ts`). Les
+erreurs ont la forme de Nest (`{ statusCode, message }`) avec les mêmes statuts et les mêmes textes qu'avant.
+
+| Méthode | Endpoint | Réponse | Erreurs |
+|---|---|---|---|
+| `GET` | `/api/conversations?q=&mode=` | liste de résumés (épinglées d'abord, puis `updated_at` décroissant) | |
+| `POST` | `/api/conversations` `{ title?, mode? }` | détail (`messages: []`) ; publie `conversation.updated` | 422 types |
+| `GET` | `/api/conversations/:id` | détail avec `messages` | 404 |
+| `PATCH` | `/api/conversations/:id` `{ title?, pinned? }` | résumé ; publie `conversation.updated` | 404, 422 |
+| `DELETE` | `/api/conversations/:id` | `{ ok: true }` ; arrête les générations, supprime messages, assets et fichiers ; publie `conversation.deleted` | (idempotent) |
+| `POST` | `/api/messages` `{ conversation_id?, prompt, model_id, params?, reference_ids?, count? }` | `{ conversation_id, user_message, assistant_message }` (le message de l'assistant est `queued`) | 404 conversation, 422 (prompt vide ou > 8000, modèle inconnu, référence introuvable, refus du moteur : « a besoin d'une image de référence »…) |
+| `POST` | `/api/messages/:id/retry` `{ model_id?, params?, keep_seed? }` | le nouveau message `queued` ; publie `message.updated` | 404, 422 |
+| `POST` | `/api/messages/:id/cancel` | `{ ok: true }` | 409 « Cette génération n'est plus en cours. » |
+| `DELETE` | `/api/messages/:id` | `{ ok: true, deleted: [ids] }` (un prompt emporte ses générations) ; publie `message.deleted` et `conversation.updated` | 404 |
+
+Création : le moteur dit si le modèle sait faire (`POST /engine/v1/jobs/check` : modèle connu, références exigées, tâche
+vocale, image de départ ou vidéo source), renvoie `max_count` et les paramètres par défaut du modèle ; Nest fusionne
+`{ ...défauts, ...params, count }` et tire les graines (`seed` fixe : `seed + i`, sinon aléatoires, 31 bits). **Tout est vérifié
+avant la première écriture** (pas de transaction : les validations précèdent les insertions).
+
+## File des générations et machine d'état
+
+Une génération à la fois côté moteur ; les autres attendent **dans Nest** (`GenerationQueueService`, FIFO global) et le suivant
+est soumis quand le précédent a fini (`job.done`, `job.failed` ou `job.cancelled`). Les événements du moteur sont traités un par un,
+dans l'ordre (chaîne de promesses) ; ceux d'un job qui n'est pas le courant (ancienne interface, événement tardif) sont ignorés.
+
+```
+            soumission                job.started              1er job.progress phase=running
+ queued ─────────────────▶ queued ──────────────▶ loading ───────────────────────────▶ running
+   │  (en file ou soumis)      │                      │                                     │
+   │ annulation en file        │ refus du moteur      │ job.cancelled                       │ job.done      ▶ done
+   ▼                           ▼ (422, 409, injoignable) ▼                                  │ job.failed    ▶ error
+ cancelled                    error                 cancelled / error                      │ job.cancelled ▶ cancelled
+```
+
+| Événement du moteur | Effet sur le message | Événements navigateur |
+|---|---|---|
+| `job.started` (`params` résolus : dimensions, graines, étapes) | `loading`, `started_at`, `params` remplacés | `message.updated` |
+| `job.progress` (`phase`, `count`, `index`, `step`, `total`, `eta`, `seconds_per_step`, `stage`, `preview_url`, `load_started_at`) | première fois avec `phase = running` : `running` | `message.updated` (une fois), `job.progress` |
+| `job.preview` (`url`) | | `job.progress` (avec `preview_url`) |
+| `job.output` (fichier produit) | ligne d'asset `generated` (id choisi par le moteur, `position` = index) ; ignoré s'il existe déjà ; fichier supprimé si le message a disparu | `job.image` |
+| `job.done` / `job.failed` / `job.cancelled` | `done` / `error` (+ `error`) / `cancelled`, `finished_at` ; le suivant est soumis | `message.updated` |
+
+Annulation : un message en file est annulé tout de suite (le moteur n'en sait rien) ; le message courant est annulé auprès du
+moteur (`POST /engine/v1/jobs/{id}/cancel`) et se règle sur `job.cancelled` (en cours de chargement du modèle, le moteur arrête
+le worker ; `sd-cli` est arrêté par son moteur). Une annulation demandée pendant la remise du job au moteur est appliquée juste
+après. Supprimer un message en cours l'annule d'abord ; l'événement de fin d'un message supprimé libère la file sans bruit.
+
+**Reprise au démarrage** (`onApplicationBootstrap`) : tout message encore `queued`, `loading` ou `running` passe en `error`
+« Interrompu par l'arrêt du serveur » (`failInterrupted`, comme l'ancien balayage de `init_db` : une génération n'est jamais
+reprise). **À la (re)connexion du flux du moteur** (`linkChanges$`) : Nest relit `GET /engine/v1/jobs` ; il annule les jobs
+actifs d'une exécution précédente dont le message existe dans sa base (les jobs inconnus de Nest, ceux de l'ancienne interface,
+ne sont pas touchés) ; si le job courant n'est plus connu du moteur (redémarré), le message passe en `error` « Le moteur
+s'est arrêté pendant la génération. » ; s'il a fini pendant la coupure, ses fichiers sont enregistrés et le message réglé
+d'après `GET /engine/v1/jobs/{id}` (le moteur garde les 100 derniers jobs terminés) ; puis la file repart.
+Moteur injoignable à la soumission : le message passe en `error` « Le moteur est injoignable. » et la file continue.
+
+## Événements navigateur
+
+Publiés par `StudioEvents` (module `media-library`) sur `EventStreamService`, audience administrateur, sujet **`studio.<nom>`**,
+`type` = nom. **Mêmes noms et mêmes charges utiles que l'ancien SSE du moteur** (`GET /api/v1/events/stream?topics=studio.message.updated,studio.job.progress,…`) :
+
+| Sujet | Charge utile |
+|---|---|
+| `studio.job.progress` | `{ message_id, conversation_id, phase, count?, index?, step?, total?, eta?, seconds_per_step?, stage?, preview_url?, load_started_at? }` |
+| `studio.job.image` | `{ message_id, conversation_id, asset }` (`asset` : forme publique) |
+| `studio.message.updated` | message public complet (`references`, `outputs` inclus) |
+| `studio.message.deleted` | `{ conversation_id, ids }` |
+| `studio.conversation.updated` | résumé public (`cover`, `generation_count`, `busy`) |
+| `studio.conversation.deleted` | `{ id }` |
+| `studio.asset.updated` / `studio.asset.deleted` | asset public / `{ id, message_id, conversation_id }` (publiés par `media-library`) |
+
+Limite du flux : un événement de plus de 16 Ko est abandonné (journalisé) ; un `message.updated` de plusieurs prises audio avec
+formes d'onde peut s'en approcher (le front relit alors le message). Les événements du moteur (`engine.job.*`, `engine.engine.status`…)
+restent relayés tels quels par le module `engine` : les composants migrés consomment `studio.*`.
 
 ## Entités
 
@@ -60,8 +146,32 @@ Formes publiques (snake_case, champs absents à `null`) :
 
 ## Points d'extension
 
-- H4.3 : contrôleurs, file des messages, relance, annulation, publication SSE ; création d'une conversation à partir du
-  premier prompt (titre tiré du prompt) ; suppression avec purge des assets et des fichiers (`purge_assets` du moteur ;
-  `ConversationService.remove` et `MessageService.remove` ne suppriment que les lignes et leurs cascades).
-- `MessageService.failInterrupted()` reprend le balayage de démarrage de l'ancien `init_db` (une génération interrompue
-  par un arrêt n'est pas reprise) ; à appeler au démarrage quand Nest possédera la file (H4.3).
+- `ConversationService.remove` et `MessageService.remove` ne suppriment que les lignes et leurs cascades ; la purge des assets
+  et des fichiers est faite par `GenerationService` (`AssetFileService.purge`).
+- Audio et vidéo (H4.5, H4.6) : le contrat de jobs est déjà général (`kind`, `inputs`, `voices` de la bibliothèque) ; il reste à
+  fournir les composeurs. Les voix de la bibliothèque sont encore résolues par le moteur dans sa propre base (H4.5 les déplace :
+  `JobRequestBuilder` passera alors `voices`, `{ id: { path, transcript, name } }`).
+- Plusieurs moteurs en parallèle : non prévu (un seul GPU) ; la file est globale.
+
+## Tests
+
+Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh 3` (2 pour le bout en bout) :
+
+```sh
+npx jest --runInBand src/modules/studio-core/services/GenerationQueueService.spec.ts   # file, machine d'état, reprise, rapprochement
+npx jest --runInBand src/modules/studio-core/services/GenerationService.spec.ts        # création, relance, annulation, suppressions
+npx jest --runInBand src/modules/studio-core/services/generationParams.spec.ts         # validation, titre, graines
+npx jest --runInBand src/modules/studio-core/mappers/jobEventMapper.spec.ts            # correspondance des événements
+npx jest --runInBand src/modules/studio-core/controllers/studioRoutes.spec.ts          # formes publiques identiques à l'ancienne API
+npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts              # bout en bout avec le vrai moteur (démo)
+```
+
+- `src/testing/studioHarness.ts` : services câblés à la main sur une base SQLite en mémoire, avec un moteur scripté
+  (`ScriptedEngine`), un relais factice (`relay.events$`) et la capture des événements publiés.
+- `studioRoutes.spec.ts` charge la base de démonstration de `legacy-import` et compare les réponses HTTP aux sorties du moteur
+  capturées par `scripts-local/capture_legacy_fixtures.py`.
+- `studioEngine.e2e.spec.ts` lance le **moteur Python en sous-processus** (`IMAGEGEN_DEMO=1` : images synthétiques, aucun modèle,
+  **sonde matérielle coupée donc sans torch**), puis exerce Nest contre lui par HTTP et le vrai flux d'événements : génération,
+  files d'attente, annulation en file et en cours, relance, suppression (fichiers retirés par le moteur), envoi d'une référence.
+  Ignoré si `engine/.venv` est absent. Pic mesuré : 0,75 Go (Jest, moteur et worker).
+- Parité des formes publiques avec le moteur : aussi `legacy-import/publicShapes.spec.ts`.

@@ -8,9 +8,11 @@ La table ne contient que des métadonnées ; les fichiers restent dans le dossie
 (`uploads/`, `outputs/`, `thumbs/`), les chemins sont des **noms de fichiers relatifs** conservés tels quels depuis
 l'ancienne base. Couche basse : `studio-core` en dépend, jamais l'inverse.
 
-État (tâche H2) : entités, DTO, mappeur et service de lecture/écriture de base. **Aucun contrôleur** : l'ancienne API
-(`/api/assets`) est encore servie par le proxy transitoire du module `engine`. Les routes (envois, favoris, galerie,
-suppression avec fichiers) arrivent en H4.4.
+État (tâche H4.3a) : entités, DTO, mappeur et service (H2), plus les routes `/api/assets*` (envois, galerie, favori,
+suppression avec fichiers) et l'éditeur d'événements `studio.*`. **Écart au plan** : ces routes étaient prévues en H4.4 ; elles
+passent à Nest dès H4.3a par **cohérence** : les assets générés sont maintenant enregistrés dans la base de Nest, et une
+génération qui référence une image envoyée par l'ancien chemin (`/api/assets` du moteur, base du moteur) ne la trouverait pas.
+Restent pour H4.4 : le front (galeries, visionneuse, dépôt global).
 
 ## Architecture
 
@@ -21,22 +23,41 @@ suppression avec fichiers) arrivent en H4.4.
 | DTO | `dto/AssetDto.ts` | Forme publique d'un asset (identique à `asset_public` de `engine/app/repo.py`). |
 | DTO | `dto/AssetListItemDto.ts` | Élément de galerie (`AssetDto` + titre de la conversation, prompt, modèle) et page (`items`, `next_before`). |
 | Mappeur | `mappers/assetMapper.ts` | `toAssetDto`, `toAssetListItemDto`, `mediaUrl` (`/media/<dossier>/<fichier>`). |
-| Service | `services/AssetService.ts` | `get`, `create`, `setFavorite`, `remove` (ligne seulement), `list` (filtres et curseur de l'ancienne API). |
+| Service | `services/AssetService.ts` | `get`, `getEntity`, `create`, `setFavorite`, `remove` (ligne seulement), `purge` (`purge_assets` : ligne seulement), `adoptOrphans`, `list` (filtres et curseur de l'ancienne API). |
+| Service | `services/AssetFileService.ts` | `ingest` (envoi : le moteur décode et fait la vignette, Nest enregistre la ligne), `purge` / `removeFiles` (fichiers et vignettes retirés par le moteur). |
+| Service | `services/StudioEvents.ts` | Publie les événements `studio.<nom>` (mêmes noms et formes que l'ancien SSE) ; utilisé aussi par `studio-core`. |
+| Contrôleur | `controllers/AssetController.ts` | `/api/assets*`. |
+| Utilitaires | `utils/dataDir.ts` | Dossier de données partagé avec le moteur (`APP_DATA_DIR`, sinon `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
 | Types | `types/assetTypes.ts` | `CreateAssetInput`, `ListAssetsQuery`. |
 | Utilitaires | `utils/ids.ts` | `newId()` (id triable : 11 chiffres hexa de l'horodatage en ms + 10 aléatoires, format de l'ancien `new_id`), `nowSeconds()` (secondes, flottant). |
 
-Les tests : `services/AssetService.spec.ts` (service, mappeur, galerie) ; la parité avec le moteur est vérifiée par
-`legacy-import/publicShapes.spec.ts`.
+Les tests : `services/AssetService.spec.ts` (service, mappeur, galerie), `services/AssetFileService.spec.ts` (envoi, purge,
+dossiers, éditeur d'événements) ; la parité avec le moteur est vérifiée par `legacy-import/publicShapes.spec.ts` et, pour les routes,
+`studio-core/controllers/studioRoutes.spec.ts`.
 
 ## Dépendances
 
 - `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`).
-- Aucune dépendance vers un autre module de l'application : `conversationId` et `messageId` visent les entités de
-  `studio-core` **par leur nom** (`@ManyToOne('ConversationEntity')`), la jointure de la galerie utilise les noms de tables.
+- `engine` (global : `EngineClient`, `engineErrorToHttp`), `common` (`EventStreamService`), `multer` (déjà fourni par
+  `@nestjs/platform-express`, écriture sur disque).
+- Aucune dépendance vers `studio-core` : `conversationId` et `messageId` visent ses entités **par leur nom**
+  (`@ManyToOne('ConversationEntity')`), la jointure de la galerie utilise les noms de tables.
 
 ## Endpoints exposés (exhaustif)
 
-Aucun pour l'instant (H4.4).
+Administrateur (`local-trust` inclus), JSON en clair, mêmes URLs et formes que l'ancienne API du moteur.
+
+| Méthode | Endpoint | Réponse | Erreurs |
+|---|---|---|---|
+| `POST` | `/api/assets` (multipart, champ `files`, 50 fichiers et 500 Mo chacun au plus) | liste d'assets `upload` | 422 (aucun fichier, image ou vidéo illisible : « Image illisible : nom »), 413 |
+| `GET` | `/api/assets?kind=&media=&favorites=&q=&before=&limit=` | `{ items, next_before }` (galerie, plus récents d'abord) | |
+| `PATCH` | `/api/assets/:id` `{ favorite }` | asset ; publie `asset.updated` | 404 « Image introuvable. », 422 |
+| `DELETE` | `/api/assets/:id` | `{ ok: true }` ; ligne, fichier et vignette supprimés ; publie `asset.deleted` `{ id, message_id, conversation_id }` | 404 |
+
+**Envoi** : multer écrit le fichier brut dans `<données>/uploads/tmp_<aléa>` (pas de copie en mémoire : une vidéo peut peser 500 Mo),
+puis le moteur le transforme (`POST /engine/v1/media/ingest` : image réencodée en PNG, orientation EXIF appliquée, transparence
+aplatie, 4096 px au plus ; vidéo conservée, dimensions, durée et fps lus ; vignette WebP) et supprime le brut ; Nest enregistre la
+ligne avec l'id et les noms de fichiers rendus. Le nom d'origine est relu en UTF-8 (multer le lit en latin1).
 
 ## Entités
 
@@ -53,6 +74,6 @@ favorite, meta, conversation_id, message_id, created_at`.
 
 ## Points d'extension
 
-- H4.4 : contrôleur (envois, `PATCH` favori, `DELETE`, galerie), suppression des fichiers et des vignettes, purge des
-  assets orphelins (l'équivalent de `purge_assets` du moteur : un asset encore référencé par un message n'est pas supprimé).
-- `AssetService.remove` renvoie l'entité supprimée pour que l'appelant retire les fichiers.
+- H4.4 : le front des galeries, la visionneuse et le dépôt global (le back est fait ici).
+- `AssetService.remove` renvoie l'entité supprimée pour que l'appelant retire les fichiers ; `AssetService.purge` est
+  l'équivalent de `purge_assets` du moteur (un asset encore référencé par un message restant perd seulement son lien au message).
