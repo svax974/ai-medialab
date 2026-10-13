@@ -10,7 +10,7 @@ this project, and nothing else:
 - `splash/`: the template's waiting page restyled with the « chambre noire » theme (fonts, glow); texts in `splash/messages.json`
   plus the overrides of `desktop.config.json`.
 - Migration of the old `app.chambrenoire.studio` data folder: done by the engine (`engine/app/legacy_data.py`), not by the shell.
-- Procedure, data folder and measurements: root `README.md`, section « Application de bureau ».
+- Build procedure: root `README.md`, section « Application de bureau »; data folder, take-over of the old data and memory at rest: `ARCHITECTURE.md`.
 
 ---
 

@@ -4,101 +4,62 @@ Studio local de création d'images, d'audio (synthèse vocale, clonage de voix) 
 machine — Metal (Apple Silicon), NVIDIA (CUDA) ou AMD (ROCm) — sans service externe. L'application embarque
 le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hugging Face).
 
-- Conversations : historique, recherche, épinglage, renommage, suppression.
-- Composer : prompt, images de référence (bouton, glisser-déposer, coller), choix du modèle,
-  format/définition, nombre d'images (1–4), étapes, graine fixe ou aléatoire, prompt négatif…
-- Génération en temps réel : file d'attente, chargement du modèle, étapes, temps restant, aperçus
-  intermédiaires qui « se révèlent », annulation.
-- Résultats : varier (nouvelles graines), relancer à l'identique, reprendre les réglages, utiliser une
-  image comme référence pour l'itération suivante, favoris, téléchargement, visionneuse plein écran.
-- Galerie de toutes les images, filtrable (prompt, favoris).
-- Interface sombre par défaut (thème clair en option).
-- Gestionnaire de modèles : détection de la machine (GPU, mémoire, disque), téléchargement avec progression,
-  reprise et annulation, suppression, compatibilité mémoire par modèle.
+Trois studios (image, audio, vidéo) partagent conversations, file d'attente, téléchargements et mémoire : l'inventaire de ce qui
+est construit est dans [FEATURES.md](FEATURES.md), la forme de l'application (processus, contrat, flux, données) dans
+[ARCHITECTURE.md](ARCHITECTURE.md), qui porte aussi la carte de toute la documentation.
 
 ## Démarrer (développement)
 
+L'application est construite sur le gabarit vx-public : un serveur **NestJS** (`back/`), une interface **React + MUI** (`front/`)
+et le **moteur Python** (`engine/`) qui fait tourner les modèles. Un seul lanceur démarre les trois :
+
 ```sh
-./start.sh            # installe, compile l'interface, sert sur http://127.0.0.1:8000
+git submodule update --init                # sous-modules du gabarit (une fois)
+(cd back && npm install) && (cd front && npm install)
+./scripts/run.sh dev                       # Nest (3000) + Vite (5173) + moteur (127.0.0.1:8000), Ctrl+C arrête tout
 ```
 
-Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 20. Sur Mac Apple Silicon `start.sh` installe MLX et PyTorch ;
-le premier lancement installe les dépendances dans `engine/.venv`. Pour une application autonome (aucun prérequis),
-voir « Application de bureau » plus bas.
+Puis http://localhost:5173. `scripts/` est le lien du gabarit vers `front/.libs/apptemplate/scripts` ; le moteur est lancé par le
+crochet `scripts-local/dev-services.sh` (journal : `logs/dev-services.log`). Prérequis : Node.js ≥ 22, [uv](https://docs.astral.sh/uv/) ; le
+premier lancement installe les dépendances Python dans `engine/.venv` (MLX et PyTorch sur Mac Apple Silicon). Pour une application
+autonome (aucun prérequis), voir « Application de bureau » plus bas.
 
-Variables utiles :
+Variables de `back/.env.dev` (non versionné ; modèle : `back/.env.example`, section « ai-medialab ») :
 
 | Variable | Rôle |
 |---|---|
-| `PORT`, `HOST` | Adresse d'écoute (défaut `127.0.0.1:8000`) |
-| `IMAGEGEN_DATA_DIR` | Dossier des données (défaut `./data` : base SQLite, images) |
+| `ENGINE_TOKEN` | Secret partagé entre Nest et le moteur (`openssl rand -hex 32`), obligatoire pour le crochet. Le moteur exige l'en-tête `X-Engine-Token` sur toutes les routes `/engine/v1/*` sauf `/engine/v1/status` ; non défini côté moteur seul : aucune vérification |
+| `ENGINE_PORT` | Port du moteur sur `127.0.0.1` (défaut 8000) ; Nest l'appelle sur `ENGINE_URL` (défaut : ce port) |
+| `APP_DATA_DIR` | Dossier de données commun (`<dépôt>/data` par défaut en développement). Le moteur le lit sous le nom `IMAGEGEN_DATA_DIR`, posé par `dev-services.sh` |
+| `DB_PATH` | Base de Nest (`app.db`, relative à `APP_DATA_DIR`) |
+| `IMAGEGEN_DEMO=1` | Ajoute un modèle « Démo » instantané, sans GPU, pour tester l'interface (à mettre dans `back/.env.dev`) |
 | `HF_HOME` / `HF_HUB_CACHE` | Emplacement des modèles (défaut `~/.cache/huggingface/hub`, partagé avec mflux/diffusers) |
-| `IMAGEGEN_DEMO=1` | Ajoute un modèle « Démo » instantané, sans GPU, pour tester l'interface |
-| `ENGINE_TOKEN` | Secret partagé avec le serveur NestJS (migration en cours) : s'il est défini, toutes les routes `/engine/v1/*` exigent l'en-tête `X-Engine-Token`, sauf `/engine/v1/status`. Les routes `/api` (ancienne interface) ne l'exigent pas. Non défini : aucune vérification (développement) |
+| `ENGINE_RELOAD=0` | Désactive le rechargement automatique du moteur |
+| `LEGACY_IMPORT=false` | Désactive l'import de l'ancienne base au démarrage de Nest |
 
-Développement (rechargement à chaud, ancienne interface) : `./dev.sh` puis http://localhost:5173.
+Sans le lanceur : `cd back && npm run start:dev`, `cd front && npm run dev` et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
+Les variables propres au moteur et à Nest sont décrites dans le README de leurs modules (`back/src/modules/engine/README.md`).
 
-### Développement avec le serveur NestJS (migration)
+**Données existantes.** Une installation d'avant la migration (ancienne base `ai-medialab.db`, ancien dossier de bureau) est reprise
+automatiquement au premier démarrage, rien n'est supprimé : voir `ARCHITECTURE.md`, section « Données et migrations ».
 
-`back/` (NestJS) et `front/` (React + MUI) sont lancés par le lanceur du gabarit, qui démarre aussi le moteur Python
-par le crochet `scripts-local/dev-services.sh` (dossier des scripts propres au projet ; `scripts/` est le lien du
-gabarit vers `front/.libs/apptemplate/scripts`) :
+## Tests
 
-```sh
-./scripts/run.sh dev     # Nest (port 3000) + Vite (port 5174) + moteur (127.0.0.1:8000), Ctrl+C arrête tout
-```
-
-Prérequis : `npm install` dans `back/` et `front/`, `uv` pour le moteur. Variables dans `back/.env.dev` (non versionné,
-modèle : `back/.env.example`, section « ai-medialab ») : `ENGINE_TOKEN` (secret partagé, `openssl rand -hex 32`),
-`ENGINE_PORT` (défaut 8000), `APP_DATA_DIR` (dossier de données commun ; le moteur le lit sous le nom
-`IMAGEGEN_DATA_DIR`, posé par `dev-services.sh`) et `DB_PATH=app.db` (base de Nest, distincte de l'ancienne
-`ai-medialab.db`). Le moteur n'écoute que sur `127.0.0.1` ; le navigateur ne parle qu'à Nest.
-
-### Données de Nest et import de l'ancienne base
-
-Nest possède sa propre base SQLite (`<APP_DATA_DIR>/app.db`, `DB_PATH`) : conversations, messages, assets, voix
-(modules `studio-core`, `media-library`, `audio-studio`, détail dans leurs README ; la vidéo n'a pas de module Nest propre : ses jobs passent par `studio-core`, voir son README), réglages du studio (module `settings`,
-configuration de module, `hf_token` chiffré ; Nest en est la source de vérité et les transmet au moteur par
-`PUT /engine/v1/runtime/settings`), état matériel (module `hardware`, délégué au moteur), catalogue des modèles, téléchargements, recherche Hugging Face et modèles
-personnalisés (module `model-catalog`) et installateurs de moteurs et de packs (module `engines`), eux aussi délégués au moteur : Nest porte les routes
-`/api/models*`, `/api/hf/*` et `/api/engines/*`, le moteur calcule et exécute. Le schéma est versionné dans `back/src/migrations/` (en dev TypeORM le
-construit lui-même ; bureau : `DB_SYNC=false` et `DB_MIGRATIONS_RUN=true`, voir `back/src/migrations/README.md`).
-
-Au premier démarrage, le module `legacy-import` copie l'**ancienne base du moteur** (`<APP_DATA_DIR>/ai-medialab.db`, ou
-`chambre-noire.db`) dans `app.db` : lecture seule, une transaction, marqueur dans la table `import_markers`, fichiers de
-`uploads/`, `outputs/`, `thumbs/` et `previews/` inchangés (mêmes chemins). L'import est idempotent ; `LEGACY_IMPORT=false`
-le désactive. L'ancienne base n'est ni modifiée, ni renommée, ni supprimée : le moteur s'en sert encore jusqu'à H6, où elle
-sera renommée en `.imported` (jamais supprimée automatiquement). Pour rejouer l'import : arrêter Nest et supprimer
-`app.db` (les fichiers médias ne sont pas concernés, mais ce qui a été créé dans Nest depuis l'import est perdu). Détail : `back/src/modules/legacy-import/README.md`.
-
-**Ports** : le nouveau front est sur **5174** (`front/.env.dev`, `FRONT_PORT` de `back/.env.dev`) tant que l'ancien
-`frontend/` occupe 5173 ; retour à 5173 en H6. Sans le lanceur : `cd back && npm run start:dev`, `cd front && npm run dev`
-et `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
-
-### Nouveau front (`front/`, migration)
-
-React + MUI sur le gabarit vx-public. Thème « chambre noire » (sombre par défaut, clair « papier » en option, polices Hanken
-Grotesk / JetBrains Mono / Instrument Serif) : `front/src/themes/chambre-noire/README.md` (correspondance des jetons avec
-l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conversations, raccourcis ⌘B, ⌘⇧O, ⌘K, `/`,
-routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; le studio image est fait (H4.3b) : l'accueil et le
-composeur (références, modèle, proportions, réglages, nombre d'images) dans `front/src/modules/image-studio/README.md`, le fil de conversation
-(messages, progression avec aperçus, relance, annulation, suppression, vignettes, visionneuse, carte du moteur) dans `front/src/modules/studio-core/README.md` ;
-la galerie d'images (`/galerie`) est faite (H4.4, `front/src/modules/media-library/README.md`)  ; le studio audio est fait (H4.5) : l'accueil, le composeur (texte ou dialogue avec distribution des voix, voix, langue, style, prises), les prises avec lecteur et forme d'onde et la bibliothèque audio (`/audio`, `/audio/bibliotheque`) dans `front/src/modules/audio-studio/README.md`,
-la bibliothèque de voix et le studio de voix (micro, import, transcription modifiable, `/audio/voix`) dans `front/src/modules/voices/README.md` ; le studio vidéo est fait (H4.6) : l'accueil, le composeur (vidéo source, image de départ et de fin, durée, format et définition, réglages, nombre de clips), les clips avec lecteur et actions (source, dernière image comme départ), le dépôt d'images et de vidéos et la bibliothèque (`/video`, `/video/bibliotheque`) dans `front/src/modules/video-studio/README.md` ; les réglages du modèle et la graine sont communs aux trois composeurs (`GenerationParams` de `studio-core`) ; le dialogue Réglages
-(`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
-(catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
-installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
-(`locales/` des modules, `npm run i18n:check`). TanStack Query et Zustand (écart assumé au gabarit) portent le cache alimenté
-par le flux d'événements (`engine.*` relayés par Nest pour les modèles et les installateurs, `studio.*` publiés par Nest pour les conversations,
-les messages, les images et la progression).
+Règle critique : **un fichier de test à la fois**, jamais la suite complète, jamais un modèle réel (un débordement de mémoire unifiée a
+déjà fait redémarrer le Mac ; `CLAUDE.md`, section « Mémoire unifiée »). Chaque commande lourde passe par la garde mémoire
+`docs/migration/tools/guarded_run.sh <plafond_go> <commande>` (plafond conseillé : 3 Go, 5 Go pour un build).
 
 ```sh
-cd front
-../docs/migration/tools/guarded_run.sh 5 npx tsc -p tsconfig.app.json        # types
-../docs/migration/tools/guarded_run.sh 5 npx vite build                      # construction
-../docs/migration/tools/guarded_run.sh 3 npx vitest run <fichier.spec.ts>    # un fichier à la fois
-npm run i18n:check
+cd engine && .venv/bin/python -m pytest -q -x -p no:cacheprovider tests/test_core.py      # un fichier à la fois (aucun ne charge de modèle)
+cd back   && npx jest --runInBand src/modules/engine/services/EngineClient.spec.ts         # un fichier à la fois
+cd back   && npx tsc --noEmit -p tsconfig.json && npm run build                             # types et compilation
+cd front  && npx tsc -p tsconfig.app.json && npx vitest run <fichier.spec.ts>              # types, un fichier Vitest à la fois
+cd front  && npm run i18n:check && npx eslint src                                          # locales fr/en, lint
 ```
+
+Bout en bout sans modèle : `back/src/modules/studio-core/e2e/studioEngine.e2e.spec.ts` lance le moteur en sous-processus en mode
+démonstration (`IMAGEGEN_DEMO=1`) et une génération complète (plafond conseillé : 2 Go). Les modèles d'image, d'audio et de vidéo
+réels ne sont jamais lancés par les tests.
 
 ## Premier lancement : rien à chercher ni à compiler
 
@@ -281,84 +242,25 @@ code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 
 **À essayer en vrai, du plus petit au plus gros** (surveiller la pression mémoire à chaque étape) : Wan 5B image → vidéo (le texte → vidéo est fait) ; Wan 5B en 720p ; HunyuanVideo 480p ; LTX-2.3 Q3_K_M ; sur 48 Go ou plus seulement, Wan 14B et LTX-2.5.
 
-## Architecture
-
-> **Migration en cours** (branche `migration/vx`, plan dans [`docs/migration/`](docs/migration/README.md)) :
-> l'application passe sur le gabarit vx-public. `back/` (NestJS) et `front/` (React + MUI) sont l'échafaudage cible,
-> `engine/` (ex-`backend/`) devient le moteur interne derrière Nest, et `frontend/` reste l'ancienne interface
-> jusqu'à la tâche H6. **Le lancement ci-dessus (`./start.sh`, `./dev.sh`) est encore celui de l'ancienne interface** ;
-> `back/` (module `engine`, voir `back/src/modules/engine/README.md`) relaie le moteur ; `front/` est encore vide.
-> Les bibliothèques du gabarit sont des sous-modules
-> (`back/.libs/vx-public`, `front/.libs/vx-public`, `.libs/apptemplate`) ; après un clone :
-> `git submodule update --init`, puis `npm install` dans `back/` et `front/`. Règles de travail (mémoire unifiée,
-> commandes sous garde) : `CLAUDE.md`.
-
+## Structure du dépôt
 
 ```
-engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus séparé
-  app/api/auth.py    contrôle du jeton `X-Engine-Token`
-  openapi.json       schéma de `/engine/v1` (généré, voir ci-dessous)
-  app/main.py        application, fichiers statiques, interface compilée
-  app/api/routes.py  API REST + flux SSE, montée sous `/api` (ancienne interface) et `/engine/v1` (serveur NestJS, jeton)
-  app/jobs.py        gestionnaire de jobs sans état applicatif : file, cycle de vie du worker, progression, événements `job.*`
-  app/job_plans.py   `JobRequest` et planification pure d'une génération (image, audio, vidéo)
-  app/api/jobs.py    `/engine/v1/jobs` (soumettre, vérifier, état, annuler), `/engine/v1/media/{ingest,purge}` (Nest seulement)
-  app/legacy_jobs.py adaptateur de l'ancien chemin `/api/messages` (écrit la base du moteur comme avant ; supprimé en H6)
-  app/worker.py      processus qui charge le modèle et génère
-  app/engines/       registre, moteurs MLX et diffusers, catalogue des modèles
-  app/downloads.py   téléchargement des modèles (processus dédié, reprise, annulation)
-  app/system.py      détection GPU / mémoire / disque, planificateur mémoire
-frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
-back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif ; pour l'instant le module
-           `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé), la persistance
-           (`studio-core`, `media-library`, `audio-studio`, `settings`), les conversations, messages et assets avec la file des générations (`studio-core`, `media-library`, H4.3a), l'état matériel (`hardware`), le catalogue des modèles (`model-catalog`), les installateurs (`engines`) et l'import de l'ancienne base (`legacy-import`)
-front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
-desktop/   application Tauri
-docs/      components/ (registre des composants tiers), migration/ (plan de migration)
-data/      bases SQLite (`ai-medialab.db` du moteur, `app.db` de Nest), références importées, images générées, vignettes (créé au démarrage)
+engine/     moteur Python (FastAPI) : modèles, téléchargements, jobs, médias ; openapi.json = contrat avec Nest (généré)
+back/       serveur NestJS (gabarit vx-public, SQLite, mode local de confiance) : modules `engine`, `studio-core`, `media-library`,
+            `audio-studio`, `settings`, `hardware`, `model-catalog`, `engines`, `legacy-import`
+front/      interface React + MUI (gabarit vx-public) : modules `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`,
+            `video-studio`, `media-library`, `model-catalog`, `engines`, `settings`, `hardware` ; thème `chambre-noire`
+desktop/    application de bureau (coquille Tauri du gabarit)
+scripts/    lien vers les scripts du gabarit (lanceur `run.sh`) ; scripts-local/ : scripts propres au projet (crochet de dev du moteur,
+            empaquetage du moteur, export OpenAPI, revue des composants, récupération de stable-diffusion.cpp)
+docs/       components/ (registre des composants tiers), migration/ (plan de migration)
+data/       dossier de données du développement (créé au démarrage, non versionné)
 ```
 
-Contrat avec le serveur NestJS (en cours de migration, voir `docs/migration/`) : `/engine/v1/*`, mêmes routes que
-`/api`, flux `/engine/v1/events`, jeton `X-Engine-Token`. Nest en tire des types TypeScript
-(`cd back && npm run engine:types`, un test échoue s'ils sont périmés) : voir `back/src/modules/engine/README.md`. Le schéma OpenAPI est `engine/openapi.json` ; après toute modification des routes ou de leurs modèles :
-`engine/.venv/bin/python scripts-local/export_engine_openapi.py` (`--check` pour vérifier sans écrire ; un test échoue si le
-fichier est périmé). Aucun serveur n'est démarré par ce script.
-
-**Mémoire au repos** (mesure H1b du 13/10/2026, macOS arm64, `nest build` puis `node dist/main.js`, aucun modèle chargé,
-aucune génération) : moteur seul **≈ 77 Mo** de RSS ; Nest (`node dist/main.js`, SQLite, après connexion au flux du moteur
-et quelques requêtes) **≈ 155 Mo**, soit **≈ 232 Mo** pour les deux (Vite non mesuré ici). Pic du moteur au démarrage :
-≈ 0,40 Go (sonde PyTorch lancée en sous-processus par `warm_up`, qui se termine) ; pic de Nest ≈ 0,15 Go. Ces chiffres
-seront repris dans `ARCHITECTURE.md` (H6) et comparés à l'application empaquetée (H5).
-
-**Jobs (H4.3a).** Le moteur ne connaît ni conversations, ni messages, ni assets pour les jobs qui viennent de Nest : il reçoit
-`POST /engine/v1/jobs` (`job_id`, `kind`, `model_id`, `prompt`, `params`, `inputs` = chemins absolus, `output_dir`), exécute une
-génération à la fois (un modèle chargé à la fois, déchargement après inactivité, annulation) et émet sur `/engine/v1/events`
-`job.started`, `job.progress`, `job.preview`, `job.output` (fichier produit : chemin, vignette, dimensions, durée, métadonnées),
-`job.done`, `job.failed`, `job.cancelled`, tous porteurs de `job_id`. Nest porte la file des messages et enregistre les assets
-(`back/src/modules/studio-core/README.md`) ; le contrat détaillé est dans le README du module `engine`. L'ancienne interface
-`frontend/`, qui parle directement au moteur sur `/api`, continue de marcher : `/api/messages*` passe par `app/legacy_jobs.py`,
-qui soumet le même job et écrit la base du moteur comme avant.
-
-**Voix et audio (H4.5).** Les voix sont dans Nest (`back/src/modules/audio-studio/README.md` : `/api/voices*`, fichiers dans `uploads/`, événement
-`studio.voices.changed`) ; le moteur prépare le clip de référence (`POST /engine/v1/media/voice-reference`) et propose la transcription
-(`POST /engine/v1/media/transcribe`), que l'utilisateur corrige avant de l'enregistrer. Un job audio porte les voix de la bibliothèque qu'il utilise
-(`voices`) ; le proxy transitoire ne relaie plus que `events`. Un `message.updated` audio (4 prises avec formes d'onde et repères) pèse de 8 Ko (texte court) à
-plus de 100 Ko (8000 caractères) : la limite d'événement du flux, 16 Ko par défaut, est portée à 256 Ko pour cette application
-(`StudioEventLimitsModule`, `back/src/modules/media-library/README.md`).
-
-**Vidéo (H4.6).** Pas de module Nest propre : un job vidéo est un job comme les autres (`studio-core`). Les entrées du composeur (image de départ, image de fin, vidéo source) sont des assets joints au prompt dans cet ordre ;
-le moteur décide de la tâche (`i2v`, `v2v`, `t2v`), refuse ce qu'un modèle exige et ignore ce qu'il ne sait pas utiliser (`engine/app/job_checks.py`, `job_plans.py`), borne les clips à 2, et décrit chaque clip
-produit (affiche WebP de la première image, durée, dimensions, fps ; `engine/app/job_outputs.py`). Les images d'une vidéo (« dernière image comme départ ») sont extraites dans le navigateur. Tests : `back/src/modules/studio-core/services/VideoGeneration.spec.ts`,
-`engine/tests/test_jobs.py` (`TestVideoPlans`). Front : `front/src/modules/video-studio/README.md`.
-
-**File des générations (H4.4).** Nest publie la file (message en cours et messages en attente, tous modes et toutes conversations) par
-`studio.queue.updated` et `GET /api/queue` : le front en tire « position N » et « N en attente » exacts (l'ancienne interface lisait `queue`
-dans le statut du moteur). Détail : `back/src/modules/studio-core/README.md`.
-
-Tests : un fichier à la fois, par exemple `cd engine && .venv/bin/python -m pytest -q tests/test_core.py`.
-
-Le worker tourne dans son propre processus : le serveur reste réactif pendant le calcul, décharger un
-modèle libère vraiment la mémoire, et un plantage (mémoire insuffisante…) n'emporte pas l'application.
+Les sous-modules du gabarit (`back/.libs/vx-public`, `front/.libs/vx-public`, `front/.libs/apptemplate`) sont à initialiser après un
+clone (`git submodule update --init`). Le plan du moteur, le contrat Nest ↔ moteur (régénération de `engine/openapi.json` et des types :
+`engine/.venv/bin/python scripts-local/export_engine_openapi.py` puis `cd back && npm run engine:types`) et le flux d'événements sont
+dans [ARCHITECTURE.md](ARCHITECTURE.md). Règles de travail (mémoire unifiée, commandes sous garde) : [CLAUDE.md](CLAUDE.md).
 
 ## Application de bureau
 
@@ -422,24 +324,15 @@ Itérer sans empaqueter : `cd back && npm run desktop:dev` (la racine du dépôt
 
 - Dossier de données = dossier local de l'OS de l'identifiant `app.aimedialab.studio` (macOS :
   `~/Library/Application Support/app.aimedialab.studio/`), **le même que celui de l'ancienne application** : la coque l'exporte
-  en `APP_DATA_DIR` à Nest et le moteur le lit en `IMAGEGEN_DATA_DIR` (`{dataDir}`). Contenu : `app.db` (Nest), `ai-medialab.db`
-  (ancienne base, que le moteur utilise encore jusqu'à H6), `uploads/`, `outputs/`, `thumbs/`, `previews/`, `engines/`
-  (moteurs et packs installés depuis l'application), `secrets.json` (clés de la coque), `logs/` (`shell.log`, `engine.log`,
-  `server.log`, `*.previous.log`). Les modèles restent dans le cache Hugging Face habituel.
-- **Import de l'ancienne base** : au premier lancement de la version de bureau, le module `legacy-import` de Nest trouve
-  `<APP_DATA_DIR>/ai-medialab.db` (ou `chambre-noire.db`) et l'importe dans `app.db` ; rien à faire (voir plus haut).
-- **Ancien dossier « Chambre noire »** (`app.chambrenoire.studio`) : la coque générique ne sait pas le renommer (elle crée le
-  dossier de données, avec `logs/` et `secrets.json`, avant de lancer quoi que ce soit). Le moteur, démarré en premier, le
-  reprend : `engine/app/legacy_data.py` déplace ses entrées une à une dans le dossier courant à l'import de `config.py`,
-  avant toute ouverture de la base, sauf si le dossier courant contient déjà une base ; rien n'est écrasé, `logs/` et
-  `secrets.json` ne sont pas repris. Le dossier ancien est supprimé s'il est vide. Variable : `IMAGEGEN_LEGACY_DATA_DIRS`.
+  en `APP_DATA_DIR` à Nest et le moteur le lit en `IMAGEGEN_DATA_DIR` (`{dataDir}`). Contenu, propriétaire de chaque élément,
+  reprise de l'ancien dossier « Chambre noire » (`app.chambrenoire.studio`) et import de l'ancienne base au premier lancement :
+  `ARCHITECTURE.md`, section « Données et migrations » (rien à faire pour l'utilisateur, rien n'est supprimé). Journaux :
+  `logs/` (`shell.log`, `engine.log`, `server.log`, `*.previous.log`). Les modèles restent dans le cache Hugging Face habituel.
 - Signature **ad hoc** uniquement : une application téléchargée est mise en quarantaine par Gatekeeper (clic droit, Ouvrir, ou
   `xattr -dr com.apple.quarantine "/Applications/AI MediaLab.app"`). Distribution publique : Developer ID et notarisation
   (décrit dans `desktop/README.md`, non automatisé).
 - Nettoyage (≈ 10 Go) : `rm -rf desktop/build desktop/src-tauri/target`.
-
-**Mémoire au repos** (mesurée le 2026-10-13 sans Tauri, mêmes variables que la coque, aucun modèle) : moteur ≈ 80 Mo, Nest
-≈ 157 Mo, soit ≈ 235 Mo pour les deux, comme en H1b (77 + 155 Mo). La coque Tauri et la fenêtre de rendu ne sont pas comptées.
+- Mémoire au repos : `ARCHITECTURE.md`, section « Mémoire au repos ».
 
 ## Quantifications
 
@@ -461,7 +354,7 @@ propose que des formats que l'application sait exécuter, et relit le dépôt av
 
 Refusés avec une explication : dépôts à accès restreint, formats `.bin`/`.ckpt`, modèles quantifiés non chargeables
 (GGUF/MLX/ONNX de Qwen3-TTS), architectures non gérées (Flux, SD3…). Une « recette » (dépôt, fichier, famille) est
-enregistrée dans les réglages ; le modèle apparaît dans les listes avec la mention *Hugging Face* et peut être retiré.
+enregistrée dans l'état propre du moteur (`engine-state.json`, dossier de données) ; le modèle apparaît dans les listes avec la mention *Hugging Face* et peut être retiré.
 La **précision** affichée (Q4_K, bf16, fp16…) vient du nom du fichier GGUF ou de l'en-tête safetensors, lu à distance
 sans télécharger le fichier.
 

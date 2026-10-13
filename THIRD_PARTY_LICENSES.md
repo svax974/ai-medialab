@@ -18,6 +18,54 @@ que l'application affiche dans le sélecteur de modèles. Vérifiez-la avant tou
 | qwen-tts | Apache-2.0 | pack audio « qwen3 » |
 | faster-whisper | MIT | transcription des voix de référence |
 
+## Moteur Python embarqué (`engine/pyproject.toml`)
+
+Installé par `uv` (développement) ou embarqué dans l'application de bureau (`scripts-local/build_runtime.py`). Licences lues dans
+les métadonnées des paquets de `engine/.venv` (version installée le 2026-10-13).
+
+| Composant | Licence | Remarque |
+|---|---|---|
+| FastAPI, python-multipart | MIT, Apache-2.0 | interface interne `/engine/v1` ; `python-multipart` n'est plus utilisé depuis H6 (plus d'envoi de fichier au moteur) |
+| Uvicorn, Starlette | BSD-3-Clause | serveur et socle ASGI |
+| Pillow | MIT-CMU (HPND) | vignettes, décodage des images |
+| huggingface_hub | Apache-2.0 | téléchargement et recherche de modèles |
+| psutil | BSD-3-Clause | mémoire, processus |
+| NumPy, SoundFile | BSD-3-Clause | audio, tableaux |
+| PyAV (`av`) | BSD-3-Clause | encodage et décodage vidéo ; ses roues embarquent des bibliothèques FFmpeg dont la licence (LGPL ou GPL selon la compilation) **n'a pas été vérifiée** : à contrôler avant une distribution publique |
+| diffusers, transformers, accelerate | Apache-2.0 | moteur torch (extra `torch`) |
+| PyTorch, torchvision | BSD-3-Clause (et licences des composants embarqués, voir le paquet) | extra `torch` |
+| gguf, safetensors, sentencepiece, protobuf | MIT, Apache-2.0, Apache-2.0, BSD-3-Clause | formats de modèles |
+
+## Serveur et interface (npm : `back/package.json`, `front/package.json`)
+
+Licences lues le 2026-10-13 dans `node_modules/<paquet>/package.json` (dépendances directes ; `back/` et `front/` partent du
+gabarit vx-public, dont certaines dépendances ne sont pas utilisées par ai-medialab : elles sont listées parce qu'elles sont
+installées et, pour le serveur, empaquetées dans l'application de bureau).
+
+| Composant | Licence | Rôle dans ai-medialab |
+|---|---|---|
+| React, React DOM | MIT | interface |
+| **MUI** (`@mui/material`, `@mui/icons-material`) | MIT | composants et thème « chambre noire » |
+| **Emotion** (`@emotion/react`, `@emotion/styled`) | MIT | moteur de style de MUI |
+| **TanStack Query** | MIT | cache des données alimenté par le flux d'événements |
+| **Zustand** | MIT | état local de l'interface |
+| **Fontsource** : Hanken Grotesk, JetBrains Mono, Instrument Serif | OFL-1.1 (paquets) | polices embarquées (pas de requête vers Google Fonts) ; la licence OFL accompagne les fichiers de police |
+| React Router, React Toastify | MIT | routes, notifications |
+| Vite, Vitest, ESLint, typescript-eslint | MIT | outillage |
+| TypeScript | Apache-2.0 | compilateur |
+| **NestJS** (`@nestjs/*`), RxJS, `reflect-metadata` | MIT, Apache-2.0 | serveur applicatif |
+| **TypeORM**, `@nestjs/typeorm` | MIT | accès aux données |
+| **better-sqlite3** | MIT | base SQLite de Nest, lecture de l'ancienne base |
+| `class-validator`, `class-transformer`, Helmet, compression | MIT | validation et en-têtes |
+| openapi-typescript (dev) | MIT | types du contrat Nest ↔ moteur |
+| Jest, ts-jest, supertest | MIT | tests |
+| Tauri (`tauri`, `tauri-build`, `tauri-plugin-single-instance`, `@tauri-apps/cli`) | Apache-2.0 OR MIT | coque de bureau (`desktop/`) |
+| Dépendances du gabarit non utilisées par l'interface d'ai-medialab : TipTap, Chart.js, lightweight-charts, react-markdown, react-datepicker, html-to-image, **DOMPurify** (MPL-2.0 OR Apache-2.0), **Pyodide** (MPL-2.0) | MIT, Apache-2.0, MPL-2.0 | présentes dans `front/package.json` (aucun import dans `front/src/` d'ai-medialab) ; MPL-2.0 est un copyleft faible au niveau du fichier. Non vérifié : ce que `vite build` en embarque réellement |
+| Serveur : Stripe, AWS SDK S3, ioredis, pg, nodemailer, pdfkit, elliptic, bs58, prom-client, `@base-org/account` | MIT, MIT-0, Apache-2.0 | dépendances du gabarit de serveur, non sollicitées par les modules d'ai-medialab |
+
+Les dépendances transitives (plusieurs milliers de paquets) ne sont pas énumérées ici : `npx license-checker --production`
+dans `back/` et `front/` (outil non installé dans ce dépôt) en donnerait la liste complète avant une distribution publique.
+
 ## Modèles (téléchargés depuis Hugging Face)
 
 | Modèle | Licence |
