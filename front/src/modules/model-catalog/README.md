@@ -67,13 +67,13 @@ model-catalog/
 
 ## Info-bulles
 
-Textes de `frontend/src/lib/help.ts` repris à l'identique en français (`models.help.*` : `quantize`, `variant`, `seconds`, `resolution`,
+Textes de `frontend/src/lib/help.ts` (supprimé en H6) repris à l'identique en français (`models.help.*` : `quantize`, `variant`, `seconds`, `resolution`,
 `audio_out`, `english_only`, `license`), plus l'aide des tâches vidéo (`models.video.taskHelp.*`, de `VideoInfo.tsx`). Le titre de
 `seconds` et de `resolution` est celui que l'ancien `VideoBadges` leur donnait (« Durée maximale d'un clip », « Définitions proposées »).
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `components/ModelsDialog.tsx` : `ModelsDialog`, `KindTabs` | `components/ModelsDialog` (MUI `Dialog`, `Tabs`) |
 | `ModelsDialog.tsx` : `MachineCard`, chemins | module `hardware` (`MachineCard`, `StoragePaths`) |

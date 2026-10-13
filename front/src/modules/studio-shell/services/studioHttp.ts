@@ -18,14 +18,14 @@ export class StudioApiError extends Error {
 }
 
 /**
- * Base URL of the studio routes (`/api/<segment>`, served by Nest modules or, until H6, by the transitional engine proxy: see
+ * Base URL of the studio routes (`/api/<segment>`, served by Nest modules; media by the engine media relay, see
  * back/src/modules/engine/README.md), which sit next to `/api/v1`.
  */
 export function studioApiBase(): string {
   return configurationService.getApiUrl().replace(/\/v\d+\/?$/, '')
 }
 
-/** Media files of the engine are served by the proxy under `/api/media` (the engine returns `/media/...`). */
+/** Media files of the engine are relayed by Nest under `/api/media` (the engine returns `/media/...`). */
 export function resolveMediaUrl(url: string, apiBase: string = studioApiBase()): string {
   return url.startsWith('/media/') ? `${apiBase}${url}` : url
 }
@@ -37,8 +37,8 @@ function toError(payload: Payload): StudioApiError {
 }
 
 /**
- * Calls the proxy and resolves the JSON body. `HttpResult` is callback-based; the transport encryption is skipped:
- * the proxy relays plain JSON to the engine.
+ * Calls a studio route and resolves the JSON body. `HttpResult` is callback-based; the transport encryption is skipped:
+ * these routes answer plain JSON.
  */
 export function studioRequest<T>(method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, body?: unknown): Promise<T> {
   const url = studioApiBase() + path

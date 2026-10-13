@@ -51,7 +51,7 @@ et `WelcomeSetup({ kind })` (pour les accueils des composeurs, H4.3+), `startSet
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `components/Setup.tsx` : `ProgressBar`, `IndeterminateBar` | `ProgressBar`, `IndeterminateBar` de `common` (lot I) |
 | `Setup.tsx` : `startSetup` | `hooks/useModelSetup` `startSetup` |

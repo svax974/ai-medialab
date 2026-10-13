@@ -24,7 +24,7 @@ studio-shell/
   pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), VideoHomePage, VideoLibraryPage, ConversationPage (ConversationView + adaptateurs image, audio et vidéo), ComingSoonPage (page de repli d'une route sans page)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
-  services/                studioHttp (proxy transitoire), conversationsApi
+  services/                studioHttp (routes `/api/<segment>` de Nest, médias), conversationsApi
   state/                   studioStore (Zustand), queryClient
   locales/                 locales.fr.json, locales.en.json (+ registre : src/locales/registerModuleLocales.ts)
 ```
@@ -59,11 +59,11 @@ de sa route dans `routes.tsx` (ou passer un `lazy`).
 | `DELETE` | `/api/conversations/:id` | Supprimer. |
 | `POST` | (`studioUpload`) | Ajouté en H4.3b : envoi multipart avec progression (`HttpService.upload`), pour `POST /api/assets` (module `studio-core`). |
 | `PUT`/`POST` | (`studioRequest`) | Ajouté en H4.1 pour les modules `settings` et `hardware` (`GET/PUT /api/settings`, `GET /api/system`, `GET /api/status`, `POST /api/engine/unload`, routes Nest). |
-| `GET` | `/api/events/stream?topics=engine.conversation.updated,…` | Flux d'événements (brique commune `eventStreamClient`). |
+| `GET` | `/api/v1/events/stream?topics=studio.message.updated,…` | Flux d'événements (brique commune `eventStreamClient`). |
 
-Les appels passent par `httpService` (`skipTransport: true` : le proxy relaie du JSON en clair) ; l'URL de base est celle de
-`configurationService.getApiUrl()` sans le suffixe `/v1` (`studioApiBase()`), car le proxy transitoire est sous `/api/<segment>`
-(`back/src/modules/engine/README.md`). Chaque tâche H4 reprend ses routes dans un module Nest (`getApiUrl('<module>')`) et les retire du proxy.
+Les appels passent par `httpService` (`skipTransport: true` : ces routes répondent du JSON en clair) ; l'URL de base est celle de
+`configurationService.getApiUrl()` sans le suffixe `/v1` (`studioApiBase()`), car les routes du studio sont sous `/api/<segment>`, à côté de `/api/v1`
+(modules Nest, voir leurs README ; médias : `back/src/modules/engine/README.md`, « Relais des médias »).
 Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolveMediaUrl`.
 
 ## Données et temps réel
@@ -124,7 +124,7 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `App.tsx` (mise en page, raccourcis, `useModeSync`) | `components/StudioShell`, `hooks/useShortcuts`, `hooks/useModeSync` |
 | `App.tsx` (`useFileDrop`, surcouche de dépôt) | image : `image-studio` (`ImageDropLayer`, H4.3b) ; audio : `voices` (`VoiceDropLayer`, H4.5) ; vidéo : `video-studio` (`VideoDropLayer`, H4.6) |

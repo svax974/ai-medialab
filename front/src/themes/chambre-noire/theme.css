@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  *
  * "Chambre noire" visual theme: palette tokens, global base styles and film grain.
- * Token values are taken verbatim from the former interface (frontend/src/styles.css); see README.md for the
+ * Token values are taken verbatim from the former interface (frontend/src/styles.css, removed in H6); see README.md for the
  * old -> new mapping. The same hex values live in tokens.ts (MUI palette): tokens.spec.ts keeps both in sync.
  *
  * Mode is carried by `data-color-scheme` on <html> (template convention), set by the anti-flash script of index.html

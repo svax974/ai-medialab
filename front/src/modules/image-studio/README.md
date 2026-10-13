@@ -50,7 +50,7 @@ glissées depuis une vignette (type `application/x-cn-asset`) deviennent des ré
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `components/Home.tsx` | `components/ImageHome` |
 | `components/Composer.tsx` : composeur, `RefThumb`, `CountPicker`, avis | `components/Composer`, `ReferenceStrip`, `CountPicker`, `lib/composerRules` |

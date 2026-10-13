@@ -41,7 +41,7 @@ hardware/
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `ModelsDialog.tsx` : `MachineCard`, `Stat` | `components/MachineCard` (`MachineSummary`) |
 | `ModelsDialog.tsx` : chemins en pied | `StoragePaths` |

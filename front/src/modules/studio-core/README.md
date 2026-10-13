@@ -105,13 +105,13 @@ Hooks `useEngineStatus` / `useUnloadEngine` du module `hardware` ; le statut est
 
 ## Info-bulles
 
-Textes de `frontend/src/lib/help.ts` repris à l'identique en français (`thread.help.*` : `steps`, `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`) ; `paramHelp(spec, kind, t)` ajoute la
+Textes de `frontend/src/lib/help.ts` (supprimé en H6) repris à l'identique en français (`thread.help.*` : `steps`, `guidance`, `negative_prompt`, `strength`, `seed`, `fast_decode`, `count_images`) ; `paramHelp(spec, kind, t)` ajoute la
 remarque du modèle (« Ce modèle : … », écrite par le moteur, donc non traduite) sauf quand elle répète le texte générique. Les textes propres à l'image sont dans `image-studio`
 (`imageStudio.help.*`) ; ceux de l'audio : `thread.help.{speed,temperature,count_takes}` (H4.5) et `audioStudio.help.*` ; ceux de la vidéo : `thread.help.strength_video` (l'influence de la vidéo source, H4.6) et `videoStudio.help.*`. Info-bulles du fil : « Nouvelles variantes (graines aléatoires) », « Relancer avec les mêmes graines » (avec explication).
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `components/ConversationView.tsx` : vue, `TitleEditor`, défilement | `components/ConversationView`, `TitleEditor`, `lib/scroll` |
 | `components/Message.tsx` : `UserMessage` | `components/UserMessage` |

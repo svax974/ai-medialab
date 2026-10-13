@@ -32,7 +32,7 @@ Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouto
 
 ## Info-bulles
 
-Textes de `frontend/src/lib/help.ts` (`keep_alive`, `previews`, `low_memory`) repris à l'identique en français
+Textes de `frontend/src/lib/help.ts` (supprimé en H6) (`keep_alive`, `previews`, `low_memory`) repris à l'identique en français
 (`settings.help.*`), traduits en anglais ; `hfToken` est nouveau (l'ancienne interface n'en avait pas).
 
 ## Tests
@@ -48,7 +48,7 @@ n'est pas testé (environnement Node).
 
 ## Correspondance avec l'ancienne interface
 
-| Ancien (`frontend/src/`) | Nouveau |
+| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
 |---|---|
 | `components/SettingsDialog.tsx` | `components/SettingsDialog`, `KeepAliveControl`, `SettingsSection` |
 | `components/ModelsDialog.tsx` : `TokenField` | `components/HfTokenField` (affiché ici et dans le dialogue des modèles, H4.2) |

@@ -1,6 +1,6 @@
 # Thème visuel `chambre-noire`
 
-Thème de l'application, repris de l'ancienne interface (`frontend/src/styles.css`, Tailwind) pour le nouveau front
+Thème de l'application, repris de l'ancienne interface (`frontend/src/styles.css`, Tailwind, supprimé en H6) pour le nouveau front
 (MUI). Sombre par défaut (« noir chaud, lumière inactinique rouge »), mode clair « papier » conservé. Les valeurs sont
 reprises **telles quelles** ; seuls l'habillage (variables CSS, thème MUI) et les noms de classes changent.
 

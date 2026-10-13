@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import { resolveMediaUrl } from './studioHttp'
 
 describe('resolveMediaUrl', () => {
-  it('routes engine media through the proxy prefix', () => {
+  it('routes engine media through the /api/media prefix', () => {
     expect(resolveMediaUrl('/media/thumbs/a.webp', '/api')).toBe('/api/media/thumbs/a.webp')
   })
   it('leaves other URLs untouched', () => {
