@@ -14,10 +14,12 @@ import { CommonModule } from 'src/modules_shared/common/CommonModule';
 import { AuthCoreModule } from 'src/modules_shared/common/auth/AuthCoreModule';
 import { sharedPlugins, sharedPluginModules } from 'src/modules_shared/plugins.generated';
 import { EngineModule } from 'src/modules/engine/EngineModule';
+import { EnginesModule } from 'src/modules/engines';
 import { HardwareModule } from 'src/modules/hardware';
 import { AudioStudioModule } from 'src/modules/audio-studio';
 import { LegacyImportModule } from 'src/modules/legacy-import';
 import { MediaLibraryModule } from 'src/modules/media-library';
+import { ModelCatalogModule } from 'src/modules/model-catalog';
 import { SettingsModule } from 'src/modules/settings';
 import { StudioCoreModule } from 'src/modules/studio-core';
 import AppDataSource, { dbContext } from 'src/config/Datasource';
@@ -49,6 +51,8 @@ if (authPlugins.length > 1) {
     AudioStudioModule,
     SettingsModule,
     HardwareModule,
+    ModelCatalogModule,
+    EnginesModule,
     LegacyImportModule,
   ],
   controllers: [],

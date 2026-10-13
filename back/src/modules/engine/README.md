@@ -92,6 +92,18 @@ test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json`
 - sujet **`engine.link`** : `{ connected: boolean }`, publié à chaque changement d'état du flux (le front relit l'état
   du moteur quand `connected` repasse à `true`, le moteur renvoyant son instantané à chaque connexion).
 
+**Sujets relayés pour les modèles et les installateurs** (H4.2 ; le front s'abonne à ceux-là, vérifiés dans `engine/app/downloads.py`,
+`engine_install.py`, `audio_packs.py` et le flux `/engine/v1/events`) :
+
+| Sujet (navigateur) | Événement du moteur | Charge utile | Quand |
+|---|---|---|---|
+| `engine.download.progress` | `download.progress` | `DownloadProgress` : `model_id`, `state` (`running`, `done`, `error`, `cancelled`), `done`, `total` (octets), `rate` (octets/s), `eta` (s ou `null`), `error` | au plus toutes les 0,4 s pendant un téléchargement, puis à la fin ; rejoué à chaque connexion pour les téléchargements en cours |
+| `engine.engine.install` | `engine.install` | `EngineInstallState` (stable-diffusion.cpp) : `state` (`idle`, `running`, `done`, `error`, `cancelled`), `variant`, `done`, `total` (octets), `message`, `error` | toutes les 0,4 s pendant l'installation ; l'état courant est rejoué à chaque connexion |
+| `engine.pack.install` | `pack.install` | `PackInstallState` (audio/vidéo) : `state`, `pack`, `name`, `message`, `detail`, `started_at` (s epoch), `size_mb`, `error` | à chaque étape de l'installation d'un pack (pas de pourcentage) ; rejoué à chaque connexion |
+| `engine.models.changed` | `models.changed` | `{}` | fin d'un téléchargement, d'une suppression, d'un ajout ou retrait de modèle personnalisé, d'une (dés)installation de pack ou de moteur : le catalogue et `/api/system` sont à relire |
+
+Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`.
+
 Côté navigateur : `GET /api/v1/events/stream?topics=engine.job.progress,engine.link`. Côté serveur, `events$` donne les
 événements (`{ name, data }`) à un service Nest (H4.3 en dépend pour mettre les messages à jour). Reconnexion : délai
 `min * 2^n` plafonné, aléa +-20 %, remis à zéro après une ouverture réussie ; coupure silencieuse détectée par le délai
@@ -103,9 +115,9 @@ Limites : un événement de plus de 16 Ko est abandonné par `EventStreamService
 
 Pour que l'ancienne interface (et le nouveau front, avant que Nest ne porte chaque fonctionnalité) fonctionne dès
 maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est dans `PROXIED_SEGMENTS`
-(`assets, conversations, engines, events, hf, messages, models, voices`) est relayée à
+(`assets, conversations, events, messages, voices`) est relayée à
 `/engine/v1/<segment>[/...]` avec `X-Engine-Token`. Un test vérifie que cette liste et `NEST_SERVED_SEGMENTS` (segments servis par Nest ou réservés à Nest : `engine`, `runtime`,
-`settings`, `status`, `system`, repris par `settings` et `hardware` en H4.1) couvrent tous les premiers segments de
+`settings`, `status`, `system` repris par `settings` et `hardware` en H4.1 ; `engines`, `hf`, `models` repris par `engines` et `model-catalog` en H4.2) couvrent tous les premiers segments de
 `engine/openapi.json`. Chaque tâche H4 retire de `PROXIED_SEGMENTS` les routes qu'elle reprend (et les ajoute à `NEST_SERVED_SEGMENTS`).
 
 - **Médias** : `/api/media/<kind>/<fichier>` → `/media/<kind>/<fichier>` du moteur (sans jeton, plages `Range` transmises).
@@ -127,7 +139,7 @@ maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est da
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/v1/health` | Public | Route de `common` ; ce module y ajoute `checks.engine` : `{ status, events, engine }`. |
-| `ALL` | `/api/<assets\|conversations\|engines\|events\|hf\|messages\|models\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
+| `ALL` | `/api/<assets\|conversations\|events\|messages\|voices>[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
 | `ALL` | `/api/media/...` | Admin | Proxy transitoire vers les médias du moteur (`/media/...`). |
 
 Santé : `status: ok` si `/engine/v1/status` répond sous 2 s, sinon **`degraded`** (HTTP 200 : le serveur et l'interface

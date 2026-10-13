@@ -59,7 +59,9 @@ modèle : `back/.env.example`, section « ai-medialab ») : `ENGINE_TOKEN` (secr
 Nest possède sa propre base SQLite (`<APP_DATA_DIR>/app.db`, `DB_PATH`) : conversations, messages, assets, voix
 (modules `studio-core`, `media-library`, `audio-studio`, détail dans leurs README), réglages du studio (module `settings`,
 configuration de module, `hf_token` chiffré ; Nest en est la source de vérité et les transmet au moteur par
-`PUT /engine/v1/runtime/settings`), état matériel (module `hardware`, délégué au moteur). Le schéma est versionné dans `back/src/migrations/` (en dev TypeORM le
+`PUT /engine/v1/runtime/settings`), état matériel (module `hardware`, délégué au moteur), catalogue des modèles, téléchargements, recherche Hugging Face et modèles
+personnalisés (module `model-catalog`) et installateurs de moteurs et de packs (module `engines`), eux aussi délégués au moteur : Nest porte les routes
+`/api/models*`, `/api/hf/*` et `/api/engines/*`, le moteur calcule et exécute. Le schéma est versionné dans `back/src/migrations/` (en dev TypeORM le
 construit lui-même ; bureau : `DB_SYNC=false` et `DB_MIGRATIONS_RUN=true`, voir `back/src/migrations/README.md`).
 
 Au premier démarrage, le module `legacy-import` copie l'**ancienne base du moteur** (`<APP_DATA_DIR>/ai-medialab.db`, ou
@@ -79,8 +81,10 @@ React + MUI sur le gabarit vx-public. Thème « chambre noire » (sombre par dé
 Grotesk / JetBrains Mono / Instrument Serif) : `front/src/themes/chambre-noire/README.md` (correspondance des jetons avec
 l'ancienne interface, surcharges MUI). Coquille du studio (barre latérale, conversations, raccourcis ⌘B, ⌘⇧O, ⌘K, `/`,
 routes `/`, `/c/:id`, `/galerie`, `/audio…`, `/video…`) : `front/src/modules/studio-shell/README.md` ; les écrans eux-mêmes
-(composeurs, galeries, voix, modèles) sont des pages « à venir » jusqu'aux tâches H4 ; le dialogue Réglages
-(`front/src/modules/settings/README.md`) et la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1). Français et anglais
+(composeurs, galeries, voix) sont des pages « à venir » jusqu'aux tâches H4 ; le dialogue Réglages
+(`front/src/modules/settings/README.md`), la carte « Cette machine » (`front/src/modules/hardware/README.md`) sont faits (H4.1), ainsi que le dialogue Modèles
+(catalogue, téléchargements avec progression, variantes, modèles personnalisés, recherche Hugging Face : `front/src/modules/model-catalog/README.md`) et les
+installateurs de moteurs et la carte d'accueil (`front/src/modules/engines/README.md`) (H4.2). Français et anglais
 (`locales/` des modules, `npm run i18n:check`). TanStack Query et Zustand (écart assumé au gabarit) portent le cache alimenté
 par le flux d'événements (`engine.*` relayés par Nest).
 
@@ -300,7 +304,7 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
 back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif ; pour l'instant le module
            `engine` (client typé du moteur, relais des événements, proxy transitoire `/api/*`, santé), la persistance
-           (`studio-core`, `media-library`, `audio-studio`, `settings`), l'état matériel (`hardware`) et l'import de l'ancienne base (`legacy-import`)
+           (`studio-core`, `media-library`, `audio-studio`, `settings`), l'état matériel (`hardware`), le catalogue des modèles (`model-catalog`), les installateurs (`engines`) et l'import de l'ancienne base (`legacy-import`)
 front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
 desktop/   application Tauri
 docs/      components/ (registre des composants tiers), migration/ (plan de migration)

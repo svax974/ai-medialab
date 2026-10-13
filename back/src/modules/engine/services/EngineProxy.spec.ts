@@ -37,13 +37,13 @@ class FakeAuthInterceptor implements NestInterceptor {
 
 describe('toEnginePath', () => {
   it('maps proxied segments to /engine/v1 and media to /media', () => {
-    expect(toEnginePath('/api/models?x=1')).toBe('/engine/v1/models?x=1');
+    expect(toEnginePath('/api/voices?x=1')).toBe('/engine/v1/voices?x=1');
     expect(toEnginePath('/api/messages/abc/cancel')).toBe('/engine/v1/messages/abc/cancel');
     expect(toEnginePath('/api/media/outputs/a.png')).toBe('/media/outputs/a.png');
   });
 
   it('leaves Nest routes, Swagger and unknown segments alone', () => {
-    for (const url of ['/api/settings', '/api/system', '/api/status', '/api/engine/unload', '/api/runtime/settings']) expect(toEnginePath(url)).toBeNull();
+    for (const url of ['/api/settings', '/api/system', '/api/status', '/api/engine/unload', '/api/runtime/settings', '/api/models', '/api/models/custom', '/api/hf/search', '/api/engines/sdcpp/install']) expect(toEnginePath(url)).toBeNull();
     for (const url of ['/api', '/api/v1/health', '/api/unknown', '/models', '/api-json']) expect(toEnginePath(url)).toBeNull();
   });
 });
@@ -83,9 +83,9 @@ describe('EngineProxy (fake engine)', () => {
 
   it('refuses a request without an admin principal', async () => {
     principal = undefined;
-    await request(app.getHttpServer()).get('/api/models').expect(401);
+    await request(app.getHttpServer()).get('/api/voices').expect(401);
     principal = { id: 5, admin: false, kind: 'user' };
-    await request(app.getHttpServer()).get('/api/models').expect(401);
+    await request(app.getHttpServer()).get('/api/voices').expect(401);
     expect(engine.requests).toHaveLength(0);
   });
 
@@ -94,10 +94,10 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(200, { 'content-type': 'application/json', 'x-from': 'engine' });
       res.end(JSON.stringify({ models: [] }));
     });
-    const res = await request(app.getHttpServer()).get('/api/models?refresh=true').set('Authorization', 'Bearer admin-secret').expect(200);
+    const res = await request(app.getHttpServer()).get('/api/voices?refresh=true').set('Authorization', 'Bearer admin-secret').expect(200);
     expect(res.body).toEqual({ models: [] });
     expect(res.headers['x-from']).toBe('engine');
-    expect(engine.requests[0].url).toBe('/engine/v1/models?refresh=true');
+    expect(engine.requests[0].url).toBe('/engine/v1/voices?refresh=true');
     expect(engine.requests[0].headers['x-engine-token']).toBe(TEST_TOKEN);
     expect(engine.requests[0].headers.authorization).toBeUndefined();
   });
@@ -168,7 +168,7 @@ describe('EngineProxy (fake engine)', () => {
       res.writeHead(404, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ detail: 'Modèle inconnu.' }));
     });
-    const res = await request(app.getHttpServer()).get('/api/models/nope').expect(404);
+    const res = await request(app.getHttpServer()).get('/api/voices/nope').expect(404);
     expect(res.body).toEqual({ detail: 'Modèle inconnu.' });
   });
 
@@ -192,7 +192,7 @@ describe('EngineProxy (fake engine)', () => {
       next();
     });
     await downApp.init();
-    await request(downApp.getHttpServer()).get('/api/models').expect(502, { statusCode: 502, message: 'Engine unavailable' });
+    await request(downApp.getHttpServer()).get('/api/voices').expect(502, { statusCode: 502, message: 'Engine unavailable' });
     await downApp.close();
   });
 

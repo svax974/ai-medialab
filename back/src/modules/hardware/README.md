@@ -24,7 +24,7 @@ Module d'application. Tâche H4.1.
 
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/system?refresh=` | Admin | Matériel : OS, mémoire, accélérateurs, GPU inutilisables, disque, dossiers ; plus `engines`, `packs`, `pack_install` (installateurs : H4.2). `refresh=true` relance la détection (sonde PyTorch du moteur, plusieurs secondes). |
+| `GET` | `/api/system?refresh=` | Admin | Matériel : OS, mémoire, accélérateurs, GPU inutilisables, disque, dossiers ; plus `engines`, `packs`, `pack_install` (état des moteurs et des packs, lu par le front du module `engines` ; les installations elles-mêmes sont dans `back/src/modules/engines/README.md`). `refresh=true` relance la détection (sonde PyTorch du moteur, plusieurs secondes). |
 | `GET` | `/api/status` | Admin | Worker de génération : `state`, `model_id`, `quantize`, file, dernière erreur. |
 | `POST` | `/api/engine/unload` | Admin | Décharge le modèle ; 409 (relayé) pendant une génération. |
 
@@ -36,7 +36,7 @@ Aucune.
 
 ## Points d'extension
 
-H4.2 y rattache les installateurs (moteurs, packs) ; H4.3 l'état du worker en événements.
+Les installateurs (moteurs, packs) sont dans le module `engines` (H4.2) ; H4.3 l'état du worker en événements.
 
 ## Tests
 
