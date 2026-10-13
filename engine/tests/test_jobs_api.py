@@ -60,6 +60,26 @@ class TestJobsApi:
         assert client.get("/engine/v1/jobs").status_code == 401
         assert client.post("/engine/v1/media/purge", json={"files": []}).status_code == 401
 
+    def test_check_answers_with_the_limits_and_defaults_of_the_model_or_the_message_to_show(self, client):
+        from app.engines import MODELS
+
+        ok = client.post("/engine/v1/jobs/check", json={"model_id": "demo"}, headers=H)
+        assert ok.status_code == 200 and ok.json()["kind"] == "image" and ok.json()["max_count"] == 4
+        assert ok.json()["default_params"]["steps"] == 12
+        assert client.post("/engine/v1/jobs/check", json={"model_id": "ghost"}, headers=H).status_code == 422
+        needs_ref = next((s for s in MODELS.values() if s.kind == "image" and s.requires_references), None)
+        video = next((s for s in MODELS.values() if s.kind == "video" and s.video.image_input == "required"), None)
+        if needs_ref:
+            r = client.post("/engine/v1/jobs/check", json={"model_id": needs_ref.id}, headers=H)
+            assert r.status_code == 422 and "image de référence" in r.json()["detail"]
+            assert client.post("/engine/v1/jobs/check", json={"model_id": needs_ref.id, "reference_media": ["image"]},
+                               headers=H).status_code == 200
+        if video:
+            r = client.post("/engine/v1/jobs/check", json={"model_id": video.id}, headers=H)
+            assert r.status_code == 422 and "image de départ" in r.json()["detail"]
+            ok = client.post("/engine/v1/jobs/check", json={"model_id": video.id, "reference_media": ["image"]}, headers=H)
+            assert ok.json()["max_count"] == 2
+
     def test_submit_queues_a_job_and_reports_its_state(self, client):
         r = client.post("/engine/v1/jobs", json=body(), headers=H)
         assert r.status_code == 202 and r.json()["state"] == "queued" and r.json()["queue_position"] == 0
@@ -89,7 +109,7 @@ class TestJobsApi:
 
     def test_the_jobs_routes_are_in_the_schema_and_not_on_the_legacy_prefix(self, client):
         paths = app.openapi()["paths"]
-        for path in ("/engine/v1/jobs", "/engine/v1/jobs/{job_id}", "/engine/v1/jobs/{job_id}/cancel",
+        for path in ("/engine/v1/jobs", "/engine/v1/jobs/check", "/engine/v1/jobs/{job_id}", "/engine/v1/jobs/{job_id}/cancel",
                      "/engine/v1/media/ingest", "/engine/v1/media/purge"):
             assert path in paths
         assert client.get("/api/jobs").status_code in (404, 503)

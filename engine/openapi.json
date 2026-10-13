@@ -302,6 +302,68 @@
         "title": "IngestResult",
         "type": "object"
       },
+      "JobCheck": {
+        "properties": {
+          "default_params": {
+            "additionalProperties": true,
+            "description": "Defaults of the model's parameters, to merge under the user's.",
+            "title": "Default Params",
+            "type": "object"
+          },
+          "kind": {
+            "enum": [
+              "image",
+              "audio",
+              "video"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "max_count": {
+            "description": "Most results one generation may ask for.",
+            "title": "Max Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "max_count",
+          "default_params"
+        ],
+        "title": "JobCheck",
+        "type": "object"
+      },
+      "JobCheckBody": {
+        "properties": {
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "reference_media": {
+            "description": "Media of each attached asset, in order.",
+            "items": {
+              "enum": [
+                "image",
+                "audio",
+                "video"
+              ],
+              "type": "string"
+            },
+            "title": "Reference Media",
+            "type": "array"
+          }
+        },
+        "required": [
+          "model_id"
+        ],
+        "title": "JobCheckBody",
+        "type": "object"
+      },
       "JobList": {
         "properties": {
           "jobs": {
@@ -1766,6 +1828,48 @@
           }
         },
         "summary": "Submit Job",
+        "tags": [
+          "jobs"
+        ]
+      }
+    },
+    "/engine/v1/jobs/check": {
+      "post": {
+        "description": "Refuses (422, with the message to show) a generation the model cannot do, before anything is stored.",
+        "operationId": "check_job_engine_v1_jobs_check_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobCheckBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobCheck"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Check Job",
         "tags": [
           "jobs"
         ]

@@ -22,13 +22,25 @@ from pydantic import BaseModel, Field
 
 from .. import config
 from ..engines import get_spec
+from ..job_checks import MAX_COUNT, check_generation
 from ..job_plans import JobRequest
 from ..jobs import jobs
 from ..media import VIDEO_EXTENSIONS, is_video_upload, make_thumb, probe_video, save_upload, video_thumb
 
 jobs_router = APIRouter(tags=["jobs"])
 
-MAX_COUNT_PER_JOB = 4
+
+class JobCheckBody(BaseModel):
+    model_id: str
+    reference_media: list[Literal["image", "audio", "video"]] = Field(
+        default_factory=list, description="Media of each attached asset, in order.")
+
+
+class JobCheck(BaseModel):
+    kind: Literal["image", "audio", "video"]
+    name: str
+    max_count: int = Field(description="Most results one generation may ask for.")
+    default_params: dict[str, Any] = Field(description="Defaults of the model's parameters, to merge under the user's.")
 
 
 class LibraryVoice(BaseModel):
@@ -90,6 +102,15 @@ def _inside_data_dir(raw: str, what: str) -> Path:
     return resolved
 
 
+@jobs_router.post("/jobs/check", response_model=JobCheck)
+def check_job(body: JobCheckBody) -> dict[str, Any]:
+    """Refuses (422, with the message to show) a generation the model cannot do, before anything is stored."""
+    try:
+        return check_generation(body.model_id, list(body.reference_media))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+
+
 @jobs_router.post("/jobs", status_code=202, response_model=JobState)
 def submit_job(body: JobSubmit) -> dict[str, Any]:
     """Queues a generation. Validation of the content (empty prompt, missing reference...) is reported by `job.failed`."""
@@ -99,8 +120,8 @@ def submit_job(body: JobSubmit) -> dict[str, Any]:
         raise HTTPException(422, str(exc)) from None
     if spec.kind != body.kind:
         raise HTTPException(422, f"{spec.name} est un modèle {spec.kind}, pas {body.kind}.")
-    if len(body.params.get("seeds") or []) > MAX_COUNT_PER_JOB:
-        raise HTTPException(422, f"{MAX_COUNT_PER_JOB} résultats au plus par job.")
+    if len(body.params.get("seeds") or []) > MAX_COUNT:
+        raise HTTPException(422, f"{MAX_COUNT} résultats au plus par job.")
     out_dir = _inside_data_dir(body.output_dir, "output_dir")
     out_dir.mkdir(parents=True, exist_ok=True)
     inputs = [str(_inside_data_dir(p, "inputs")) for p in body.inputs]

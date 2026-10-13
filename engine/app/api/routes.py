@@ -14,7 +14,7 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .. import audio_packs, db, legacy_jobs, repo, voices
+from .. import audio_packs, db, job_checks, legacy_jobs, repo, voices
 from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
@@ -30,8 +30,8 @@ from ..config import UPLOADS_DIR
 # Mounted twice by main.py: `/api` (legacy UI, no token) and `/engine/v1` (NestJS, `X-Engine-Token`).
 router = APIRouter()
 
-MAX_COUNT = 4
-MAX_VIDEO_COUNT = 2  # a video takes minutes to hours, so batches stay small
+MAX_COUNT = job_checks.MAX_COUNT
+MAX_VIDEO_COUNT = job_checks.MAX_VIDEO_COUNT
 
 
 # Models, engines, settings
