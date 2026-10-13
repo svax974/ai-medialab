@@ -455,9 +455,10 @@ class TestPlans:
     def test_kiwi_keeps_the_reference_image_next_to_the_video(self, database):
         from PIL import Image
 
-        from app.config import UPLOADS_DIR
+        from app.config import UPLOADS_DIR, ensure_dirs
         from app.media import encode_mp4
 
+        ensure_dirs()  # the folder only exists once the app has started: don't depend on another test having done it
         encode_mp4(np.zeros((9, 32, 48, 3), np.uint8), 8, UPLOADS_DIR / "k_src.mp4")
         Image.new("RGB", (32, 32)).save(UPLOADS_DIR / "k_ref.png")
         plan = self._plan("kiwi-edit-5b", [("video", "k_src.mp4"), ("image", "k_ref.png")])
