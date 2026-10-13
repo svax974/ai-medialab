@@ -1,0 +1,8 @@
+[submodule "back/.libs/vx-public"]
+	path = back/.libs/vx-public
+	url = https://github.com/bccapps/WebAppTemplate-public.git
+	branch = main
+[submodule "front/.libs/vx-public"]
+	path = front/.libs/vx-public
+	url = https://github.com/bccapps/WebAppTemplate-public.git
+	branch = main

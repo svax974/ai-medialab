@@ -221,6 +221,16 @@ code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 
 ## Architecture
 
+> **Migration en cours** (branche `migration/vx`, plan dans [`docs/migration/`](docs/migration/README.md)) :
+> l'application passe sur le gabarit vx-public. `back/` (NestJS) et `front/` (React + MUI) sont l'échafaudage cible,
+> `engine/` (ex-`backend/`) devient le moteur interne derrière Nest, et `frontend/` reste l'ancienne interface
+> jusqu'à la tâche H6. **Le lancement ci-dessus (`./start.sh`, `./dev.sh`) est encore celui de l'ancienne interface** ;
+> `back/` et `front/` ne sont pas encore lancés. Les bibliothèques du gabarit sont des sous-modules
+> (`back/.libs/vx-public`, `front/.libs/vx-public`, `.libs/apptemplate`) ; après un clone :
+> `git submodule update --init`, puis `npm install` dans `back/` et `front/`. Règles de travail (mémoire unifiée,
+> commandes sous garde) : `CLAUDE.md`.
+
+
 ```
 engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus séparé
   app/api/auth.py    contrôle du jeton `X-Engine-Token`
@@ -233,6 +243,10 @@ engine/    ex-`backend/` : FastAPI · SQLite · worker MLX dans un processus sé
   app/downloads.py   téléchargement des modèles (processus dédié, reprise, annulation)
   app/system.py      détection GPU / mémoire / disque, planificateur mémoire
 frontend/  React 19 · TypeScript · Vite · Tailwind 4 · TanStack Query · Zustand · Radix
+back/      NestJS (gabarit vx-public, SQLite, mode local de confiance) : futur serveur applicatif, vide pour l'instant
+front/     React + MUI (gabarit vx-public) : future interface, vide pour l'instant
+desktop/   application Tauri
+docs/      components/ (registre des composants tiers), migration/ (plan de migration)
 data/      base SQLite, références importées, images générées, vignettes (créé au démarrage)
 ```
 

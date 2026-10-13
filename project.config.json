@@ -1,0 +1,38 @@
+{
+  "projectName": "ai-medialab",
+  "siteName": "AI MediaLab",
+  "privateAccess": false,
+  "localTrust": true,
+  "pwa": {
+    "enabled": false
+  },
+  "database": {
+    "engine": "sqlite",
+    "redis": false
+  },
+  "languages": [
+    "fr",
+    "en"
+  ],
+  "schema": 1,
+  "ports": {
+    "back": 3000,
+    "front": 5173
+  },
+  "multiUser": false,
+  "modules": [],
+  "questions": {},
+  "env": {},
+  "entityName": "",
+  "contactEmail": "",
+  "githubOrg": "bccapps",
+  "resolved": {
+    "nest": [
+      "common",
+      "database"
+    ],
+    "react": [
+      "common"
+    ]
+  }
+}

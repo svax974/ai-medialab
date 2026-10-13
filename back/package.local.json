@@ -1,0 +1,7 @@
+{
+  "name": "ai-medialab-back",
+  "version": "0.1.0",
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  }
+}

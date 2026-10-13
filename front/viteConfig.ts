@@ -1,0 +1,1 @@
+.libs/apptemplate/front/viteConfig.ts
