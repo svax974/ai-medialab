@@ -156,7 +156,14 @@ Formes publiques (snake_case, champs absents à `null`) :
   (`params.voice` et `params.cast` de la distribution d'un dialogue, `{ source: 'library', id }`), `{ id: { path, transcript, name } }`
   (`services/jobVoices.ts`, lecture par `VoiceService.findByIds` du module `audio-studio`). Un `voices` vide (aucune voix de la
   bibliothèque) dit au moteur de **ne pas** consulter sa propre base ; une voix supprimée est absente et le moteur répond « Cette
-  voix n'existe plus dans votre bibliothèque. ». Vidéo (H4.6) : même contrat, il reste à fournir le composeur.
+  voix n'existe plus dans votre bibliothèque. ».
+- Vidéo (H4.6, fait, **aucun code ajouté côté Nest** : le contrat de jobs couvre déjà tous les cas ; vérifié et testé par `services/VideoGeneration.spec.ts`) : les références du prompt
+  sont jointes au job dans l'ordre du composeur (image de départ, image de fin, vidéo source : `message_refs.position`) ; le moteur choisit la tâche (`i2v`, `v2v`, `t2v`) d'après ce qui est joint et ce que le modèle accepte,
+  ignore ce qu'il ne sait pas utiliser et refuse ce qu'il exige (`engine/app/job_checks.py`, `job_plans.py` : « a besoin d'une image de départ / d'une vidéo source », renvoyé en 422 à la création) ;
+  `count` est borné à 2 par `max_count` ; les réglages résolus (taille, nombre d'images, durée réelle, définition, tâche) remplacent les paramètres du message au `job.started` ; les étapes du moteur
+  (`stage` : `fetch`, `sampling`, `decode`, `encode`) passent par `studio.job.progress` ; chaque clip est enregistré avec son **affiche** (`thumb`), sa durée, ses dimensions, la graine et `meta` (`fps`, `frames`, `has_audio`, `task`,
+  `strength`…) ; la relance relit le type de chaque référence pour interroger le moteur. Les images extraites d'une vidéo (« dernière image comme départ ») sont prises dans le navigateur puis envoyées comme n'importe quelle image (`POST /api/assets`) :
+  le moteur n'a pas de route d'extraction. Lecture : les fichiers passent par `/api/media` avec `Range` (test `engine/services/EngineProxy.spec.ts`).
 - Plusieurs moteurs en parallèle : non prévu (un seul GPU) ; la file est globale.
 
 ## Tests
@@ -168,6 +175,7 @@ npx jest --runInBand src/modules/studio-core/services/GenerationQueueService.spe
 npx jest --runInBand src/modules/studio-core/services/GenerationService.spec.ts        # création, relance, annulation, suppressions
 npx jest --runInBand src/modules/studio-core/services/generationParams.spec.ts         # validation, titre, graines
 npx jest --runInBand src/modules/studio-core/services/AudioGeneration.spec.ts           # voix des jobs audio, mesure de la taille des événements audio
+npx jest --runInBand src/modules/studio-core/services/VideoGeneration.spec.ts           # jobs vidéo : entrées dans l'ordre, clips bornés à 2, étapes, affiche, durée et fps de l'asset, relance
 npx jest --runInBand src/modules/studio-core/mappers/jobEventMapper.spec.ts            # correspondance des événements
 npx jest --runInBand src/modules/studio-core/controllers/studioRoutes.spec.ts          # formes publiques identiques à l'ancienne API
 npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts              # bout en bout avec le vrai moteur (démo)

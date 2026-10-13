@@ -395,3 +395,99 @@ class TestPlans:
         with pytest.raises(ValueError, match="n'existe plus"):
             voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "", {})
         assert voices.resolve_voice(spec, {"source": "library", "id": "x"}, "fr", "")["kind"] == "clone"
+
+
+def _video_job(model_id: str, inputs: list[str], params: dict | None = None) -> JobRequest:
+    job = make_job(inputs=inputs, params={"seeds": [1, 2, 3], **(params or {})})
+    job.model_id = model_id
+    return job
+
+
+def _image_file(name: str, size: tuple[int, int]) -> str:
+    path = UPLOADS_DIR / name
+    Image.new("RGB", size).save(path)
+    return str(path)
+
+
+class TestVideoPlans:
+    """What the video composer can attach: start image, end image, source video (+ a reference image), nothing."""
+
+    def test_start_and_end_images_make_a_first_last_frame_clip_and_a_third_image_is_dropped(self):
+        a, b, c = (_image_file(f"{n}.png", (64, 64)) for n in "abc")
+        plan = build_plan(_video_job("wan-2.2-i2v-a14b", [a, b, c], {"seconds": 3, "aspect": "9:16", "resolution": "480p"}))
+        p = plan["params"]
+        assert p["task"] == "i2v" and p["references_used"] == 2 and len(plan["items"]) == 2  # clips capped at 2
+        assert plan["items"][0]["request"]["references"] == [a, b]
+        assert (p["frames"] - 1) % 4 == 0 and p["fps"] == 16 and p["seconds"] == round(p["frames"] / 16, 2)
+        assert p["height"] > p["width"] and p["aspect"] == "9:16"
+
+    def test_a_model_without_end_image_keeps_the_start_image_only(self):
+        a, b = _image_file("s1.png", (64, 64)), _image_file("s2.png", (64, 64))
+        plan = build_plan(_video_job("wan-2.2-ti2v-5b", [a, b]))
+        assert plan["params"]["task"] == "i2v" and plan["items"][0]["request"]["references"] == [a]
+
+    def test_a_source_video_edits_and_a_reference_image_rides_along_when_the_model_takes_one(self, tmp_path):
+        import numpy as np
+        from app.media import encode_mp4
+
+        src = UPLOADS_DIR / "src_edit.mp4"
+        encode_mp4(np.zeros((9, 32, 48, 3), np.uint8), 8, src)
+        ref = _image_file("style.png", (64, 64))
+        plan = build_plan(_video_job("kiwi-edit-5b", [ref, str(src)], {"strength": 0.5}))
+        request = plan["items"][0]["request"]
+        assert plan["params"]["task"] == "v2v" and plan["params"]["references_used"] == 2
+        assert request["references"] == [ref] and request["extra"]["video"] == str(src) and request["strength"] == 0.5
+        # A text-and-edit model that takes no image ignores it.
+        plan = build_plan(_video_job("cogvideox-2b", [ref, str(src)]))
+        assert plan["params"]["task"] == "v2v" and plan["items"][0]["request"]["references"] == []
+
+    def test_auto_aspect_follows_the_start_image(self):
+        portrait = _image_file("portrait.png", (100, 200))
+        p = build_plan(_video_job("wan-2.2-ti2v-5b", [portrait], {"aspect": "auto"}))["params"]
+        assert p["height"] > p["width"] and p["aspect"] == "16:9"  # the ratio comes from the image, the label is kept
+
+    def test_an_attachment_the_model_cannot_use_is_ignored_and_a_required_one_is_asked_for(self):
+        img = _image_file("ignored.png", (64, 64))
+        plan = build_plan(_video_job("cogvideox-2b", [img]))
+        assert plan["params"]["task"] == "t2v" and plan["params"]["references_used"] == 0
+        with pytest.raises(ValueError, match="vidéo source"):
+            build_plan(_video_job("kiwi-edit-5b", [img]))
+        with pytest.raises(ValueError, match="image de départ"):
+            build_plan(_video_job("hunyuan-video-1.5-i2v", []))
+
+    def test_boolean_parameters_such_as_the_fast_decoder_reach_the_worker(self):
+        on = build_plan(_video_job("wan-2.2-ti2v-5b-gguf", [], {"fast_decode": True}))
+        off = build_plan(_video_job("wan-2.2-ti2v-5b-gguf", [], {"fast_decode": False}))
+        assert on["items"][0]["request"]["extra"]["fast_decode"] is True
+        assert off["items"][0]["request"]["extra"]["fast_decode"] is False
+
+    def test_the_duration_is_clamped_to_what_the_model_renders(self):
+        long = build_plan(_video_job("cogvideox-2b", [], {"seconds": 600}))["params"]
+        short = build_plan(_video_job("cogvideox-2b", [], {"seconds": 0.1}))["params"]
+        assert long["seconds"] > short["seconds"] > 0 and long["frames"] > short["frames"]
+
+    def test_describe_output_for_a_video_makes_the_poster_and_keeps_duration_and_fps(self):
+        import numpy as np
+        from app.config import THUMBS_DIR
+        from app.media import encode_mp4
+
+        path = OUTPUTS_DIR / "clip_0.mp4"
+        encode_mp4(np.zeros((9, 32, 48, 3), np.uint8), 8, path)
+        plan = {"model_id": "m", "prompt": "un chat", "params": {"steps": 20, "guidance": 5.0, "task": "i2v", "strength": None},
+                "items": [{}]}
+        out = describe_output(plan, {"type": "video", "index": 0, "path": str(path), "seed": 7, "width": 48, "height": 32,
+                                     "duration": 1.125, "seconds": 12.0, "fps": 8, "frames": 9, "has_audio": False})
+        assert out["media"] == "video" and out["filename"] == "clip_0.mp4" and out["duration"] == 1.125
+        assert (THUMBS_DIR / out["thumb"]).is_file() and (out["width"], out["height"]) == (48, 32)
+        assert out["meta"] == {"model_id": "m", "prompt": "un chat", "steps": 20, "guidance": 5.0, "seconds": 12.0, "fps": 8,
+                               "frames": 9, "has_audio": False, "video_seconds": 1.125, "task": "i2v", "strength": None}
+
+    def test_the_generation_check_asks_for_what_the_model_needs_and_caps_clips_at_two(self):
+        from app.job_checks import check_generation
+
+        with pytest.raises(ValueError, match="image de départ"):
+            check_generation("hunyuan-video-1.5-i2v", [])
+        with pytest.raises(ValueError, match="vidéo source"):
+            check_generation("kiwi-edit-5b", ["image"])
+        ok = check_generation("kiwi-edit-5b", ["image", "video"])
+        assert ok["kind"] == "video" and ok["max_count"] == 2 and "seeds" not in ok["default_params"]
