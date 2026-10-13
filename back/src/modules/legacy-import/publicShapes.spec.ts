@@ -12,8 +12,8 @@ import { buildServices } from 'src/testing/services';
 import { createTestDataSource } from 'src/testing/testDataSource';
 
 /**
- * Compares what the Nest services return with outputs of the legacy engine (`repo.py`, `voices.py`) captured by
- * `scripts-local/capture_legacy_fixtures.py` on the same demo rows: the migrated screens must see the same contract.
+ * Compares what the Nest services return with outputs of the legacy engine (`repo.py`, `voices.py`) captured once on the same demo rows (the capture
+ * script went with the engine's database in H6; the fixture `testing/expectedPublic.json` is frozen): the migrated screens must see the same contract.
  */
 describe('public shapes identical to the legacy engine', () => {
   const expected = loadExpectedPublic();

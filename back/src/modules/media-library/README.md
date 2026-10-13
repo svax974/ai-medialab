@@ -20,7 +20,7 @@ Le front (galerie d'images, visionneuse, dépôt global) est dans `front/src/mod
 |---|---|---|
 | Module | `MediaLibraryModule.ts` | Déclare `AssetEntity` (`forFeature`), fournit et exporte `AssetService` et `TypeOrmModule`. |
 | Entité | `entities/AssetEntity.ts` | Table `assets`. |
-| DTO | `dto/AssetDto.ts` | Forme publique d'un asset (identique à `asset_public` de `engine/app/repo.py`). |
+| DTO | `dto/AssetDto.ts` | Forme publique d'un asset (identique à `asset_public` de l'ancien moteur, `engine/app/repo.py` supprimé en H6). |
 | DTO | `dto/AssetListItemDto.ts` | Élément de galerie (`AssetDto` + titre de la conversation, prompt, modèle) et page (`items`, `next_before`). |
 | Mappeur | `mappers/assetMapper.ts` | `toAssetDto`, `toAssetListItemDto`, `mediaUrl` (`/media/<dossier>/<fichier>`). |
 | Service | `services/AssetService.ts` | `get`, `getEntity`, `create`, `setFavorite`, `remove` (ligne seulement), `purge` (`purge_assets` : ligne seulement), `adoptOrphans`, `list` (filtres et curseur de l'ancienne API). |

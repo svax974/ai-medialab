@@ -4,79 +4,6 @@
  */
 
 export interface paths {
-    "/engine/v1/assets": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Assets */
-        get: operations["list_assets_engine_v1_assets_get"];
-        put?: never;
-        /** Upload Assets */
-        post: operations["upload_assets_engine_v1_assets_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/assets/{asset_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Asset */
-        delete: operations["delete_asset_engine_v1_assets__asset_id__delete"];
-        options?: never;
-        head?: never;
-        /** Patch Asset */
-        patch: operations["patch_asset_engine_v1_assets__asset_id__patch"];
-        trace?: never;
-    };
-    "/engine/v1/conversations": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Conversations */
-        get: operations["list_conversations_engine_v1_conversations_get"];
-        put?: never;
-        /** Create Conversation */
-        post: operations["create_conversation_engine_v1_conversations_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/conversations/{conversation_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Conversation */
-        get: operations["get_conversation_engine_v1_conversations__conversation_id__get"];
-        put?: never;
-        post?: never;
-        /** Delete Conversation */
-        delete: operations["delete_conversation_engine_v1_conversations__conversation_id__delete"];
-        options?: never;
-        head?: never;
-        /** Patch Conversation */
-        patch: operations["patch_conversation_engine_v1_conversations__conversation_id__patch"];
-        trace?: never;
-    };
     "/engine/v1/engine/unload": {
         parameters: {
             query?: never;
@@ -381,74 +308,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/engine/v1/messages": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Create Message */
-        post: operations["create_message_engine_v1_messages_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/messages/{message_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Message */
-        delete: operations["delete_message_engine_v1_messages__message_id__delete"];
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/messages/{message_id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Cancel Message */
-        post: operations["cancel_message_engine_v1_messages__message_id__cancel_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/messages/{message_id}/retry": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Retry Message */
-        post: operations["retry_message_engine_v1_messages__message_id__retry_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/engine/v1/models": {
         parameters: {
             query?: never;
@@ -545,30 +404,12 @@ export interface paths {
         get?: never;
         /**
          * Push Settings
-         * @description Keeps the studio settings in memory (the engine then stops reading them in its database).
+         * @description Keeps the studio settings in memory (never written to disk).
          *
-         *     Same checks as the legacy `PUT /settings`: unknown model or quantization is a 422, a variant change while a
+         *     Checks: unknown model or quantization is a 422, a variant change while a
          *     generation runs is a 409 (nothing is applied then); the loaded model is unloaded when its variant changed.
          */
         put: operations["push_settings_engine_v1_runtime_settings_put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get Settings */
-        get: operations["get_settings_engine_v1_settings_get"];
-        /** Put Settings */
-        put: operations["put_settings_engine_v1_settings_put"];
         post?: never;
         delete?: never;
         options?: never;
@@ -610,146 +451,10 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/engine/v1/voices": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** List Voices */
-        get: operations["list_voices_engine_v1_voices_get"];
-        put?: never;
-        /** Create Voice */
-        post: operations["create_voice_engine_v1_voices_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/voices/from-asset": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Voice From Asset
-         * @description Keep a generated take as a library voice (e.g. a voice invented from a description).
-         */
-        post: operations["voice_from_asset_engine_v1_voices_from_asset_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/engine/v1/voices/{voice_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /** Delete Voice */
-        delete: operations["delete_voice_engine_v1_voices__voice_id__delete"];
-        options?: never;
-        head?: never;
-        /** Patch Voice */
-        patch: operations["patch_voice_engine_v1_voices__voice_id__patch"];
-        trace?: never;
-    };
-    "/engine/v1/voices/{voice_id}/transcribe": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Transcribe Voice
-         * @description Suggest a transcript for a voice sample (improves cloning). The user can always correct it afterwards.
-         */
-        post: operations["transcribe_voice_engine_v1_voices__voice_id__transcribe_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        /** AssetPatch */
-        AssetPatch: {
-            /** Favorite */
-            favorite?: boolean | null;
-        };
-        /** Body_create_voice_engine_v1_voices_post */
-        Body_create_voice_engine_v1_voices_post: {
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /** File */
-            file: string;
-            /**
-             * Kind
-             * @default clone
-             */
-            kind: string;
-            /**
-             * Language
-             * @default
-             */
-            language: string;
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /**
-             * Transcript
-             * @default
-             */
-            transcript: string;
-        };
-        /** Body_upload_assets_engine_v1_assets_post */
-        Body_upload_assets_engine_v1_assets_post: {
-            /** Files */
-            files: string[];
-        };
-        /** ConversationCreate */
-        ConversationCreate: {
-            /**
-             * Mode
-             * @default image
-             */
-            mode: string;
-            /**
-             * Title
-             * @default Nouvelle création
-             */
-            title: string;
-        };
-        /** ConversationPatch */
-        ConversationPatch: {
-            /** Pinned */
-            pinned?: boolean | null;
-            /** Title */
-            title?: string | null;
-        };
         /** CustomModelBody */
         CustomModelBody: {
             /**
@@ -759,33 +464,6 @@ export interface components {
             option: string;
             /** Repo */
             repo: string;
-        };
-        /** FromAsset */
-        FromAsset: {
-            /** Asset Id */
-            asset_id: string;
-            /**
-             * Description
-             * @default
-             */
-            description: string;
-            /**
-             * Kind
-             * @default design
-             */
-            kind: string;
-            /** Language */
-            language?: string | null;
-            /**
-             * Name
-             * @default
-             */
-            name: string;
-            /**
-             * Transcript
-             * @default
-             */
-            transcript: string;
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -974,26 +652,6 @@ export interface components {
              */
             transcript: string;
         };
-        /** MessageCreate */
-        MessageCreate: {
-            /** Conversation Id */
-            conversation_id?: string | null;
-            /**
-             * Count
-             * @default 1
-             */
-            count: number;
-            /** Model Id */
-            model_id: string;
-            /** Params */
-            params?: {
-                [key: string]: unknown;
-            };
-            /** Prompt */
-            prompt: string;
-            /** Reference Ids */
-            reference_ids?: string[];
-        };
         /** PurgeBody */
         PurgeBody: {
             /** Files */
@@ -1010,20 +668,6 @@ export interface components {
             folder: "uploads" | "outputs";
             /** Thumb */
             thumb?: string | null;
-        };
-        /** RetryBody */
-        RetryBody: {
-            /**
-             * Keep Seed
-             * @default false
-             */
-            keep_seed: boolean;
-            /** Model Id */
-            model_id?: string | null;
-            /** Params */
-            params?: {
-                [key: string]: unknown;
-            } | null;
         };
         /**
          * RuntimeSettings
@@ -1059,24 +703,20 @@ export interface components {
                 [key: string]: string;
             };
         };
-        /** SettingsPatch */
-        SettingsPatch: {
-            /** Hf Token */
-            hf_token?: string | null;
-            /** Keep Alive Minutes */
-            keep_alive_minutes?: number | null;
-            /** Low Memory */
-            low_memory?: boolean | null;
-            /** Previews */
-            previews?: boolean | null;
-            /** Quantize */
-            quantize?: {
-                [key: string]: number | null;
-            } | null;
-            /** Variant */
-            variant?: {
-                [key: string]: string;
-            } | null;
+        /** TranscribeBody */
+        TranscribeBody: {
+            /** Language */
+            language?: string | null;
+            /**
+             * Model Id
+             * @description A transcription model; by default the first one installed.
+             */
+            model_id?: string | null;
+            /**
+             * Path
+             * @description Audio file inside the data folder.
+             */
+            path: string;
         };
         /** Transcription */
         Transcription: {
@@ -1101,17 +741,6 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
-        };
-        /** VoicePatch */
-        VoicePatch: {
-            /** Description */
-            description?: string | null;
-            /** Language */
-            language?: string | null;
-            /** Name */
-            name?: string | null;
-            /** Transcript */
-            transcript?: string | null;
         };
         /** VoiceReference */
         VoiceReference: {
@@ -1138,28 +767,6 @@ export interface components {
             /** Voice Id */
             voice_id: string;
         };
-        /** TranscribeBody */
-        app__api__routes__TranscribeBody: {
-            /** Language */
-            language?: string | null;
-            /** Model Id */
-            model_id?: string | null;
-        };
-        /** TranscribeBody */
-        app__api__voice_media__TranscribeBody: {
-            /** Language */
-            language?: string | null;
-            /**
-             * Model Id
-             * @description A transcription model; by default the first one installed.
-             */
-            model_id?: string | null;
-            /**
-             * Path
-             * @description Audio file inside the data folder.
-             */
-            path: string;
-        };
     };
     responses: never;
     parameters: never;
@@ -1169,321 +776,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    list_assets_engine_v1_assets_get: {
-        parameters: {
-            query?: {
-                kind?: string;
-                media?: string;
-                favorites?: boolean;
-                q?: string | null;
-                before?: number | null;
-                limit?: number;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    upload_assets_engine_v1_assets_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_upload_assets_engine_v1_assets_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_asset_engine_v1_assets__asset_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                asset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    patch_asset_engine_v1_assets__asset_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                asset_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["AssetPatch"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_conversations_engine_v1_conversations_get: {
-        parameters: {
-            query?: {
-                q?: string | null;
-                mode?: string | null;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_conversation_engine_v1_conversations_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConversationCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_conversation_engine_v1_conversations__conversation_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                conversation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_conversation_engine_v1_conversations__conversation_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                conversation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    patch_conversation_engine_v1_conversations__conversation_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                conversation_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ConversationPatch"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     unload_engine_engine_v1_engine_unload_post: {
         parameters: {
             query?: never;
@@ -1952,7 +1244,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["app__api__voice_media__TranscribeBody"];
+                "application/json": components["schemas"]["TranscribeBody"];
             };
         };
         responses: {
@@ -1996,144 +1288,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VoiceReference"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    create_message_engine_v1_messages_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["MessageCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_message_engine_v1_messages__message_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                message_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    cancel_message_engine_v1_messages__message_id__cancel_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                message_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    retry_message_engine_v1_messages__message_id__retry_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                message_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["RetryBody"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
                 };
             };
             /** @description Validation Error */
@@ -2371,63 +1525,6 @@ export interface operations {
             };
         };
     };
-    get_settings_engine_v1_settings_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-        };
-    };
-    put_settings_engine_v1_settings_put: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["SettingsPatch"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     engine_status_engine_v1_status_get: {
         parameters: {
             query?: never;
@@ -2460,205 +1557,6 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    list_voices_engine_v1_voices_get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    }[];
-                };
-            };
-        };
-    };
-    create_voice_engine_v1_voices_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "multipart/form-data": components["schemas"]["Body_create_voice_engine_v1_voices_post"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    voice_from_asset_engine_v1_voices_from_asset_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FromAsset"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    delete_voice_engine_v1_voices__voice_id__delete: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                voice_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    patch_voice_engine_v1_voices__voice_id__patch: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                voice_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["VoicePatch"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    transcribe_voice_engine_v1_voices__voice_id__transcribe_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                voice_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["app__api__routes__TranscribeBody"];
-            };
-        };
         responses: {
             /** @description Successful Response */
             200: {

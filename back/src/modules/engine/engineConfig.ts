@@ -11,6 +11,12 @@ export const ENGINE_CONFIG = 'ENGINE_CONFIG';
 export const ENGINE_API_PREFIX = '/engine/v1';
 export const ENGINE_TOKEN_HEADER = 'X-Engine-Token';
 
+/**
+ * First path segments of the engine API (after `/engine/v1/`). `EngineMedia.spec.ts` checks that this list matches
+ * `engine/openapi.json`, so a new area of the engine is a conscious decision on the Nest side.
+ */
+export const ENGINE_API_SEGMENTS = ['engine', 'engines', 'events', 'hf', 'jobs', 'media', 'models', 'runtime', 'status', 'system'] as const;
+
 export interface EngineConfig {
   /** Base URL, no trailing slash. Loopback only in practice (the engine listens on 127.0.0.1). */
   url: string;

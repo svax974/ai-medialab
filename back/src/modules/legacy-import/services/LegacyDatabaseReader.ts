@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { existsSync } from 'fs';
+import { existsSync, renameSync } from 'fs';
 import { join } from 'path';
-import { LEGACY_DB_NAMES, LegacyDatabase, LegacyDatabaseOpener } from '../types/importTypes';
+import { IMPORTED_SUFFIX, LEGACY_DB_NAMES, LegacyDatabase, LegacyDatabaseOpener } from '../types/importTypes';
 
 /** Opens a SQLite file read-only with `better-sqlite3` (a driver the SQLite build of the project already has). */
 export const openLegacyDatabaseReadOnly: LegacyDatabaseOpener = (path) => {
@@ -21,6 +21,21 @@ export function findLegacyDatabase(dataDir: string): string | null {
     if (existsSync(candidate)) return candidate;
   }
   return null;
+}
+
+/**
+ * Renames the imported legacy database (and its `-wal` / `-shm` files) to `<name>.imported`: it stays on disk for the
+ * user, never deleted, and is no longer found as a source. An existing `.imported` file is not overwritten (a numeric
+ * suffix is added). Returns the new path of the main file.
+ */
+export function archiveLegacyDatabase(source: string): string {
+  let target = `${source}${IMPORTED_SUFFIX}`;
+  for (let n = 1; existsSync(target); n += 1) target = `${source}${IMPORTED_SUFFIX}.${n}`;
+  for (const extra of ['-wal', '-shm']) {
+    if (existsSync(source + extra)) renameSync(source + extra, target + extra);
+  }
+  renameSync(source, target);
+  return target;
 }
 
 /**

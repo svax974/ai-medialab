@@ -6,8 +6,7 @@
 import 'src/testing/sqliteEnv';
 import { afterEach, beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createHash } from 'crypto';
-import { existsSync, readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { copyFileSync, existsSync, readFileSync, readdirSync, renameSync } from 'fs';
 import { DataSource } from 'typeorm';
 import { ConversationEntity, MessageEntity, MessageRefEntity } from 'src/modules/studio-core';
 import { AssetEntity } from 'src/modules/media-library';
@@ -22,14 +21,6 @@ const fakeModuleConfig = () => ({
   register: jest.fn(),
   updateModuleConfig: jest.fn(async () => null),
 });
-
-function fingerprint(dir: string): string {
-  const hash = createHash('sha256');
-  for (const name of readdirSync(dir).sort()) {
-    hash.update(name).update(readFileSync(join(dir, name)));
-  }
-  return hash.digest('hex');
-}
 
 describe('LegacyImportService', () => {
   let dataSource: DataSource;
@@ -46,6 +37,8 @@ describe('LegacyImportService', () => {
     await dataSource.destroy();
     cleanups.splice(0).forEach((c) => c());
   });
+  /** Puts the archived database back under its original name (a restored backup, an old copy…). */
+  const restore = (file: string) => renameSync(`${file}.imported`, file);
   const legacy = (options?: Parameters<typeof buildLegacyDatabase>[0]) => {
     const built = buildLegacyDatabase(options);
     cleanups.push(built.cleanup);
@@ -105,12 +98,14 @@ describe('LegacyImportService', () => {
   });
 
   it('is idempotent: a second run finds the marker and changes nothing', async () => {
-    const { dir } = legacy();
+    const { dir, file } = legacy();
     await service.run(dir);
     await dataSource.getRepository(ConversationEntity).update({ id: 'c1' }, { title: 'Renommée dans Nest' });
     await dataSource.getRepository(VoiceEntity).delete({ id: 'v2' });
     moduleConfig.updateModuleConfig.mockClear();
 
+    expect(await service.run(dir)).toMatchObject({ status: 'no-source' }); // renamed: nothing to find
+    restore(file);
     expect(await service.run(dir)).toMatchObject({ status: 'already-imported', counts: {} });
     expect(await dataSource.getRepository(ConversationEntity).findOneByOrFail({ id: 'c1' })).toMatchObject({
       title: 'Renommée dans Nest',
@@ -120,8 +115,9 @@ describe('LegacyImportService', () => {
   });
 
   it('does not duplicate rows when it runs again without a marker', async () => {
-    const { dir } = legacy();
+    const { dir, file } = legacy();
     await service.run(dir);
+    restore(file);
     await dataSource.getRepository(ImportMarkerEntity).delete({ id: LEGACY_IMPORT_MARKER_ID });
     await service.run(dir);
     expect(await dataSource.getRepository(AssetEntity).count()).toBe(loadDemo().assets.length);
@@ -177,15 +173,32 @@ describe('LegacyImportService', () => {
     });
   });
 
-  it('never modifies the legacy database', async () => {
+  it('renames the imported database to .imported without changing a byte, and never deletes it', async () => {
     const { dir, file } = legacy();
-    const before = { print: fingerprint(dir), mtime: statSync(file).mtimeMs };
-    await service.run(dir);
-    await service.run(dir);
-    expect(fingerprint(dir)).toBe(before.print);
-    expect(statSync(file).mtimeMs).toBe(before.mtime);
-    expect(readdirSync(dir)).toEqual(['ai-medialab.db']);
+    const before = readFileSync(file);
+    const report = await service.run(dir);
+    expect(report.archivedTo).toBe(`${file}.imported`);
+    expect(readdirSync(dir)).toEqual(['ai-medialab.db.imported']);
+    expect(readFileSync(`${file}.imported`).equals(before)).toBe(true);
+    expect(await service.run(dir)).toMatchObject({ status: 'no-source', archivedTo: null });
+    expect(readdirSync(dir)).toEqual(['ai-medialab.db.imported']);
+  });
+
+  it('keeps an earlier .imported file: a second archive gets a numeric suffix', async () => {
+    const { dir, file } = legacy();
+    copyFileSync(file, `${file}.imported`);
+    const report = await service.run(dir);
+    expect(report.archivedTo).toBe(`${file}.imported.1`);
+    expect(readdirSync(dir).sort()).toEqual(['ai-medialab.db.imported', 'ai-medialab.db.imported.1']);
+  });
+
+  it('does not rename the database while the settings step failed (the retry needs it)', async () => {
+    const { dir, file } = legacy();
+    moduleConfig.updateModuleConfig.mockRejectedValueOnce(new Error('config unavailable'));
+    await expect(service.run(dir)).rejects.toThrow('config unavailable');
+    expect(existsSync(file)).toBe(true);
     expect(existsSync(`${file}.imported`)).toBe(false);
+    expect((await service.run(dir)).archivedTo).toBe(`${file}.imported`);
   });
 
   it('reads a WAL database that the engine still has open, without touching the main file', async () => {
@@ -201,7 +214,10 @@ describe('LegacyImportService', () => {
       expect(report).toMatchObject({ status: 'imported' });
       expect(report.counts.conversations).toBe(6);
       expect(await dataSource.getRepository(ConversationEntity).findOneByOrFail({ id: 'c9' })).toMatchObject({ mode: 'image' });
-      expect(createHash('sha256').update(readFileSync(file)).digest('hex')).toBe(before);
+      // The main file is archived untouched; its -wal and -shm files follow it.
+      expect(createHash('sha256').update(readFileSync(`${file}.imported`)).digest('hex')).toBe(before);
+      expect(existsSync(file)).toBe(false);
+      expect(existsSync(`${file}-wal`)).toBe(false);
     } finally {
       engine.close();
     }

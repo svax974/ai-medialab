@@ -36,7 +36,7 @@ moteur) : changer une quantification passe par `PUT /api/settings`, pas par ce m
 | `GET` | `/api/hf/search?kind=&q=` | Admin | `{ results: HubResult[] }` (formats exécutables seulement, tenue en mémoire par machine) ; 502 si Hugging Face est injoignable. `kind` : `image` (défaut), `audio`, `video`. |
 | `GET` | `/api/hf/inspect?repo=` | Admin | `HubInspect` : licence, notes, quantifications avec `fits`/`fit_note` ; 422 relayé si le dépôt est illisible ; 400 sans `repo`. |
 
-Ces segments (`models`, `hf`) ne sont plus relayés par le proxy transitoire (`NEST_SERVED_SEGMENTS`).
+Ces segments (`models`, `hf`) délèguent au moteur par `EngineClient`.
 
 ## Événements (progression)
 

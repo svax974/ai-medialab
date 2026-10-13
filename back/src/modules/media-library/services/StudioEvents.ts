@@ -10,7 +10,7 @@ import { EventStreamService } from 'src/modules_shared/common/event-stream';
 export const STUDIO_TOPIC_PREFIX = 'studio.';
 
 /**
- * Names of the studio events: the same names and payloads as the legacy engine SSE (`engine/app/repo.py`,
+ * Names of the studio events: the same names and payloads as the legacy engine SSE (`engine/app/repo.py` (removed in H6),
  * `jobs.py`, `routes.py`), now published by Nest under the topic `studio.<name>`.
  */
 export type StudioEventName =

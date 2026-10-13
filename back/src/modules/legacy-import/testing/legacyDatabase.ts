@@ -10,7 +10,7 @@ import { join } from 'path';
 type Row = Record<string, unknown>;
 export type LegacyDemo = Record<'conversations' | 'messages' | 'assets' | 'message_refs' | 'voices' | 'settings', Row[]>;
 
-/** Rows of the demo database (the same file feeds `scripts-local/capture_legacy_fixtures.py`). */
+/** Rows of the demo database (the same rows fed the frozen fixture `expectedPublic.json`). */
 export function loadDemo(): LegacyDemo {
   return JSON.parse(readFileSync(join(__dirname, 'legacyDemo.json'), 'utf8')) as LegacyDemo;
 }
@@ -19,7 +19,7 @@ export function loadExpectedPublic(): Record<string, any> { // eslint-disable-li
   return JSON.parse(readFileSync(join(__dirname, 'expectedPublic.json'), 'utf8'));
 }
 
-/** `SCHEMA` of `engine/app/db.py` as of the first release: no `conversations.mode`, `assets.media`, `assets.duration`. */
+/** `SCHEMA` of `engine/app/db.py` (removed in H6) as of the first release: no `conversations.mode`, `assets.media`, `assets.duration`. */
 const FIRST_RELEASE_SCHEMA = `
 CREATE TABLE conversations (id TEXT PRIMARY KEY, title TEXT NOT NULL, pinned INTEGER NOT NULL DEFAULT 0,
   created_at REAL NOT NULL, updated_at REAL NOT NULL);

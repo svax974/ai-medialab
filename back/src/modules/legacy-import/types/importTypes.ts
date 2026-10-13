@@ -23,9 +23,14 @@ export interface LegacyImportReport {
   skipped: Record<string, number>;
   /** Number of legacy settings applied during this call. */
   settingsApplied: number;
+  /** Where the legacy database was renamed to once imported (`<name>.imported`); `null` when it was not. */
+  archivedTo: string | null;
 }
 
-/** Names of the legacy database file, newest first (`engine/app/config.py`: `chambre-noire.db` is the pre-rename name). */
+/** Suffix of the legacy database once imported (the engine's `engine_state.py` still reads it for its own recipes). */
+export const IMPORTED_SUFFIX = '.imported';
+
+/** Names of the legacy database file, newest first (`chambre-noire.db` is the name before the project rename). */
 export const LEGACY_DB_NAMES = ['ai-medialab.db', 'chambre-noire.db'];
 
 /** Minimal surface of `better-sqlite3` used to read the legacy database (no `@types` package in the project). */

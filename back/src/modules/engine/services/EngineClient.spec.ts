@@ -30,22 +30,22 @@ describe('EngineClient', () => {
   });
 
   it('fills path parameters (encoded) and the query string', async () => {
-    await client.get('/engine/v1/assets', { query: { media: 'audio' } });
-    await client.delete('/engine/v1/assets/{asset_id}', { params: { asset_id: 'a/b c' } });
-    expect(engine.requests[0].url).toBe('/engine/v1/assets?media=audio');
-    expect(engine.requests[1]).toMatchObject({ method: 'DELETE', url: '/engine/v1/assets/a%2Fb%20c' });
+    await client.get('/engine/v1/system', { query: { refresh: true } });
+    await client.delete('/engine/v1/models/{model_id}', { params: { model_id: 'a/b c' } });
+    expect(engine.requests[0].url).toBe('/engine/v1/system?refresh=true');
+    expect(engine.requests[1]).toMatchObject({ method: 'DELETE', url: '/engine/v1/models/a%2Fb%20c' });
   });
 
   it('sends a JSON body with its content type', async () => {
-    await client.post('/engine/v1/conversations', { body: { mode: 'image', title: 'Hello' } });
+    await client.post('/engine/v1/models/custom', { body: { repo: 'user/model', option: 'default' } });
     expect(engine.requests[0].headers['content-type']).toBe('application/json');
-    expect(JSON.parse(engine.requests[0].body.toString())).toEqual({ mode: 'image', title: 'Hello' });
+    expect(JSON.parse(engine.requests[0].body.toString())).toEqual({ repo: 'user/model', option: 'default' });
   });
 
   it('sends a multipart body untouched', async () => {
     const form = new FormData();
     form.append('files', new Blob(['abc']), 'a.txt');
-    await client.post('/engine/v1/assets', { form });
+    await client.post('/engine/v1/models/custom', { form });
     expect(engine.requests[0].headers['content-type']).toMatch(/^multipart\/form-data; boundary=/);
     expect(engine.requests[0].body.toString()).toContain('abc');
   });
@@ -86,7 +86,7 @@ describe('EngineClient', () => {
   });
 
   it('refuses a missing path parameter', () => {
-    expect(() => client.buildUrl('/engine/v1/assets/{asset_id}', {})).toThrow(/asset_id/);
+    expect(() => client.buildUrl('/engine/v1/models/{model_id}', {})).toThrow(/model_id/);
   });
 
   it('openEventStream returns the unread event-stream response', async () => {

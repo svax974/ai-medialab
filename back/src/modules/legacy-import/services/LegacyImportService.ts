@@ -15,7 +15,7 @@ import { LEGACY_SETTING_KEYS, SETTINGS_MODULE_ID, mapLegacySettings, settingsCon
 import { ConversationEntity, MessageEntity, MessageRefEntity } from 'src/modules/studio-core';
 import { ImportMarkerEntity, LEGACY_IMPORT_MARKER_ID } from '../entities/ImportMarkerEntity';
 import { LegacyDatabaseOpener, LegacyImportReport } from '../types/importTypes';
-import { LegacyDatabaseReader, findLegacyDatabase, openLegacyDatabaseReadOnly } from './LegacyDatabaseReader';
+import { LegacyDatabaseReader, archiveLegacyDatabase, findLegacyDatabase, openLegacyDatabaseReadOnly } from './LegacyDatabaseReader';
 import {
   LegacyRow,
   parseJson,
@@ -31,9 +31,10 @@ const BATCH_SIZE = 200;
 type Counts = Record<string, number>;
 
 /**
- * One-shot import of the legacy `ai-medialab.db` (written by the Python engine until H6) into the Nest database.
+ * One-shot import of the legacy `ai-medialab.db` (written by the Python engine before H6) into the Nest database.
  *
- * - Read-only on the legacy file: opened `readonly`, never renamed or deleted (the engine still uses it).
+ * - Read-only on the legacy file: opened `readonly`, never modified or deleted; once everything is imported (data and
+ *   settings) it is renamed to `ai-medialab.db.imported` (with its `-wal` / `-shm` files).
  * - Files (`uploads/`, `outputs/`, `thumbs/`, `previews/`) stay where they are: asset and voice rows keep their
  *   relative file names.
  * - Idempotent: all data goes in one transaction together with the marker row (`import_markers`); a second run finds the
@@ -60,29 +61,52 @@ export class LegacyImportService {
   /** Imports the legacy database of `dataDir` (default: the shared data folder) unless it was already imported. */
   async run(dataDir: string | null = this.resolveDataDir()): Promise<LegacyImportReport> {
     const source = dataDir ? findLegacyDatabase(dataDir) : null;
-    if (!source) return { status: 'no-source', source: null, counts: {}, skipped: {}, settingsApplied: 0 };
+    if (!source) return { status: 'no-source', source: null, counts: {}, skipped: {}, settingsApplied: 0, archivedTo: null };
 
     const markers = this.dataSource.getRepository(ImportMarkerEntity);
     const marker = await markers.findOneBy({ id: LEGACY_IMPORT_MARKER_ID });
     if (marker?.settingsApplied) {
-      return { status: 'already-imported', source: marker.sourcePath, counts: {}, skipped: {}, settingsApplied: 0 };
+      return {
+        status: 'already-imported',
+        source: marker.sourcePath,
+        counts: {},
+        skipped: {},
+        settingsApplied: 0,
+        archivedTo: this.archive(source),
+      };
     }
 
     const reader = new LegacyDatabaseReader(source, this.openDatabase);
+    let report: LegacyImportReport;
     try {
       const copied = marker ? null : await this.copyData(reader, source);
       const settingsApplied = await this.applySettings(reader);
       await markers.update({ id: LEGACY_IMPORT_MARKER_ID }, { settingsApplied: true });
       this.logger.log(`Legacy database ${source}: ${copied ? 'imported' : 'settings retried'}.`);
-      return {
+      report = {
         status: copied ? 'imported' : 'settings-retried',
         source,
         counts: copied?.counts ?? {},
         skipped: copied?.skipped ?? {},
         settingsApplied,
+        archivedTo: null,
       };
     } finally {
       reader.close();
+    }
+    report.archivedTo = this.archive(source);
+    return report;
+  }
+
+  /** Renames the imported database to `<name>.imported`; a failure is logged (the import itself is done and marked). */
+  private archive(source: string): string | null {
+    try {
+      const target = archiveLegacyDatabase(source);
+      this.logger.log(`Legacy database renamed to ${target} (kept, never deleted).`);
+      return target;
+    } catch (error) {
+      this.logger.warn(`Could not rename the legacy database ${source}: ${(error as Error).message}`);
+      return null;
     }
   }
 

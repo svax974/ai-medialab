@@ -40,7 +40,7 @@ Tests : `controllers/VoiceController.spec.ts` (routes sur un faux moteur HTTP : 
 ## Endpoints exposés (exhaustif)
 
 Tous **administrateur** (`local-trust` inclus), JSON en clair, mêmes URLs, formes et textes d'erreur que l'ancienne API du
-moteur (`/api/voices*` n'est plus relayé par le proxy transitoire).
+moteur (qui n'a plus de bibliothèque de voix : il ne prépare que le clip de référence).
 
 | Méthode | Endpoint | Réponse | Erreurs |
 |---|---|---|---|

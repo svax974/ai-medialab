@@ -3,9 +3,9 @@
 ## Rôle
 
 Relie Nest au moteur Python (`engine/`, FastAPI interne : modèles, téléchargements, jobs, médias) : **client HTTP typé**,
-**relais du flux d'événements du moteur** vers le navigateur, **sonde de santé** et, jusqu'à la tâche H6, **proxy
-transitoire** `/api/*` → moteur pour les routes que Nest ne porte pas encore. Le navigateur ne parle qu'à Nest ; le
-moteur n'écoute que sur `127.0.0.1` et exige l'en-tête `X-Engine-Token`.
+**relais du flux d'événements du moteur** vers le navigateur, **sonde de santé** et **relais des médias**
+(`/api/media/*`). Le navigateur ne parle qu'à Nest ; le moteur n'écoute que sur `127.0.0.1` et exige l'en-tête
+`X-Engine-Token` (sauf `/engine/v1/status` et les fichiers `/media/*`).
 
 Module d'application (pas un module partagé) ; branché dans `modules/app/AppModule.ts`, `@Global()`.
 
@@ -23,14 +23,14 @@ Module d'application (pas un module partagé) ; branché dans `modules/app/AppMo
 | `SseParser` | `services/sseParser.ts` | Analyse incrémentale d'un flux SSE (trames `event:` / `data:`). |
 | `EngineHealthContributor` | `services/EngineHealthContributor.ts` | Contribution `engine` de `GET /api/v1/health`. |
 | `engineErrorToHttp` | `services/engineHttpError.ts` | Erreur du moteur vers erreur HTTP d'une route Nest (statut et message relayés, injoignable : 502). |
-| `EngineProxyService`, `EngineProxyController` | `services/`, `controllers/` | Proxy transitoire (H6 : suppression). |
+| `EngineMediaService`, `EngineMediaController` | `services/`, `controllers/` | Relais `GET`/`HEAD /api/media/<dossier>/<fichier>` vers `/media/...` du moteur (plages `Range` transmises, sans jeton). |
 | Faux moteur de test | `testing/fakeEngine.ts` | Serveur HTTP local qui joue le moteur dans les tests. |
 
 ## Dépendances
 
 - `common` : `EventStreamService` (publication), `HEALTH_CONTRIBUTORS`, `AdminOnlyInterceptor`, `NoTransportCrypt`.
 - Dev : `openapi-typescript` (ajouté par `back/package.local.json` ; justifié car le contrat est entre deux langages).
-- Aucune autre dépendance : `fetch` natif pour le client et le relais, `http` pour le proxy.
+- Aucune autre dépendance : `fetch` natif pour le client et le relais d'événements, `http` pour le relais des médias.
 
 **Pourquoi pas `throttledFetch`.** Ce helper de `common` protège les API tierces à quota (espacement entre appels, reprises
 avec backoff sur 5xx, réponses périmées). Pour un processus local que nous possédons, il retarderait des appels qui doivent
@@ -58,10 +58,9 @@ Lancement en dev : `scripts-local/dev-services.sh` (README racine, « Développe
 constructor(private readonly engine: EngineClient) {}
 
 const status = await this.engine.get('/engine/v1/status');
-const audio = await this.engine.get('/engine/v1/assets', { query: { media: 'audio' } });
-await this.engine.delete('/engine/v1/assets/{asset_id}', { params: { asset_id: id } });
-const conv = await this.engine.post('/engine/v1/conversations', { body: { mode: 'image', title: 'T' } });
-await this.engine.post('/engine/v1/assets', { form }); // multipart (FormData)
+const system = await this.engine.get('/engine/v1/system', { query: { refresh: true } });
+await this.engine.delete('/engine/v1/models/{model_id}', { params: { model_id: id } });
+await this.engine.post('/engine/v1/jobs', { body: job });
 ```
 
 Chemins, méthodes, paramètres de chemin et de requête, corps JSON et type de réponse sont vérifiés à la compilation.
@@ -107,7 +106,7 @@ Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + évén
 ## Contrat de jobs (H4.3a)
 
 Le moteur est **sans état applicatif** pour les jobs soumis par Nest : il ne lit ni n'écrit conversations, messages ni assets. Routes
-réservées à Nest (jeton `X-Engine-Token`, absentes de l'ancien préfixe `/api`) :
+réservées à Nest (jeton `X-Engine-Token`) :
 
 | Route | Rôle |
 |---|---|
@@ -135,12 +134,6 @@ réservées à Nest (jeton `X-Engine-Token`, absentes de l'ancien préfixe `/api
 Garde-fous conservés : un modèle chargé à la fois, une génération à la fois, déchargement après inactivité (`keep_alive_minutes`),
 annulation. Les vignettes et le sondage des médias restent au moteur (`media.py`, `job_outputs.py`).
 
-**Ancien chemin.** L'ancienne interface (`frontend/`, jusqu'à H6) parle directement au moteur : `POST /api/messages` écrit toujours
-la base du moteur, mais ne génère plus lui-même : `engine/app/legacy_jobs.py` construit le même `JobRequest` (références de la
-base, `outputs/`) avec un *sink* qui écrit les messages et assets et publie les anciens événements (`message.updated`, `job.progress`
-avec `message_id` et `conversation_id`, `job.image`) ; ces jobs n'émettent pas les événements `job.*` du nouveau contrat.
-Les deux bases (celle du moteur et celle de Nest) sont indépendantes : un message créé par l'une n'existe pas dans l'autre.
-
 Côté navigateur : `GET /api/v1/events/stream?topics=engine.job.progress,engine.link`. Côté serveur, `events$` donne les
 événements (`{ name, data }`) à un service Nest (H4.3 en dépend pour mettre les messages à jour). Reconnexion : délai
 `min * 2^n` plafonné, aléa +-20 %, remis à zéro après une ouverture réussie ; coupure silencieuse détectée par le délai
@@ -148,31 +141,21 @@ d'inactivité. Une indisponibilité prolongée n'est journalisée qu'une fois pa
 
 Limites : un événement de plus de 16 Ko est abandonné par `EventStreamService` (journalisé) ; `events$` le reçoit toujours.
 
-## Proxy transitoire `/api/*` (supprimé en H6)
+## Relais des médias
 
-Pour que l'ancienne interface (et le nouveau front, avant que Nest ne porte chaque fonctionnalité) fonctionne dès
-maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est dans `PROXIED_SEGMENTS`
-(`events`) est relayée à
-`/engine/v1/<segment>[/...]` avec `X-Engine-Token`. Un test vérifie que cette liste et `NEST_SERVED_SEGMENTS` (segments servis par Nest ou réservés à Nest : `engine`, `runtime`,
-`settings`, `status`, `system` repris par `settings` et `hardware` en H4.1 ; `voices` repris par `audio-studio` en H4.5 ; `engines`, `hf`, `models` repris par `engines` et `model-catalog` en H4.2 ; `assets`, `conversations`, `messages` repris par `media-library` et `studio-core` en H4.3a, avec `jobs` et `media` qui ne sont appelés que par Nest) couvrent tous les premiers segments de
-`engine/openapi.json`. Chaque tâche H4 retire de `PROXIED_SEGMENTS` les routes qu'elle reprend (et les ajoute à `NEST_SERVED_SEGMENTS`).
+Le moteur sert ses fichiers (`uploads/`, `outputs/`, `thumbs/`, `previews/`) en lecture seule sur `/media/<dossier>/<fichier>`,
+sans jeton, sur `127.0.0.1`. Nest les relaie au navigateur sous **`/api/media/<dossier>/<fichier>`** (`GET` et `HEAD`, en-têtes
+`Range`, `If-None-Match` et `If-Modified-Since` transmis : lecture et déplacement dans l'audio et la vidéo). Le préfixe `/api`
+évite que le repli SPA de `serveFrontend` (qui sert `index.html` à tout `GET` acceptant du HTML hors `/api`) ne masque un
+média ouvert dans un onglet.
 
-- **Ce qui reste au proxy (H4.5)** : le seul segment `events`, le flux historique du moteur (`/engine/v1/events`). Aucun
-  composant migré ne le lit (ils consomment `studio.*` et `engine.*`, publiés par Nest ; le relais `EngineEventRelay` s'abonne
-  directement au moteur par `EngineClient`, pas par ce proxy). Il reste uniquement parce que le test de couverture exige que chaque
-  premier segment de `engine/openapi.json` soit classé et que Nest n'a pas de route équivalente ; il disparaît en H6 avec
-  l'ancienne interface et les routes `/api` du moteur. `voices` est repris par `audio-studio` (H4.5).
-- **Médias** : `/api/media/<kind>/<fichier>` → `/media/<kind>/<fichier>` du moteur (sans jeton, plages `Range` transmises).
-  Le préfixe `/api` évite que le repli SPA de `serveFrontend` (qui sert `index.html` à tout `GET` acceptant du HTML hors
-  `/api`) ne masque un média ouvert dans un onglet.
-- **Pas de collision** : `/api/v1/*` (routes Nest) et `/api` (Swagger) n'ont pas de segment listé ; Nest les sert comme avant.
-  Le contrôleur est exclu de Swagger.
-- **Flux, envois, JSON** : réponses relayées en continu (le flux SSE reçoit `Cache-Control: no-cache, no-transform` et
-  `X-Accel-Buffering: no`, comme les flux Nest, pour échapper à la compression) ; les envois `multipart` sont transmis sans
-  être lus ; un corps JSON, déjà lu par le parseur de Nest, est resérialisé **sans** les membres `uid` / `user` que
-  l'intercepteur d'authentification y recopie. L'en-tête `Authorization` du navigateur n'est jamais transmis au moteur.
 - **Sécurité** : `AdminOnlyInterceptor` (le principal `local-trust` est administrateur). Sans principal ou non admin : 401.
-  Moteur injoignable : 502 `{ statusCode: 502, message: 'Engine unavailable' }`.
+  L'en-tête `Authorization` du navigateur n'est jamais transmis. Moteur injoignable : 502
+  `{ statusCode: 502, message: 'Engine unavailable' }`. Le contrôleur est exclu de Swagger.
+- Seul ce chemin est relayé : tout le reste de l'API du moteur passe par `EngineClient`, appelé par les modules Nest.
+- **Couverture du contrat** : `ENGINE_API_SEGMENTS` (`engineConfig.ts`) liste les premiers segments de `engine/openapi.json` ;
+  `EngineMedia.spec.ts` échoue si le schéma gagne ou perd un segment, pour qu'une nouvelle zone du moteur soit une décision
+  consciente côté Nest.
 - Limite connue : un `<img>` ou `EventSource` n'envoie pas `Authorization` ; hors mode local de confiance, ces ressources
   ne sont accessibles qu'avec un autre mécanisme (sans objet pour cette application locale).
 
@@ -181,8 +164,7 @@ maintenant, toute requête `/api/<segment>[/...]` dont le premier segment est da
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
 | `GET` | `/api/v1/health` | Public | Route de `common` ; ce module y ajoute `checks.engine` : `{ status, events, engine }`. |
-| `ALL` | `/api/events[/...]` | Admin (`local-trust` inclus) | Proxy transitoire vers `/engine/v1/...`. |
-| `ALL` | `/api/media/...` | Admin | Proxy transitoire vers les médias du moteur (`/media/...`). |
+| `GET`, `HEAD` | `/api/media/<dossier>/<fichier>` | Admin (`local-trust` inclus) | Relais des médias du moteur (`/media/...`). |
 
 Santé : `status: ok` si `/engine/v1/status` répond sous 2 s, sinon **`degraded`** (HTTP 200 : le serveur et l'interface
 fonctionnent, seule la génération est indisponible ; le moteur est supervisé par le lanceur ou la coquille de bureau) ;
@@ -190,12 +172,12 @@ fonctionnent, seule la génération est indisponible ; le moteur est supervisé 
 
 ## Entités
 
-Aucune. (La persistance des conversations, messages et assets arrive en H2.)
+Aucune (la persistance est dans `studio-core`, `media-library`, `audio-studio` et `settings`).
 
 ## Points d'extension
 
 - Injecter `EngineClient` (typage complet) ou s'abonner à `EngineEventRelay.events$` depuis un module applicatif.
-- Un module qui reprend une route du proxy (H4) la retire de `PROXIED_SEGMENTS` et passe à `EngineClient`.
+- Une route ajoutée au moteur : régénérer `engine/openapi.json` et les types, puis mettre à jour `ENGINE_API_SEGMENTS` si le segment est nouveau.
 - `HEALTH_CONTRIBUTORS` est fourni ici sous forme de tableau : un autre contributeur est à ajouter à ce tableau (un seul
   fournisseur du jeton par projet).
 
@@ -207,5 +189,5 @@ Un fichier à la fois, depuis `back/` (sous `docs/migration/tools/guarded_run.sh
 npx jest --runInBand src/modules/engine/services/EngineClient.spec.ts      # idem pour les autres fichiers du dossier
 ```
 
-Fichiers : `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHealthContributor,EngineProxy,sseParser}.spec.ts`
+Fichiers : `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHealthContributor,engineHttpError,EngineMedia,sseParser}.spec.ts`
 (faux moteur HTTP local, `testing/fakeEngine.ts`), `generated/engineApi.contract.spec.ts` (types à jour).

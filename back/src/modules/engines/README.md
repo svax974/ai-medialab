@@ -31,7 +31,7 @@ Module d'application. Tâche H4.2.
 | `POST` | `/api/engines/sdcpp/install` | Admin | Démarre l'installation de stable-diffusion.cpp (200, `EngineInstallState`) ; 409 refus. |
 | `DELETE` | `/api/engines/sdcpp/install` | Admin | Annule ; 409 si aucune installation en cours. |
 
-Le segment `engines` n'est plus relayé par le proxy transitoire (`NEST_SERVED_SEGMENTS`).
+Le segment `engines` délègue au moteur par `EngineClient`.
 
 ## Événements (progression)
 

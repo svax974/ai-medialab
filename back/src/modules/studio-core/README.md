@@ -19,7 +19,7 @@ navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations :
 | Entité | `entities/ConversationEntity.ts` | Table `conversations` (avec `mode`). |
 | Entité | `entities/MessageEntity.ts` | Table `messages`. |
 | Entité | `entities/MessageRefEntity.ts` | Table `message_refs` (assets de référence d'un prompt). |
-| DTO | `dto/ConversationDto.ts` | Résumé public (identique à `conversation_summary` de `engine/app/repo.py`). |
+| DTO | `dto/ConversationDto.ts` | Résumé public (identique à `conversation_summary` de l'ancien moteur, `engine/app/repo.py` supprimé en H6). |
 | DTO | `dto/ConversationDetailDto.ts` | Résumé + `messages`. |
 | DTO | `dto/MessageDto.ts` | Forme publique d'un message (identique à `message_public`). |
 | Mappeurs | `mappers/conversationMapper.ts`, `mappers/messageMapper.ts` | Entités vers formes publiques. |
@@ -48,7 +48,7 @@ Tests : voir « Tests » plus bas.
 ## Endpoints exposés (exhaustif)
 
 Tous **administrateur** (le principal `local-trust` l'est), JSON en clair (`NoTransportCrypt`), même URL et même forme publique
-que l'ancienne API du moteur (comparées aux sorties capturées de `repo.py` dans `controllers/studioRoutes.spec.ts`). Les
+que l'ancienne API du moteur (comparées, dans `controllers/studioRoutes.spec.ts`, aux sorties de `repo.py` capturées une fois, figées dans `legacy-import/testing/expectedPublic.json`). Les
 erreurs ont la forme de Nest (`{ statusCode, message }`) avec les mêmes statuts et les mêmes textes qu'avant.
 
 | Méthode | Endpoint | Réponse | Erreurs |
@@ -163,7 +163,7 @@ Formes publiques (snake_case, champs absents à `null`) :
   `count` est borné à 2 par `max_count` ; les réglages résolus (taille, nombre d'images, durée réelle, définition, tâche) remplacent les paramètres du message au `job.started` ; les étapes du moteur
   (`stage` : `fetch`, `sampling`, `decode`, `encode`) passent par `studio.job.progress` ; chaque clip est enregistré avec son **affiche** (`thumb`), sa durée, ses dimensions, la graine et `meta` (`fps`, `frames`, `has_audio`, `task`,
   `strength`…) ; la relance relit le type de chaque référence pour interroger le moteur. Les images extraites d'une vidéo (« dernière image comme départ ») sont prises dans le navigateur puis envoyées comme n'importe quelle image (`POST /api/assets`) :
-  le moteur n'a pas de route d'extraction. Lecture : les fichiers passent par `/api/media` avec `Range` (test `engine/services/EngineProxy.spec.ts`).
+  le moteur n'a pas de route d'extraction. Lecture : les fichiers passent par `/api/media` avec `Range` (test `engine/services/EngineMedia.spec.ts`).
 - Plusieurs moteurs en parallèle : non prévu (un seul GPU) ; la file est globale.
 
 ## Tests
@@ -183,8 +183,8 @@ npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts       
 
 - `src/testing/studioHarness.ts` : services câblés à la main sur une base SQLite en mémoire, avec un moteur scripté
   (`ScriptedEngine`), un relais factice (`relay.events$`) et la capture des événements publiés (`published`, et `queueEvents` à part pour `studio.queue.updated`, afin que les listes exactes assertées ailleurs restent celles des messages et des assets).
-- `studioRoutes.spec.ts` charge la base de démonstration de `legacy-import` et compare les réponses HTTP aux sorties du moteur
-  capturées par `scripts-local/capture_legacy_fixtures.py`.
+- `studioRoutes.spec.ts` charge la base de démonstration de `legacy-import` et compare les réponses HTTP aux sorties de l'ancien moteur
+  capturées une fois (fixture figée ; le script de capture a été supprimé avec `repo.py`).
 - `studioEngine.e2e.spec.ts` lance le **moteur Python en sous-processus** (`IMAGEGEN_DEMO=1` : images synthétiques, aucun modèle,
   **sonde matérielle coupée donc sans torch**), puis exerce Nest contre lui par HTTP et le vrai flux d'événements : génération,
   files d'attente, annulation en file et en cours, relance, suppression (fichiers retirés par le moteur), envoi d'une référence.

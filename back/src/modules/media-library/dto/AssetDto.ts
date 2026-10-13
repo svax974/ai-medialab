@@ -6,7 +6,7 @@
 import type { AssetKind, AssetMedia } from '../entities/AssetEntity';
 
 /**
- * Public shape of an asset: identical to `asset_public()` of the legacy engine (`engine/app/repo.py`), so the migrated
+ * Public shape of an asset: identical to `asset_public()` of the legacy engine (`engine/app/repo.py` (removed in H6)), so the migrated
  * screens keep their contract. Field names stay snake_case on purpose; absent values are `null`, never omitted.
  */
 export class AssetDto {

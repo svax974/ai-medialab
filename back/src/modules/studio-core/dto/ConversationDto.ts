@@ -8,7 +8,7 @@ import type { ConversationMode } from '../entities/ConversationEntity';
 
 /**
  * Public shape of a conversation in a list or after an update: identical to `conversation_summary()` of the legacy
- * engine (`engine/app/repo.py`).
+ * engine (`engine/app/repo.py` (removed in H6)).
  */
 export class ConversationDto {
   id: string;

@@ -5,7 +5,7 @@
 
 import { SETTINGS_MODULE_ID } from './configSchema';
 
-/** Keys of the legacy `settings` table (`engine/app/db.py`) and the module-config key each one becomes. */
+/** Keys of the legacy `settings` table (`engine/app/db.py` of the former engine, removed in H6) and the module-config key each one becomes. */
 export const LEGACY_SETTING_KEYS: Record<string, string> = {
   keep_alive_minutes: 'studio_keepAliveMinutes',
   previews: 'studio_previews',

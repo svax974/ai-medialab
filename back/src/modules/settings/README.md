@@ -42,7 +42,7 @@ quantification du modèle chargé pendant une génération). Dans ces cas **rien
 ## Transmission au moteur
 
 Le moteur ne lit plus ces réglages dans sa base : Nest lui envoie l'état **complet** par `PUT /engine/v1/runtime/settings`
-(route réservée à Nest, protégée par `X-Engine-Token`, absente de l'ancien préfixe `/api`) :
+(route réservée à Nest, protégée par `X-Engine-Token`) :
 
 1. au démarrage (`SettingsEngineSync.onApplicationBootstrap`), puis à chaque (re)connexion du flux d'événements (le moteur a pu
    redémarrer et a perdu sa mémoire) ;
@@ -50,8 +50,8 @@ Le moteur ne lit plus ces réglages dans sa base : Nest lui envoie l'état **com
 3. à chaque `PUT /api/settings` : le moteur valide **avant** l'enregistrement (il connaît les modèles).
 
 Si le moteur est injoignable au moment d'un `PUT`, les valeurs sont enregistrées (la validation du moteur est alors sautée) et
-envoyées à la prochaine connexion ; un refus tardif est journalisé. Tant que Nest n'a rien envoyé, le moteur garde le
-comportement antérieur (valeurs de sa propre base).
+envoyées à la prochaine connexion ; un refus tardif est journalisé. Tant que Nest n'a rien envoyé, le moteur applique ses valeurs par défaut
+(`DEFAULT_SETTINGS` de `engine/app/jobs.py`) ; il ne les écrit jamais sur disque (le jeton Hugging Face en fait partie).
 
 ## Entités
 
@@ -72,8 +72,6 @@ démarrage ou la prochaine reconnexion (limite connue).
 
 ## Points d'extension
 
-- H4.3 (moteur sans état) : les valeurs propres à un job (`low_memory`, `quantize`, variante, jeton) voyageront dans le job ;
-  `keep_alive_minutes` et `previews` restent dans la configuration poussée.
 - Un nouveau réglage : champ du schéma, clé de `LEGACY_SETTING_KEYS` si l'ancienne base le portait, `StudioSettings`,
   `parseSettingsPatch`, `RuntimeSettings` du moteur (`engine/app/api/runtime.py`), puis `npm run engine:types`.
 

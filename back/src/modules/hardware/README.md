@@ -28,7 +28,7 @@ Module d'application. Tâche H4.1.
 | `GET` | `/api/status` | Admin | Worker de génération : `state`, `model_id`, `quantize`, file, dernière erreur. |
 | `POST` | `/api/engine/unload` | Admin | Décharge le modèle ; 409 (relayé) pendant une génération. |
 
-Ces trois segments (`system`, `status`, `engine`) ne sont plus relayés par le proxy transitoire (`NEST_SERVED_SEGMENTS`).
+Ces trois segments (`system`, `status`, `engine`) délèguent au moteur par `EngineClient`.
 
 ## Entités
 
