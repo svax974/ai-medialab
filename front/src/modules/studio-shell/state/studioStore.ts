@@ -26,6 +26,10 @@ interface StudioState {
   setSettingsOpen: (open: boolean) => void
   modelsOpen: boolean
   setModelsOpen: (open: boolean) => void
+  /** Opened from "search a model": the dialog opens on this kind and focuses its Hugging Face search. */
+  modelsSearchKind: StudioMode | null
+  openModelSearch: (kind: StudioMode) => void
+  clearModelSearch: () => void
 }
 
 export const useStudioStore = create<StudioState>()(
@@ -42,6 +46,9 @@ export const useStudioStore = create<StudioState>()(
       setSettingsOpen: (settingsOpen) => set({ settingsOpen }),
       modelsOpen: false,
       setModelsOpen: (modelsOpen) => set({ modelsOpen }),
+      modelsSearchKind: null,
+      openModelSearch: (kind) => set({ modelsOpen: true, modelsSearchKind: kind }),
+      clearModelSearch: () => set({ modelsSearchKind: null }),
     }),
     {
       name: 'cn-prefs', // same key as the former interface

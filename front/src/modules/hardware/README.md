@@ -8,18 +8,18 @@ Back : `back/src/modules/hardware/README.md`. Tâche H4.1.
 
 L'ancienne interface n'affichait pas ces informations sur la carte d'accueil : la carte « Cette machine » était dans le
 dialogue des modèles (`ModelsDialog.tsx`) et l'état du worker dans `EngineCard.tsx`. Ce module les fournit ; **le dialogue des
-modèles (H4.2) monte `MachineCard`/`StoragePaths`, la carte moteur (H4.3) utilise `useEngineStatus`/`useUnloadEngine`**.
+modèles (H4.2, module `model-catalog`) monte `MachineCard`/`StoragePaths`, les cartes de moteurs (module `engines`) lisent `engines`, `packs` et `pack_install` de `useSystemInfo`, la carte moteur (H4.3) utilisera `useEngineStatus`/`useUnloadEngine`**.
 
 ## Structure
 
 ```
 hardware/
   index.ts                     exports
-  types.ts                     SystemInfo, Accelerator, UnusableGpu, EngineStatus
+  types.ts                     SystemInfo (+ engines, packs, pack_install), Accelerator, UnusableGpu, EngineStatus, EngineInfo, PackInfo, états d'installation
   services/hardwareApi.ts      system(refresh), status(), unload()
   hooks/useHardware.ts         useSystemInfo({ enabled, pollMs }), useEngineStatus(), useUnloadEngine()
   lib/hardwareKeys.ts          clés TanStack Query : ['system'], ['engine-status']
-  lib/machine.ts               formatGb, gpuKind, isDiskLow (pur, testé)
+  lib/machine.ts               formatGb (exporté), gpuKind, isDiskLow (pur, testé)
   components/MachineCard.tsx   MachineCard (charge et rafraîchit), MachineSummary (données en props), StoragePaths
   locales/                     locales.fr.json, locales.en.json (clés hardware.*)
 ```

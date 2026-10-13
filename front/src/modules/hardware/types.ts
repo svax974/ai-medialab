@@ -19,7 +19,53 @@ export interface UnusableGpu {
   reason: string
 }
 
-/** The hardware part of `GET /api/system` (engines, packs and installers belong to the models module). */
+export type InstallStatus = 'idle' | 'running' | 'done' | 'error' | 'cancelled'
+
+/** Audio/video pack installation (isolated Python environment): no percentage, a message and a detail line. */
+export interface PackInstallState {
+  state: InstallStatus
+  pack?: string
+  name?: string
+  message?: string
+  detail?: string
+  error?: string | null
+  /** Epoch seconds. */
+  started_at?: number
+  size_mb?: number
+}
+
+/** stable-diffusion.cpp installation: bytes downloaded of the release archive. */
+export interface EngineInstallState {
+  state: InstallStatus
+  variant?: string
+  done?: number
+  total?: number
+  message?: string
+  error?: string | null
+}
+
+/** One inference engine (`mlx`, `torch`, `sdcpp`) as detected by the engine. */
+export interface EngineInfo {
+  available: boolean
+  reason?: string
+  device?: string
+  variant?: string
+  installable?: boolean
+  install_variant?: string
+  install_size_mb?: number
+  install?: EngineInstallState
+}
+
+/** An audio/video pack (isolated environment installed on demand). */
+export interface PackInfo {
+  name: string
+  size_mb: number
+  installed: boolean
+  installable?: boolean
+  reason?: string
+}
+
+/** `GET /api/system`: the machine, the engines and packs (the installers are the `engines` module's business). */
 export interface SystemInfo {
   os: string
   arch: string
@@ -29,6 +75,9 @@ export interface SystemInfo {
   unusable_gpus: UnusableGpu[]
   disk: { free_gb: number; total_gb: number }
   paths: { data: string; models: string }
+  engines: Record<string, EngineInfo>
+  packs: Record<string, PackInfo>
+  pack_install: PackInstallState
 }
 
 /** `GET /api/status`: the generation worker (one model loaded at a time). */

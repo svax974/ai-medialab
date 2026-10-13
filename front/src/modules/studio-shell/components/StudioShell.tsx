@@ -13,19 +13,22 @@ import { useEngineEventSync } from '../hooks/useEngineEventSync'
 import { useModeSync } from '../hooks/useModeSync'
 import { useShortcuts } from '../hooks/useShortcuts'
 import { useStudioStore } from '../state/studioStore'
+import { EnginesPanel, startSetup, useEnginesSync } from '@/modules/engines'
+import { ModelsDialog, useDownloadEvents } from '@/modules/model-catalog'
 import { SettingsDialog } from '@/modules/settings'
-import { ComingSoonDialog } from './ComingSoonDialog'
 import { Sidebar } from './Sidebar'
 
 /**
  * Layout of the studio: the sidebar (hideable, Cmd+B) and the page. Mounted once above the routes, so the list and
  * the search survive navigation. Also hosts the shortcuts, the mode follow-up, the engine event subscription and the
- * dialogs (settings: module `settings`; models: empty until H4.2).
+ * dialogs (settings: module `settings`; models: module `model-catalog`, with the installers of module `engines`).
  */
 export function StudioShell({ children }: { children: ReactNode }) {
   useShortcuts()
   useModeSync()
   useEngineEventSync()
+  useDownloadEvents()
+  useEnginesSync()
   const sidebarOpen = useStudioStore((s) => s.sidebarOpen)
   const toggleSidebar = useStudioStore((s) => s.toggleSidebar)
   const settingsOpen = useStudioStore((s) => s.settingsOpen)
@@ -47,7 +50,12 @@ export function StudioShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-      <ComingSoonDialog open={modelsOpen} onClose={() => setModelsOpen(false)} titleKey="studio.dialog.models.title" />
+      <ModelsDialog
+        open={modelsOpen}
+        onClose={() => setModelsOpen(false)}
+        onSetup={(model) => void startSetup(model)}
+        renderEngines={(kind, models) => <EnginesPanel kind={kind} models={models} />}
+      />
       <ConfirmHost />
     </Box>
   )

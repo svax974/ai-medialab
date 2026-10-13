@@ -28,7 +28,7 @@ Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouto
   et le catalogue `['models']` est invalidé (la quantification change ce qu'il affiche). Un refus (422 quantification inconnue,
   409 génération en cours) s'affiche en message (react-toastify) et l'affichage reste sur la valeur enregistrée.
 - Jeton : champ à écriture seule ; le serveur ne dit que `has_hf_token` (« Un jeton est enregistré », bouton « Retirer »).
-  Enregistrer ou retirer affiche un message de confirmation. `HfTokenField` est exporté pour le dialogue des modèles (H4.2).
+  Enregistrer ou retirer affiche un message de confirmation. `HfTokenField` est aussi monté par le dialogue des modèles (H4.2). `useSaveSettings` y sert aux choix de quantification (`quantize`) et de variante (`variant`).
 
 ## Info-bulles
 
@@ -51,5 +51,5 @@ n'est pas testé (environnement Node).
 | Ancien (`frontend/src/`) | Nouveau |
 |---|---|
 | `components/SettingsDialog.tsx` | `components/SettingsDialog`, `KeepAliveControl`, `SettingsSection` |
-| `components/ModelsDialog.tsx` : `TokenField` | `components/HfTokenField` (affiché ici ; le dialogue des modèles le reprendra, H4.2) |
+| `components/ModelsDialog.tsx` : `TokenField` | `components/HfTokenField` (affiché ici et dans le dialogue des modèles, H4.2) |
 | `lib/help.ts` : `keep_alive`, `previews`, `low_memory` | `lib/settingsConfig.ts` `SETTINGS_HELP` + locales |

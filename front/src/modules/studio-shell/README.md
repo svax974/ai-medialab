@@ -7,7 +7,7 @@ conversations épinglées et groupées par période, modèles, réglages, langue
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
 abonnement au flux d'événements du moteur. Les écrans eux-mêmes (composeurs, conversation, galeries, voix, modèles,
 réglages) sont des **pages minces « à venir »** que les tâches H4 remplacent ; le dialogue Réglages est celui du module
-`settings` (H4.1), le dialogue Modèles reste vide (H4.2).
+`settings` (H4.1), le dialogue Modèles celui du module `model-catalog` avec les installateurs du module `engines` (H4.2).
 
 Module d'application (`front/src/modules/`), pas un module partagé. Thème : `front/src/themes/chambre-noire/README.md`.
 
@@ -20,7 +20,7 @@ studio-shell/
   routes.tsx               studioRoutes (PluginRoute[], layout 'fullscreen') pour components/Router.tsx
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
   components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem,
-                           SidebarFooter, ComingSoonDialog, Mark, modeIcons
+                           SidebarFooter, Mark, modeIcons
   pages/                   ComingSoonPage, ConversationPage (pages provisoires)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
@@ -71,14 +71,14 @@ Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolv
   Défauts : `staleTime` 30 s, pas de rechargement au focus (le flux d'événements invalide), un nouvel essai.
 - **Flux d'événements** (`hooks/useEngineEventSync.ts`, monté par `StudioShell`) : abonnement aux sujets
   `engine.conversation.updated`, `engine.conversation.deleted`, `engine.message.updated`, `engine.message.deleted`,
-  `engine.engine.status`, `engine.models.changed`, `engine.engine.install`, `engine.pack.install` (clés `['engine-status']` et
-  `['system']` du module `hardware`), `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
+  `engine.engine.status`, `engine.models.changed`, `engine.download.progress`, `engine.engine.install`, `engine.pack.install` (clés `['engine-status']` et
+  `['system']` du module `hardware`, `['models']` du module `model-catalog` ; la progression en cours n'invalide rien, elle alimente les stores `model-catalog` et `engines`), `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
   (regroupés sur 250 ms) ; `engine.link` revenu à `connected: true` et la trame `resync` rechargent tout. Quand le flux est
   indisponible (`fallback`), la liste se relit au montage ; les composants H4 ajoutent leurs sujets dans `ENGINE_TOPICS` et leurs effets.
 - **Actions** (`useConversationActions`) : épingler/renommer en mise à jour optimiste avec retour arrière et message d'erreur
   (react-toastify) ; supprimer avec confirmation (`confirm()` de `common`) puis retour à l'accueil du mode si la conversation était ouverte.
 - **Zustand** (`state/studioStore.ts`) : `mode`, `lastPathByMode` (dernière page par mode, pour la bascule), `sidebarOpen`
-  (persisté sous `cn-prefs`, comme avant), `settingsOpen`, `modelsOpen`. Les modules H4 y ajoutent leurs tranches.
+  (persisté sous `cn-prefs`, comme avant), `settingsOpen`, `modelsOpen`, `modelsSearchKind` (ouverture du dialogue sur la recherche Hugging Face d'un type : `openModelSearch(kind)`). Les modules H4 y ajoutent leurs tranches.
 
 ## Raccourcis (`lib/shortcuts.ts`, `hooks/useShortcuts.ts`)
 
@@ -102,8 +102,8 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
 | `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
-| `SidebarFooter` | Modèles (dialogue vide), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
-| `ComingSoonDialog` / `ComingSoonPage` | Dialogue et page provisoires. |
+| `SidebarFooter` | Modèles (`ModelsDialog`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
+| `ComingSoonPage` | Page provisoire (le `ComingSoonDialog` a disparu avec H4.2 : plus aucun dialogue provisoire). |
 
 Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.
 
@@ -145,7 +145,7 @@ Contrôle : `npm run i18n:check` (front) ; `locales/locales.spec.ts` vérifie la
 | `lib/format.ts` : `periodOf`, `formatTime`, `cx` | `lib/periods` ; `cx` : inutile (`sx`) ; autres formats : H4 |
 | `lib/composer.ts` : `focusComposer`, `registerComposer` | `lib/focusRegistry` |
 | `components/SettingsDialog.tsx` | module `settings` (H4.1) |
-| `components/ModelsDialog.tsx` | `ComingSoonDialog` (H4.2) |
+| `components/ModelsDialog.tsx` | module `model-catalog` (`ModelsDialog`, H4.2) |
 | `styles.css` | `front/src/themes/chambre-noire/` |
 
 ## Dépendances

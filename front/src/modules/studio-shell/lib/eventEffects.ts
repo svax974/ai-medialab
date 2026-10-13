@@ -4,6 +4,7 @@
  */
 
 import { hardwareKeys } from '@/modules/hardware/lib/hardwareKeys'
+import { modelCatalogKeys } from '@/modules/model-catalog/lib/modelCatalogKeys'
 import { studioKeys } from './queryKeys'
 
 /** Subscribed topics: the engine events relayed by Nest as `engine.<name>` (back/src/modules/engine/README.md). */
@@ -14,6 +15,7 @@ export const ENGINE_TOPICS = [
   'engine.message.deleted',
   'engine.engine.status',
   'engine.models.changed',
+  'engine.download.progress',
   'engine.engine.install',
   'engine.pack.install',
   'engine.link',
@@ -65,11 +67,13 @@ export function effectOfEvent(event: EventLike): CacheEffect {
     case 'engine.engine.status':
       return { invalidate: [hardwareKeys.status], remove: [] }
     case 'engine.models.changed':
-      return { invalidate: [hardwareKeys.system], remove: [] }
+      return { invalidate: [modelCatalogKeys.models, hardwareKeys.system], remove: [] }
     case 'engine.engine.install':
     case 'engine.pack.install':
-      // Only a finished install changes what the machine can run (a running one emits many progress events).
-      return data['state'] === 'running' ? NONE : { invalidate: [hardwareKeys.system], remove: [] }
+    case 'engine.download.progress':
+      // Only a finished install or download changes what the machine can run (a running one emits many progress
+      // events: the live progress is kept in the model-catalog and engines stores, not in the query cache).
+      return data['state'] === 'running' ? NONE : { invalidate: [modelCatalogKeys.models, hardwareKeys.system], remove: [] }
     case 'engine.link':
       return data['connected'] === true ? effectOfResync() : NONE
     default:
@@ -79,5 +83,5 @@ export function effectOfEvent(event: EventLike): CacheEffect {
 
 /** Server asked to reload everything (replay impossible after a reconnection). */
 export function effectOfResync(): CacheEffect {
-  return { invalidate: [studioKeys.conversations, studioKeys.conversationAll, hardwareKeys.system, hardwareKeys.status], remove: [] }
+  return { invalidate: [studioKeys.conversations, studioKeys.conversationAll, modelCatalogKeys.models, hardwareKeys.system, hardwareKeys.status], remove: [] }
 }

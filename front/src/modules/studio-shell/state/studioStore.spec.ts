@@ -8,7 +8,7 @@ import { useStudioStore } from './studioStore'
 
 describe('studioStore', () => {
   beforeEach(() => {
-    useStudioStore.setState({ mode: 'image', sidebarOpen: true, settingsOpen: false, modelsOpen: false })
+    useStudioStore.setState({ mode: 'image', sidebarOpen: true, settingsOpen: false, modelsOpen: false, modelsSearchKind: null })
   })
 
   it('toggles the sidebar', () => {
@@ -26,5 +26,12 @@ describe('studioStore', () => {
   it('sets the mode', () => {
     useStudioStore.getState().setMode('video')
     expect(useStudioStore.getState().mode).toBe('video')
+  })
+
+  it('opens the models dialog on a kind to search, then forgets the request', () => {
+    useStudioStore.getState().openModelSearch('video')
+    expect(useStudioStore.getState()).toMatchObject({ modelsOpen: true, modelsSearchKind: 'video' })
+    useStudioStore.getState().clearModelSearch()
+    expect(useStudioStore.getState()).toMatchObject({ modelsOpen: true, modelsSearchKind: null })
   })
 })
