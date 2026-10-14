@@ -19,23 +19,25 @@ from . import runtime_settings
 from .catalog import engine_compat, plan_for, quant_from_name
 from .engines import MODELS
 from .engines.base import remaining_download_gb
-from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, build, slug,
+from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, SDXL_BASE, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, build, slug,
                              video_template_id)
 from .system import get_system
 
 FAMILY_LABEL = {
     "gguf-variant": "GGUF",
     "sd-diffusers": "Stable Diffusion",
+    "sdxl-lora": "LoRA SDXL",
     "qwen3-tts": "Qwen3-TTS",
     "whisper-ct2": "Whisper",
     "video-diffusers": "Vidéo",
     "video-gguf": "Vidéo GGUF",
 }
-TASK = {"gguf-variant": "image", "sd-diffusers": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
+TASK = {"gguf-variant": "image", "sd-diffusers": "image", "sdxl-lora": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
         "video-diffusers": "video", "video-gguf": "video"}
 # Engine (backend, audio pack) that runs each family, as the presets declare it.
 FAMILY_ENGINE: dict[str, tuple[str, str | None]] = {
     "gguf-variant": ("sdcpp", None), "video-gguf": ("sdcpp", None), "sd-diffusers": ("torch", None),
+    "sdxl-lora": ("torch", None),
     "video-diffusers": ("torch", None), "qwen3-tts": ("pack", "qwen3"), "whisper-ct2": ("pack", "speech"),
 }
 # Repos quantized in a format the Python Qwen3-TTS engine can't load.
@@ -59,6 +61,8 @@ def _tag_values(tags: list[str], prefix: str) -> list[str]:
 def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
     """(family, details) if the repo is a supported format, else None. No network access."""
     ts = set(tags)
+    if f"base_model:adapter:{SDXL_BASE}" in ts:
+        return "sdxl-lora", {"base": SDXL_BASE}
     for pipe in SD_PIPELINES:
         if f"diffusers:{pipe}" in ts:
             return "sd-diffusers", {"pipeline": pipe}
@@ -106,6 +110,8 @@ def listing_precisions(family: str, repo: str, filenames: list[str], params: dic
         return sorted({quant_from_name(f) or "GGUF" for f in ggufs}, key=_quant_rank)
     if family == "whisper-ct2":
         return [_ct2_precision(repo)]
+    if family == "sdxl-lora":
+        return ["LoRA"]
     if family in ("sd-diffusers", "video-diffusers") and any(".fp16." in f for f in filenames):
         return ["fp16"]
     if params:
@@ -125,6 +131,7 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
         qs = [{**base, "filter": f"diffusers:{p}", "pipeline_tag": "text-to-image"} for p in SD_PIPELINES]
         qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": "text-to-image"}
                 for b in GGUF_TEMPLATES]
+        qs.append({**base, "filter": f"base_model:adapter:{SDXL_BASE}"})
     elif kind == "video":
         qs = [{**base, "filter": f"diffusers:{p}"} for p in VIDEO_TEMPLATES]
         qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": tag}
@@ -248,7 +255,7 @@ def _inspect(repo: str) -> dict[str, Any]:
     tags = info.tags or []
     cls = classify(repo, tags)
     if cls is None:
-        raise HubError("Format non pris en charge : seuls les modèles Stable Diffusion/SDXL (diffusers), les "
+        raise HubError("Format non pris en charge : seuls les modèles Stable Diffusion/SDXL (diffusers), les LoRA SDXL, les "
                        "quantifications GGUF de Z-Image / Qwen Image, les modèles vidéo diffusers (Wan, CogVideoX, HunyuanVideo 1.5, "
                        "LTX-2) et GGUF de Wan 2.2 TI2V 5B, Qwen3-TTS et Whisper (faster-whisper) peuvent être ajoutés.")
     family, details = cls
@@ -271,6 +278,18 @@ def _inspect(repo: str) -> dict[str, Any]:
                                    "_r": {"template": template.id, "file": f}})
         out["notes"].append(f"Exécuté comme « {template.name} » : l'encodeur de texte et le VAE du modèle de référence "
                             "sont réutilisés.")
+        return out
+
+    if family == "sdxl-lora":
+        loras = {f: n for f, n in files.items() if f.endswith(".safetensors") and 0 < n <= LORA_MAX_BYTES}
+        if not loras:
+            raise HubError("Aucun fichier LoRA au format safetensors dans ce dépôt.")
+        for f, n in sorted(loras.items()):
+            out["options"].append({"key": f, "label": f.rsplit("/", 1)[-1].removesuffix(".safetensors"), "precision": "LoRA",
+                                   "file": f, "size_gb": _size_gb(n), "_r": {"file": f}})
+        trigger = lora_trigger(getattr(info, "card_data", None))
+        out["notes"].append("Appliquée à Stable Diffusion XL (téléchargé une fois pour toutes les LoRA)"
+                            + (f" ; mots déclencheurs ajoutés au prompt : « {trigger} »." if trigger else "."))
         return out
 
     if family == "sd-diffusers":
@@ -375,6 +394,16 @@ def _select_diffusers(repo: str, files: dict[str, int], pipeline: str, allowed=S
             "weights_gb": _size_gb(total), "largest_gb": _size_gb(largest)}
 
 
+# Above this size a safetensors file is a full checkpoint, not a LoRA.
+LORA_MAX_BYTES = 2 * 1024**3
+
+
+def lora_trigger(card: Any) -> str:
+    """Trigger words of a LoRA, from its model card (`instance_prompt`, written by the diffusers training scripts)."""
+    value = card.get("instance_prompt") if card is not None and hasattr(card, "get") else None
+    return value.strip() if isinstance(value, str) else ""
+
+
 def make_recipe(repo: str, key: str) -> dict[str, Any]:
     """Final recipe for a model. Re-reads the repo over the network rather than trusting what the UI sent."""
     info = inspect(repo)
@@ -397,6 +426,10 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
                 "name": f"{who} {opt['label']}"}
     api_info = _api().model_info(repo, files_metadata=True)
     files = {s.rfilename: (s.size or 0) for s in api_info.siblings or []}
+    if family == "sdxl-lora":
+        stem = opt["label"] if len(info["options"]) > 1 else ""
+        return {**base, "id": slug(repo, stem), "file": opt["file"], "trigger": lora_trigger(api_info.card_data),
+                "name": f"{base['name']} {stem}".strip()}
     if family == "sd-diffusers":
         pipe = classify(repo, api_info.tags or [])[1]["pipeline"]  # type: ignore[index]
         sel = _select_diffusers(repo, files, pipe)

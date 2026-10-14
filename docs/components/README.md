@@ -32,7 +32,7 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 | **stable-diffusion.cpp** | images et vidéo GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/engine_install.py` (`PINNED_TAG`) ; raison de l'épinglage dans le commentaire au-dessus | MIT | à écrire | – |
 | **FFmpeg** (via PyAV) | encodage MP4 (H.264 + AAC), décodage des vidéos envoyées | `engine/pyproject.toml` (`av`) ; encodeurs H.264 : `H264_ENCODERS` (`engine/app/media.py`) | LGPL visée ; roue PyPI actuelle GPL de fait (x264, x265) | [ffmpeg.md](ffmpeg.md) | 2026-10-13 |
 | **mflux / MLX** | images sur Apple Silicon | `engine/pyproject.toml` | MIT | à écrire | – |
-| **PyTorch, diffusers, transformers** | moteur torch (images, vidéo, packs) | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
+| **PyTorch, diffusers, transformers, peft** | moteur torch (images, vidéo, packs) ; `peft` charge les LoRA SDXL | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
 | **qwen-tts** | Qwen3-TTS en PyTorch | `engine/app/audio_packs.py` (pack `qwen3`) | Apache-2.0 | à écrire | – |
 | **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | pack audio « speech » | `engine/app/audio_packs.py` (pack `speech`) | voir `THIRD_PARTY_LICENSES.md` | à écrire | – |
 | **MUI, Emotion, TanStack Query, Zustand, polices Fontsource** | interface (composants et thème, cache des données, état, polices embarquées) | `front/package.json` (plages), `front/package.local.json` (écarts au gabarit) | MIT (MUI, Emotion, TanStack, Zustand), OFL-1.1 (polices) | à écrire | – |

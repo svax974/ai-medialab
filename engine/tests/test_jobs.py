@@ -363,6 +363,12 @@ class TestPlans:
         assert (plan["params"]["steps"], plan["params"]["guidance"]) == (12, 4.0)
         assert (plan["items"][0]["request"]["steps"], plan["items"][0]["request"]["guidance"]) == (12, 4.0)
 
+    def test_image_plan_passes_model_specific_params_to_the_engine(self):
+        job = make_job(params={"lora_scale": 0.7, "seeds": [1]})
+        job.model_id = "pixel-art-xl"
+        request = build_plan(job)["items"][0]["request"]
+        assert request["extra"] == {"lora_scale": 0.7, "pixel_perfect": True}
+
     def test_unknown_model_and_empty_prompt_are_value_errors(self):
         with pytest.raises(ValueError, match="Le prompt est vide"):
             build_plan(make_job(prompt=""))

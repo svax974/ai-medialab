@@ -9,7 +9,9 @@ offered, so no Hugging Face account is needed.
 
 from __future__ import annotations
 
-from .base import ModelSpec, ParamSpec
+import copy
+
+from .base import HfSource, ModelSpec, ParamSpec
 
 ENGINE = "app.engines.diffusers_engine:DiffusersEngine"
 
@@ -112,9 +114,9 @@ SDXL = ModelSpec(
     ],
     check_files=["model_index.json", "unet/*.fp16.safetensors", "text_encoder/*.fp16.safetensors",
                  "text_encoder_2/*.fp16.safetensors", "vae/*.fp16.safetensors"],
-    download_size_gb=7.1,
+    download_size_gb=6.46,  # fp16 components, measured on the repo (6.94 GB)
     license="CreativeML Open RAIL++-M",
-    weights_gb=7.0,
+    weights_gb=6.46,
     largest_component_gb=5.1,
     memory_hint="≈ 8 Go de VRAM en fp16.",
     tags=["texte→image", "img2img", "léger"],
@@ -127,4 +129,117 @@ SDXL = ModelSpec(
     },
 )
 
-SPECS = [QWEN21_TORCH, Z_IMAGE_TURBO, SDXL]
+# SDXL derivatives. They reuse the SDXL code path (pipeline, img2img, size rules); the fine-tunes ship their own
+# weights in the same diffusers layout, the LoRAs add a small file on top of the SDXL base above (shared download).
+
+_DPM_KARRAS = {"class": "DPMSolverMultistepScheduler", "config": {"use_karras_sigmas": True}}  # "DPM++ 2M Karras"
+
+
+def _sdxl_params(steps: int, guidance: float, negative: str = "", extra: list[ParamSpec] | None = None) -> list[ParamSpec]:
+    params = copy.deepcopy(SDXL.params)
+    params[0].default, params[1].default, params[3].default = steps, guidance, negative
+    if steps < params[0].min:  # distilled ("turbo") models
+        params[0].min, params[0].help = 4, f"Le modèle est distillé pour ≈ {steps} étapes."
+    return [*params[:3], *(extra or []), params[3]]
+
+
+def sdxl_finetune(*, id: str, name: str, repo: str, description: str, license: str, tags: list[str], steps: int,
+                  guidance: float, negative: str = "", fp16: bool = True, scheduler: dict | None = None) -> ModelSpec:
+    """A full SDXL fine-tune in diffusers format: only its fp16 component weights are downloaded (≈ 7 Go), never the
+    single-file checkpoints next to them."""
+    weights = "*.fp16.safetensors" if fp16 else "*.safetensors"
+    spec = copy.deepcopy(SDXL)
+    spec.id, spec.name, spec.family, spec.description, spec.license = id, name, "Stable Diffusion XL", description, license
+    spec.hf_repo = repo
+    spec.hf_patterns = [p for p in SDXL.hf_patterns if not p.endswith(".fp16.safetensors")] + \
+        [f"{c}/{weights}" for c in ("text_encoder", "text_encoder_2", "unet", "vae")]
+    spec.check_files = ["model_index.json"] + [f"{c}/{weights}" for c in ("unet", "text_encoder", "text_encoder_2", "vae")]
+    spec.params = _sdxl_params(steps, guidance, negative)
+    spec.tags = ["texte→image", "img2img", *tags]
+    spec.options = {**SDXL.options, "load_kwargs": {"use_safetensors": True, **({"variant": "fp16"} if fp16 else {})}}
+    if scheduler:
+        spec.options["scheduler"] = scheduler
+    return spec
+
+
+LORA_SCALE_HELP = "Intensité du style apporté par la LoRA : 0 = SDXL seul, 1 = valeur prévue par son auteur."
+PIXEL_PERFECT = ParamSpec("pixel_perfect", "Pixels nets", "bool", True, help=(
+    "Réduit l'image 8 fois puis l'agrandit sans lissage : chaque « pixel » devient un carré net, comme du vrai pixel "
+    "art. Décochez pour garder l'image brute du modèle."))
+
+
+def sdxl_lora(*, id: str, name: str, repo: str, file: str, size_gb: float, description: str, license: str,
+              trigger: str = "", tags: list[str] | None = None, scale: float = 1.0, steps: int = 30,
+              guidance: float = 6.0, negative: str = "", pixelate: int = 0, custom: bool = False) -> ModelSpec:
+    """SDXL base + one LoRA (`file` of `repo`). The trigger words are added in front of the prompt when missing;
+    `pixelate` (factor) offers the "Pixels nets" post-processing."""
+    spec = copy.deepcopy(SDXL)
+    spec.id, spec.name, spec.family, spec.custom = id, name, "Stable Diffusion XL", custom
+    spec.description, spec.license = description, license
+    extra = [ParamSpec("lora_scale", "Force du style", "float", scale, 0.0, 1.5, 0.05, LORA_SCALE_HELP)]
+    if pixelate:
+        extra.append(PIXEL_PERFECT)
+    spec.params = _sdxl_params(steps, guidance, negative, extra)
+    spec.sources = [HfSource(SDXL.hf_repo, SDXL.hf_patterns, SDXL.check_files, SDXL.download_size_gb),
+                    HfSource(repo, [file], [file], size_gb)]
+    spec.download_size_gb = round((SDXL.download_size_gb or 0) + size_gb, 2)
+    spec.weights_gb = round((SDXL.weights_gb or 0) + size_gb, 2)
+    spec.memory_hint = f"SDXL (≈ 8 Go en fp16) et une LoRA de {size_gb * 1024:.0f} Mo ; SDXL est partagé avec les autres LoRA."
+    spec.tags = ["texte→image", "img2img", "LoRA", *(tags or [])]
+    spec.options = {**SDXL.options, "loras": [{"repo": repo, "file": file, "trigger": trigger}]}
+    if pixelate:
+        spec.options["pixelate"] = pixelate
+    return spec
+
+
+PIXEL_NEGATIVE = "3d render, realistic"
+
+PIXEL_ART_XL = sdxl_lora(
+    id="pixel-art-xl", name="Pixel Art XL", repo="nerijs/pixel-art-xl", file="pixel-art-xl.safetensors", size_gb=0.16,
+    description="Pixel art (personnages, décors, objets de jeu) : la LoRA la plus utilisée pour SDXL. « Pixels nets » "
+    "aligne le résultat sur une vraie grille de pixels.",
+    license="CreativeML Open RAIL-M", trigger="pixel art", tags=["pixel art"], negative=PIXEL_NEGATIVE, pixelate=8,
+)
+
+PIXEL_ART_REDMOND = sdxl_lora(
+    id="pixel-art-redmond", name="Pixel Art Redmond", repo="artificialguybr/PixelArtRedmond",
+    file="PixelArtRedmond-Lite64.safetensors", size_gb=0.16,
+    description="Pixel art plus détaillé et coloré, style illustration de jeu rétro. « Pixels nets » aligne le "
+    "résultat sur une vraie grille de pixels.",
+    license="CreativeML Open RAIL-M", trigger="Pixel Art, PixArFK", tags=["pixel art"], negative=PIXEL_NEGATIVE,
+    pixelate=8,
+)
+
+REALVIS_XL = sdxl_finetune(
+    id="realvis-xl-5", name="RealVisXL V5", repo="SG161222/RealVisXL_V5.0",
+    description="Photoréalisme (portraits, peau, lumière naturelle) : l'un des modèles SDXL les plus téléchargés.",
+    license="CreativeML Open RAIL++-M", tags=["photo"], steps=30, guidance=5.0, scheduler=_DPM_KARRAS,
+    negative="(worst quality, low quality, illustration, 3d, 2d, painting, cartoons, sketch), open mouth",
+)
+
+JUGGERNAUT_XL = sdxl_finetune(
+    id="juggernaut-xl-9", name="Juggernaut XL v9", repo="RunDiffusion/Juggernaut-XL-v9",
+    description="Polyvalent à dominante photo (personnes, produits, paysages), très réputé. Ses auteurs conseillent de "
+    "commencer sans prompt négatif.",
+    license="CreativeML Open RAIL-M", tags=["photo"], steps=35, guidance=5.0, scheduler=_DPM_KARRAS,
+)
+
+DREAMSHAPER_XL_TURBO = sdxl_finetune(
+    id="dreamshaper-xl-turbo", name="DreamShaper XL Turbo", repo="Lykon/dreamshaper-xl-v2-turbo",
+    description="Illustration, fantasy et rendu « artistique », en 6 étapes seulement : rapide même sur une petite carte.",
+    license="CreativeML Open RAIL++-M", tags=["illustration", "rapide"], steps=6, guidance=2.0,
+    scheduler={"class": "DPMSolverMultistepScheduler", "config": {}},
+)
+
+ANIMAGINE_XL = sdxl_finetune(
+    id="animagine-xl-4", name="Animagine XL 4.0", repo="cagliostrolab/animagine-xl-4.0",
+    description="Anime et manga. Se pilote avec des étiquettes (« 1girl, solo, smile, masterpiece, high score »…) "
+    "plutôt qu'avec des phrases.",
+    license="CreativeML Open RAIL++-M", tags=["anime"], steps=28, guidance=5.0, fp16=False,
+    scheduler={"class": "EulerAncestralDiscreteScheduler", "config": {}},
+    negative="lowres, bad anatomy, bad hands, text, error, missing finger, extra digits, fewer digits, cropped, "
+    "worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry",
+)
+
+SPECS = [QWEN21_TORCH, Z_IMAGE_TURBO, SDXL, PIXEL_ART_XL, PIXEL_ART_REDMOND, REALVIS_XL, JUGGERNAUT_XL,
+         DREAMSHAPER_XL_TURBO, ANIMAGINE_XL]

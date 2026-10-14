@@ -109,6 +109,8 @@ def _image_plan(job: JobRequest, spec) -> dict[str, Any]:
     else:
         params.pop("strength", None)
     params["references_used"] = len(ref_paths)
+    # Model-specific parameters (LoRA strength, pixel post-processing...) reach the engine as they are.
+    extra = {k: params.get(k, v) for k, v in defaults.items() if k not in _COMMON_IMAGE_PARAMS}
 
     items = []
     for i, seed in enumerate(seeds):
@@ -122,9 +124,13 @@ def _image_plan(job: JobRequest, spec) -> dict[str, Any]:
             negative_prompt=negative,
             references=[str(p) for p in ref_paths],
             strength=float(strength) if strength is not None else None,
+            extra=extra,
         )
         items.append({"request": asdict(req), "output": _output(job, i, "png")})
     return {"kind": "image", "model_id": spec.id, "params": params, "items": items, "prompt": job.prompt}
+
+
+_COMMON_IMAGE_PARAMS = {"steps", "guidance", "strength", "negative_prompt"}
 
 
 def _audio_plan(job: JobRequest, spec) -> dict[str, Any]:

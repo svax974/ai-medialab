@@ -54,9 +54,9 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 ### `model-catalog`
 - Dialogue « Modèles » : catalogue par type, installé / incomplet / incompatible avec la raison (planificateur mémoire),
   téléchargement avec progression, débit, temps restant, reprise, annulation, suppression, variantes (quantifications) ;
-  sélecteur de modèle réutilisable ; recherche Hugging Face avec quantifications proposées par résultat, tenue en mémoire et marqueurs
-  de compatibilité, ajout et retrait
-  de modèles personnalisés.
+  sélecteur de modèle réutilisable (description en retrait sous le titre) ; recherche Hugging Face avec quantifications
+  proposées par résultat, tenue en mémoire et marqueurs de compatibilité, ajout et retrait de modèles personnalisés, dont
+  des LoRA SDXL.
 
 ### `engines`
 - Cartes « Moteurs » : installation en un clic de stable-diffusion.cpp (SHA-256 vérifiée) et des packs audio et vidéo
@@ -88,6 +88,9 @@ migrations TypeORM.
 
 - **Images** : MLX (Apple Silicon), PyTorch + diffusers (CUDA, ROCm, MPS), GGUF par stable-diffusion.cpp (Metal, CUDA, ROCm,
   Vulkan) ; texte vers image, image vers image, édition par instruction ; modèle « Démo » sans GPU (`IMAGEGEN_DEMO=1`).
+- **SDXL spécialisés** : LoRA chargées sur SDXL (force réglable, mots déclencheurs ajoutés au prompt), dont deux de pixel art
+  avec post-traitement « Pixels nets » ; modèles affinés RealVisXL, Juggernaut XL, DreamShaper XL Turbo, Animagine XL avec
+  leur planificateur conseillé. **Non vérifié** : aucune génération réelle.
 - **Audio** : synthèse vocale, clonage, création de voix par description, dialogue, transcription (Whisper, Qwen3-ASR) ; packs
   isolés et moteur natif audio.cpp ; Kokoro, Pocket TTS, Qwen3-TTS, Chatterbox, Whisper.
 - **Vidéo** : texte vers vidéo, image vers vidéo, édition de vidéo ; Wan 2.2, LTX, HunyuanVideo 1.5, CogVideoX, Kiwi-Edit,

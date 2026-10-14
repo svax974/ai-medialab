@@ -10,6 +10,7 @@ how to run are accepted:
     gguf-variant   another quantization (or fine-tune) of an already supported GGUF model: the reference
                    model's diffusion file is swapped, its other components (encoder, VAE) are kept
     sd-diffusers   Stable Diffusion 1.x or XL diffusers repo (PyTorch engine)
+    sdxl-lora      LoRA for SDXL: one safetensors file loaded on top of the built-in SDXL base (shared download)
     qwen3-tts      Qwen3-TTS variant (preset voices, voice design or cloning)
     whisper-ct2    Whisper converted for faster-whisper (transcription)
     video-diffusers  Wan 2.x / CogVideoX / HunyuanVideo 1.5 / LTX-2 diffusers repo: runs with the settings of the
@@ -27,7 +28,7 @@ from typing import Any
 
 from .. import engine_state
 from ..config import DATA_DIR
-from . import audio_specs, gguf_models, video_gguf, video_specs
+from . import audio_specs, gguf_models, torch_models, video_gguf, video_specs
 from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
@@ -38,6 +39,9 @@ GGUF_TEMPLATES = {
     "Qwen/Qwen-Image-2.1": "qwen-image-2.1-gguf",
     "Qwen/Qwen-Image-Edit-2511": "qwen-image-edit-gguf",
 }
+
+# Hugging Face base model of the LoRAs the app can load (on the built-in SDXL).
+SDXL_BASE = "stabilityai/stable-diffusion-xl-base-1.0"
 
 SD_PIPELINES = {
     "StableDiffusionXLPipeline": ("StableDiffusionXLImg2ImgPipeline", True),
@@ -138,6 +142,16 @@ def _sd_diffusers(r: dict[str, Any]) -> ModelSpec:
         memory_hint=f"≈ {r['weights_gb']:.0f} Go en {r['precision']}.", precision=r["precision"],
         tags=["texte→image", "img2img", "Hugging Face"],
         options={"pipeline": pipeline, "img2img": img2img, "guidance_arg": "guidance_scale", "load_kwargs": load_kwargs},
+    )
+
+
+def _sdxl_lora(r: dict[str, Any]) -> ModelSpec:
+    trigger = r.get("trigger") or ""
+    return torch_models.sdxl_lora(
+        id=r["id"], name=f"SDXL · {r['name']}", repo=r["repo"], file=r["file"], size_gb=float(r["size_gb"]),
+        description=f"LoRA du dépôt {r['repo']} appliquée à Stable Diffusion XL"
+                    + (f" ; mots déclencheurs ajoutés au prompt : « {trigger} »." if trigger else "."),
+        license=r.get("license") or "voir le dépôt", trigger=trigger, tags=["Hugging Face"], custom=True,
     )
 
 
@@ -270,7 +284,7 @@ def _video_gguf(r: dict[str, Any]) -> ModelSpec:
     return spec
 
 
-BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper,
+BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "sdxl-lora": _sdxl_lora, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper,
             "video-diffusers": _video_diffusers, "video-gguf": _video_gguf}
 
 

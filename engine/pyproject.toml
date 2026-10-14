@@ -33,6 +33,7 @@ torch = [
     "gguf>=0.10",  # quantized (GGUF) transformers loaded by diffusers
     "transformers>=5.17",
     "accelerate>=1.0",
+    "peft>=0.17",  # LoRA loading by diffusers (SDXL LoRAs)
     "sentencepiece",
     "protobuf",
     "safetensors",

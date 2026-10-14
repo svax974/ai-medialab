@@ -102,7 +102,11 @@ vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarq
 | **Qwen Image 2.1** | PyTorch | Texte → image, **édition**, RGBA | jusqu'à 10 images | 33 Go (32 Go de poids bf16) |
 | **Z-Image Turbo** (Apache 2.0) | **GGUF** | Texte → image rapide (8 étapes) | — | **6,7 Go** |
 | **Z-Image Turbo** (Apache 2.0) | PyTorch | idem, pleine précision | — | 33 Go |
-| **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 7 Go |
+| **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 6,5 Go |
+| **Pixel Art XL**, **Pixel Art Redmond** (LoRA sur SDXL) | PyTorch | Pixel art, « Pixels nets » | 1 image de départ | SDXL + 0,16 Go |
+| **RealVisXL V5**, **Juggernaut XL v9** (SDXL affinés) | PyTorch | Photoréalisme | 1 image de départ | 6,5 Go chacun |
+| **DreamShaper XL Turbo** (SDXL affiné) | PyTorch | Illustration, fantasy, 6 étapes | 1 image de départ | 6,5 Go |
+| **Animagine XL 4.0** (SDXL affiné) | PyTorch | Anime, manga (prompt en étiquettes) | 1 image de départ | 6,5 Go |
 | **Qwen Image Edit** (Apache 2.0) | **GGUF** | Édition par instruction, composition | 1 à 3 images | **19 Go** |
 | **Qwen Image Edit** | MLX | Édition par instruction | 1 à 3 images | 58 Go |
 
@@ -118,6 +122,18 @@ paramètres contre 7). Mémoire : ≈ 18 Go pour `sd-cli`, en édition avec une 
 calcul lourd en parallèle sur une machine de 36 Go. Avec deux références (384×384, 12 étapes : ≈ 320 s), le modèle lit bien
 les deux images (il reproduit fidèlement la seconde sur demande), mais une consigne de composition (« ajoute le phare de
 l'image 2 dans l'image 1 ») n'a pas abouti dans mon essai à cette définition : à valider avec plus d'étapes.
+
+**Modèles spécialisés SDXL (ajoutés le 2026-10-14, non vérifiés : aucune génération réelle faite).** Les modèles affinés
+téléchargent seulement leurs composants diffusers en fp16 (jamais le gros fichier unique posé à côté) et utilisent le
+planificateur conseillé par leurs auteurs (DPM++ 2M Karras pour RealVisXL et Juggernaut, Euler a pour Animagine). Une
+**LoRA** est un petit fichier (≈ 160 Mo) appliqué à Stable Diffusion XL, téléchargé une fois pour toutes les LoRA ; sa
+« Force du style » se règle (0 = SDXL seul, 1 = valeur prévue par l'auteur) et ses mots déclencheurs (« pixel art »…)
+sont ajoutés au prompt quand il ne les contient pas. Les LoRA de pixel art ont l'option **« Pixels nets »** (cochée par
+défaut) : l'image est réduite 8 fois puis agrandie sans lissage, ce qui la pose sur une vraie grille de pixels, comme le
+conseillent les auteurs de Pixel Art XL. Les modèles de pixel art en Stable Diffusion 1.5 (All-In-One-Pixel-Model,
+SD_PixelArt_SpriteSheet_Generator) ne sont pas proposés : ils n'existent qu'aux formats `.ckpt` / `.bin`, qui peuvent
+exécuter du code au chargement, alors que l'application n'accepte que le format safetensors. D'autres LoRA SDXL s'ajoutent
+par la recherche Hugging Face (famille « LoRA SDXL »).
 
 Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
 renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine

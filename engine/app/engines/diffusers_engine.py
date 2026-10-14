@@ -12,6 +12,14 @@ One generic engine driven by `ModelSpec.options`:
     image_is_list   pass references as a list (multi-image editing) or a single image
     load_kwargs     from_pretrained arguments (e.g. variant="fp16")
     call_kwargs     fixed arguments added to every call (e.g. max_sequence_length)
+    scheduler       {"class", "config"}: replaces the repo's scheduler (e.g. DPM++ 2M Karras for a fine-tune whose repo
+                    ships DDPM)
+    loras           [{"repo", "file", "trigger"}]: LoRA files loaded on top of the pipeline (needs `peft`); their
+                    strength is the `lora_scale` parameter and their trigger words are put in front of the prompt
+    pixelate        factor of the "Pixels nets" post-processing (`pixel_perfect` parameter): shrink then enlarge
+                    without smoothing, so the image sits on a real pixel grid
+
+Per-request parameters that are not common arguments (`lora_scale`, `pixel_perfect`) come in `GenerationRequest.extra`.
 
 Arguments the pipeline doesn't accept are dropped (filtered by signature), so most models need no
 new code.
@@ -52,6 +60,10 @@ class DiffusersEngine(Engine):
         self.strategy = plan["strategy"]
 
         pipe = cls.from_pretrained(self.spec.hf_repo, torch_dtype=self.dtype, **load_kwargs)
+        if o.get("scheduler"):
+            sched = getattr(diffusers, o["scheduler"]["class"])
+            pipe.scheduler = sched.from_config(pipe.scheduler.config, **o["scheduler"].get("config", {}))
+        self.loras = _load_loras(pipe, o.get("loras", []))
         place_pipeline(pipe, self.strategy, self.device)
         if hasattr(pipe, "set_progress_bar_config"):
             pipe.set_progress_bar_config(disable=True)
@@ -88,8 +100,11 @@ class DiffusersEngine(Engine):
                 raise GenerationCancelled()
             return cb_kwargs
 
+        if self.loras:
+            self.pipe.set_adapters(self.loras, [float(req.extra.get("lora_scale", 1.0))] * len(self.loras))
+
         kwargs: dict[str, Any] = dict(
-            prompt=req.prompt,
+            prompt=with_triggers(req.prompt, [lora.get("trigger", "") for lora in o.get("loras", [])]),
             width=req.width,
             height=req.height,
             num_inference_steps=req.steps,
@@ -128,7 +143,10 @@ class DiffusersEngine(Engine):
         finally:
             gc.collect()
             self._empty_cache()
-        return result.images[0]
+        image = result.images[0]
+        if o.get("pixelate") and req.extra.get("pixel_perfect", True):
+            image = pixelate(image, int(o["pixelate"]))
+        return image
 
     def _img2img_pipe(self):
         if self.i2i is None:
@@ -142,6 +160,37 @@ class DiffusersEngine(Engine):
 
     def _empty_cache(self) -> None:
         empty_cache(self.device)
+
+
+def _load_loras(pipe, loras: list[dict[str, Any]]) -> list[str]:
+    """Load the LoRA files (already in the Hugging Face cache) as named adapters; returns their names."""
+    if not loras:
+        return []
+    try:
+        import peft  # noqa: F401  (diffusers loads LoRAs through it)
+    except ImportError:
+        raise RuntimeError("Le moteur PyTorch n'a pas la bibliothèque « peft » nécessaire aux LoRA : mettez l'application "
+                           "à jour.") from None
+    names = []
+    for i, lora in enumerate(loras):
+        name = f"lora{i}"
+        pipe.load_lora_weights(lora["repo"], weight_name=lora["file"], adapter_name=name, local_files_only=True)
+        names.append(name)
+    return names
+
+
+def with_triggers(prompt: str, triggers: list[str]) -> str:
+    """The prompt with the LoRA trigger words in front, unless the user already wrote them."""
+    missing = [t for t in triggers if t and t.lower() not in prompt.lower()]
+    return ", ".join([*missing, prompt]) if missing else prompt
+
+
+def pixelate(image: Image.Image, factor: int) -> Image.Image:
+    """Shrink by `factor` then enlarge back without smoothing (nearest neighbour): every block of factor × factor
+    pixels gets one colour, as in real pixel art (method advised by the Pixel Art XL authors)."""
+    w, h = image.size
+    small = image.resize((max(1, w // factor), max(1, h // factor)), Image.Resampling.NEAREST)
+    return small.resize((small.width * factor, small.height * factor), Image.Resampling.NEAREST)
 
 
 def place_pipeline(pipe, strategy: str, device: str) -> None:

@@ -32,7 +32,7 @@ les métadonnées des paquets de `engine/.venv` (version installée le 2026-10-1
 | psutil | BSD-3-Clause | mémoire, processus |
 | NumPy, SoundFile | BSD-3-Clause | audio, tableaux |
 | PyAV (`av`) | BSD-3-Clause | encodage et décodage vidéo ; la roue PyPI embarque un **FFmpeg lié à libx264 et libx265 (GPL)** : à remplacer par un build LGPL avant toute distribution, voir `docs/components/ffmpeg.md` |
-| diffusers, transformers, accelerate | Apache-2.0 | moteur torch (extra `torch`) |
+| diffusers, transformers, accelerate, peft | Apache-2.0 | moteur torch (extra `torch`) ; `peft` charge les LoRA |
 | PyTorch, torchvision | BSD-3-Clause (et licences des composants embarqués, voir le paquet) | extra `torch` |
 | gguf, safetensors, sentencepiece, protobuf | MIT, Apache-2.0, Apache-2.0, BSD-3-Clause | formats de modèles |
 
@@ -75,6 +75,8 @@ dans `back/` et `front/` (outil non installé dans ce dépôt) en donnerait la l
 | Qwen3-TTS (0.6B / 1.7B), y compris les conversions GGUF d'audio.cpp | Apache-2.0 |
 | Chatterbox (Resemble AI), conversion GGUF d'audio.cpp | MIT (l'implémentation d'origine filigrane ses sorties, pas le portage audio.cpp) |
 | Whisper (small, large-v3-turbo) | MIT |
+| LoRA Pixel Art XL, Pixel Art Redmond ; RealVisXL V5, Juggernaut XL v9 (et SDXL lui-même) | CreativeML Open RAIL-M / RAIL++-M (usage commercial permis avec les restrictions d'usage de la licence) |
+| DreamShaper XL Turbo, Animagine XL 4.0 | CreativeML Open RAIL++-M |
 | Modèles d'image | variables : voir la licence indiquée par modèle (certains sont non commerciaux, p. ex. Qwen Image 2.1 « Research ») |
 
 Ce document est informatif et n'a pas valeur de conseil juridique.

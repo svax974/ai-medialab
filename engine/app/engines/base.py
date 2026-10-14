@@ -283,19 +283,22 @@ def _source_status(src: HfSource) -> dict[str, Any]:
 def remaining_download_gb(spec: ModelSpec) -> float:
     """Approximate size still to download for `spec`: the sources not yet installed in the cache (a file shared with
     another model, e.g. a text encoder, counts only when it is missing)."""
-    return round(sum(src.size_gb or 0 for src in spec.all_sources() if _source_status(src)["state"] != "installed"), 2)
+    return installation_status(spec)["need_gb"]
 
 
 def installation_status(spec: ModelSpec) -> dict[str, Any]:
     """Install state of a model, read from the Hugging Face cache (shared with mflux and diffusers).
 
     state is "installed", "partial" (required files missing or download interrupted) or "missing".
-    A multi-repo model is only "installed" when every repo is.
+    A multi-repo model is only "installed" when every repo is. `need_gb` is what is left to download: the sources not
+    installed yet, less what a partial one already holds (a repo shared with another model counts only when missing).
     """
     sources = spec.all_sources()
     if not sources:
-        return {"state": "installed", "size_gb": 0.0}
+        return {"state": "installed", "size_gb": 0.0, "need_gb": 0.0}
     parts = [_source_status(src) for src in sources]
+    need = sum(max(0.0, (src.size_gb or 0) - p["size"] / 1024**3)
+               for src, p in zip(sources, parts) if p["state"] != "installed")
     states = {p["state"] for p in parts}
     if states == {"installed"}:
         state = "installed"
@@ -303,7 +306,7 @@ def installation_status(spec: ModelSpec) -> dict[str, Any]:
         state = "missing"
     else:
         state = "partial"
-    return {"state": state, "size_gb": round(sum(p["size"] for p in parts) / 1024**3, 2)}
+    return {"state": state, "size_gb": round(sum(p["size"] for p in parts) / 1024**3, 2), "need_gb": round(need, 2)}
 
 
 @dataclass

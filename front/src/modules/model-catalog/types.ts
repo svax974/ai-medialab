@@ -161,7 +161,7 @@ export interface ModelCatalog extends KindSummary {
   video: KindSummary
 }
 
-export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'qwen3-tts' | 'whisper-ct2' | (string & {})
+export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {})
 export type HubTask = 'image' | 'tts' | 'stt' | 'video'
 
 export interface HubResult {
