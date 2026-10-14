@@ -269,6 +269,17 @@ def test_a_load_error_fails_the_job_with_the_reason():
     assert dict(job.events)["job.failed"]["error"] == job.error and manager.last_error == "boom"
 
 
+def test_a_worker_killed_by_the_memory_guard_says_why(monkeypatch):
+    from types import SimpleNamespace
+
+    FakeWorker.mode = "crash"
+    monkeypatch.setattr(FakeWorker, "process", SimpleNamespace(pid=-4242), raising=False)
+    manager, job = JobManager(), make_job()
+    manager.guard._trips[-4242] = "Arrêté par la protection mémoire : test."
+    asyncio.run(run(manager, job, until=lambda: job.state == "failed"))
+    assert job.error == "Arrêté par la protection mémoire : test." and manager.worker is None
+
+
 def test_a_worker_crash_fails_the_job_with_a_memory_hint():
     FakeWorker.mode = "crash"
     manager, job = JobManager(), make_job()

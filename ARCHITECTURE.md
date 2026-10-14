@@ -194,6 +194,7 @@ engine/app/
   engines/           registre des modèles (specs) et moteurs : MLX, diffusers, stable-diffusion.cpp, audio, vidéo, modèles personnalisés
   catalog.py, downloads.py, hf_search.py           catalogue, téléchargements, recherche Hugging Face
   system.py          détection GPU, mémoire, disque ; planificateur mémoire
+  memory_guard.py    garde mémoire : vérification avant chargement, surveillance du worker, arrêt avant saturation
   engine_install.py, audio_packs.py, audiocpp.py   installateurs (moteur GGUF, packs audio et vidéo, audio.cpp)
   runtime_settings.py  réglages poussés par Nest (mémoire seulement) ; engine_state.py  état propre du moteur (fichier JSON)
   legacy_data.py     reprise de l'ancien dossier de données ; events.py  bus d'événements
@@ -203,6 +204,22 @@ engine/tests/        tests pytest, un fichier à la fois (aucun ne charge de mod
 
 Le worker tourne dans son propre processus : le serveur reste réactif pendant le calcul, décharger un modèle libère
 vraiment la mémoire et un plantage (mémoire insuffisante…) n'emporte pas l'application.
+
+### Filets de sécurité mémoire
+
+Sur un Mac le processeur et le GPU partagent la même mémoire : un débordement ne fait pas échouer le programme, il fige
+ou redémarre la machine. Les protections, de la plus en amont à la dernière :
+
+| Filet | Où | Effet |
+|---|---|---|
+| Planificateur | `system.py` (`memory_plan`) | refuse un modèle dont les poids ne tiennent pas dans la mémoire totale de la machine (marqueur « trop lourd », modèle masqué des sélecteurs) |
+| Vérification avant chargement | `memory_guard.preflight`, appelé par `jobs.py` (`_memory_preflight`) | mémoire partagée seulement : refuse de charger si la mémoire **libre à cet instant** ne couvre pas les poids plus la réserve (8 % de la RAM, 2,5 Go au moins) ; le message donne les chiffres |
+| Surveillance | `memory_guard.MemoryWatchdog`, fil du processus principal du moteur, 5 lectures par seconde | tant qu'un worker vit : sous la réserve, ou si macOS signale une pression mémoire critique, tue le worker **et ses sous-processus** (`sd-cli`) ; le job échoue avec « Arrêté par la protection mémoire : … » |
+| Ancien worker arrêté avant le suivant | `jobs.py` (`_ensure_worker`, `stop`) | un seul modèle en mémoire ; l'arrêt attend la fin du processus, même forcé |
+| Pics d'une génération | `diffusers_engine.py` (`tune_vae`, `_from_pretrained`), `sdcpp_engine.py` (`VAE_TILING_FROM`) | VAE en tuiles de 512 px, sans copie float32 hors float16 ; poids chargés directement sur le GPU d'un Mac ; `--vae-tiling` de `sd-cli` dès 1 Mpx |
+| Relevé | journal du moteur, ligne `[memory] job …` | mémoire libre au plus bas et pic des processus du modèle, pour chaque job |
+
+Les générations d'un même envoi (jusqu'à 4 images) passent l'une après l'autre dans le même worker, jamais en parallèle.
 
 ## Pile de développement
 

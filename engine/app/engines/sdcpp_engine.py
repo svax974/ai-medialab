@@ -33,6 +33,10 @@ from PIL import Image
 
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 
+# From this many pixels the VAE works in tiles (`--vae-tiling`): encoding the references and decoding the result at
+# full size is the memory peak of a generation, tiles bound it for a small cost in time.
+VAE_TILING_FROM = 1024 * 1024
+
 # e.g. "|=====>    | 3/8 - 2.34s/it" or "3/8 - 0.42it/s"
 PROGRESS = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
 
@@ -97,6 +101,8 @@ class SdcppEngine(Engine):
                 for r in refs:
                     cmd += ["-r", r]
             cmd += list(o.get("cli_args", []))
+            if req.width * req.height >= VAE_TILING_FROM:
+                cmd += ["--vae-tiling"]
             if self.variant in o.get("fa_variants", []):
                 cmd += ["--diffusion-fa"]
             if hooks.preview_every:

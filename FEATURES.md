@@ -98,7 +98,8 @@ migrations TypeORM.
 - **Vidéo** : texte vers vidéo, image vers vidéo, édition de vidéo ; Wan 2.2, LTX, HunyuanVideo 1.5, CogVideoX, Kiwi-Edit,
   Bernini-R. **Seul un essai réel** (Wan 2.2 TI2V 5B texte vers vidéo, M3 Max) a été fait : le reste est **non vérifié** (voir
   `README.md`).
-- Planificateur mémoire (refus argumenté d'un modèle qui ne tient pas), un modèle chargé à la fois, déchargement après
+- Planificateur mémoire (refus argumenté d'un modèle qui ne tient pas), garde mémoire (refus de charger quand la mémoire libre
+  manque, arrêt du modèle avant saturation de la machine, relevé par job : `ARCHITECTURE.md`), un modèle chargé à la fois, déchargement après
   inactivité, annulation immédiate, téléchargements dans un processus dédié (reprise, annulation).
 - Modèles personnalisés Hugging Face (recettes dans `engine-state.json`), vignettes et sondage des médias.
 

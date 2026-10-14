@@ -61,7 +61,7 @@ class DiffusersEngine(Engine):
             raise RuntimeError(f"Ce modèle ne tient pas sur cette machine. {plan['note']}")
         self.strategy = plan["strategy"]
 
-        pipe = cls.from_pretrained(self.spec.hf_repo, torch_dtype=self.dtype, **load_kwargs)
+        pipe = _from_pretrained(cls, self.spec.hf_repo, self.dtype, load_kwargs, self.device, self.strategy, system)
         if o.get("scheduler"):
             sched = getattr(diffusers, o["scheduler"]["class"])
             pipe.scheduler = sched.from_config(pipe.scheduler.config, **o["scheduler"].get("config", {}))
@@ -78,13 +78,7 @@ class DiffusersEngine(Engine):
         self._tune_memory()
 
     def _tune_memory(self) -> None:
-        # Tiled VAE decoding avoids the memory spike on large images.
-        vae = getattr(self.pipe, "vae", None)
-        if vae is not None and hasattr(vae, "enable_tiling"):
-            try:
-                vae.enable_tiling()
-            except Exception:
-                pass
+        tune_vae(getattr(self.pipe, "vae", None), self.dtype)
 
     def generate(self, req: GenerationRequest, hooks: Hooks) -> Image.Image:
         import torch
@@ -170,6 +164,47 @@ class DiffusersEngine(Engine):
 
     def _empty_cache(self) -> None:
         empty_cache(self.device)
+
+
+def _from_pretrained(cls, repo: str, dtype, load_kwargs: dict[str, Any], device: str, strategy: str, system: dict):
+    """Load a pipeline. With one shared memory (Apple Silicon) and every component on the GPU, the weights go straight
+    to it (`device_map`) instead of being read into the CPU side first and then copied: on a Mac both copies would sit
+    in the same memory during the move, doubling the peak. Falls back to the usual load if that path is refused."""
+    accel = system["accelerators"][0] if system.get("accelerators") else None
+    if device == "mps" and strategy == "full" and accel and accel.get("unified"):
+        try:
+            return cls.from_pretrained(repo, torch_dtype=dtype, device_map=device, **load_kwargs)
+        except (TypeError, ValueError, NotImplementedError) as exc:
+            print(f"[diffusers] chargement direct sur le GPU refusé ({exc}), chargement classique", flush=True)
+            gc.collect()
+    return cls.from_pretrained(repo, torch_dtype=dtype, **load_kwargs)
+
+
+# Size from which the VAE works in tiles (pixels). Smaller tiles bound the memory of encoding a start image and of
+# decoding the result; the overlap between tiles hides the seams.
+VAE_TILE = 512
+
+
+def tune_vae(vae: Any, dtype: Any) -> None:
+    """Memory settings of a pipeline's VAE.
+
+    - Tiles from `VAE_TILE` pixels on, for encoding (img2img start image) as for decoding.
+    - No float32 copy outside float16: SDXL's VAE asks for one (`force_upcast`) because it overflows in float16, and the
+      img2img pipeline then re-casts it to float32 at every generation, which doubles its memory and that of its
+      activations at full size. bfloat16 has the range of float32, so the copy only costs memory there."""
+    if vae is None:
+        return
+    if hasattr(vae, "enable_tiling"):
+        try:
+            vae.enable_tiling()
+            if isinstance(getattr(vae, "tile_sample_min_size", None), int) and vae.tile_sample_min_size > VAE_TILE:
+                factor = vae.tile_sample_min_size // vae.tile_latent_min_size
+                vae.tile_sample_min_size, vae.tile_latent_min_size = VAE_TILE, VAE_TILE // factor
+        except Exception:  # noqa: BLE001  a VAE without tiling works untiled
+            pass
+    config = getattr(vae, "config", None)
+    if str(dtype) != "torch.float16" and getattr(config, "force_upcast", False):
+        vae.register_to_config(force_upcast=False)
 
 
 def _load_loras(pipe, loras: list[dict[str, Any]]) -> list[str]:

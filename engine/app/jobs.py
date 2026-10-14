@@ -24,7 +24,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
-from . import audio_packs, runtime_settings
+from . import audio_packs, memory_guard, runtime_settings
 from .audio_worker import AudioWorkerHandle
 from .config import PREVIEWS_DIR
 from .engines import get_spec
@@ -109,6 +109,12 @@ class WorkerHandle:
             await asyncio.to_thread(self.process.join, 5)
 
 
+def _pid(worker: Any) -> int | None:
+    """Process id of a worker handle (image process or pack subprocess), None when there is none."""
+    process = getattr(worker, "process", None)
+    return getattr(process, "pid", None)
+
+
 def _bus_sink(_job: JobRequest, name: str, data: dict[str, Any]) -> None:
     bus.publish(name, data)
 
@@ -129,12 +135,20 @@ class JobManager:
         self._idle_task: asyncio.Task | None = None
         self._runner: asyncio.Task | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
+        # Kills the worker before the machine runs out of memory (see memory_guard.py).
+        self.guard = memory_guard.MemoryWatchdog(self._watched_pid)
+
+    def _watched_pid(self) -> int | None:
+        w = self.worker
+        return _pid(w) if w and w.alive else None
 
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._runner = asyncio.create_task(self._run())
+        self.guard.start()
 
     async def shutdown(self) -> None:
+        self.guard.stop()
         if self._runner:
             self._runner.cancel()
         if self.worker:
@@ -219,6 +233,7 @@ class JobManager:
                 self._idle_task.cancel()
                 self._idle_task = None
             self.current = job_id
+            self.guard.begin_job()
             try:
                 await self._process(job)
             except asyncio.CancelledError:
@@ -228,6 +243,9 @@ class JobManager:
             finally:
                 if job_id in self.jobs:  # a path above forgot to finish it
                     self._finish(job, "failed", "Erreur interne : le job s'est arrêté sans résultat.")
+                stats = self.guard.job_stats()
+                print(f"[memory] job {job_id} : mémoire libre au plus bas {stats['min_free_gb']} Go, "
+                      f"processus du modèle au plus haut {stats['peak_worker_gb']} Go", flush=True)
                 self.current = None
                 self._cancel_requested.discard(job_id)
                 if self.worker and self.worker.alive:
@@ -353,8 +371,13 @@ class JobManager:
                 self._finish(job, "failed", evt["error"])
                 return
             elif kind == "exit":
+                pid = _pid(self.worker)
                 self.worker = None
                 self.state = "idle"
+                tripped = self.guard.tripped(pid)
+                if tripped:
+                    self._finish(job, "failed", tripped)
+                    return
                 hint = {"audio": "Mémoire insuffisante ? Essayez un modèle plus léger.",
                         "video": "Mémoire insuffisante ? Essayez une variante plus légère ou une durée/définition plus faible.",
                         }.get(plan.get("kind"), "Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite.")
@@ -369,6 +392,13 @@ class JobManager:
             self.worker = None
             await w.stop()
 
+        spec = get_spec(model_id)
+        refused = self._memory_preflight(spec)
+        if refused:
+            self.last_error = refused
+            self._finish(job, "failed", refused)
+            return False
+
         self.state = "loading"
         self.load_started_at = time.time()
         self.last_error = None
@@ -376,7 +406,6 @@ class JobManager:
         self._publish_progress(job)
         self._publish_status()
 
-        spec = get_spec(model_id)
         if spec.backend == "pack":
             # Audio and video packs share the worker handle; the pack's family picks the worker script.
             token = runtime_settings.get_settings().get("hf_token")
@@ -407,11 +436,29 @@ class JobManager:
                 self.worker = None
                 self.state = "idle"
                 self.load_started_at = None
+                tripped = self.guard.tripped(_pid(worker))
+                if tripped:
+                    self.last_error = tripped
+                    self._finish(job, "failed", tripped)
+                    return False
                 error = evt.get("error") or f"Le processus de chargement s'est arrêté (code {evt.get('code')})."
                 print(evt.get("trace", ""), flush=True)
                 self.last_error = error
                 self._finish(job, "failed", f"Échec du chargement du modèle : {error}")
                 return False
+
+    def _memory_preflight(self, spec) -> str | None:
+        """Refusal message when the memory free right now can't take the model's weights (shared memory only: on a
+        separate graphics card the weights go to its own memory)."""
+        if not spec.weights_gb:
+            return None
+        from .system import get_system
+
+        system = get_system()
+        accel = system["accelerators"][0] if system["accelerators"] else None
+        if accel and not accel.get("unified"):
+            return None
+        return memory_guard.preflight(spec.weights_gb, memory_guard.available_gb(), system["ram_gb"], spec.name)
 
     def _schedule_idle_unload(self) -> None:
         minutes = load_settings()["keep_alive_minutes"]
