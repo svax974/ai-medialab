@@ -38,7 +38,9 @@ model-catalog/
 ## API publique
 
 `ModelsDialog` (monté par `StudioShell`, qui lui passe `onSetup` et `renderEngines` du module `engines` : le module ne dépend pas de
-`engines`), `ModelPicker` (`<ModelPicker model={actif} onSelect? />`), `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
+`engines`), `ModelPicker` (`<ModelPicker model={actif} usage? onSelect? />` : les plus utilisés d'abord selon `usage`, puis les autres
+installés, puis le reste ; les modèles trop lourds pour la machine (`plan.fits` faux) masqués derrière « Afficher les modèles trop
+lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker` de `studio-core`, qui fournit `usage`), `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
 `useModelSelectionStore`, `useDownloadStore`, `activeDownload`, `modelCatalogApi`, `modelCatalogKeys`, `VideoBadges`, `LicenseWarning`,
 `GatedNotice` (réutilisés par le composeur vidéo, H4.6), `MODEL_HELP` (info-bulles des badges, reprises par les avis du composeur vidéo), `Section`, `Tag`, `Notice`, types.
 
@@ -83,7 +85,7 @@ Textes de `frontend/src/lib/help.ts` (supprimé en H6) repris à l'identique en 
 | `ModelsDialog.tsx` : `TokenField` | `HfTokenField` du module `settings` |
 | `ModelsDialog.tsx` : `EnginesCard`, `PacksCard` | module `engines` (`EnginesPanel`) |
 | `components/HubSearch.tsx` | `components/HubSearch`, `hooks/useHubSearch`, `lib/hubSearch` |
-| `components/ModelPicker.tsx` | `components/ModelPicker`, `lib/catalogFormat` (`pickerModels`, `pickerSize`) |
+| `components/ModelPicker.tsx` | `components/ModelPicker`, `lib/catalogFormat` (`pickerModels` : ordre et masquage, `tooHeavy`, `pickerSize`) |
 | `components/VideoInfo.tsx` | `components/ModelBadges` |
 | `lib/queries.ts` : `useModels`, `useActiveModel`, évènements `download.progress`, `models.changed` | `hooks/useModelCatalog`, `hooks/useDownloadEvents`, `studio-shell/lib/eventEffects` |
 | `lib/store.ts` : `downloads`, `modelId`, `audioModelId`, `videoModelId`, `modelsSearch` | `state/downloadStore`, `state/modelSelectionStore`, `studioStore.modelsSearchKind` |

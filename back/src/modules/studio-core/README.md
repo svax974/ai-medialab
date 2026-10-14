@@ -24,7 +24,7 @@ navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations :
 | DTO | `dto/MessageDto.ts` | Forme publique d'un message (identique à `message_public`). |
 | Mappeurs | `mappers/conversationMapper.ts`, `mappers/messageMapper.ts` | Entités vers formes publiques. |
 | Contrôleur | `controllers/ConversationController.ts` | `/api/conversations*` (liste, création, détail, titre et épingle, suppression). |
-| Contrôleur | `controllers/MessageController.ts` | `/api/messages*` (création, relance, annulation, suppression). |
+| Contrôleur | `controllers/MessageController.ts` | `/api/messages*` (création, relance, annulation, suppression, usage des modèles). |
 | Contrôleur | `controllers/QueueController.ts` | `GET /api/queue` : la file des générations (état initial d'un navigateur). |
 | Service | `services/ConversationService.ts` | `list`, `get`, `getSummary`, `create`, `update`, `touch`, `remove`. |
 | Service | `services/MessageService.ts` | `get`, `listByConversation`, `create`, `update`, `remove`, `removeMany`, `failInterrupted`, `toDtos`, requêtes de la file et de la purge (`referencesOf`, `assetsOfMessages`, `assetsOfConversation`, `busyIds`, `childIds`). |
@@ -59,6 +59,7 @@ erreurs ont la forme de Nest (`{ statusCode, message }`) avec les mêmes statuts
 | `PATCH` | `/api/conversations/:id` `{ title?, pinned? }` | résumé ; publie `conversation.updated` | 404, 422 |
 | `DELETE` | `/api/conversations/:id` | `{ ok: true }` ; arrête les générations, supprime messages, assets et fichiers ; publie `conversation.deleted` | (idempotent) |
 | `POST` | `/api/messages` `{ conversation_id?, prompt, model_id, params?, reference_ids?, count? }` | `{ conversation_id, user_message, assistant_message }` (le message de l'assistant est `queued`) | 404 conversation, 422 (prompt vide ou > 8000, modèle inconnu, référence introuvable, refus du moteur : « a besoin d'une image de référence »…) |
+| `GET` | `/api/messages/model-usage` | `{ counts: { "<model id>": n } }` : générations terminées (`done`) par modèle, pour classer les sélecteurs de modèles | – |
 | `POST` | `/api/messages/:id/retry` `{ model_id?, params?, keep_seed? }` | le nouveau message `queued` ; publie `message.updated` | 404, 422 |
 | `POST` | `/api/messages/:id/cancel` | `{ ok: true }` | 409 « Cette génération n'est plus en cours. » |
 | `DELETE` | `/api/messages/:id` | `{ ok: true, deleted: [ids] }` (un prompt emporte ses générations) ; publie `message.deleted` et `conversation.updated` | 404 |

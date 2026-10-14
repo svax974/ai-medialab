@@ -11,6 +11,8 @@ import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
 import MemoryOutlined from '@mui/icons-material/MemoryOutlined'
 import SearchRounded from '@mui/icons-material/SearchRounded'
 import TuneRounded from '@mui/icons-material/TuneRounded'
+import VisibilityOffOutlined from '@mui/icons-material/VisibilityOffOutlined'
+import VisibilityOutlined from '@mui/icons-material/VisibilityOutlined'
 import { useEngineStatus } from '@/modules/hardware'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
@@ -89,18 +91,28 @@ function PickerRow({ model: m, active, loaded }: { model: ModelInfo; active: boo
   )
 }
 
+interface ModelPickerProps {
+  model: ModelInfo
+  /** Finished generations per model id (`useModelUsage` of studio-core): the most used are listed first. */
+  usage?: Record<string, number>
+  onSelect?: (model: ModelInfo) => void
+}
+
 /**
- * Model selector of a composer: the local models of the kind (installed first, with what is missing for the others),
- * then "search a model" and "manage models". Choosing a model stores it as the one the composer of this kind uses.
+ * Model selector of a composer: the local models of the kind (most used first, then the other installed ones, then the
+ * rest, with what is missing for them; those too heavy for this machine behind a "show" link), then "search a model" and
+ * "manage models". Choosing a model stores it as the one the composer of this kind uses.
  */
-export function ModelPicker({ model, onSelect }: { model: ModelInfo; onSelect?: (model: ModelInfo) => void }) {
+export function ModelPicker({ model, usage, onSelect }: ModelPickerProps) {
   const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
+  const [showUnfit, setShowUnfit] = useState(false)
   const { data } = useModels()
   const { data: status } = useEngineStatus()
   const select = useModelSelectionStore((s) => s.select)
   const setModelsOpen = useStudioStore((s) => s.setModelsOpen)
   const openModelSearch = useStudioStore((s) => s.openModelSearch)
+  const list = pickerModels(data?.models ?? [], model.kind, { usage, showUnfit, keep: model.id })
   const close = () => setAnchor(null)
   const choose = (m: ModelInfo) => {
     select(m.kind, m.id)
@@ -127,11 +139,17 @@ export function ModelPicker({ model, onSelect }: { model: ModelInfo; onSelect?: 
       </Box>
       <Menu anchorEl={anchor} open={!!anchor} onClose={close} anchorOrigin={{ vertical: 'top', horizontal: 'left' }} transformOrigin={{ vertical: 'bottom', horizontal: 'left' }} slotProps={{ paper: { sx: { width: 'min(580px, calc(100vw - 24px))' } } }}>
         <Box className="cn-eyebrow" sx={{ px: 1.25, pb: '4px', pt: '6px' }}>{t('models.picker.title')}</Box>
-        {pickerModels(data?.models ?? [], model.kind).map((m) => (
+        {list.models.map((m) => (
           <MenuItem key={m.id} onClick={() => choose(m)} selected={m.id === model.id} sx={{ alignItems: 'flex-start', gap: 1.25, py: 1.25, opacity: m.compatible ? 1 : 0.6, whiteSpace: 'normal' }}>
             <PickerRow model={m} active={m.id === model.id} loaded={status?.model_id === m.id} />
           </MenuItem>
         ))}
+        {(list.hidden > 0 || showUnfit) && (
+          <MenuItem onClick={() => setShowUnfit(!showUnfit)} sx={{ gap: 1.25, fontSize: 13, color: 'var(--muted)' }}>
+            {showUnfit ? <VisibilityOffOutlined sx={{ fontSize: 16 }} /> : <VisibilityOutlined sx={{ fontSize: 16 }} />}
+            {showUnfit ? t('models.picker.hideUnfit') : t('models.picker.showUnfit', [list.hidden])}
+          </MenuItem>
+        )}
         <Box sx={{ my: '4px', height: '1px', backgroundColor: 'var(--line)' }} />
         <MenuItem onClick={() => { close(); openModelSearch(model.kind) }} sx={{ gap: 1.25 }}>
           <SearchRounded sx={{ fontSize: 16 }} /> {t('models.picker.search')}

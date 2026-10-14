@@ -35,9 +35,33 @@ export function splitModels(models: ModelInfo[], kind: ModelKind): { generators:
   return { speech: installedFirst(mine.filter(isTranscription)), generators: installedFirst(mine.filter((m) => !isTranscription(m))) }
 }
 
-/** Models offered by a picker: the kind, never a transcription model (not a generation model). */
-export function pickerModels(models: ModelInfo[], kind: ModelKind): ModelInfo[] {
-  return installedFirst(models.filter((m) => m.kind === kind && !isTranscription(m)))
+export interface PickerOptions {
+  /** Finished generations per model id: the most used come first. */
+  usage?: Record<string, number>
+  /** Also list the models too heavy for this machine (left out by default). */
+  showUnfit?: boolean
+  /** Id of the selected model, always listed. */
+  keep?: string
+}
+
+/** A model whose weights don't fit this machine's memory (the planner's verdict). */
+export const tooHeavy = (m: Pick<ModelInfo, 'plan'>): boolean => !m.plan.fits
+
+/**
+ * Models offered by a picker: the kind, never a transcription model (not a generation model); the most used first (by
+ * number of generations), then the other installed ones, then the rest, catalogue order within each group. The models
+ * too heavy for this machine are counted in `hidden` and left out unless `showUnfit` (the selected one always stays).
+ */
+export function pickerModels(models: ModelInfo[], kind: ModelKind, { usage = {}, showUnfit = false, keep }: PickerOptions = {}): { models: ModelInfo[]; hidden: number } {
+  const candidates = models.filter((m) => m.kind === kind && !isTranscription(m))
+  const hiddenOnes = candidates.filter((m) => tooHeavy(m) && m.id !== keep)
+  const shown = showUnfit ? candidates : candidates.filter((m) => !hiddenOnes.includes(m))
+  const uses = (m: ModelInfo) => usage[m.id] ?? 0
+  const sorted = installedFirst(shown)
+    .map((m, i) => ({ m, i }))
+    .sort((a, b) => Number(uses(b.m) > 0) - Number(uses(a.m) > 0) || uses(b.m) - uses(a.m) || a.i - b.i)
+    .map(({ m }) => m)
+  return { models: sorted, hidden: hiddenOnes.length }
 }
 
 /** GB still to download for the model (what is already on disk is not counted). */

@@ -105,6 +105,8 @@
   "models.picker.engineToInstall": "moteur à installer : {0}",
   "models.picker.complete": "à compléter",
   "models.picker.download": "télécharger le modèle",
+  "models.picker.showUnfit": "Afficher les modèles trop lourds pour cette machine ({0})",
+  "models.picker.hideUnfit": "Masquer les modèles trop lourds pour cette machine",
   "models.picker.tooHeavy": "trop gourmand pour cette machine",
   "models.picker.backend.mlx": "MLX",
   "models.picker.backend.torch": "PyTorch",

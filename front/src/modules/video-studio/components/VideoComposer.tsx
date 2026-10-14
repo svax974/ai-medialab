@@ -12,10 +12,10 @@ import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { HelpBody, InfoTip, helpTooltipSlotProps } from '@/modules_shared/common/components/ui/help'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { SetupPrompt } from '@/modules/engines'
-import { GatedNotice, LicenseWarning, ModelPicker, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
+import { GatedNotice, LicenseWarning, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
 import { useVideoComposer } from '../hooks/useVideoComposer'
 import { useVideoInputs } from '../hooks/useVideoInputs'
 import { placeholderKey } from '../lib/composerRules'
@@ -130,7 +130,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
             event.target.value = ''
           }}
         />
-        <ModelPicker model={model} />
+        <StudioModelPicker model={model} />
         <DurationPicker model={model} seconds={Number(params['seconds'])} onChange={(seconds) => draft.setParams(model.id, { seconds })} />
         <FormatPicker model={model} aspect={String(params.aspect)} resolution={String(params['resolution'])} onChange={(patch) => draft.setParams(model.id, patch)} />
         <GenerationParams model={model} params={params} hasRefs={composer.editing} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />

@@ -15,11 +15,14 @@ Back : `back/src/modules/studio-core/README.md` (routes, file des générations,
 studio-core/
   index.ts                         exports
   types.ts                         Asset, Message, MessageStatus, GenParams, JobProgress, ConversationDetail, SendMessageRequest/Response...
-  services/messagesApi.ts          POST /messages, POST /messages/:id/retry, POST /messages/:id/cancel, DELETE /messages/:id, GET /queue
+  services/messagesApi.ts          POST /messages, POST /messages/:id/retry, POST /messages/:id/cancel, DELETE /messages/:id, GET /queue,
+                                   GET /messages/model-usage
   services/assetsApi.ts            (déplacé dans `media-library` en H4.4 ; types `Asset`, `AssetPage` réexportés par `types.ts`)
   hooks/useStudioEvents.ts         abonnement aux sujets studio.* et application au cache (monté par StudioShell)
   hooks/useMessageActions.ts       relance, annulation, suppression (confirmation)
   hooks/useAssetActions.ts         favori, suppression depuis la visionneuse
+  hooks/useModelUsage.ts           générations terminées par modèle (clé `model-usage`, invalidée à la fin ou à la suppression d'une génération)
+  components/StudioModelPicker.tsx sélecteur de modèle des composeurs, classé par usage (`ModelPicker` + `useModelUsage`)
   hooks/useNow.ts                  horloge (secondes) rafraîchie chaque seconde tant qu'un chargement dure
   lib/messageState.ts              logique pure : états, cellules d'une génération, mise en page, ligne d'état, position en file (`queueIndex`),
                                    réglages repris, nom de fichier (testé)
@@ -43,7 +46,7 @@ studio-core/
 
 ## API publique
 
-`ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useToggleFavorite`,
+`ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useModelUsage`, `StudioModelPicker`, `useToggleFavorite`,
 `addAsReference` / `reuseUserMessage` / `reuseGenerationSettings` (actions sur le brouillon), `PARAM_HELP` / `paramHelp`, `HelpTooltip` / `LabelTooltip`,
 `messagesApi`, `upsertMessage`, `useImageDraftStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
 

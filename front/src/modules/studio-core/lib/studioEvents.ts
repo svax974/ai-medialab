@@ -88,6 +88,7 @@ const isAsset = (value: unknown): value is Asset => typeof value === 'object' &&
 
 const lists: StudioOp = { type: 'invalidate', key: studioKeys.conversations }
 const assets: StudioOp = { type: 'invalidate', key: assetKeys.all }
+const usage: StudioOp = { type: 'invalidate', key: studioKeys.modelUsage }
 
 /** Operations for one `studio.*` event. Unknown or malformed events do nothing. */
 export function opsOfStudioEvent(event: StudioEventLike): StudioOp[] {
@@ -100,7 +101,7 @@ export function opsOfStudioEvent(event: StudioEventLike): StudioOp[] {
       const message: Message = data
       return [
         { type: 'conversation', id: message.conversation_id, update: (c) => upsertMessage(c, message) },
-        ...(isActive(message.status) ? [] : [{ type: 'clearProgress', messageId: message.id } as const, lists]),
+        ...(isActive(message.status) ? [] : [{ type: 'clearProgress', messageId: message.id } as const, lists, usage]),
       ]
     }
     case 'studio.job.image': {
@@ -114,7 +115,7 @@ export function opsOfStudioEvent(event: StudioEventLike): StudioOp[] {
       const conversationId = data['conversation_id']
       const ids = data['ids']
       if (!isString(conversationId) || !Array.isArray(ids)) return []
-      return [{ type: 'conversation', id: conversationId, update: (c) => removeMessages(c, ids as string[]) }]
+      return [{ type: 'conversation', id: conversationId, update: (c) => removeMessages(c, ids as string[]) }, usage]
     }
     case 'studio.conversation.updated': {
       if (!isString(data['id'])) return []
@@ -122,7 +123,7 @@ export function opsOfStudioEvent(event: StudioEventLike): StudioOp[] {
       return [{ type: 'conversation', id: summary.id, update: (c) => mergeSummary(c, summary) }, lists]
     }
     case 'studio.conversation.deleted':
-      return isString(data['id']) ? [{ type: 'remove', key: studioKeys.conversation(data['id']) }, lists, assets] : []
+      return isString(data['id']) ? [{ type: 'remove', key: studioKeys.conversation(data['id']) }, lists, assets, usage] : []
     case 'studio.asset.updated':
       return isAsset(data) ? [{ type: 'asset', asset: data }] : []
     case 'studio.asset.deleted':

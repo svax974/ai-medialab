@@ -136,6 +136,18 @@ export class MessageService {
     return result.affected ?? 0;
   }
 
+  /** Number of finished generations per model (assistant messages in the `done` state), for the model pickers. */
+  async modelUsage(): Promise<Record<string, number>> {
+    const rows = await this.messages
+      .createQueryBuilder('m')
+      .select('m.model_id', 'model')
+      .addSelect('COUNT(*)', 'uses')
+      .where('m.role = :role AND m.status = :status AND m.model_id IS NOT NULL', { role: 'assistant', status: 'done' })
+      .groupBy('m.model_id')
+      .getRawMany<{ model: string; uses: number | string }>();
+    return Object.fromEntries(rows.map(({ model, uses }) => [model, Number(uses)]));
+  }
+
   /** Attaches reference and output assets to messages with two queries, whatever the number of messages. */
   async toDtos(messages: MessageEntity[]): Promise<MessageDto[]> {
     if (!messages.length) return [];

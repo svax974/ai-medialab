@@ -27,6 +27,7 @@ import { ConversationController } from './ConversationController';
 import { MessageController } from './MessageController';
 import { ConversationService } from '../services/ConversationService';
 import { GenerationService } from '../services/GenerationService';
+import { MessageService } from '../services/MessageService';
 
 let principal: AuthPrincipal | undefined = { id: 0, admin: true, kind: 'local-trust' };
 
@@ -80,6 +81,7 @@ describe('studio routes: public forms identical to the legacy engine', () => {
         { provide: ENGINE_CONFIG, useValue: testConfig(engine.url) },
         { provide: ConversationService, useValue: studio.conversations },
         { provide: GenerationService, useValue: studio.generations },
+        { provide: MessageService, useValue: studio.messages },
         { provide: AssetService, useValue: studio.assets },
         { provide: AssetFileService, useValue: studio.files },
         { provide: StudioEvents, useValue: studio.events },
@@ -142,6 +144,12 @@ describe('studio routes: public forms identical to the legacy engine', () => {
       'studio.conversation.updated|conversation.updated', 'studio.conversation.updated|conversation.updated',
       'studio.conversation.deleted|conversation.deleted',
     ]);
+  });
+
+  it('GET /api/messages/model-usage: finished generations per model', async () => {
+    const { counts } = (await http().get('/api/messages/model-usage').expect(200)).body as { counts: Record<string, number> };
+    expect(Object.keys(counts).length).toBeGreaterThan(0);
+    expect(Object.values(counts).every((n) => Number.isInteger(n) && n > 0)).toBe(true);
   });
 
   it('message routes: create answers with the three legacy members, in the legacy message form', async () => {

@@ -11,4 +11,6 @@ export const studioKeys = {
   conversationList: (mode: StudioMode, query: string) => ['conversations', mode, query] as const,
   conversation: (id: string) => ['conversation', id] as const,
   conversationAll: ['conversation'] as const,
+  /** Finished generations per model (order of the model pickers). */
+  modelUsage: ['model-usage'] as const,
 }

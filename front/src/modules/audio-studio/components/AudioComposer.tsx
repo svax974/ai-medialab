@@ -11,10 +11,10 @@ import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { InfoTip } from '@/modules_shared/common/components/ui/help'
 import { SetupPrompt } from '@/modules/engines'
-import { ModelPicker, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
+import { useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
 import { approxDuration, MAX_TEXT_LENGTH } from '../lib/audioText'
 import { AUDIO_HELP, maxCharsHelp } from '../lib/audioHelp'
 import { useAudioComposer } from '../hooks/useAudioComposer'
@@ -123,7 +123,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
       {model.compatible && !model.ready && !(hero && welcomeShown) && <SetupPrompt model={model} />}
       <Notices notices={composer.notices} />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>
-        <ModelPicker model={model} />
+        <StudioModelPicker model={model} />
         {!composer.scriptActive && <VoicePicker model={model} language={language} value={voice.ref} onChange={(value) => draft.setVoice(model.id, value)} />}
         <LanguagePicker caps={caps} value={language} onChange={(code) => draft.setLanguage(model.id, code)} />
         <GenerationParams model={model} params={params} hasRefs={false} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />

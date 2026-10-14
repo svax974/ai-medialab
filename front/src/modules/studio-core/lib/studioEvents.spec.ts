@@ -85,10 +85,11 @@ describe('opsOfStudioEvent', () => {
     expect(run(ops, conversation()).messages.map((m) => m.id)).toEqual(['a1'])
   })
 
-  it('clears the progress and refreshes the lists once a message is no longer busy', () => {
+  it('clears the progress and refreshes the lists and the model usage once a message is no longer busy', () => {
     for (const status of ['done', 'error', 'cancelled']) {
       const ops = opsOfStudioEvent({ topic: 'studio.message.updated', data: message('a1', { status: status as Message['status'] }) as unknown as Record<string, unknown> })
-      expect(ops.map((op) => op.type)).toEqual(['conversation', 'clearProgress', 'invalidate'])
+      expect(ops.map((op) => op.type)).toEqual(['conversation', 'clearProgress', 'invalidate', 'invalidate'])
+      expect(ops).toContainEqual({ type: 'invalidate', key: ['model-usage'] })
     }
   })
 
@@ -101,6 +102,7 @@ describe('opsOfStudioEvent', () => {
   it('removes deleted messages', () => {
     const ops = opsOfStudioEvent({ topic: 'studio.message.deleted', data: { conversation_id: 'c1', ids: ['a1'] } })
     expect(run(ops, conversation([message('a1'), message('a2')])).messages.map((m) => m.id)).toEqual(['a2'])
+    expect(ops).toContainEqual({ type: 'invalidate', key: ['model-usage'] })
   })
 
   it('merges a conversation summary and refreshes the lists', () => {
@@ -114,6 +116,7 @@ describe('opsOfStudioEvent', () => {
       { type: 'remove', key: ['conversation', 'c1'] },
       { type: 'invalidate', key: ['conversations'] },
       { type: 'invalidate', key: ['assets'] },
+      { type: 'invalidate', key: ['model-usage'] },
     ])
   })
 

@@ -40,7 +40,21 @@ describe('ordering and filtering', () => {
     const { generators, speech } = splitModels(models, 'audio')
     expect(generators.map((m) => m.id)).toEqual(['tts'])
     expect(speech.map((m) => m.id)).toEqual(['stt'])
-    expect(pickerModels(models, 'audio').map((m) => m.id)).toEqual(['tts'])
+    expect(pickerModels(models, 'audio').models.map((m) => m.id)).toEqual(['tts'])
+  })
+  it('lists the most used models first, then the other installed ones, then the rest', () => {
+    const models = [model({ id: 'a' }), model({ id: 'b', install: 'installed' }), model({ id: 'c' }), model({ id: 'd', install: 'installed' }), model({ id: 'e', install: 'installed' })]
+    expect(pickerModels(models, 'image').models.map((m) => m.id)).toEqual(['b', 'd', 'e', 'a', 'c'])
+    expect(pickerModels(models, 'image', { usage: { e: 2, c: 5, ghost: 9 } }).models.map((m) => m.id)).toEqual(['c', 'e', 'b', 'd', 'a'])
+  })
+  it('hides the models too heavy for this machine unless asked, but never the selected one', () => {
+    const heavy = { fits: false, strategy: 'none', note: '' } as ModelInfo['plan']
+    const models = [model({ id: 'a' }), model({ id: 'big', plan: heavy }), model({ id: 'huge', plan: heavy })]
+    expect(pickerModels(models, 'image')).toMatchObject({ hidden: 2 })
+    expect(pickerModels(models, 'image').models.map((m) => m.id)).toEqual(['a'])
+    expect(pickerModels(models, 'image', { keep: 'big' }).models.map((m) => m.id)).toEqual(['a', 'big'])
+    expect(pickerModels(models, 'image', { keep: 'big' }).hidden).toBe(1)
+    expect(pickerModels(models, 'image', { showUnfit: true }).models).toHaveLength(3)
   })
 })
 

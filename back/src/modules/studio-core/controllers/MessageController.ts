@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Body, Controller, Delete, HttpCode, Param, Post, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, UseInterceptors } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { NoTransportCrypt } from 'src/modules_shared/common/decorators/NoTransportCrypt';
 import { AdminOnlyInterceptor } from 'src/modules_shared/common/interceptors/AdminOnlyInterceptor';
 import { MessageDto } from '../dto/MessageDto';
 import { CreatedGeneration, GenerationService } from '../services/GenerationService';
+import { MessageService } from '../services/MessageService';
 import { parseCreateMessage, parseRetry } from '../services/generationParams';
 
 /** `/api/messages*`: same URLs and shapes as the engine's legacy routes. Admin only. */
@@ -17,7 +18,16 @@ import { parseCreateMessage, parseRetry } from '../services/generationParams';
 @NoTransportCrypt()
 @UseInterceptors(AdminOnlyInterceptor)
 export class MessageController {
-  constructor(private readonly generations: GenerationService) {}
+  constructor(
+    private readonly generations: GenerationService,
+    private readonly messages: MessageService,
+  ) {}
+
+  /** Finished generations per model id (`{ counts: { "<model id>": n } }`): the model pickers list the most used first. */
+  @Get('model-usage')
+  async modelUsage(): Promise<{ counts: Record<string, number> }> {
+    return { counts: await this.messages.modelUsage() };
+  }
 
   @Post()
   @HttpCode(200)
