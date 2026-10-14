@@ -110,7 +110,7 @@ contours internes `inset 0 0 0 1px` qui jouent le rôle de bordure (piste des on
 | Composant | Rendu repris de l'ancienne interface |
 |---|---|
 | `Button` | 36 px, rayon 12, 14 px/500, sans majuscules. `contained primary` = `--safe` + `--safe-ink`, survol `brightness(1.1)` ; `outlined` et `contained secondary` = fond `--surface-2`, bordure `--line` -> `--line-strong` au survol ; `contained error` = rouge à 15 % (25 % au survol) ; `text` = fantôme `--ink-2` -> `--ink`. |
-| `IconButton` | 36 px (petit 28), rayon 8, `--muted` -> `--ink` sur fond `--surface-3` ; `colorError` : survol rouge doux. |
+| `IconButton` | 36 px (petit 28 ; s'élargit autour d'un libellé marqué `cn-icon-label`, comme le bouton des réglages et son nombre d'étapes), rayon 8, `--muted` -> `--ink` sur fond `--surface-3` ; `colorError` : survol rouge doux. |
 | `Dialog` | fond `--surface`, bordure `--line`, rayon 24 (16 pour `maxWidth="xs"`, la confirmation), hauteur max 720 px / 90 vh, voile noir 55 % flou 4 px, titre Instrument Serif 28 px. |
 | `Popover` / `Menu` / `MenuItem` | voir `.menu` / `.menu-item` ci-dessus. |
 | `Slider` | rail 4 px `--surface-3`, piste `--safe`, poignée 14 px bordée `--safe` sur fond `--surface`, grossit de 10 % au survol, halo `--safe-soft` au focus. |

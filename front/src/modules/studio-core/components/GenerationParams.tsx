@@ -79,7 +79,7 @@ export function GenerationParams({ model, params, hasRefs, seed, onChange, onRes
       titleId="thread.params.title"
       triggerLabelId="thread.params.tip"
       icon={
-        <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        <Box component="span" className="cn-icon-label" sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px', px: { xs: 0, md: 1 } }}>
           <TuneRounded sx={{ fontSize: 14 }} />
           {model.kind === 'image' ? (
             <Box component="span" sx={{ display: { xs: 'none', md: 'inline' }, fontFamily: 'var(--font-mono)', fontSize: 11 }}>{t('thread.params.steps', [params.steps ?? '—'])}</Box>

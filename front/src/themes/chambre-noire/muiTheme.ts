@@ -83,6 +83,9 @@ function buildComponents(): Components<Theme> {
           transition: 'background-color 0.15s, color 0.15s',
           '&:hover': { backgroundColor: 'var(--surface-3)', color: 'var(--ink)' },
           '&.Mui-disabled': { opacity: 0.4 },
+          // A button showing a label next to its icon (`cn-icon-label`, e.g. the settings button and its step count)
+          // grows around it instead of overflowing its own focus ring and hover background.
+          '&:has(.cn-icon-label)': { width: 'auto', minWidth: 36 },
         },
         sizeSmall: { width: 28, height: 28 },
         sizeLarge: { width: 44, height: 44 },
