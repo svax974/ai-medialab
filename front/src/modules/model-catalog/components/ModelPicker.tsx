@@ -14,7 +14,7 @@ import TuneRounded from '@mui/icons-material/TuneRounded'
 import { useEngineStatus } from '@/modules/hardware'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
-import { pickerBackendKey, pickerModels, pickerSize } from '../lib/catalogFormat'
+import { pickerBackendKey, pickerModels, pickerSize, remainingGb } from '../lib/catalogFormat'
 import { MODEL_HELP } from '../lib/modelHelp'
 import { useModels } from '../hooks/useModelCatalog'
 import { useModelSelectionStore } from '../state/modelSelectionStore'
@@ -23,11 +23,13 @@ import { GatedNotice, HelpTag, LicenseWarning, VideoBadges } from './ModelBadges
 import { useSizeLabel } from '../hooks/useSizeLabel'
 import { Tag } from './panels'
 
-/** What the picker row says about what is missing: the engine to install, the model to download, or too heavy. */
+/** What the picker row says about what is missing: the engine to install, the model to download (what is left of it), or too heavy. */
 function MissingBadges({ model: m }: { model: ModelInfo }) {
   const t = useT()
-  const size = pickerSize(m.download_size_gb ?? 0)
-  const sizeText = m.download_size_gb ? ` · ~${t(size.unit === 'mb' ? 'models.size.mb' : 'models.size.gb', [String(size.value)])}` : ''
+  // What is left to download: a LoRA whose SDXL base is already there only needs its own small file.
+  const need = remainingGb(m)
+  const size = pickerSize(need)
+  const sizeText = need > 0 ? ` · ~${t(size.unit === 'mb' ? 'models.size.mb' : 'models.size.gb', [String(size.value)])}` : ''
   return (
     <Box sx={{ mt: '6px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
       {m.needs_engine_install && (
@@ -64,21 +66,24 @@ function PickerRow({ model: m, active, loaded }: { model: ModelInfo; active: boo
           {size && <Tag size="sm" tone="strong" title={t('models.size.title')}>{size}</Tag>}
           {loaded && <Tag tone="ok" pill>{t('models.loaded')}</Tag>}
         </Box>
-        <Box component="p" sx={{ m: 0, mt: '2px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{m.description}</Box>
-        {m.kind === 'video' && <Box sx={{ mt: '4px' }}><VideoBadges model={m} /></Box>}
-        {m.kind === 'video' && <Box sx={{ mt: '6px' }}><LicenseWarning model={m} compact /></Box>}
-        <Box sx={{ mt: '6px' }}><GatedNotice model={m} compact /></Box>
-        {m.tags.length > 0 && (
-          <Box sx={{ mt: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-            {m.tags.map((tag) => <Tag key={tag} size="sm">{tag}</Tag>)}
-          </Box>
-        )}
-        <MissingBadges model={m} />
-        {m.needs_engine_install && m.engine_detail && (
-          <Box component="p" sx={{ m: 0, mt: '4px', fontSize: 11.5, lineHeight: 1.4, color: 'var(--faint)' }}>
-            <Box component="b" sx={{ fontWeight: 500, color: 'var(--muted)' }}>{m.engine_name}</Box> : {m.engine_detail}
-          </Box>
-        )}
+        {/* Everything below the title is indented, so each model's name stands out in the list. */}
+        <Box sx={{ pl: 1.5 }}>
+          <Box component="p" sx={{ m: 0, mt: '2px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{m.description}</Box>
+          {m.kind === 'video' && <Box sx={{ mt: '4px' }}><VideoBadges model={m} /></Box>}
+          {m.kind === 'video' && <Box sx={{ mt: '6px' }}><LicenseWarning model={m} compact /></Box>}
+          <Box sx={{ mt: '6px' }}><GatedNotice model={m} compact /></Box>
+          {m.tags.length > 0 && (
+            <Box sx={{ mt: '4px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+              {m.tags.map((tag) => <Tag key={tag} size="sm">{tag}</Tag>)}
+            </Box>
+          )}
+          <MissingBadges model={m} />
+          {m.needs_engine_install && m.engine_detail && (
+            <Box component="p" sx={{ m: 0, mt: '4px', fontSize: 11.5, lineHeight: 1.4, color: 'var(--faint)' }}>
+              <Box component="b" sx={{ fontWeight: 500, color: 'var(--muted)' }}>{m.engine_name}</Box> : {m.engine_detail}
+            </Box>
+          )}
+        </Box>
       </Box>
     </>
   )
