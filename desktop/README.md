@@ -5,8 +5,9 @@ this project, and nothing else:
 
 - `desktop.config.json`: the Nest server and the `engine` sidecar (embedded Python, `uvicorn app.main:app`, health
   `/engine/v1/status`, started before Nest, shared token `ENGINE_TOKEN`, `ENGINE_URL` for Nest, common data folder).
-- `runtime/profiles.json` and `../scripts-local/build_runtime.py`: the packaging hook of the sidecar (Python runtime per GPU
-  profile, `engine/`, `engines/sdcpp`) writing `build/engine-bundle/`, copied by `packaging.extraResources`.
+- `runtime/profiles.json`, `../scripts-local/desktop-prepare.sh` (prepare hook of `scripts/app.sh` / `scripts/bundle.sh`: target →
+  profile) and `../scripts-local/build_runtime.py`: the packaging of the sidecar (Python runtime per GPU profile, `engine/`,
+  `engines/sdcpp`) writing `build/engine-bundle/`, copied by `packaging.extraResources`.
   It warns when the bundled FFmpeg (PyAV) is a GPL build: see `docs/components/ffmpeg.md` before publishing an installer.
 - `splash/`: the template's waiting page restyled with the « chambre noire » theme (fonts, glow); texts in `splash/messages.json`
   plus the overrides of `desktop.config.json`.

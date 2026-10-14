@@ -161,7 +161,8 @@ serveur Nest (Node embarqué), qui sert aussi le front compilé et dont la sant�
 généré à chaque lancement et partagé ; les ports sont alloués libres. À la fermeture la coquille arrête les deux groupes de
 processus, y compris le worker de génération. Procédure de construction, profils d'exécution par GPU, signature et CI :
 `desktop/README.md` et la section « Application de bureau » de `README.md`. Le crochet d'empaquetage du moteur est
-`scripts-local/build_runtime.py` (profils : `desktop/runtime/profiles.json`).
+`scripts-local/desktop-prepare.sh` (appelé par `scripts/app.sh` et `scripts/bundle.sh`), qui lance `scripts-local/build_runtime.py`
+avec le profil de la cible (profils : `desktop/runtime/profiles.json`).
 
 État de vérification : la chaîne de construction de la coquille a été écrite et testée par morceaux, **aucune application n'a été
 assemblée ni lancée de bout en bout** avec la coquille du gabarit (voir le suivi de la migration, `docs/migration/README.md`).

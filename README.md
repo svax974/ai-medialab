@@ -292,32 +292,33 @@ Profils d'exécution (un installateur = un profil ; le build de PyTorch dépend 
 | `linux-rocm` | Linux + AMD (ROCm 7.2) | scripté, **non vérifié** |
 | `win-rocm` | Windows + AMD Radeon (ROCm 7.2.1, préversion AMD) | scripté, **expérimental, non vérifié** |
 
-### Construire (macOS Apple Silicon)
+### Construire et lancer
 
 Prérequis : [uv](https://docs.astral.sh/uv/), Node.js ≥ 22, Rust (`rustup`), Xcode Command Line Tools, accès réseau (Python
-standalone, wheels, Node officiel, binaires de better-sqlite3 et de stable-diffusion.cpp). ~15 Go d'espace libre.
+standalone, wheels, Node officiel, binaires de better-sqlite3 et de stable-diffusion.cpp). Espace disque : ~15 Go pour la
+cible macOS, autant par cible Windows ou Linux.
 
 ```sh
-cd back && npm run desktop:build        # tout enchaîné, ou les étapes ci-dessous
+./scripts/app.sh                  # construit l'app pour cette machine et l'ouvre (--no-run, --no-build, --clean)
+./scripts/bundle.sh               # paquets dans desktop/dist/ : .dmg + zip win-x64 + tar.gz linux-x64
+./scripts/bundle.sh --targets darwin-arm64        # le .dmg seul
 ```
 
-1. `cd back && npm ci && npm run build` : `back/dist`.
-2. `cd front && npm ci && npm run build` : `front/dist`.
-3. `python3 scripts-local/build_runtime.py --profile mac-arm64` (`npm run desktop:runtime`, variable `DESKTOP_PROFILE`) :
-   crochet du processus annexe, écrit `desktop/build/engine-bundle/` = `engine/` (code, runtimes audio et vidéo),
-   `engine-runtime/{python,site-packages}` et `engines/sdcpp/<variante>` (via `fetch_sdcpp.py`).
-4. `cd desktop && npm ci`, puis `node scripts/desktop/build-desktop.mjs --bundle` (depuis la racine) : assemble
-   `desktop/build/resources/` (back, `node_modules` de production, locales, front, Node épinglé vérifié par SHA-256, plus
-   `packaging.extraResources` = le dossier de l'étape 3), signe ad hoc, lance `tauri build`, fait le DMG.
-   `--dry-run` imprime le plan sans rien écrire.
+Les deux scripts viennent du gabarit (`desktop/README.md`, section « Build and package scripts ») : build du back et du front,
+crochet du projet, assemblage (`scripts/desktop/build-desktop.mjs`), `tauri build`. `cd back && npm run desktop:build` =
+`app.sh --no-run`. Le crochet `scripts-local/desktop-prepare.sh <cible>` construit le moteur embarqué
+(`scripts-local/build_runtime.py`, dans `desktop/build/engine-bundle/` = `engine/`, `engine-runtime/{python,site-packages}`,
+`engines/sdcpp/<variante>`) avec le profil de la cible : `darwin-arm64` → `mac-arm64`, `win-x64` → `win-cuda`, `linux-x64` →
+`linux-cuda` ; `DESKTOP_PROFILE=win-rocm|linux-rocm` en choisit un autre. Il ne refait que la copie du code du moteur
+(`--refresh-app`, quelques secondes) tant que le profil, `engine/pyproject.toml`, `engine/uv.lock` et `profiles.json` n'ont pas
+changé ; changer de profil (donc de cible) reconstruit tout.
 
-Résultat : `desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app` et `.../dmg/AI MediaLab_<version>_aarch64.dmg`.
-Windows et Linux : `build_runtime.py --profile win-cuda|linux-cuda` (cross-construction, rien n'est exécuté), puis
-`build-desktop.mjs --target win-x64|linux-x64` et `package-cross.mjs --target …` (zip ou tar.gz portable) ; non vérifié.
-Le workflow `.github/workflows/build-desktop.yml` (jamais exécuté) fait la même chaîne sur chaque OS.
+Résultats : `app.sh` ouvre `desktop/src-tauri/target/release/bundle/macos/AI MediaLab.app` (journaux dans
+`~/Library/Application Support/app.aimedialab.studio/logs`) ; `bundle.sh` copie `AI MediaLab_<version>_aarch64.dmg` et les archives
+portables dans `desktop/dist/`. Windows depuis le Mac demande `brew install mingw-w64` ; Linux, Docker démarré ; sinon la cible est
+ignorée avec la raison. Les paquets Windows et Linux sont cross-construits et **non vérifiés** sur leur matériel. Le workflow
+`.github/workflows/build-desktop.yml` (jamais exécuté) fait la même chaîne sur chaque OS.
 
-Après une modification du moteur seul : `build_runtime.py --profile mac-arm64 --refresh-app` (recopie `engine/` et `engines/`,
-quelques secondes), puis `build-desktop.mjs --skip-install --bundle`.
 Itérer sans empaqueter : `cd back && npm run desktop:dev` (la racine du dépôt sert de ressources : `back/dist`, `front/dist`,
 `engine/.venv` créé par `uv sync`, Node du système ; `DESKTOP_RESOURCES`).
 

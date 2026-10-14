@@ -4,8 +4,7 @@
   "scripts": {
     "engine:types": "openapi-typescript ../engine/openapi.json -o src/modules/engine/generated/engineApi.d.ts",
     "desktop:dev": "npm --prefix ../desktop install && DESKTOP_RESOURCES=\"$(cd .. && pwd)\" npm --prefix ../desktop run dev",
-    "desktop:runtime": "python3 ../scripts-local/build_runtime.py --profile \"${DESKTOP_PROFILE:-mac-arm64}\"",
-    "desktop:build": "npm run build && npm --prefix ../front run build && npm run desktop:runtime && npm --prefix ../desktop install && node ../scripts/desktop/build-desktop.mjs --root .. --bundle"
+    "desktop:build": "../scripts/app.sh --no-run"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
