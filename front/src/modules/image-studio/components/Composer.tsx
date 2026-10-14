@@ -16,7 +16,7 @@ import { useActiveModel, useModels, useWelcomeModel, useModelSelectionStore, typ
 import { pickerBackendKey } from '@/modules/model-catalog/lib/catalogFormat'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, StudioModelPicker, useImageDraftStore } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, useImageDraftStore } from '@/modules/studio-core'
 import { useSendMessage } from '../hooks/useSendMessage'
 import { composerNotices, multiAlternative, placeholderKey, sendState } from '../lib/composerRules'
 import { attachHelp } from '../lib/help'
@@ -120,6 +120,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
         }}
         sx={{ display: 'block', width: '100%', resize: 'none', border: 0, background: 'transparent', px: 2.25, pb: 1, pt: 2, fontFamily: 'inherit', fontSize: 15.5, lineHeight: 1.6, color: 'var(--ink)', outline: 'none', '&::placeholder': { color: 'var(--faint)' } }}
       />
+      <NegativePromptField model={model} value={String(params.negative_prompt ?? '')} onChange={(negative_prompt) => draft.setParams(model.id, { negative_prompt })} onSubmit={submit} />
       {model.compatible && !model.ready && !(hero && welcomeShown) && <SetupPrompt model={model} />}
       <Notices model={model} referenceCount={draft.references.length} alternative={alternative} />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>

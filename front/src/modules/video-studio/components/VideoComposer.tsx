@@ -15,7 +15,7 @@ import { SetupPrompt } from '@/modules/engines'
 import { GatedNotice, LicenseWarning, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker } from '@/modules/studio-core'
 import { useVideoComposer } from '../hooks/useVideoComposer'
 import { useVideoInputs } from '../hooks/useVideoInputs'
 import { placeholderKey } from '../lib/composerRules'
@@ -106,6 +106,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
         }}
         sx={{ display: 'block', width: '100%', resize: 'none', border: 0, background: 'transparent', px: 2.25, pb: 1, pt: 2, fontFamily: 'inherit', fontSize: 15.5, lineHeight: 1.6, color: 'var(--ink)', outline: 'none', '&::placeholder': { color: 'var(--faint)' } }}
       />
+      <NegativePromptField model={model} value={String(params.negative_prompt ?? '')} onChange={(negative_prompt) => draft.setParams(model.id, { negative_prompt })} onSubmit={composer.submit} />
       {model.compatible && !model.ready && !(hero && welcomeShown) && <SetupPrompt model={model} />}
       {caps.license_warning && <Box sx={{ mx: 2, mb: '6px' }}><LicenseWarning model={model} /></Box>}
       {model.gated && <Box sx={{ mx: 2, mb: '6px' }}><GatedNotice model={model} /></Box>}

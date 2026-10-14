@@ -23,6 +23,8 @@ studio-core/
   hooks/useAssetActions.ts         favori, suppression depuis la visionneuse
   hooks/useModelUsage.ts           générations terminées par modèle (clé `model-usage`, invalidée à la fin ou à la suppression d'une génération)
   components/StudioModelPicker.tsx sélecteur de modèle des composeurs, classé par usage (`ModelPicker` + `useModelUsage`)
+  components/NegativePromptField.tsx ligne « À éviter » sous le prompt (image, vidéo) pour les modèles qui ont un `negative_prompt`,
+                                   que `toParamsSchema` retire alors du panneau de réglages (`NEGATIVE_PROMPT`)
   hooks/useNow.ts                  horloge (secondes) rafraîchie chaque seconde tant qu'un chargement dure
   lib/messageState.ts              logique pure : états, cellules d'une génération, mise en page, ligne d'état, position en file (`queueIndex`),
                                    réglages repris, nom de fichier (testé)
@@ -46,7 +48,7 @@ studio-core/
 
 ## API publique
 
-`ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useModelUsage`, `StudioModelPicker`, `useToggleFavorite`,
+`ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useModelUsage`, `StudioModelPicker`, `NegativePromptField`, `useToggleFavorite`,
 `addAsReference` / `reuseUserMessage` / `reuseGenerationSettings` (actions sur le brouillon), `PARAM_HELP` / `paramHelp`, `HelpTooltip` / `LabelTooltip`,
 `messagesApi`, `upsertMessage`, `useImageDraftStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
 

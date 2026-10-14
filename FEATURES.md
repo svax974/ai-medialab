@@ -28,7 +28,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 - Accueil (premier lancement, composeur « héros », prompts de départ, derniers tirages) ; composeur : prompt, images de référence
   (clic, collage, dépôt sur la fenêtre, glisser depuis une vignette ; réordonnables, la première donne le format et la résolution
   « Référence », conservée pour les images suivantes une fois les références retirées), modèle, proportions et définition, nombre d'images (1 à 4),
-  étapes, guidance, prompt négatif, force, graine ; galerie des images (`/galerie`).
+  étapes, guidance, prompt négatif (ligne « À éviter » sous le prompt), force, graine ; galerie des images (`/galerie`).
 
 ### `audio-studio`
 - Composeur : texte ou dialogue avec distribution des voix (`Alice : …`), voix, langue, consigne de style ou description d'une

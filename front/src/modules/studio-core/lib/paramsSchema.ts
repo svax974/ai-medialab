@@ -17,8 +17,11 @@ function fieldOf(spec: ParamSpec, model: ModelInfo, t: Translator): ParamField {
 }
 
 /** Settings schema of a model for the common form: its parameters, minus those that need a reference when there is none. */
+/** Key of the negative prompt: typed under the prompt (`NegativePromptField`), so the settings panel leaves it out. */
+export const NEGATIVE_PROMPT = 'negative_prompt'
+
 export function toParamsSchema(model: ModelInfo, hasRefs: boolean, t: Translator): ParamsSchema {
-  return model.params.filter((spec) => !spec.requires_references || hasRefs).map((spec) => fieldOf(spec, model, t))
+  return model.params.filter((spec) => spec.key !== NEGATIVE_PROMPT && (!spec.requires_references || hasRefs)).map((spec) => fieldOf(spec, model, t))
 }
 
 /** The values of a parameter set that the schema knows, in the form's type (anything else is not shown). */

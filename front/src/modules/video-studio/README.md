@@ -104,6 +104,7 @@ Cases cochées = vérifiées par la logique testée (`lib/*.spec.ts`) et le rend
 - [x] Badges des tâches (texte → vidéo, image → vidéo, montage), durée maximale, définitions, « avec son », « anglais », chacun avec son info-bulle ; avertissement de licence ; avis d'accès restreint (avec l'état du jeton) ; dans le sélecteur de modèle, le dialogue Modèles et sous le prompt.
 
 **Écarts**
+- Le prompt négatif, quand le modèle en a un, se saisit sous le prompt (`NegativePromptField` de `studio-core`), pas dans les réglages.
 - Les réglages du modèle et la graine passent par `GenerationParams`, **remonté dans `studio-core`** (écart de H4.3b / H4.5 soldé) ; son bouton affiche « Réglages » pour l'audio et la vidéo (comme avant), le nombre d'étapes pour l'image.
 - « Reprendre ces réglages » n'enregistre plus les valeurs que le moteur recalcule (`frames`, `fps`, `task`), qui s'ajoutaient aux réglages du modèle sans servir.
 - Les actions de la visionneuse propres à la vidéo s'appliquent à tout clip, quel que soit le mode affiché (avant : idem) ; elles sont fournies par `video-studio` à `StudioLightbox` (`modeActions`) pour que `studio-core` ne dépende pas de la vidéo.
