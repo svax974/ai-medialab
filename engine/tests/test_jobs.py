@@ -354,6 +354,15 @@ class TestPlans:
         assert plan["items"][1]["output"] == str(OUTPUTS_DIR / "j1_1.png")
         assert plan["items"][0]["request"]["references"] == [str(ref)]
 
+    def test_image_plan_records_the_edit_settings_actually_used(self):
+        ref = UPLOADS_DIR / "ref.png"
+        Image.new("RGB", (64, 64)).save(ref)
+        job = make_job(inputs=[str(ref)], params={"steps": 20, "guidance": 1, "seeds": [1]})
+        job.model_id = "qwen-image-2.1-gguf"
+        plan = build_plan(job)
+        assert (plan["params"]["steps"], plan["params"]["guidance"]) == (12, 4.0)
+        assert (plan["items"][0]["request"]["steps"], plan["items"][0]["request"]["guidance"]) == (12, 4.0)
+
     def test_unknown_model_and_empty_prompt_are_value_errors(self):
         with pytest.raises(ValueError, match="Le prompt est vide"):
             build_plan(make_job(prompt=""))

@@ -37,15 +37,14 @@ from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 PROGRESS = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
 
 
-def effective_settings(spec, req: GenerationRequest, editing: bool) -> tuple[int, float | None]:
-    """Steps and guidance actually used.
+def effective_settings(spec, steps: int, guidance: float | None, editing: bool) -> tuple[int, float | None]:
+    """Steps and guidance actually used, applied when the job is planned so the message records them.
 
     The creation defaults don't suit instruction-based editing (reference images): it needs some
     guidance (measured: 1 doesn't follow the instruction) and 12 steps are enough (measured: same
     result as 20 in half the time). Only values the user left at the default are replaced, never an
     explicit setting."""
     o = spec.options
-    steps, guidance = req.steps, req.guidance
     if editing:
         if o.get("edit_steps") and steps == spec.default_params().get("steps"):
             steps = o["edit_steps"]
@@ -86,11 +85,10 @@ class SdcppEngine(Engine):
                 if role in o.get("vision_for_refs", []) and not refs:
                     continue
                 cmd += [f"--{role}", path]
-            steps, guidance = effective_settings(self.spec, req, editing=bool(refs) and not use_init)
-            cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--steps", str(steps),
+            cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--steps", str(req.steps),
                     "-s", str(req.seed), "-o", str(out)]
-            if guidance is not None:
-                cmd += [o.get("guidance_arg", "--cfg-scale"), str(guidance)]
+            if req.guidance is not None:
+                cmd += [o.get("guidance_arg", "--cfg-scale"), str(req.guidance)]
             if (req.negative_prompt or "").strip():
                 cmd += ["-n", req.negative_prompt.strip()]
             if use_init:

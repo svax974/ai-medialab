@@ -145,9 +145,10 @@ QWEN_EDIT_GGUF = ModelSpec(
     options={
         "files": {"diffusion-model": E_GGUF, "llm": E_LLM, "vae": E_VAE, "llm_vision": E_VISION},
         "vision_for_refs": ["llm_vision"],
-        # Settings from the stable-diffusion.cpp guide; zero_cond_t is required for the 2511 release.
-        "cli_args": ["--sampling-method", "euler", "--flow-shift", "3", "--model-args", "qwen_image_zero_cond_t=true",
-                     "--increase-ref-index"],
+        # Settings from the stable-diffusion.cpp guide; zero_cond_t is required for the 2511 release. The references
+        # are numbered by the "qwen" preset sd-cli picks for every Qwen Image model (the old --increase-ref-index flag
+        # is deprecated since then).
+        "cli_args": ["--sampling-method", "euler", "--flow-shift", "3", "--model-args", "qwen_image_zero_cond_t=true"],
         "fa_variants": ["metal", "cuda", "rocm"],
         "guidance_arg": "--cfg-scale",
     },
