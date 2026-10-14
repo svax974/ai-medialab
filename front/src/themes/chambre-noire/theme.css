@@ -27,9 +27,9 @@
   --line: #2f2826;
   --line-strong: #43392f;
   --ink: #efe8e1;
-  --ink-2: #c4b9af;
-  --muted: #8d827a;
-  --faint: #5e5550;
+  --ink-2: #d5ccc3;
+  --muted: #aaa098;
+  --faint: #8e8680;
   --safe: #ff5b37;
   --safe-ink: #1a0a05;
   --safe-soft: color-mix(in oklab, var(--safe) 16%, transparent);
@@ -52,9 +52,9 @@
   --line: #e2d9cd;
   --line-strong: #cbbfae;
   --ink: #1c1815;
-  --ink-2: #463d36;
-  --muted: #776b61;
-  --faint: #a69a8e;
+  --ink-2: #3a322d;
+  --muted: #5b5149;
+  --faint: #71685f;
   --safe: #d8401f;
   --safe-ink: #fff6f1;
   --safe-soft: color-mix(in oklab, var(--safe) 11%, transparent);

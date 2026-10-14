@@ -35,7 +35,9 @@ reprises **telles quelles** ; seuls l'habillage (variables CSS, thème MUI) et l
 
 ## Correspondance des jetons (ancien -> nouveau)
 
-Valeurs identiques en sombre / clair (`:root`, `:root[data-color-scheme='dark']` / `[data-color-scheme='light']`).
+Valeurs identiques à l'ancienne interface en sombre / clair (`:root`, `:root[data-color-scheme='dark']` / `[data-color-scheme='light']`),
+sauf les trois niveaux de texte secondaires, éclaircis (sombre) ou foncés (clair) le 2026-10-14 pour la lisibilité. Contraste
+WCAG sur `--surface-2` (les cartes) : `--ink-2` ≥ 10,5:1, `--muted` ≥ 6,5:1, `--faint` ≥ 4,6:1 (seuil du texte courant : 4,5:1).
 
 | Ancien (`styles.css`) | Nouveau | Sombre | Clair | Usage MUI |
 |---|---|---|---|---|
@@ -47,9 +49,9 @@ Valeurs identiques en sombre / clair (`:root`, `:root[data-color-scheme='dark']`
 | `--line` | `--line` | `#2f2826` | `#e2d9cd` | `palette.divider`, bordures fines |
 | `--line-strong` | `--line-strong` | `#43392f` | `#cbbfae` | bordure de `Popover`/`Menu`/`Tooltip`, focus de champ |
 | `--ink` | `--ink` | `#efe8e1` | `#1c1815` | `palette.text.primary` |
-| `--ink-2` | `--ink-2` | `#c4b9af` | `#463d36` | texte de navigation, `palette.secondary` |
-| `--muted` | `--muted` | `#8d827a` | `#776b61` | `palette.text.secondary`, icônes au repos |
-| `--faint` | `--faint` | `#5e5550` | `#a69a8e` | `palette.text.disabled`, placeholders |
+| `--ink-2` | `--ink-2` | `#d5ccc3` | `#3a322d` | texte de navigation, `palette.secondary` |
+| `--muted` | `--muted` | `#aaa098` | `#5b5149` | `palette.text.secondary`, icônes au repos |
+| `--faint` | `--faint` | `#8e8680` | `#71685f` | `palette.text.disabled`, placeholders |
 | `--safe` | `--safe` | `#ff5b37` | `#d8401f` | `palette.primary.main` (rouge inactinique) |
 | `--safe-ink` | `--safe-ink` | `#1a0a05` | `#fff6f1` | `palette.primary.contrastText` |
 | `--safe-soft` | `--safe-soft` | `color-mix(--safe 16%)` | `color-mix(--safe 11%)` | halo de focus du curseur, pastille primaire |

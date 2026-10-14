@@ -152,7 +152,8 @@ function buildComponents(): Components<Theme> {
           lineHeight: 1.45,
           color: 'var(--ink-2)',
           '&:hover, &.Mui-focusVisible': { backgroundColor: 'var(--surface-3)', color: 'var(--ink)' },
-          '&.Mui-selected, &.Mui-selected:hover': { backgroundColor: 'var(--surface-3)', color: 'var(--ink)' },
+          // Menus focus the selected item on open: without the focusVisible case MUI's primary-tinted default wins.
+          '&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focusVisible': { backgroundColor: 'var(--surface-3)', color: 'var(--ink)' },
           '&[data-danger]': { color: 'var(--danger)' },
           '& .MuiSvgIcon-root': { fontSize: 16 },
         },
@@ -336,7 +337,7 @@ function buildComponents(): Components<Theme> {
         root: {
           borderRadius: radii.control,
           '&:hover': { backgroundColor: 'var(--surface-2)' },
-          '&.Mui-selected, &.Mui-selected:hover': { backgroundColor: 'var(--surface-3)' },
+          '&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focusVisible': { backgroundColor: 'var(--surface-3)' },
         },
       },
     },
