@@ -33,8 +33,8 @@ moteur) : changer une quantification passe par `PUT /api/settings`, pas par ce m
 | `DELETE` | `/api/models/:id` | Admin | Supprime les fichiers (réponse une fois l'espace libéré) : `{ freed_gb, also_affects }` ; 409 si le modèle est chargé. Délai 120 s. |
 | `POST` | `/api/models/custom` | Admin | Ajoute un dépôt Hugging Face : corps `{ repo, option? }` (`option` : `default`), réponse `{ model_id }` ; 400 sans `repo` ; 422 relayé si le dépôt est inutilisable. |
 | `DELETE` | `/api/models/:id/custom` | Admin | Retire un modèle ajouté et ses fichiers : `{ freed_gb }` ; 404 si ce n'est pas un modèle personnalisé, 409 s'il est chargé. |
-| `GET` | `/api/hf/search?kind=&q=` | Admin | `{ results: HubResult[] }` (formats exécutables seulement, tenue en mémoire par machine) ; 502 si Hugging Face est injoignable. `kind` : `image` (défaut), `audio`, `video`. |
-| `GET` | `/api/hf/inspect?repo=` | Admin | `HubInspect` : licence, notes, quantifications avec `fits`/`fit_note` ; 422 relayé si le dépôt est illisible ; 400 sans `repo`. |
+| `GET` | `/api/hf/search?kind=&q=` | Admin | `{ results: HubResult[] }` (formats exécutables seulement, tenue en mémoire par machine, `precisions` : quantifications lues dans la liste des fichiers, sans requête de plus ; tailles exactes : `inspect`) ; 502 si Hugging Face est injoignable. `kind` : `image` (défaut), `audio`, `video`. |
+| `GET` | `/api/hf/inspect?repo=` | Admin | `HubInspect` : licence, notes, quantifications avec `fits`/`fit_note` et `download_gb` (fichier + fichiers partagés du modèle de référence absents du cache, ce que l'ajout télécharge vraiment) ; 422 relayé si le dépôt est illisible ; 400 sans `repo`. |
 
 Ces segments (`models`, `hf`) délèguent au moteur par `EngineClient`.
 

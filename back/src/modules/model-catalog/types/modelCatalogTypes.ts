@@ -97,6 +97,8 @@ export interface HubResult {
   likes: number;
   base: string;
   already: string | null;
+  /** Quantizations / precisions offered by the repo (from the listing; exact sizes come from inspect). */
+  precisions: string[];
   compatible: boolean;
   reason: string;
 }
@@ -108,6 +110,8 @@ export interface HubOption {
   size_gb: number;
   fits?: boolean;
   fit_note?: string;
+  /** Size adding it downloads: this file plus the reference model's shared files not yet in the cache. */
+  download_gb?: number;
 }
 
 export interface HubInspect {

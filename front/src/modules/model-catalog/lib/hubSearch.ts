@@ -40,6 +40,14 @@ export function isAddBlocked(inspect: Pick<HubInspect, 'compatible'> | undefined
 /** Option state for the picker: struck through and dimmed when the variant does not fit in memory. */
 export const optionDoesNotFit = (o: Pick<HubOption, 'fits'>): boolean => o.fits === false
 
+/** What adding the variant downloads: its file plus the reference model's shared files still missing (engine
+ *  `download_gb`); the file alone when the engine gave no figure. */
+export const optionDownloadGb = (o: Pick<HubOption, 'size_gb' | 'download_gb'>): number => o.download_gb ?? o.size_gb
+
+/** Part of the download that is the reference model's shared files (text encoder, VAE...), 0 when already present. */
+export const sharedDownloadGb = (o: Pick<HubOption, 'size_gb' | 'download_gb'>): number =>
+  Math.max(0, Math.round((optionDownloadGb(o) - o.size_gb) * 100) / 100)
+
 export const HUB_PLACEHOLDER_KEY: Record<ModelKind, string> = {
   image: 'models.hub.placeholder.image',
   audio: 'models.hub.placeholder.audio',

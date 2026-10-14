@@ -13,7 +13,7 @@ import SearchRounded from '@mui/icons-material/SearchRounded'
 import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded'
 import { formatGb } from '@/modules/hardware'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
-import { chosenOption, compactCount, HUB_HELP_KEY, HUB_PLACEHOLDER_KEY, HUB_TASK_KEY, isAddBlocked, optionDoesNotFit } from '../lib/hubSearch'
+import { chosenOption, compactCount, HUB_HELP_KEY, HUB_PLACEHOLDER_KEY, HUB_TASK_KEY, isAddBlocked, optionDoesNotFit, optionDownloadGb, sharedDownloadGb } from '../lib/hubSearch'
 import { useAddCustomModel, useDebouncedQuery, useHubInspect, useHubSearch } from '../hooks/useHubSearch'
 import type { HubOption, HubResult, ModelKind } from '../types'
 import { Notice, Section, Tag } from './panels'
@@ -52,7 +52,7 @@ function OptionPicker({ options, chosenKey, onPick }: { options: HubOption[]; ch
           >
             {o.label}{' '}
             <Box component="span" sx={{ color: 'var(--faint)' }}>
-              {t('models.size.gb', [formatGb(o.size_gb, lang)])}
+              {t('models.size.gb', [formatGb(optionDownloadGb(o), lang)])}
             </Box>
           </Box>
         ))}
@@ -87,8 +87,10 @@ function Detail({ result: r }: { result: HubResult }) {
               {t('models.hub.precision')} <Box component="b" sx={{ fontWeight: 400, color: 'var(--ink-2)' }}>{chosen.precision || '?'}</Box>
             </span>
             <span>
-              {t('models.hub.size', [formatGb(chosen.size_gb, lang)])}
-              {data.template ? t('models.hub.diffusionFile') : ''}
+              {t('models.hub.toDownload', [formatGb(optionDownloadGb(chosen), lang)])}
+              {data.template && (sharedDownloadGb(chosen) > 0
+                ? t('models.hub.withShared', [formatGb(chosen.size_gb, lang), formatGb(sharedDownloadGb(chosen), lang), data.template.name])
+                : t('models.hub.sharedPresent', [data.template.name]))}
             </span>
             <span>
               {t('models.hub.license')} <Box component="b" sx={{ fontWeight: 400, color: 'var(--ink-2)' }}>{data.license || t('models.hub.seeRepo')}</Box>
@@ -129,6 +131,9 @@ function Detail({ result: r }: { result: HubResult }) {
   )
 }
 
+/** Quantizations listed on a collapsed result; the others are in the tooltip and in the detail. */
+const MAX_PRECISIONS = 5
+
 function ResultRow({ result: r, open, onToggle }: { result: HubResult; open: boolean; onToggle: () => void }) {
   const t = useT()
   const lang = useLang()
@@ -140,7 +145,13 @@ function ResultRow({ result: r, open, onToggle }: { result: HubResult; open: boo
           <Box sx={{ fontSize: 13.5, color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.repo}</Box>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 6px', fontFamily: 'var(--font-mono, monospace)', fontSize: 10, color: 'var(--faint)' }}>
             <Tag>{r.family_label}</Tag>
-            <span>{t(HUB_TASK_KEY[r.task])}</span>
+            {r.precisions.length > 0 && (
+              <Box component="span" title={t('models.hub.quantizations', [r.precisions.join(', ')])} sx={{ color: 'var(--ink-2)' }}>
+                {r.precisions.slice(0, MAX_PRECISIONS).join(' · ')}
+                {r.precisions.length > MAX_PRECISIONS && ` +${r.precisions.length - MAX_PRECISIONS}`}
+              </Box>
+            )}
+            <span>· {t(HUB_TASK_KEY[r.task])}</span>
             <span>· {t('models.hub.downloads', [compactCount(r.downloads, lang)])}</span>
             {r.already && <Box component="span" sx={{ color: 'var(--ok)' }}>· {t('models.hub.alreadyListed')}</Box>}
             {!r.compatible && <Box component="span" sx={{ color: 'var(--warn)' }}>· {t('models.hub.incompatible')}</Box>}

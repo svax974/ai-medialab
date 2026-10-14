@@ -280,6 +280,12 @@ def _source_status(src: HfSource) -> dict[str, Any]:
     return {"state": state, "size": size}
 
 
+def remaining_download_gb(spec: ModelSpec) -> float:
+    """Approximate size still to download for `spec`: the sources not yet installed in the cache (a file shared with
+    another model, e.g. a text encoder, counts only when it is missing)."""
+    return round(sum(src.size_gb or 0 for src in spec.all_sources() if _source_status(src)["state"] != "installed"), 2)
+
+
 def installation_status(spec: ModelSpec) -> dict[str, Any]:
     """Install state of a model, read from the Hugging Face cache (shared with mflux and diffusers).
 

@@ -18,6 +18,18 @@ def test_quant_from_name():
     assert quant_from_name("model.safetensors") == ""
 
 
+def test_listing_precisions_from_file_names_and_dtypes():
+    lp = hf_search.listing_precisions
+    files = ["README.md", "q-Q8_0.gguf", "q-Q4_K_M.gguf", "q-BF16.gguf", "q-Q4_0.gguf", "mmproj-F16.gguf"]
+    assert lp("gguf-variant", "a/b", files, None) == ["Q4_0", "Q4_K_M", "Q8_0", "BF16"]
+    assert lp("video-gguf", "a/b", ["sub/x-Q2_K.gguf", "x-Q5_K.gguf"], None) == ["Q5_K"]
+    assert lp("sd-diffusers", "a/b", ["unet/diffusion_pytorch_model.fp16.safetensors"], {"F32": 9}) == ["fp16"]
+    assert lp("sd-diffusers", "a/b", ["unet/diffusion_pytorch_model.safetensors"], {"F32": 9, "F16": 1}) == ["fp32"]
+    assert lp("qwen3-tts", "a/b", [], None) == ["bf16"]
+    assert lp("whisper-ct2", "x/faster-whisper-small-int8", [], None) == ["int8"]
+    assert lp("sd-diffusers", "a/b", [], None) == []
+
+
 def test_classify_supported_formats():
     c = hf_search.classify
     assert c("a/sdxl", ["diffusers", "diffusers:StableDiffusionXLPipeline"])[0] == "sd-diffusers"
@@ -50,6 +62,18 @@ def test_gguf_variant_replaces_only_the_diffusion_file():
     assert base.options["files"]["diffusion-model"][0] == "leejet/Z-Image-Turbo-GGUF"  # the original model is untouched
     assert spec.custom and precision_of(spec, None) == "Q5_K_M"
     assert installation_status(spec)["state"] in ("missing", "partial")
+
+
+def test_remaining_download_counts_only_missing_sources(monkeypatch):
+    from app.engines import base as engines_base
+
+    spec = custom.build(GGUF)
+    shared = {s.repo for s in spec.sources[1:]}
+    monkeypatch.setattr(engines_base, "_source_status", lambda src: {"state": "missing", "size": 0})
+    assert engines_base.remaining_download_gb(spec) == round(sum(s.size_gb or 0 for s in spec.sources), 2)
+    monkeypatch.setattr(engines_base, "_source_status",
+                        lambda src: {"state": "installed" if src.repo in shared else "missing", "size": 0})
+    assert engines_base.remaining_download_gb(spec) == 5.57  # the shared encoder and VAE are already there
 
 
 def test_sd_diffusers_recipe():

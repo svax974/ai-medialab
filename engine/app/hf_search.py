@@ -18,6 +18,7 @@ from typing import Any
 from . import runtime_settings
 from .catalog import engine_compat, plan_for, quant_from_name
 from .engines import MODELS
+from .engines.base import remaining_download_gb
 from .engines.custom import (GGUF_TEMPLATES, SD_PIPELINES, VIDEO_GGUF_TEMPLATES, VIDEO_TEMPLATES, _title, build, slug,
                              video_template_id)
 from .system import get_system
@@ -86,9 +87,38 @@ def _existing_for(repo: str) -> str | None:
     return None
 
 
+def _ct2_precision(repo: str) -> str:
+    name = repo.lower()
+    return "int8" if "int8" in name else "fp32" if ("float32" in name or "fp32" in name) else "fp16"
+
+
+def _quant_rank(q: str) -> tuple[int, str]:
+    bits = re.search(r"\d+", q)
+    return (int(bits.group()) if bits else 99, q)
+
+
+def listing_precisions(family: str, repo: str, filenames: list[str], params: dict[str, int] | None) -> list[str]:
+    """Quantizations / precisions a search result offers, from the listing alone (file names and the dtype count
+    of the repo metadata, no extra request). Fewest bits first. The exact choice and sizes come from `inspect`."""
+    if family in ("gguf-variant", "video-gguf"):
+        ggufs = [f for f in filenames if f.endswith(".gguf") and "mmproj" not in f.lower()
+                 and (family == "gguf-variant" or "/" not in f)]
+        return sorted({quant_from_name(f) or "GGUF" for f in ggufs}, key=_quant_rank)
+    if family == "whisper-ct2":
+        return [_ct2_precision(repo)]
+    if family in ("sd-diffusers", "video-diffusers") and any(".fp16." in f for f in filenames):
+        return ["fp16"]
+    if params:
+        dt = max(params, key=params.get)
+        return [_DTYPE_NAMES.get(dt, dt.lower())]
+    return ["bf16"] if family == "qwen3-tts" else []
+
+
 def _queries(kind: str, q: str) -> list[dict[str, Any]]:
     q = q.strip()
-    base: dict[str, Any] = {"sort": "downloads", "gated": False, "limit": 30}
+    # `expand` brings the file names and the dtype count in the listing (quantizations shown per result).
+    base: dict[str, Any] = {"sort": "downloads", "gated": False, "limit": 30,
+                            "expand": ["downloads", "likes", "tags", "siblings", "safetensors"]}
     if q:
         base["search"] = q
     if kind == "image":
@@ -132,6 +162,8 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
             "downloads": m.downloads or 0, "likes": m.likes or 0,
             "base": details.get("base") or details.get("pipeline") or "",
             "already": _existing_for(m.id),
+            "precisions": listing_precisions(family, m.id, [x.rfilename for x in m.siblings or []],
+                                             getattr(m.safetensors, "parameters", None)),
             **engine_compat(*FAMILY_ENGINE[family], system),
         }
     # Models this machine can run first, then by popularity.
@@ -192,15 +224,17 @@ def inspect(repo: str) -> dict[str, Any]:
 
 def _fit(family: str, repo: str, license_: str, opt: dict[str, Any], extra: dict[str, Any],
          system: dict[str, Any]) -> dict[str, Any]:
-    """Memory verdict for one variant, from the very spec the model would get if added (same rule as the model list).
+    """Memory verdict and size to download for one variant, from the very spec the model would get if added (same rule as the model list).
     Best effort: an unexpected repo layout yields no verdict rather than breaking the inspection."""
     recipe = {"family": family, "id": "custom-preview", "repo": repo, "name": _title(repo), "license": license_,
               "precision": opt["precision"], "size_gb": opt["size_gb"], **extra}
     try:
-        verdict = plan_for(build(recipe), system)
+        spec = build(recipe)
+        verdict = plan_for(spec, system)
     except Exception:  # noqa: BLE001
         return {}
-    return {"fits": verdict["compatible"], "fit_note": verdict["note"]}
+    # What "add and download" fetches: this file plus the shared files of the reference model still missing.
+    return {"fits": verdict["compatible"], "fit_note": verdict["note"], "download_gb": remaining_download_gb(spec)}
 
 
 def _inspect(repo: str) -> dict[str, Any]:
@@ -301,8 +335,7 @@ def _inspect(repo: str) -> dict[str, Any]:
     missing = [f for f in need if f not in files]
     if missing:
         raise HubError(f"Fichiers manquants dans le dépôt : {', '.join(missing)}.")
-    name = repo.lower()
-    precision = "int8" if "int8" in name else "fp32" if ("float32" in name or "fp32" in name) else "fp16"
+    precision = _ct2_precision(repo)
     out["options"].append({"key": "default", "label": precision, "precision": precision,
                            "size_gb": _size_gb(files["model.bin"])})
     return out

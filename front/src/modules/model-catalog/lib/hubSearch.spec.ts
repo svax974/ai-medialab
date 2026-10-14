@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { HubOption } from '../types'
-import { chosenOption, compactCount, defaultOption, isAddBlocked, optionDoesNotFit } from './hubSearch'
+import { chosenOption, compactCount, defaultOption, isAddBlocked, optionDoesNotFit, optionDownloadGb, sharedDownloadGb } from './hubSearch'
 
 const opt = (label: string, fits?: boolean): HubOption => ({ key: label, label, precision: label, size_gb: 1, fits })
 
@@ -50,5 +50,12 @@ describe('selection and blocking', () => {
   it('a variant with no verdict is not struck through', () => {
     expect(optionDoesNotFit(opt('A'))).toBe(false)
     expect(optionDoesNotFit(opt('A', false))).toBe(true)
+  })
+  it('the download is the file plus the missing shared files of the reference model', () => {
+    expect(optionDownloadGb({ size_gb: 4.29 })).toBe(4.29)
+    expect(optionDownloadGb({ size_gb: 4.29, download_gb: 11.16 })).toBe(11.16)
+    expect(sharedDownloadGb({ size_gb: 4.29, download_gb: 11.16 })).toBe(6.87)
+    expect(sharedDownloadGb({ size_gb: 4.29, download_gb: 4.29 })).toBe(0)
+    expect(sharedDownloadGb({ size_gb: 4.29 })).toBe(0)
   })
 })

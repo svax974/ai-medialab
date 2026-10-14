@@ -174,6 +174,8 @@ export interface HubResult {
   base: string
   /** Id of the model already in the list, if any. */
   already: string | null
+  /** Quantizations / precisions offered by the repo (from the listing; exact sizes come from inspect). */
+  precisions: string[]
   /** Whether this machine can run (or install the engine for) the model; `reason` says why not. */
   compatible: boolean
   reason: string
@@ -188,6 +190,8 @@ export interface HubOption {
   fits?: boolean
   /** Why not, or a speed warning (part of the model stays in RAM...). */
   fit_note?: string
+  /** Size adding it downloads: this file plus the reference model's shared files not yet in the cache. */
+  download_gb?: number
 }
 
 export interface HubInspect {
