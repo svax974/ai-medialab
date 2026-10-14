@@ -105,6 +105,8 @@ class WorkerHandle:
             await asyncio.to_thread(self.process.join, 5)
         if self.process.is_alive():
             self.process.kill()
+            # Wait for the end: the next model must not start loading while this one still holds its memory.
+            await asyncio.to_thread(self.process.join, 5)
 
 
 def _bus_sink(_job: JobRequest, name: str, data: dict[str, Any]) -> None:

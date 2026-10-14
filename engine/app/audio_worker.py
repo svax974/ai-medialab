@@ -98,6 +98,8 @@ class AudioWorkerHandle:
                 await asyncio.to_thread(self.process.wait, 5)
             except subprocess.TimeoutExpired:
                 self.process.kill()
+                # Wait for the end: the next model must not start loading while this one still holds its memory.
+                await asyncio.to_thread(self.process.wait, 5)
 
 
 def _worker_env(extra: dict[str, str] | None) -> dict[str, str]:
