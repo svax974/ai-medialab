@@ -26,7 +26,8 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 
 ### `image-studio`
 - Accueil (premier lancement, composeur « héros », prompts de départ, derniers tirages) ; composeur : prompt, images de référence
-  (clic, collage, dépôt sur la fenêtre, glisser depuis une vignette), modèle, proportions et définition, nombre d'images (1 à 4),
+  (clic, collage, dépôt sur la fenêtre, glisser depuis une vignette ; réordonnables, la première donne le format et la résolution
+  « Référence », conservée pour les images suivantes une fois les références retirées), modèle, proportions et définition, nombre d'images (1 à 4),
   étapes, guidance, prompt négatif, force, graine ; galerie des images (`/galerie`).
 
 ### `audio-studio`
@@ -53,7 +54,8 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 ### `model-catalog`
 - Dialogue « Modèles » : catalogue par type, installé / incomplet / incompatible avec la raison (planificateur mémoire),
   téléchargement avec progression, débit, temps restant, reprise, annulation, suppression, variantes (quantifications) ;
-  sélecteur de modèle réutilisable ; recherche Hugging Face avec tenue en mémoire et marqueurs de compatibilité, ajout et retrait
+  sélecteur de modèle réutilisable ; recherche Hugging Face avec quantifications proposées par résultat, tenue en mémoire et marqueurs
+  de compatibilité, ajout et retrait
   de modèles personnalisés.
 
 ### `engines`

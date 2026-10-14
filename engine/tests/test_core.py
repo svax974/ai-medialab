@@ -141,6 +141,10 @@ class TestNativeSize:
         w, h = resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M)
         assert w * h <= 1.7 * 1024 * 1024 and abs(w / h - 4 / 3) < 0.03
 
+    def test_tiny_reference_is_enlarged_with_its_ratio(self, tmp_path):
+        ref = self.ref(tmp_path, 41, 52)  # was 256×256: each side clamped on its own
+        assert resolve_size({"aspect": "auto", "megapixels": 0}, reference=ref, **self.M) == (256, 320)
+
     def test_explicit_definition_is_respected(self, tmp_path):
         ref = self.ref(tmp_path, 576, 576)
         assert resolve_size({"aspect": "auto", "megapixels": 0.25}, reference=ref, **self.M) == (512, 512)

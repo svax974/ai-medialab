@@ -109,7 +109,8 @@ def resolve_size(
 
     - aspect "custom": explicit width/height.
     - aspect "auto": ratio of the first reference image (square if none). If `megapixels` is missing or 0
-      ("Origin"), that image's size is kept as is, capped at NATIVE_MAX_MP.
+      ("Origin"), that image's size is kept, capped at NATIVE_MAX_MP, or
+      enlarged with its ratio up to the model's minimum side.
     - aspect "W:H": the given ratio.
     The target area is `megapixels`, rounded to the multiple the model requires.
     """
@@ -124,6 +125,8 @@ def resolve_size(
         rw, rh = image_size(reference)
         if not params.get("megapixels"):  # "Origin": keep the reference size
             scale = min(1.0, max_side / max(rw, rh), math.sqrt(NATIVE_MAX_MP * 1024 * 1024 / (rw * rh)))
+            # A reference smaller than the model's minimum is enlarged as a whole, so its ratio survives.
+            scale = min(max(scale, min_side / min(rw, rh)), max_side / max(rw, rh))
             return snap(rw * scale, multiple, min_side, max_side), snap(rh * scale, multiple, min_side, max_side)
         ratio = rw / rh
     if ratio is None:

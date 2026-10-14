@@ -45,6 +45,19 @@ describe('imageDraftStore', () => {
     expect(useImageDraftStore.getState().references).toEqual([])
   })
 
+  it('moves a reference to another position, bounds included', () => {
+    const { addReferences, moveReference } = useImageDraftStore.getState()
+    addReferences([asset('a'), asset('b'), asset('c')])
+    moveReference('c', 0)
+    expect(useImageDraftStore.getState().references.map((r) => r.id)).toEqual(['c', 'a', 'b'])
+    moveReference('c', 9)
+    expect(useImageDraftStore.getState().references.map((r) => r.id)).toEqual(['a', 'b', 'c'])
+    moveReference('a', 1)
+    expect(useImageDraftStore.getState().references.map((r) => r.id)).toEqual(['b', 'a', 'c'])
+    moveReference('gone', 0)
+    expect(useImageDraftStore.getState().references.map((r) => r.id)).toEqual(['b', 'a', 'c'])
+  })
+
   it('merges the parameters of a model and resets only that model', () => {
     const { setParams, resetParams } = useImageDraftStore.getState()
     setParams('flux', { steps: 4 })

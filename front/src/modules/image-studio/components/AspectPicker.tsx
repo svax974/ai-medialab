@@ -13,7 +13,9 @@ import { useT } from '@/modules/studio-shell/hooks/useT'
 import { LabelTooltip, ratioOf } from '@/modules/studio-core'
 import type { Asset, GenParams } from '@/modules/studio-core'
 import { formatMegapixels } from '@/modules/studio-core/lib/format'
+import type { ImageSize } from '@/modules/studio-core/state/imageDraftStore'
 import { IMAGE_HELP } from '../lib/help'
+import { isReferenceSize } from '../lib/params'
 import { ASPECTS, aspectLabel, isQualityActive, resolveSize, visibleQualities } from '../lib/size'
 
 const ACCENT = 'color-mix(in oklab, var(--safe) 60%, transparent)'
@@ -31,7 +33,7 @@ function Shape({ ratio, active }: { ratio: number; active: boolean }) {
 
 function AspectTile({ active, onClick, label, sub, children }: { active: boolean; onClick: () => void; label: string; sub: string; children: ReactNode }) {
   return (
-    <ButtonBase onClick={onClick} aria-pressed={active} sx={{ display: 'flex', flexDirection: 'column', gap: '4px', borderRadius: '12px', border: '1px solid', px: '4px', py: 1, transition: 'border-color 0.15s, color 0.15s', borderColor: active ? ACCENT : 'var(--line)', backgroundColor: active ? 'var(--safe-soft)' : 'var(--surface)', color: active ? 'var(--ink)' : 'var(--muted)', '&:hover': { borderColor: active ? ACCENT : 'var(--line-strong)', color: 'var(--ink)' } }}>
+    <ButtonBase onClick={onClick} aria-pressed={active} sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: '4px', borderRadius: '12px', border: '1px solid', px: '4px', py: 1, transition: 'border-color 0.15s, color 0.15s', borderColor: active ? ACCENT : 'var(--line)', backgroundColor: active ? 'var(--safe-soft)' : 'var(--surface)', color: active ? 'var(--ink)' : 'var(--muted)', '&:hover': { borderColor: active ? ACCENT : 'var(--line-strong)', color: 'var(--ink)' } }}>
       {children}
       <Box component="span" sx={{ fontFamily: 'var(--font-mono)', fontSize: 11, lineHeight: 1 }}>{label}</Box>
       <Box component="span" sx={{ fontSize: 10, lineHeight: 1, color: 'var(--faint)' }}>{sub}</Box>
@@ -74,15 +76,18 @@ function QualityRow({ model, params, reference, aspect, onChange }: { model: Mod
 
 /**
  * Format and definition of the image: a button with the current format and size, opening a popover with the format tiles
- * ("Auto" follows the first reference, "Custom" takes pixels), the definition (draft to very high, or the reference's own
- * size) and the resulting size in pixels and megapixels.
+ * ("Reference" follows the first reference image, shown with its size, and without references keeps the size of the last
+ * image made that way, `referenceSize`; "Custom" takes pixels), the definition (draft to very high, or the reference's
+ * own size) and the resulting size in pixels and megapixels.
  */
-export function AspectPicker({ model, params, reference, onChange }: { model: ModelInfo; params: GenParams; reference: Asset | undefined; onChange: (patch: GenParams) => void }) {
+export function AspectPicker({ model, params, reference, referenceSize, onChange }: { model: ModelInfo; params: GenParams; reference: Asset | undefined; referenceSize: ImageSize | null; onChange: (patch: GenParams) => void }) {
   const t = useT()
   const [anchor, setAnchor] = useState<HTMLElement | null>(null)
   const size = resolveSize(params, model, reference)
-  const aspect = params.aspect ?? '1:1'
+  const remembered = !reference && isReferenceSize(params, referenceSize)
+  const aspect = remembered ? 'auto' : (params.aspect ?? '1:1')
   const label = aspectLabel(aspect)
+  const referenceSub = reference ? (reference.width && reference.height ? `${reference.width}×${reference.height}` : t('imageStudio.aspect.autoSub')) : referenceSize && `${referenceSize.width}×${referenceSize.height}`
   return (
     <>
       <LabelTooltip label={t('imageStudio.aspect.tip')}>
@@ -97,8 +102,8 @@ export function AspectPicker({ model, params, reference, onChange }: { model: Mo
           {t('imageStudio.aspect.title')} <InfoTip {...IMAGE_HELP.aspect} />
         </Box>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '6px' }}>
-          {reference && (
-            <AspectTile active={aspect === 'auto'} onClick={() => onChange({ aspect: 'auto' })} label={t('imageStudio.aspect.auto')} sub={t('imageStudio.aspect.autoSub')}>
+          {referenceSub && (
+            <AspectTile active={aspect === 'auto'} onClick={() => onChange({ aspect: 'auto' })} label={t('imageStudio.aspect.auto')} sub={referenceSub}>
               <ImageOutlined sx={{ fontSize: 16 }} />
             </AspectTile>
           )}
@@ -124,6 +129,8 @@ export function AspectPicker({ model, params, reference, onChange }: { model: Mo
               <InfoTip {...IMAGE_HELP.sizeCustom} />
             </Box>
           </>
+        ) : remembered ? (
+          <Box component="p" sx={{ m: 0, mt: 1.5, fontSize: 11, lineHeight: 1.4, color: 'var(--faint)' }}>{t('imageStudio.size.remembered')}</Box>
         ) : (
           <QualityRow model={model} params={params} reference={reference} aspect={aspect} onChange={onChange} />
         )}

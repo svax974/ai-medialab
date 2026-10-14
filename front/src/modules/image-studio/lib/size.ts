@@ -40,7 +40,8 @@ const snap = (value: number, multiple: number, low: number, high: number) => Mat
 /**
  * Size of the image that will be generated, as the engine computes it (mirrors `resolve_size` of engine/app/media.py):
  * custom size snapped to the model's multiple and bounds; "auto" takes the ratio of the first reference (and, at the
- * "Original" definition, its size capped to `NATIVE_MAX_MP` and the model's maximum); otherwise the aspect ratio at
+ * "Original" definition, its size capped to `NATIVE_MAX_MP` and the model's maximum, or enlarged with its ratio up to the
+ * model's minimum side); otherwise the aspect ratio at
  * the requested megapixels (0.1 to 4), shrunk to fit the maximum side.
  */
 export function resolveSize(params: GenParams, model: SizeLimits, reference?: { width: number | null; height: number | null } | null): { width: number; height: number } {
@@ -51,7 +52,9 @@ export function resolveSize(params: GenParams, model: SizeLimits, reference?: { 
   if (aspect === 'auto' && reference?.width && reference?.height) {
     if (!params.megapixels) {
       const { width: rw, height: rh } = reference as { width: number; height: number }
-      const scale = Math.min(1, high / Math.max(rw, rh), Math.sqrt((NATIVE_MAX_MP * 1024 * 1024) / (rw * rh)))
+      const shrink = Math.min(1, high / Math.max(rw, rh), Math.sqrt((NATIVE_MAX_MP * 1024 * 1024) / (rw * rh)))
+      // A reference smaller than the model's minimum is enlarged as a whole, so its ratio survives.
+      const scale = Math.min(Math.max(shrink, low / Math.min(rw, rh)), high / Math.max(rw, rh))
       return { width: snap(rw * scale, multiple, low, high), height: snap(rh * scale, multiple, low, high) }
     }
     ratio = reference.width / reference.height

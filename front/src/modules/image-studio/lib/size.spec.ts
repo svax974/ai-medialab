@@ -37,6 +37,7 @@ describe('resolveSize', () => {
     expect(resolveSize({ aspect: 'auto', megapixels: 1 }, model, reference)).toEqual({ width: 1248, height: 832 })
     expect(resolveSize({ aspect: 'auto', megapixels: 0 }, model, reference)).toEqual({ width: 1584, height: 1056 })
     expect(resolveSize({ aspect: 'auto', megapixels: 0 }, model, { width: 800, height: 600 })).toEqual({ width: 800, height: 608 })
+    expect(resolveSize({ aspect: 'auto', megapixels: 0 }, model, { width: 41, height: 52 })).toEqual({ width: 256, height: 320 })
   })
 
   it('falls back to a square in auto mode without a usable reference', () => {

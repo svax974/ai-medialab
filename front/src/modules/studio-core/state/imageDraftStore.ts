@@ -14,10 +14,17 @@ export interface PendingUpload {
   name: string
 }
 
+/** Size of an image, in pixels. */
+export interface ImageSize {
+  width: number
+  height: number
+}
+
 /**
  * Draft of the image composer: what the user is preparing, shared by the home page, the conversation page and the
  * actions of the thread ("reuse this prompt", "use as reference", "reuse these settings"). The prompt, the parameters
- * of each model and the number of images are kept across reloads (`cn-composer`); references, imports and the seed are not.
+ * of each model, the number of images and the last "Reference" size are kept across reloads (`cn-composer`); references,
+ * imports and the seed are not.
  */
 interface ImageDraftState {
   prompt: string
@@ -28,15 +35,20 @@ interface ImageDraftState {
   count: number
   /** Pinned seed; `null`: random at each generation. */
   seed: number | null
+  /** Size of the last image generated with the "Reference" format, offered again once the references are gone. */
+  referenceSize: ImageSize | null
   setPrompt: (prompt: string) => void
   addReferences: (assets: Asset[]) => void
   removeReference: (id: string) => void
+  /** Moves a reference to `index` (0 = first: the image whose format and size "Reference" follows, image 1 for the model). */
+  moveReference: (id: string, index: number) => void
   clearReferences: () => void
   setUploading: (uploading: PendingUpload[]) => void
   setParams: (modelId: string, patch: GenParams) => void
   resetParams: (modelId: string) => void
   setCount: (count: number) => void
   setSeed: (seed: number | null) => void
+  setReferenceSize: (size: ImageSize) => void
 }
 
 export const useImageDraftStore = create<ImageDraftState>()(
@@ -48,6 +60,7 @@ export const useImageDraftStore = create<ImageDraftState>()(
       paramsByModel: {},
       count: 1,
       seed: null,
+      referenceSize: null,
       setPrompt: (prompt) => set({ prompt }),
       addReferences: (assets) =>
         set((state) => {
@@ -55,6 +68,14 @@ export const useImageDraftStore = create<ImageDraftState>()(
           return { references: [...state.references, ...assets.filter((a) => !known.has(a.id))] }
         }),
       removeReference: (id) => set((state) => ({ references: state.references.filter((r) => r.id !== id) })),
+      moveReference: (id, index) =>
+        set((state) => {
+          const moved = state.references.find((r) => r.id === id)
+          if (!moved) return {}
+          const rest = state.references.filter((r) => r.id !== id)
+          const at = Math.max(0, Math.min(rest.length, index))
+          return { references: [...rest.slice(0, at), moved, ...rest.slice(at)] }
+        }),
       clearReferences: () => set({ references: [] }),
       setUploading: (uploading) => set({ uploading }),
       setParams: (modelId, patch) => set((state) => ({ paramsByModel: { ...state.paramsByModel, [modelId]: { ...state.paramsByModel[modelId], ...patch } } })),
@@ -66,10 +87,11 @@ export const useImageDraftStore = create<ImageDraftState>()(
         }),
       setCount: (count) => set({ count }),
       setSeed: (seed) => set({ seed }),
+      setReferenceSize: (referenceSize) => set({ referenceSize }),
     }),
     {
       name: 'cn-composer',
-      partialize: (state) => ({ prompt: state.prompt, paramsByModel: state.paramsByModel, count: state.count }),
+      partialize: (state) => ({ prompt: state.prompt, paramsByModel: state.paramsByModel, count: state.count, referenceSize: state.referenceSize }),
     },
   ),
 )

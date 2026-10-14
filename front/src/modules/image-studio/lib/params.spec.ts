@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ModelInfo, ParamSpec } from '@/modules/model-catalog'
-import { effectiveParams, sendParams } from './params'
+import { effectiveParams, isReferenceSize, sendParams } from './params'
 
 const spec = (extra: Partial<ParamSpec>): ParamSpec => ({ key: 'steps', label: 'Étapes', type: 'int', default: 8, min: 1, max: 50, step: 1, help: '', advanced: false, requires_references: false, ...extra })
 const model = (params: ParamSpec[]): ModelInfo => ({ id: 'flux', kind: 'image', name: 'Flux', default_megapixels: 1, params }) as ModelInfo
@@ -29,6 +29,20 @@ describe('effectiveParams', () => {
 
   it('drops auto when the references are gone', () => {
     expect(effectiveParams(flux, { aspect: 'auto' }, false).aspect).toBe('1:1')
+  })
+
+  it('keeps the size of the last "Reference" image once the references are gone', () => {
+    const size = { width: 256, height: 320 }
+    expect(effectiveParams(flux, { aspect: 'auto' }, false, size)).toMatchObject({ aspect: 'custom', width: 256, height: 320 })
+    expect(effectiveParams(flux, { aspect: 'auto' }, true, size).aspect).toBe('auto')
+    expect(effectiveParams(flux, { aspect: '4:5' }, false, size).aspect).toBe('4:5')
+  })
+
+  it('recognizes the remembered "Reference" size', () => {
+    const size = { width: 256, height: 320 }
+    expect(isReferenceSize({ aspect: 'custom', width: 256, height: 320 }, size)).toBe(true)
+    expect(isReferenceSize({ aspect: 'custom', width: 256, height: 336 }, size)).toBe(false)
+    expect(isReferenceSize({ aspect: 'custom', width: 256, height: 320 }, null)).toBe(false)
   })
 })
 
