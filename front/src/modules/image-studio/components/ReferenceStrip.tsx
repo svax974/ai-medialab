@@ -24,6 +24,8 @@ interface ThumbProps {
   asset: Asset
   model: ModelInfo
   index: number
+  /** This image gives the format and the "Original" size (its size is highlighted). */
+  sizeSource: boolean
   dropTarget: boolean
   onRemove: () => void
   onMoveFirst: () => void
@@ -33,7 +35,7 @@ interface ThumbProps {
   onDragEnd: () => void
 }
 
-function RefThumb({ asset, model, index, dropTarget, onRemove, onMoveFirst, onDragStart, onDragOver, onDrop, onDragEnd }: ThumbProps) {
+function RefThumb({ asset, model, index, sizeSource, dropTarget, onRemove, onMoveFirst, onDragStart, onDragOver, onDrop, onDragEnd }: ThumbProps) {
   const t = useT()
   const role = referenceRole(model, index)
   const corner = { position: 'absolute', width: 20, height: 20, border: '1px solid var(--line-strong)', backgroundColor: 'var(--surface-3)', opacity: 0, transition: 'opacity 0.15s', '.ref:hover &, &:focus-visible': { opacity: 1 } }
@@ -56,7 +58,7 @@ function RefThumb({ asset, model, index, dropTarget, onRemove, onMoveFirst, onDr
         <CloseRounded sx={{ fontSize: 12 }} />
       </TipIconButton>
       {asset.width && asset.height ? (
-        <Box sx={{ mt: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 9.5, color: index === 0 ? 'var(--ink-2)' : 'var(--faint)' }}>
+        <Box sx={{ mt: '3px', textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: 9.5, color: sizeSource ? 'var(--ink-2)' : 'var(--faint)' }}>
           {asset.width}×{asset.height}
         </Box>
       ) : null}
@@ -77,6 +79,8 @@ function PendingThumb({ upload }: { upload: PendingUpload }) {
 
 interface ReferenceStripProps {
   model: ModelInfo
+  /** Index of the image whose format and size "Reference" follows. */
+  sizeIndex: number
   references: readonly Asset[]
   uploading: readonly PendingUpload[]
   onRemove: (id: string) => void
@@ -88,7 +92,7 @@ interface ReferenceStripProps {
  * reorderable (drag onto another image, or "move first"): the first one gives the format and size of "Reference".
  * Imports in progress come after them.
  */
-export function ReferenceStrip({ model, references, uploading, onRemove, onMove }: ReferenceStripProps) {
+export function ReferenceStrip({ model, sizeIndex, references, uploading, onRemove, onMove }: ReferenceStripProps) {
   const [over, setOver] = useState<number | null>(null)
   if (references.length === 0 && uploading.length === 0) return null
   const isReorder = (event: DragEvent) => event.dataTransfer.types.includes(REORDER_TYPE)
@@ -100,6 +104,7 @@ export function ReferenceStrip({ model, references, uploading, onRemove, onMove 
           asset={asset}
           model={model}
           index={index}
+          sizeSource={index === sizeIndex}
           dropTarget={over === index}
           onRemove={() => onRemove(asset.id)}
           onMoveFirst={() => onMove(asset.id, 0)}

@@ -78,6 +78,20 @@ describe('referenceRole', () => {
   })
 })
 
+describe('face mode', () => {
+  const face = model({ reference_mode: 'face', max_references: 2, requires_references: true })
+  it('reads the first image as the face, the second as the start image, ignores the others', () => {
+    expect(referenceRole(face, 0)).toMatchObject({ noteKey: 'imageStudio.ref.note.face', ignored: false })
+    expect(referenceRole(face, 1)).toMatchObject({ noteKey: 'imageStudio.ref.note.start', helpKey: 'imageStudio.ref.help.faceStart', ignored: false })
+    expect(referenceRole(face, 2)).toMatchObject({ noteKey: 'imageStudio.ref.note.ignored', ignored: true })
+  })
+  it('asks for the face first and warns past two images', () => {
+    expect(placeholderKey(face, false)).toBe('imageStudio.placeholder.faceNeedsImage')
+    expect(placeholderKey(face, true)).toBe('imageStudio.placeholder.face')
+    expect(composerNotices(face, 3, false).map((n) => n.id)).toContain('max')
+  })
+})
+
 describe('placeholderKey', () => {
   it('follows the references and the mode of the model', () => {
     expect(placeholderKey({ requires_references: false, reference_mode: 'none' }, false)).toBe('imageStudio.placeholder.default')

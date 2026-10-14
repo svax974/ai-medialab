@@ -77,6 +77,7 @@ dans `back/` et `front/` (outil non installé dans ce dépôt) en donnerait la l
 | Whisper (small, large-v3-turbo) | MIT |
 | LoRA Pixel Art XL, Pixel Art Redmond ; RealVisXL V5, Juggernaut XL v9 (et SDXL lui-même) | CreativeML Open RAIL-M / RAIL++-M (usage commercial permis avec les restrictions d'usage de la licence) |
 | DreamShaper XL Turbo, Animagine XL 4.0 | CreativeML Open RAIL++-M |
+| IP-Adapter « plus face » SDXL et son encodeur ViT-H (`h94/IP-Adapter`) | Apache-2.0 |
 | Modèles d'image | variables : voir la licence indiquée par modèle (certains sont non commerciaux, p. ex. Qwen Image 2.1 « Research ») |
 
 Ce document est informatif et n'a pas valeur de conseil juridique.

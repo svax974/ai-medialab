@@ -12,16 +12,16 @@ import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { HelpBody, helpTooltipSlotProps } from '@/modules_shared/common/components/ui/help'
 import { SetupPrompt } from '@/modules/engines'
-import { ModelPicker, useActiveModel, useModels, useWelcomeModel, useModelSelectionStore, type ModelInfo } from '@/modules/model-catalog'
+import { useActiveModel, useModels, useWelcomeModel, useModelSelectionStore, type ModelInfo } from '@/modules/model-catalog'
 import { pickerBackendKey } from '@/modules/model-catalog/lib/catalogFormat'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, useImageDraftStore } from '@/modules/studio-core'
+import { GenerationParams, LabelTooltip, StudioModelPicker, useImageDraftStore } from '@/modules/studio-core'
 import { useSendMessage } from '../hooks/useSendMessage'
 import { composerNotices, multiAlternative, placeholderKey, sendState } from '../lib/composerRules'
 import { attachHelp } from '../lib/help'
 import { effectiveParams } from '../lib/params'
-import { resolveSize } from '../lib/size'
+import { resolveSize, sizeReferenceIndex } from '../lib/size'
 import { buildSendRequest } from '../lib/sendRequest'
 import { uploadReferences } from '../lib/uploadReferences'
 import { AspectPicker } from './AspectPicker'
@@ -70,6 +70,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
   const textarea = useRef<HTMLTextAreaElement>(null)
   const filePicker = useRef<HTMLInputElement>(null)
   const hasRefs = draft.references.length > 0
+  const sizeIndex = sizeReferenceIndex(model, draft.references.length)
   const params = effectiveParams(model, draft.paramsByModel[model.id], hasRefs, draft.referenceSize)
   const alternative = multiAlternative(catalog?.models ?? [], model, draft.references.length)
   const state = sendState(model, { prompt: draft.prompt, referenceCount: draft.references.length, uploading: draft.uploading.length, sending: send.isPending })
@@ -89,13 +90,13 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
 
   const submit = () => {
     if (!state.canSend) return
-    if (hasRefs && params.aspect === 'auto') draft.setReferenceSize(resolveSize(params, model, draft.references[0]))
+    if (hasRefs && params.aspect === 'auto') draft.setReferenceSize(resolveSize(params, model, draft.references[sizeIndex]))
     send.mutate(buildSendRequest({ conversationId, prompt: draft.prompt, modelId: model.id, params, seed: draft.seed, references: draft.references, count: draft.count }))
   }
 
   return (
     <Box sx={{ position: 'relative', borderRadius: '22px', border: '1px solid var(--line)', backgroundColor: 'var(--surface)', transition: 'border-color 0.15s', '&:focus-within': { borderColor: 'var(--line-strong)' }, ...(hero ? { boxShadow: '0 30px 80px -30px var(--safe-glow)' } : {}) }}>
-      <ReferenceStrip model={model} references={draft.references} uploading={draft.uploading} onRemove={draft.removeReference} onMove={draft.moveReference} />
+      <ReferenceStrip model={model} sizeIndex={sizeIndex} references={draft.references} uploading={draft.uploading} onRemove={draft.removeReference} onMove={draft.moveReference} />
       <Box
         component="textarea"
         ref={textarea}
@@ -141,8 +142,8 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
             event.target.value = ''
           }}
         />
-        <ModelPicker model={model} />
-        <AspectPicker model={model} params={params} reference={draft.references[0]} referenceSize={draft.referenceSize} onChange={(patch) => draft.setParams(model.id, patch)} />
+        <StudioModelPicker model={model} />
+        <AspectPicker model={model} params={params} reference={draft.references[sizeIndex]} referenceSize={draft.referenceSize} onChange={(patch) => draft.setParams(model.id, patch)} />
         <GenerationParams model={model} params={params} hasRefs={hasRefs} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />
         <CountPicker value={draft.count} onChange={draft.setCount} />
         <Box sx={{ flex: 1 }} />

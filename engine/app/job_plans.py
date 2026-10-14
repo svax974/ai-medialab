@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .engines import get_spec
-from .engines.base import GenerationRequest
+from .engines.base import GenerationRequest, size_reference_index
 from .engines.sdcpp_engine import effective_settings
 from .media import VIDEO_EXTENSIONS, image_size, probe_video, resolve_size, video_frame_count, video_size
 
@@ -92,11 +92,11 @@ def _image_plan(job: JobRequest, spec) -> dict[str, Any]:
         min_side=spec.min_side,
         max_side=spec.max_side,
         default_megapixels=spec.default_megapixels,
-        reference=ref_paths[0] if ref_paths else None,
+        reference=ref_paths[size_reference_index(spec.reference_mode, len(ref_paths))] if ref_paths else None,
     )
     steps = int(params.get("steps") or defaults.get("steps") or 30)
     guidance = params.get("guidance", defaults.get("guidance"))
-    steps, guidance = effective_settings(spec, steps, guidance, editing=bool(ref_paths) and spec.reference_mode != "init")
+    steps, guidance = effective_settings(spec, steps, guidance, editing=bool(ref_paths) and spec.reference_mode == "multi")
     strength = params.get("strength", defaults.get("strength")) if ref_paths else None
     negative = params.get("negative_prompt") or None
     seeds = params.get("seeds") or [new_seed()]

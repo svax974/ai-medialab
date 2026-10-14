@@ -5,7 +5,7 @@
 
 export type ModelKind = 'image' | 'audio' | 'video'
 export type InstallState = 'installed' | 'partial' | 'missing'
-export type ReferenceMode = 'none' | 'init' | 'multi'
+export type ReferenceMode = 'none' | 'init' | 'multi' | 'face'
 
 export interface ParamSpec {
   key: string

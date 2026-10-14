@@ -104,6 +104,7 @@ vérifiée) dans `engines/sdcpp/<variant>/` ; l'application de bureau les embarq
 | **Z-Image Turbo** (Apache 2.0) | PyTorch | idem, pleine précision | — | 33 Go |
 | **Stable Diffusion XL** | PyTorch | Texte → image, img2img ; tient sur 8 Go | 1 image de départ | 6,5 Go |
 | **Pixel Art XL**, **Pixel Art Redmond** (LoRA sur SDXL) | PyTorch | Pixel art, « Pixels nets » | 1 image de départ | SDXL + 0,16 Go |
+| **Pixel Art XL · Visage** (LoRA + IP-Adapter sur SDXL) | PyTorch | Portrait pixel art d'après une photo | visage + départ facultatif | SDXL + 3,3 Go |
 | **RealVisXL V5**, **Juggernaut XL v9** (SDXL affinés) | PyTorch | Photoréalisme | 1 image de départ | 6,5 Go chacun |
 | **DreamShaper XL Turbo** (SDXL affiné) | PyTorch | Illustration, fantasy, 6 étapes | 1 image de départ | 6,5 Go |
 | **Animagine XL 4.0** (SDXL affiné) | PyTorch | Anime, manga (prompt en étiquettes) | 1 image de départ | 6,5 Go |
@@ -133,7 +134,11 @@ défaut) : l'image est réduite 8 fois puis agrandie sans lissage, ce qui la pos
 conseillent les auteurs de Pixel Art XL. Les modèles de pixel art en Stable Diffusion 1.5 (All-In-One-Pixel-Model,
 SD_PixelArt_SpriteSheet_Generator) ne sont pas proposés : ils n'existent qu'aux formats `.ckpt` / `.bin`, qui peuvent
 exécuter du code au chargement, alors que l'application n'accepte que le format safetensors. D'autres LoRA SDXL s'ajoutent
-par la recherche Hugging Face (famille « LoRA SDXL »).
+par la recherche Hugging Face (famille « LoRA SDXL »). **Pixel Art XL · Visage** y ajoute l'IP-Adapter « plus face » de
+`h94/IP-Adapter` (Apache 2.0, ≈ 3 Go avec son encodeur d'image) : l'image 1 donne le visage à suivre (« Ressemblance du
+visage », 0,6 par défaut), l'image 2, facultative, sert d'image de départ et donne le format. La ressemblance n'est pas
+garantie. Avec une image de départ, celle-ci est ramenée à la taille demandée avant d'être redessinée (même règle pour
+tous les modèles PyTorch qui partent d'une image).
 
 Seuls des dépôts sans accès restreint sont proposés (aucun compte Hugging Face requis ; un jeton facultatif se
 renseigne dans Modèles). Chaque modèle affiche s'il est installé, incomplet ou incompatible avec la machine

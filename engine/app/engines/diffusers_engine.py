@@ -16,10 +16,12 @@ One generic engine driven by `ModelSpec.options`:
                     ships DDPM)
     loras           [{"repo", "file", "trigger"}]: LoRA files loaded on top of the pipeline (needs `peft`); their
                     strength is the `lora_scale` parameter and their trigger words are put in front of the prompt
+    ip_adapter      {"repo", "subfolder", "file", "encoder"}: IP-Adapter that follows the face of the first image ("face"
+                    reference mode; strength: `face_scale` parameter)
     pixelate        factor of the "Pixels nets" post-processing (`pixel_perfect` parameter): shrink then enlarge
                     without smoothing, so the image sits on a real pixel grid
 
-Per-request parameters that are not common arguments (`lora_scale`, `pixel_perfect`) come in `GenerationRequest.extra`.
+Per-request parameters that are not common arguments (`lora_scale`, `face_scale`, `pixel_perfect`) come in `GenerationRequest.extra`.
 
 Arguments the pipeline doesn't accept are dropped (filtered by signature), so most models need no
 new code.
@@ -64,6 +66,10 @@ class DiffusersEngine(Engine):
             sched = getattr(diffusers, o["scheduler"]["class"])
             pipe.scheduler = sched.from_config(pipe.scheduler.config, **o["scheduler"].get("config", {}))
         self.loras = _load_loras(pipe, o.get("loras", []))
+        if o.get("ip_adapter"):
+            ip = o["ip_adapter"]
+            pipe.load_ip_adapter(ip["repo"], subfolder=ip["subfolder"], weight_name=ip["file"],
+                                 image_encoder_folder=ip["encoder"], local_files_only=True)
         place_pipeline(pipe, self.strategy, self.device)
         if hasattr(pipe, "set_progress_bar_config"):
             pipe.set_progress_bar_config(disable=True)
@@ -86,8 +92,8 @@ class DiffusersEngine(Engine):
         o = self.spec.options
         pipe = self.pipe
         refs = [_load(p) for p in req.references][: max(self.spec.max_references, 0)]
-        use_i2i = bool(refs) and self.spec.reference_mode == "init"
-        if use_i2i:
+        start, face, images = reference_roles(self.spec.reference_mode, refs)
+        if start is not None:
             pipe = self._img2img_pipe()
 
         # Keep the generator on CPU so the same seed gives the same result on every machine.
@@ -102,6 +108,8 @@ class DiffusersEngine(Engine):
 
         if self.loras:
             self.pipe.set_adapters(self.loras, [float(req.extra.get("lora_scale", 1.0))] * len(self.loras))
+        if o.get("ip_adapter"):
+            self.pipe.set_ip_adapter_scale(float(req.extra.get("face_scale", 0.6)) if face is not None else 0.0)
 
         kwargs: dict[str, Any] = dict(
             prompt=with_triggers(req.prompt, [lora.get("trigger", "") for lora in o.get("loras", [])]),
@@ -119,16 +127,18 @@ class DiffusersEngine(Engine):
         negative = (req.negative_prompt or "").strip()
         if negative:
             kwargs["negative_prompt"] = negative
-        if refs:
-            image_arg = o.get("image_arg", "image")
-            if use_i2i:
-                kwargs[image_arg] = refs[0]
-                if req.strength is not None:
-                    kwargs["strength"] = req.strength
-                # img2img: output size follows the start image.
-                kwargs["width"], kwargs["height"] = refs[0].size
-            else:
-                kwargs[image_arg] = refs if o.get("image_is_list", True) else refs[0]
+        image_arg = o.get("image_arg", "image")
+        if start is not None:
+            # img2img draws at the size of its start image: bring it to the size asked for (same ratio when the format
+            # follows that image, a centred crop otherwise), so a tiny or huge image gives a usable result.
+            kwargs[image_arg] = ImageOps.fit(start, (req.width, req.height), Image.Resampling.LANCZOS)
+            if req.strength is not None:
+                kwargs["strength"] = req.strength
+        elif images:
+            kwargs[image_arg] = images if o.get("image_is_list", True) else images[0]
+        if o.get("ip_adapter"):
+            # Without a face the adapter is muted (scale 0) but the pipeline still expects an image.
+            kwargs["ip_adapter_image"] = face if face is not None else Image.new("RGB", (224, 224))
 
         accepted = set(inspect.signature(pipe.__call__).parameters)
         if "kwargs" not in accepted:
@@ -177,6 +187,18 @@ def _load_loras(pipe, loras: list[dict[str, Any]]) -> list[str]:
         pipe.load_lora_weights(lora["repo"], weight_name=lora["file"], adapter_name=name, local_files_only=True)
         names.append(name)
     return names
+
+
+def reference_roles(mode: str, refs: list[Any]) -> tuple[Any, Any, list[Any]]:
+    """(start image, face, images to edit) of the attached images for a reference mode: "init" starts from the first,
+    "face" follows the face of the first and starts from the second when given, "multi" edits them all."""
+    if mode == "init" and refs:
+        return refs[0], None, []
+    if mode == "face" and refs:
+        return (refs[1] if len(refs) > 1 else None), refs[0], []
+    if mode == "multi":
+        return None, None, refs
+    return None, None, []
 
 
 def with_triggers(prompt: str, triggers: list[str]) -> str:

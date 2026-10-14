@@ -36,7 +36,7 @@ export function composerNotices(model: ModelInfo, referenceCount: number, hasAlt
   if (model.requires_references && referenceCount === 0) notices.push({ id: 'requires', tone: 'warn', key: 'imageStudio.notice.requiresReferences', params: [name] })
   if (model.reference_mode === 'none' && referenceCount > 0) notices.push({ id: 'none', tone: 'warn', key: 'imageStudio.notice.noReferences', params: [name], withSwitch: hasAlternative })
   if (model.reference_mode === 'init' && referenceCount > 1) notices.push({ id: 'init', tone: 'warn', key: 'imageStudio.notice.initOnly', params: [name], withSwitch: hasAlternative })
-  if (model.reference_mode === 'multi' && referenceCount > model.max_references) notices.push({ id: 'max', tone: 'info', key: 'imageStudio.notice.maxReferences', params: [name, model.max_references] })
+  if ((model.reference_mode === 'multi' || model.reference_mode === 'face') && referenceCount > model.max_references) notices.push({ id: 'max', tone: 'info', key: 'imageStudio.notice.maxReferences', params: [name, model.max_references] })
   if (!model.compatible) {
     const text = model.engine_reason || model.plan.note
     notices.push(text ? { id: 'incompatible', tone: 'warn', text } : { id: 'incompatible', tone: 'warn', key: 'imageStudio.notice.cannotRun', params: [name] })
@@ -55,9 +55,17 @@ export interface ReferenceRole {
   ignored: boolean
 }
 
-/** Role of the reference at `index` (0-based) for a model: ignored, the start image (img2img), or "image N" of a multi-image edit. */
+/**
+ * Role of the reference at `index` (0-based) for a model: ignored, the start image (img2img), "image N" of a multi-image
+ * edit, or in "face" mode the face to follow (1st) then the start image (2nd).
+ */
 export function referenceRole(model: Pick<ModelInfo, 'name' | 'reference_mode' | 'max_references'>, index: number): ReferenceRole {
   if (model.reference_mode === 'none') return { noteKey: 'imageStudio.ref.note.ignored', helpKey: 'imageStudio.ref.help.none', helpParams: [model.name], ignored: true }
+  if (model.reference_mode === 'face') {
+    if (index === 0) return { noteKey: 'imageStudio.ref.note.face', helpKey: 'imageStudio.ref.help.face', ignored: false }
+    if (index === 1) return { noteKey: 'imageStudio.ref.note.start', helpKey: 'imageStudio.ref.help.faceStart', ignored: false }
+    return { noteKey: 'imageStudio.ref.note.ignored', helpKey: 'imageStudio.ref.help.multiIgnored', helpParams: [model.max_references], ignored: true }
+  }
   if (model.reference_mode === 'init') {
     return index === 0
       ? { noteKey: 'imageStudio.ref.note.start', helpKey: 'imageStudio.ref.help.start', ignored: false }
@@ -70,8 +78,10 @@ export function referenceRole(model: Pick<ModelInfo, 'name' | 'reference_mode' |
 
 /** Placeholder of the prompt field. */
 export function placeholderKey(model: Pick<ModelInfo, 'requires_references' | 'reference_mode'>, hasRefs: boolean): string {
+  if (!hasRefs && model.reference_mode === 'face') return 'imageStudio.placeholder.faceNeedsImage'
   if (!hasRefs) return model.requires_references ? 'imageStudio.placeholder.editNeedsImage' : 'imageStudio.placeholder.default'
   if (model.reference_mode === 'multi') return 'imageStudio.placeholder.multi'
+  if (model.reference_mode === 'face') return 'imageStudio.placeholder.face'
   if (model.reference_mode === 'init') return 'imageStudio.placeholder.init'
   return 'imageStudio.placeholder.plain'
 }

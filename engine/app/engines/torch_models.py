@@ -168,15 +168,36 @@ PIXEL_PERFECT = ParamSpec("pixel_perfect", "Pixels nets", "bool", True, help=(
     "art. Décochez pour garder l'image brute du modèle."))
 
 
+# IP-Adapter "plus face" for SDXL (h94/IP-Adapter, Apache 2.0): follows the face of an image. Its ViT-H image encoder
+# lives in another folder of the same repo.
+IP_ADAPTER_REPO = "h94/IP-Adapter"
+IP_ADAPTER_FACE = {"repo": IP_ADAPTER_REPO, "subfolder": "sdxl_models",
+                   "file": "ip-adapter-plus-face_sdxl_vit-h.safetensors", "encoder": "models/image_encoder"}
+IP_ADAPTER_SOURCE = HfSource(
+    IP_ADAPTER_REPO,
+    ["sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors", "models/image_encoder/config.json",
+     "models/image_encoder/model.safetensors"],
+    ["sdxl_models/ip-adapter-plus-face_sdxl_vit-h.safetensors", "models/image_encoder/model.safetensors"],
+    3.09,  # adapter 0.74 + encoder 2.35, measured on the repo
+)
+FACE_SCALE = ParamSpec("face_scale", "Ressemblance du visage", "float", 0.6, 0.0, 1.0, 0.05, (
+    "Poids du visage de l'image 1 : plus haut, il ressemble davantage à la photo mais le style et le prompt comptent "
+    "moins (0,5 à 0,7 conseillé)."))
+
+
 def sdxl_lora(*, id: str, name: str, repo: str, file: str, size_gb: float, description: str, license: str,
               trigger: str = "", tags: list[str] | None = None, scale: float = 1.0, steps: int = 30,
-              guidance: float = 6.0, negative: str = "", pixelate: int = 0, custom: bool = False) -> ModelSpec:
+              guidance: float = 6.0, negative: str = "", pixelate: int = 0, face: bool = False,
+              custom: bool = False) -> ModelSpec:
     """SDXL base + one LoRA (`file` of `repo`). The trigger words are added in front of the prompt when missing;
-    `pixelate` (factor) offers the "Pixels nets" post-processing."""
+    `pixelate` (factor) offers the "Pixels nets" post-processing; `face` adds the IP-Adapter that follows the face of
+    the first image ("face" reference mode, the second image being an optional start image)."""
     spec = copy.deepcopy(SDXL)
     spec.id, spec.name, spec.family, spec.custom = id, name, "Stable Diffusion XL", custom
     spec.description, spec.license = description, license
     extra = [ParamSpec("lora_scale", "Force du style", "float", scale, 0.0, 1.5, 0.05, LORA_SCALE_HELP)]
+    if face:
+        extra.insert(0, FACE_SCALE)
     if pixelate:
         extra.append(PIXEL_PERFECT)
     spec.params = _sdxl_params(steps, guidance, negative, extra)
@@ -189,6 +210,13 @@ def sdxl_lora(*, id: str, name: str, repo: str, file: str, size_gb: float, descr
     spec.options = {**SDXL.options, "loras": [{"repo": repo, "file": file, "trigger": trigger}]}
     if pixelate:
         spec.options["pixelate"] = pixelate
+    if face:
+        spec.reference_mode, spec.max_references, spec.requires_references = "face", 2, True
+        spec.options["ip_adapter"] = IP_ADAPTER_FACE
+        spec.sources.append(IP_ADAPTER_SOURCE)
+        spec.download_size_gb = round(spec.download_size_gb + IP_ADAPTER_SOURCE.size_gb, 2)
+        spec.weights_gb = round(spec.weights_gb + IP_ADAPTER_SOURCE.size_gb, 2)
+        spec.memory_hint += " L'IP-Adapter et son encodeur d'image ajoutent ≈ 3 Go."
     return spec
 
 
@@ -208,6 +236,16 @@ PIXEL_ART_REDMOND = sdxl_lora(
     "résultat sur une vraie grille de pixels.",
     license="CreativeML Open RAIL-M", trigger="Pixel Art, PixArFK", tags=["pixel art"], negative=PIXEL_NEGATIVE,
     pixelate=8,
+)
+
+PIXEL_ART_XL_FACE = sdxl_lora(
+    id="pixel-art-xl-face", name="Pixel Art XL · Visage", repo="nerijs/pixel-art-xl", file="pixel-art-xl.safetensors",
+    size_gb=0.16,
+    description="Portrait en pixel art d'après une photo : l'image 1 donne le visage à suivre (IP-Adapter), l'image 2, "
+    "facultative, sert d'image de départ (cadre, composition). Ressemblance non garantie, surtout en très petite "
+    "résolution.",
+    license="CreativeML Open RAIL-M (LoRA), Apache 2.0 (IP-Adapter)", trigger="pixel art", tags=["pixel art", "visage"],
+    negative=PIXEL_NEGATIVE, pixelate=8, face=True,
 )
 
 REALVIS_XL = sdxl_finetune(
@@ -241,5 +279,5 @@ ANIMAGINE_XL = sdxl_finetune(
     "worst quality, low quality, low score, bad score, average score, signature, watermark, username, blurry",
 )
 
-SPECS = [QWEN21_TORCH, Z_IMAGE_TURBO, SDXL, PIXEL_ART_XL, PIXEL_ART_REDMOND, REALVIS_XL, JUGGERNAUT_XL,
+SPECS = [QWEN21_TORCH, Z_IMAGE_TURBO, SDXL, PIXEL_ART_XL, PIXEL_ART_XL_FACE, PIXEL_ART_REDMOND, REALVIS_XL, JUGGERNAUT_XL,
          DREAMSHAPER_XL_TURBO, ANIMAGINE_XL]

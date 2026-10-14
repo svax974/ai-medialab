@@ -70,6 +70,14 @@ export function resolveSize(params: GenParams, model: SizeLimits, reference?: { 
   return { width: snap(width, multiple, low, high), height: snap(height, multiple, low, high) }
 }
 
+/**
+ * Index of the attached image that gives the format and the "Original" size (mirrors `size_reference_index` of
+ * engine/app/engines/base.py): the first, except for a "face" model given two images, whose second is the start image.
+ */
+export function sizeReferenceIndex(model: Pick<ModelInfo, 'reference_mode'>, count: number): number {
+  return model.reference_mode === 'face' && count > 1 ? 1 : 0
+}
+
 /** Definitions offered: "Original" only when the format follows a reference image (`auto`). */
 export function visibleQualities(hasReference: boolean, aspect: string): readonly (typeof QUALITIES)[number][] {
   return QUALITIES.filter((quality) => !quality.needsReference || (hasReference && aspect === 'auto'))

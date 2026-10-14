@@ -369,6 +369,16 @@ class TestPlans:
         request = build_plan(job)["items"][0]["request"]
         assert request["extra"] == {"lora_scale": 0.7, "pixel_perfect": True}
 
+    def test_face_plan_takes_its_size_from_the_start_image(self):
+        face, start = UPLOADS_DIR / "face.png", UPLOADS_DIR / "start.png"
+        Image.new("RGB", (512, 512)).save(face)
+        Image.new("RGB", (1024, 512)).save(start)
+        job = make_job(inputs=[str(face), str(start)], params={"aspect": "auto", "megapixels": 0, "seeds": [1]})
+        job.model_id = "pixel-art-xl-face"
+        plan = build_plan(job)
+        assert plan["params"]["width"] > plan["params"]["height"] and plan["params"]["references_used"] == 2
+        assert plan["items"][0]["request"]["extra"]["face_scale"] == 0.6
+
     def test_unknown_model_and_empty_prompt_are_value_errors(self):
         with pytest.raises(ValueError, match="Le prompt est vide"):
             build_plan(make_job(prompt=""))

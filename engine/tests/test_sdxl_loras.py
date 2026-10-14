@@ -91,3 +91,29 @@ def test_a_lora_needs_only_its_file_once_sdxl_is_there(monkeypatch):
                                                              "size": 0})
     assert base.remaining_download_gb(MODELS["pixel-art-xl"]) == 0.16
     assert MODELS["pixel-art-xl"].download_size_gb == 6.62  # the first one also brings SDXL
+
+
+def test_the_face_model_adds_the_ip_adapter_to_pixel_art_xl():
+    from app.engines.torch_models import IP_ADAPTER_SOURCE
+
+    spec = MODELS["pixel-art-xl-face"]
+    assert (spec.reference_mode, spec.max_references, spec.requires_references) == ("face", 2, True)
+    assert [s.repo for s in spec.all_sources()] == [SDXL.hf_repo, "nerijs/pixel-art-xl", "h94/IP-Adapter"]
+    assert all(p.endswith((".safetensors", ".json")) for p in IP_ADAPTER_SOURCE.patterns)  # never the .bin pickles
+    assert spec.options["ip_adapter"]["encoder"] == "models/image_encoder"
+    assert [p.key for p in spec.params][3:6] == ["face_scale", "lora_scale", "pixel_perfect"]
+    assert spec.download_size_gb == 9.71
+    assert MODELS["pixel-art-xl"].reference_mode == "init"  # the plain model is unchanged
+
+
+def test_reference_roles_per_mode():
+    from app.engines.base import size_reference_index
+    from app.engines.diffusers_engine import reference_roles
+
+    assert reference_roles("init", ["a", "b"]) == ("a", None, [])
+    assert reference_roles("face", ["face"]) == (None, "face", [])
+    assert reference_roles("face", ["face", "start"]) == ("start", "face", [])
+    assert reference_roles("multi", ["a", "b"]) == (None, None, ["a", "b"])
+    assert reference_roles("none", ["a"]) == (None, None, [])
+    assert [size_reference_index("face", n) for n in (1, 2)] == [0, 1]
+    assert size_reference_index("init", 2) == 0

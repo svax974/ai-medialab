@@ -18,7 +18,13 @@ from typing import Any, Callable, Literal
 
 from PIL import Image
 
-ReferenceMode = Literal["none", "init", "multi"]
+ReferenceMode = Literal["none", "init", "multi", "face"]
+
+
+def size_reference_index(mode: str, count: int) -> int:
+    """Which attached image gives the format and the "Original" size: the first one, except in "face" mode where the
+    first image is the face to follow and the second, when given, is the start image."""
+    return 1 if mode == "face" and count > 1 else 0
 
 
 @dataclass
@@ -143,7 +149,8 @@ class ModelSpec:
     engine: str  # "module:Class", imported lazily in the worker
     # Inference backend: "mlx" (native Metal, Mac), "torch" (CUDA / ROCm / MPS), "sdcpp", "pack", "demo".
     backend: Backend = "mlx"
-    # References: "none" (text only), "init" (one start image, img2img), "multi" (multi-image editing)
+    # References: "none" (text only), "init" (one start image, img2img), "multi" (multi-image editing), "face" (image 1:
+    # a face followed through an IP-Adapter, image 2: an optional start image)
     reference_mode: ReferenceMode = "none"
     max_references: int = 0
     requires_references: bool = False

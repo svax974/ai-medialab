@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { ASPECTS, QUALITIES, aspectLabel, isQualityActive, resolveSize, visibleQualities } from './size'
+import { ASPECTS, QUALITIES, aspectLabel, isQualityActive, resolveSize, sizeReferenceIndex, visibleQualities } from './size'
 
 const model = { size_multiple: 16, min_side: 256, max_side: 2048, default_megapixels: 1 }
 
@@ -71,5 +71,13 @@ describe('qualities and labels', () => {
     expect(ASPECTS).toHaveLength(10)
     expect(ASPECTS.every((a) => a.labelKey.startsWith('imageStudio.aspect.'))).toBe(true)
     expect(QUALITIES.map((q) => q.mp)).toEqual([0, 0.5, 1, 1.6, 2.3])
+  })
+})
+
+describe('sizeReferenceIndex', () => {
+  it('follows the first image, or the start image (2nd) of a face model', () => {
+    expect(sizeReferenceIndex({ reference_mode: 'init' }, 2)).toBe(0)
+    expect(sizeReferenceIndex({ reference_mode: 'face' }, 1)).toBe(0)
+    expect(sizeReferenceIndex({ reference_mode: 'face' }, 2)).toBe(1)
   })
 })
