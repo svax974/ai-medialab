@@ -77,12 +77,20 @@ levée avant est une réponse HTTP ordinaire.
 | `delta` / `reasoning` | `{ id, content }` : fragment du texte / de la réflexion de la réponse `id` |
 | `tool` | `{ id, run: ToolRun }` : début (`running`) et fin (`done` ou `error`) d'un appel d'outil ; `run.arguments` montre la requête réellement envoyée |
 | `usage` | `{ id, stats }` : `prompt_tokens`, `completion_tokens` (cumulés sur les tours d'outils), `tokens_per_second`, `context_size`, `elapsed_ms` |
-| `title` | `{ title }` : titre court trouvé par le modèle, **avant** `done` (seulement après le premier échange d'une conversation dont le titre vient du prompt) |
-| `done` | `{ message }` : la réponse finale (`status: 'done'`) |
+| `done` | `{ message }` : la réponse finale (`status: 'done'`, statistiques comprises), émis **dès la fin de la réponse** |
+| `title` | `{ title }` : titre court trouvé par le modèle, émis **après** `done` (voir ci-dessous) |
 | `error` | `{ code, message, id? }` : `busy`, `no_model`, `no_engine`, `context_exceeded`, `refused`, `upstream`, `closed`, `invalid` |
 
-Un seul `done` **ou** un seul `error` termine le flux. Refus **avant** tout enregistrement (`busy`, `no_model`, `no_engine`, `upstream` du catalogue) : un flux à un seul évènement `error`, aucun message créé.
+Un seul `done` **ou** un seul `error` termine la **réponse**. Le flux se ferme à `done` quand aucun titre n'est à produire ; sinon il reste ouvert jusqu'à `title` (ou jusqu'à l'échec, l'annulation ou le délai du titre : il se ferme alors sans `title`). Refus **avant** tout enregistrement (`busy`, `no_model`, `no_engine`, `upstream` du catalogue) : un flux à un seul évènement `error`, aucun message créé.
 Annuler = fermer la connexion : le moteur coupe la génération et laisse le modèle chargé, le message garde le texte reçu avec `status: 'cancelled'` (aucun évènement n'est envoyé, personne n'écoute).
+
+### Le titre automatique, après `done`
+
+Le premier échange d'une conversation dont le titre vient encore du prompt reçoit d'abord un **titre provisoire** tiré du prompt (tout de suite, avec la création des messages). Une fois `done` émis, une requête au modèle
+(24 jetons, 15 s au plus, sans raisonnement) tourne **en arrière-plan** et `title` est émis à son retour, puis le flux se ferme : l'interface a donc la réponse, ses statistiques et ses actions dès `done`.
+Pendant cette requête la jauge d'occupation reste tenue **mais offerte** (`EngineBusyGate.setYield`) : un nouvel envoi, une régénération, une modification, `enhance-prompt` ou une génération en file d'attente **annule le titre et prend le moteur
+immédiatement** (jamais de `busy` à cause d'un titre ; la file reprend à la libération de la jauge). Si le client ferme la connexion après `done`, le titre est annulé sans bruit (le titre provisoire reste, la réponse n'est pas touchée).
+Pendant le titre, `runningIn(conversation)` est faux : on peut déjà supprimer un message ou régénérer.
 
 ### Écarts et précisions par rapport au contrat convenu avec le front
 
@@ -106,7 +114,7 @@ fichiers texte en tête du message dans un bloc `<fichier nom="…">…</fichier
 
 Le moteur ne tient qu'un modèle en mémoire (mémoire unifiée) et répond **409** à celui qui arrive second. Côté Nest :
 
-- une réponse de chat prend `EngineBusyGate` (`tryAcquire('chat')`) pour toute sa durée (titre compris) et la rend dans tous les cas (fin, erreur, annulation) ;
+- une réponse de chat prend `EngineBusyGate` (`tryAcquire('chat')`) pour toute sa durée, titre compris, et la rend dans tous les cas (fin, erreur, annulation). Pendant le titre elle l'**offre** (`setYield`) : `ReplyService.run`, `PromptEnhanceService` et `GenerationQueueService` appellent `gate.preempt()`, qui annule le titre et rend la main à la libération ;
 - `GenerationQueueService` ne soumet aucun job tant que la jauge est tenue et reprend à sa libération (les messages restent `queued`) ;
 - le chat répond `busy` (texte : « Une génération d'image, d'audio ou de vidéo est en cours ou en attente… ») tant que `GenerationQueueService.occupied` est vrai, et `busy` (« Une réponse est déjà en cours… ») si la jauge est tenue ;
 - `enhance-prompt` suit les mêmes règles ; il préfère le modèle de chat déjà chargé (pas de rechargement), sinon le défaut du moteur.

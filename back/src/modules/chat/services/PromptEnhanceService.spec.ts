@@ -69,6 +69,15 @@ describe('PromptEnhanceService', () => {
     expect(reply.gate.busy).toBe(true); // still the other owner's
   });
 
+  it('takes the engine from a chat title being written instead of answering busy', async () => {
+    const { service, gate, complete } = make();
+    gate.tryAcquire('chat');
+    gate.setYield('chat', () => setTimeout(() => gate.release('chat'), 5));
+    expect(await service.enhance('image', 'un renard', undefined)).toMatchObject({ prompt: 'A fox.' });
+    expect(complete).toHaveBeenCalled();
+    expect(gate.busy).toBe(false);
+  });
+
   it('answers 409 with the code of a model problem, and releases the gauge', async () => {
     const { service, gate } = make({ resolve: () => new ChatError('no_engine', "Le moteur de chat (llama.cpp) n'est pas installé.") });
     await expect(service.enhance('audio', 'x', undefined)).rejects.toMatchObject({ status: 409, response: expect.objectContaining({ code: 'no_engine' }) });

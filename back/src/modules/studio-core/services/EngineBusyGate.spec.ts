@@ -40,6 +40,37 @@ describe('EngineBusyGate', () => {
   });
 });
 
+describe('EngineBusyGate preemption', () => {
+  it('lets a holder that offered to yield be asked to let go, and resolves when it did', async () => {
+    const gate = new EngineBusyGate();
+    gate.tryAcquire('chat');
+    expect(gate.preemptible).toBe(false);
+    gate.setYield('other', () => undefined); // not the holder: ignored
+    expect(gate.preemptible).toBe(false);
+    let asked = 0;
+    gate.setYield('chat', () => {
+      asked++;
+      setTimeout(() => gate.release('chat'), 5);
+    });
+    expect(gate.preemptible).toBe(true);
+    await gate.preempt();
+    expect(asked).toBe(1);
+    expect(gate.busy).toBe(false);
+    expect(gate.preemptible).toBe(false); // the offer ends with the hold
+  });
+
+  it('does not wait for a holder that did not offer, nor when nobody holds the gauge', async () => {
+    const gate = new EngineBusyGate();
+    await gate.preempt();
+    gate.tryAcquire('chat');
+    await gate.preempt(); // returns at once; the caller meets `busy` through tryAcquire
+    expect(gate.busy).toBe(true);
+    gate.setYield('chat', () => undefined);
+    gate.setYield('chat', null); // the offer taken back
+    expect(gate.preemptible).toBe(false);
+  });
+});
+
 describe('the generation queue and the chat gauge', () => {
   let dataSource: DataSource;
   let s: Studio;
@@ -88,6 +119,28 @@ describe('the generation queue and the chat gauge', () => {
     await queue.idle();
     expect(s.engine.submitted()).toEqual(['a1']); // one at a time, as before
     expect(queue.snapshot().pending).toEqual(['a2']);
+  });
+
+  it('asks a chat title being written to give the engine up, then submits', async () => {
+    gate.tryAcquire('chat');
+    let asked = 0;
+    gate.setYield('chat', () => {
+      asked++;
+      setTimeout(() => gate.release('chat'), 5); // the title request is cancelled, the reply service lets go
+    });
+    await enqueue('a1');
+    expect(asked).toBeGreaterThan(0);
+    for (let i = 0; i < 40 && !s.engine.submitted().length; i++) await new Promise((r) => setTimeout(r, 10));
+    await queue.idle();
+    expect(s.engine.submitted()).toEqual(['a1']);
+    expect(gate.busy).toBe(false);
+  });
+
+  it('does not ask a holder that did not offer to yield (a reply being written)', async () => {
+    gate.tryAcquire('chat');
+    await enqueue('a1');
+    expect(s.engine.submitted()).toEqual([]);
+    expect(gate.busy).toBe(true);
   });
 
   it('is not occupied when nothing runs or waits', () => {

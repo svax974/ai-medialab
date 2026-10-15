@@ -65,8 +65,11 @@ Les cartes de modèles de chat, la carte du moteur llama.cpp et la recherche Hug
 | `POST` | `/api/chat/model/unload` | `chatApi.unloadModel` : décharge le modèle de chat (bouton ⏏ de l'indicateur d'état ; 409 `busy` pendant une réponse) |
 | `POST` | `/api/chat/enhance-prompt` | `chatApi.enhancePrompt` : amélioration d'un prompt de génération, bouton ✨ `EnhancePromptButton` des compositeurs image, audio et vidéo |
 
-Le flux : `message` (utilisateur, puis assistant créé), `loading`, `delta`, `reasoning`, `tool`, `usage`, `title`, puis un seul `done` **ou** `error`. Un flux qui s'arrête sans l'un des deux donne une erreur `closed`
-côté client. Arrêter = fermer la connexion (`AbortController`) : le serveur garde le texte reçu et marque le message `cancelled`. Les requêtes de flux partent sans jeton d'accès : l'application est en `LOCAL_TRUST`
+Le flux : `message` (utilisateur, puis assistant créé), `loading`, `delta`, `reasoning`, `tool`, `usage`, puis un seul `done` **ou** `error`. Un flux qui s'arrête sans l'un des deux donne une erreur `closed`
+côté client. **`done` termine la réponse** : l'interface la considère finie à cet évènement (message final et statistiques dans le fil, actions, bouton d'envoi réactivé : `answerRunner` passe le flux « terminé » et
+`anyStreaming` redevient faux). Le flux, lui, **reste lu jusqu'à sa fermeture** quand le serveur écrit un titre automatique (premier échange, titre encore tiré du prompt) : `title` arrive **après** `done`, met le titre à jour dans le
+fil et dans la liste (`studioKeys.conversations`), puis le flux se ferme. Ce flux résiduel ne bloque jamais un nouvel envoi : `startAnswer` l'abandonne (`AbortController`), ce qui fait annuler le titre par le serveur, et la fin du flux abandonné
+ne touche ni la réponse suivante (`isCurrent`) ni le cache de la conversation (pas de relecture après un `done`). Une connexion coupée après `done` laisse la réponse terminée telle quelle. Arrêter = fermer la connexion (`AbortController`) : le serveur garde le texte reçu et marque le message `cancelled`. Les requêtes de flux partent sans jeton d'accès : l'application est en `LOCAL_TRUST`
 (un en-tête `Authorization` n'est ajouté que par `HttpService`, qui ne sait pas lire un refus avec son message). Un refus avant le flux (`400` identifiant, `422` corps, `409`) donne un `ChatError` dont le code est celui que
 le serveur ajoute au refus (`code`) quand il en met un, sinon deviné d'après le statut ; `StudioApiError.code` (`studio-shell/services/studioHttp.ts`) porte ce même code pour les appels JSON.
 

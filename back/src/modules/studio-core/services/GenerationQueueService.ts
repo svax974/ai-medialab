@@ -167,7 +167,11 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   }
 
   private async pump(): Promise<void> {
-    while (!this.current && this.pending.length && !this.gate?.busy) {
+    while (!this.current && this.pending.length) {
+      if (this.gate?.busy) {
+        if (this.gate.preemptible) void this.gate.preempt(); // a title being written yields; `released$` pumps again
+        return;
+      }
       const entry = this.pending.shift() as QueueEntry;
       this.current = entry; // held from here: a cancellation now is recorded on the entry
       const message = await this.messages.getEntity(entry.messageId);

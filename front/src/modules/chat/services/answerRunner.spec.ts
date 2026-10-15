@@ -55,8 +55,8 @@ describe('startAnswer', () => {
       { type: 'message', message: answer },
       { type: 'delta', id: 'a1', content: 'Bon' },
       { type: 'delta', id: 'a1', content: 'jour' },
-      { type: 'title', title: 'Salutations' },
       { type: 'done', message: { ...answer, content: 'Bonjour', status: 'done' } },
+      { type: 'title', title: 'Salutations' }, // after done: the title is written in the background
     ])
     expect(startAnswer(queryClient, 'c1', request)).toBe(true)
     await flush()
@@ -65,6 +65,7 @@ describe('startAnswer', () => {
     expect(useChatDraftStore.getState().texts).toEqual({})
     expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ active: false, error: null })
     expect(Object.keys(useChatDraftStore.getState().seen).sort()).toEqual(['a1', 'u1'])
+    expect(data?.conversation.title).toBe('Salutations')
     expect(invalidated).toContainEqual(studioKeys.conversations)
   })
 
@@ -123,5 +124,89 @@ describe('startAnswer', () => {
     await flush()
     expect(useChatLiveStore.getState().streams['c1'].active).toBe(false)
     expect(invalidated).toContainEqual(chatKeys.conversation('c1'))
+  })
+
+  describe('the title after done', () => {
+    /** A stream that delivers `first` at once, then waits for `release()` to deliver `later` and close (or for the abort). */
+    function held(first: ChatStreamEvent[], later: ChatStreamEvent[]) {
+      let release = () => undefined as void
+      const seen = { signal: null as AbortSignal | null }
+      streamAnswer.mockImplementationOnce((_p: string, _b: unknown, options: { signal: AbortSignal; onEvent: (e: ChatStreamEvent) => void }) => {
+        seen.signal = options.signal
+        for (const event of first) options.onEvent(event)
+        return new Promise<void>((resolve) => {
+          release = () => {
+            for (const event of later) options.onEvent(event)
+            resolve()
+          }
+          options.signal.addEventListener('abort', () => resolve())
+        })
+      })
+      return { seen, release: () => release() }
+    }
+    const answer = message('a1', { role: 'assistant', parent_id: 'u1', status: 'streaming', model_id: 'qwen' })
+    const finished = { type: 'done' as const, message: { ...answer, content: 'Bonjour', status: 'done' as const } }
+
+    it('considers the answer finished at done: the send button is free while the stream waits for the title', async () => {
+      const { queryClient, invalidated } = setup()
+      const { release } = held([{ type: 'message', message: message('u1', { content: 'Salut' }) }, { type: 'message', message: answer }, finished], [{ type: 'title', title: 'Salutations' }])
+      startAnswer(queryClient, 'c1', request)
+      await flush()
+      expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ active: false, error: null })
+      expect(cached(queryClient)?.messages[1]).toMatchObject({ status: 'done', content: 'Bonjour' })
+      expect(cached(queryClient)?.conversation.title).not.toBe('Salutations')
+      release() // the title arrives and the stream closes
+      await flush()
+      expect(cached(queryClient)?.conversation.title).toBe('Salutations')
+      expect(invalidated).toContainEqual(studioKeys.conversations) // the sidebar list takes the new title
+      expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ active: false, error: null })
+    })
+
+    it('never blocks a new send: it drops the stream waiting for the title (the server cancels it) and starts at once', async () => {
+      const { queryClient, invalidated } = setup()
+      const first = held([{ type: 'message', message: answer }, finished], [{ type: 'title', title: 'Jamais' }])
+      startAnswer(queryClient, 'c1', request)
+      await flush()
+      invalidated.length = 0
+      script([{ type: 'message', message: message('a2', { role: 'assistant', parent_id: 'u1', status: 'streaming' }) }])
+      expect(startAnswer(queryClient, 'c1', request)).toBe(true)
+      expect(errors.list).toEqual([]) // never "already answering" because of a title
+      expect(first.seen.signal?.aborted).toBe(true)
+      await flush()
+      expect(invalidated).not.toContainEqual(chatKeys.conversation('c1')) // the dropped stream did not reload a conversation being written
+      expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ error: null }) // and its end did not touch the new answer
+    })
+
+    it('the end of the dropped stream does not close the answer that replaced it', async () => {
+      const { queryClient } = setup()
+      held([{ type: 'message', message: answer }, finished], [])
+      startAnswer(queryClient, 'c1', request)
+      await flush()
+      streamAnswer.mockImplementationOnce(() => new Promise<void>(() => undefined)) // a new answer that goes on
+      expect(startAnswer(queryClient, 'c1', request)).toBe(true)
+      await flush()
+      expect(useChatLiveStore.getState().streams['c1'].active).toBe(true)
+    })
+
+    it('a stream that ends after done without a title is simply finished, never an error', async () => {
+      const { queryClient } = setup()
+      script([{ type: 'message', message: answer }, finished])
+      startAnswer(queryClient, 'c1', request)
+      await flush()
+      expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ active: false, error: null })
+    })
+
+    it('a stream cut after done (connection lost before the title) leaves the finished answer as it is', async () => {
+      const { queryClient } = setup()
+      streamAnswer.mockImplementationOnce(async (_p: string, _b: unknown, options: { onEvent: (e: ChatStreamEvent) => void }) => {
+        options.onEvent({ type: 'message', message: answer })
+        options.onEvent(finished)
+        throw new ChatError('network error', 'closed')
+      })
+      startAnswer(queryClient, 'c1', request)
+      await flush()
+      expect(useChatLiveStore.getState().streams['c1']).toMatchObject({ active: false, error: null })
+      expect(cached(queryClient)?.messages[0]).toMatchObject({ status: 'done', content: 'Bonjour' })
+    })
   })
 })

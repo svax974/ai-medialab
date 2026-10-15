@@ -95,7 +95,7 @@ export class ReplyState {
 @Injectable()
 export class ChatReplyService implements OnModuleDestroy {
   private readonly logger = new Logger(ChatReplyService.name);
-  private readonly active = new Map<string, { conversationId: string; abort: AbortController }>();
+  private readonly active = new Map<string, { conversationId: string; abort: AbortController; titling: boolean }>();
 
   constructor(
     private readonly store: ChatStoreService,
@@ -119,9 +119,9 @@ export class ChatReplyService implements OnModuleDestroy {
     for (const run of this.active.values()) if (run.conversationId === conversationId) run.abort.abort();
   }
 
-  /** True while a reply of this conversation is being generated. */
+  /** True while a reply of this conversation is being generated (writing its title afterwards does not count). */
   runningIn(conversationId: string): boolean {
-    return [...this.active.values()].some((run) => run.conversationId === conversationId);
+    return [...this.active.values()].some((run) => run.conversationId === conversationId && !run.titling);
   }
 
   /** A new user message (a child of `parent_id`, else of the current leaf) and its answer. */
@@ -159,6 +159,7 @@ export class ChatReplyService implements OnModuleDestroy {
 
   private async run(conversationId: string, sink: ReplySink, requestedModel: string | undefined, plan: TurnPlan): Promise<void> {
     if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', BUSY_GENERATION));
+    await this.gate.preempt(); // a title still being written gives the engine up: it never makes a request busy
     if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
     let generating = false;
     try {
@@ -215,8 +216,10 @@ export class ChatReplyService implements OnModuleDestroy {
     sink.signal.addEventListener('abort', stop, { once: true });
     if (sink.signal.aborted) stop();
     const id = turn.assistant.id;
-    this.active.set(id, { conversationId, abort });
+    const run = { conversationId, abort, titling: false };
+    this.active.set(id, run);
     const state = new ReplyState(Date.now(), (fields) => this.store.updateMessage(id, fields));
+    let finished = false;
     try {
       const history = await buildHistory(settings.system_prompt, await this.store.path(conversationId, turn.user.id), {
         imagePath: (name) => this.attachments.pathOf(name),
@@ -224,10 +227,14 @@ export class ChatReplyService implements OnModuleDestroy {
       });
       await this.streamRounds(settings, model, history, state, id, sink, abort.signal);
       await state.flush({ status: 'done', stats: state.stats(), error: null });
-      await this.title(conversationId, model, turn, state, sink, abort.signal);
       sink.emit('done', { message: await this.store.toDto((await this.store.getMessage(id)) as ChatMessageEntity) });
+      void this.generations.publishConversation(conversationId);
+      finished = true;
     } catch (error) {
       await this.settleFailure(error, id, state, sink, abort.signal);
+    }
+    try {
+      if (finished) await this.writeTitle(conversationId, model, turn, state, sink, run);
     } finally {
       sink.signal.removeEventListener('abort', stop);
       this.active.delete(id);
@@ -320,12 +327,20 @@ export class ChatReplyService implements OnModuleDestroy {
 
   // Title -----------------------------------------------------------------------------------------------------------
 
-  /** After the first exchange of a conversation still named from its prompt: a short title from the model (never fatal). */
-  private async title(
+  /**
+   * After `done`, for the first exchange of a conversation still named from its prompt: a short title from the model,
+   * written while the stream stays open (it closes with `title`, or without it when the request fails or is cancelled).
+   * The engine gauge stays held but is offered to whoever needs it: a new request, an ✨ enhancement or a queued
+   * generation cancels the title and takes it at once. Never an error: the prompt-based title stays.
+   */
+  private async writeTitle(
     conversationId: string, model: ResolvedModel,
-    turn: { user: ChatMessageEntity; wasDefaultTitle: boolean; firstExchange: boolean }, state: ReplyState, sink: ReplySink, signal: AbortSignal,
+    turn: { user: ChatMessageEntity; wasDefaultTitle: boolean; firstExchange: boolean }, state: ReplyState, sink: ReplySink,
+    run: { abort: AbortController; titling: boolean },
   ): Promise<void> {
-    if (!turn.wasDefaultTitle || !turn.firstExchange || !state.content.trim()) return;
+    if (!turn.wasDefaultTitle || !turn.firstExchange || !state.content.trim() || run.abort.signal.aborted) return;
+    run.titling = true;
+    this.gate.setYield(GATE_OWNER, () => run.abort.abort());
     try {
       const { content } = await this.llm.complete({
         model_id: model.id,
@@ -335,13 +350,13 @@ export class ChatReplyService implements OnModuleDestroy {
         ],
         params: { max_tokens: 24, temperature: 0.3 },
         reasoning: 'off',
-      }, AbortSignal.any([signal, AbortSignal.timeout(TITLE_TIMEOUT_MS)]));
+      }, AbortSignal.any([run.abort.signal, AbortSignal.timeout(TITLE_TIMEOUT_MS)]));
       const title = cleanTitle(content);
-      if (!title) return;
+      if (!title || run.abort.signal.aborted) return;
       await this.conversations.update(conversationId, { title });
       sink.emit('title', { title });
     } catch {
-      // A missing title is not a failure: the prompt-based one stays.
+      // Cancelled, timed out or failed: the title taken from the prompt stays.
     }
   }
 }

@@ -40,7 +40,7 @@ const wire = (id: string, extra: Partial<ChatMessage>): ChatMessage =>
 afterEach(() => vi.unstubAllGlobals())
 
 describe('the answer stream, in the order the server sends it', () => {
-  it('a send: user message, answer created, loading, reasoning, text, a tool, usage, title, then done', async () => {
+  it('a send: user message, answer created, loading, reasoning, text, a tool, usage, done, then the title', async () => {
     const user = wire('u1', { role: 'user', content: 'Quel temps ?', attachments: [{ kind: 'text', name: 'chat_0123456789abcdef.txt', original_name: 'notes.txt', mime: 'text/plain', size: 12 }] })
     const streaming = wire('a1', { role: 'assistant', parent_id: 'u1', status: 'streaming' })
     const run = { id: 'call_1', name: 'web_search' as const, arguments: { query: 'météo Paris' }, status: 'running' as const }
@@ -54,15 +54,25 @@ describe('the answer stream, in the order the server sends it', () => {
       block('reasoning', { id: 'a1', content: 'Je ' }), block('reasoning', { id: 'a1', content: 'cherche.' }),
       block('tool', { id: 'a1', run }), block('tool', { id: 'a1', run: finished.tool_runs[0] }),
       block('delta', { id: 'a1', content: 'Il ' }), block('delta', { id: 'a1', content: 'pleut.' }),
-      block('usage', { id: 'a1', stats: finished.stats }), block('title', { title: 'La météo' }), block('done', { message: finished }),
+      block('usage', { id: 'a1', stats: finished.stats }), block('done', { message: finished }), block('title', { title: 'La météo' }),
     ))
-    expect(events.map((e) => e.type)).toEqual(['message', 'message', 'loading', 'loading', 'reasoning', 'reasoning', 'tool', 'tool', 'delta', 'delta', 'usage', 'title', 'done'])
+    expect(events.map((e) => e.type)).toEqual(['message', 'message', 'loading', 'loading', 'reasoning', 'reasoning', 'tool', 'tool', 'delta', 'delta', 'usage', 'done', 'title'])
     const after = play(conversation([], {}), events)
     expect(after.messages.map((m) => [m.id, m.role, m.status])).toEqual([['u1', 'user', 'done'], ['a1', 'assistant', 'done']])
     expect(after.messages[1]).toMatchObject({ content: 'Il pleut.', reasoning: 'Je cherche.', tool_runs: [{ id: 'call_1', status: 'done' }] })
     expect(after.settings.leaf_id).toBe('a1')
     expect(after.conversation).toMatchObject({ title: 'La météo', generation_count: 2 })
     expect(after.messages[0].attachments[0]).toMatchObject({ name: 'chat_0123456789abcdef.txt', original_name: 'notes.txt' })
+  })
+
+  it('the answer is over at done: a stream cut or closed there is no error, the title only follows when there is one', async () => {
+    const answer = wire('a1', { role: 'assistant', parent_id: 'u1', status: 'done', content: 'Ok' })
+    expect((await read(sse(block('done', { message: answer })))).map((e) => e.type)).toEqual(['done'])
+    expect((await read(sse(block('done', { message: answer }), block('title', { title: 'Un titre' })))).map((e) => e.type)).toEqual(['done', 'title'])
+    const start = conversation([wire('u1', { role: 'user' }), wire('a1', { role: 'assistant', parent_id: 'u1', status: 'streaming' })])
+    const [, after] = [0, play(start, [{ type: 'done', message: answer }, { type: 'title', title: 'Un titre' }])]
+    expect(after.messages[1]).toMatchObject({ status: 'done', content: 'Ok' })
+    expect(after.conversation.title).toBe('Un titre')
   })
 
   it('a refusal (busy, no_model, no_engine) is a stream of one error event, no id, and changes nothing', async () => {

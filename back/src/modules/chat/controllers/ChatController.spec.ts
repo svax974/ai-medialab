@@ -223,9 +223,9 @@ describe('chat routes', () => {
       expect(res.headers['cache-control']).toBe('no-cache, no-transform');
       expect(res.headers['x-accel-buffering']).toBe('no');
       const got = events(res.text);
-      expect(got.map((e) => e.event)).toEqual(['message', 'message', 'delta', 'usage', 'title', 'done']);
+      expect(got.map((e) => e.event)).toEqual(['message', 'message', 'delta', 'usage', 'done', 'title']); // done first: the title follows, then the stream closes
       expect(got[0].data.message).toMatchObject({ role: 'user', content: 'Salut' });
-      expect(got.at(-1)?.data.message).toMatchObject({ role: 'assistant', content: 'Bonjour', status: 'done', model_id: 'llm-a' });
+      expect(got.find((e) => e.event === 'done')?.data.message).toMatchObject({ role: 'assistant', content: 'Bonjour', status: 'done', model_id: 'llm-a' });
       const read = (await http_().get(`/api/chat/conversations/${conv}`)).body;
       expect(read.messages.map((m: Json) => m.content)).toEqual(['Salut', 'Bonjour']);
       expect(read.conversation).toMatchObject({ generation_count: 2, busy: false });
@@ -254,7 +254,7 @@ describe('chat routes', () => {
     it('regenerates and edits', async () => {
       const first = events((await post('/messages', { content: 'Question' })).text);
       const user = first[0].data.message;
-      const answer = first.at(-1)?.data.message;
+      const answer = first.find((e) => e.event === 'done')?.data.message;
       script = [{ type: 'delta', content: 'Autre' }, { type: 'done', finish_reason: 'stop' }];
       const regenerated = events((await post(`/messages/${answer.id}/regenerate`, { model_id: 'llm-b' }).expect(200)).text);
       expect(regenerated[0].data.message).toMatchObject({ role: 'assistant', parent_id: user.id, sibling_index: 1 });
@@ -267,9 +267,9 @@ describe('chat routes', () => {
 
     it('switches branch and deletes a message with its subtree', async () => {
       const first = events((await post('/messages', { content: 'Question' })).text);
-      const answer = first.at(-1)?.data.message;
+      const answer = first.find((e) => e.event === 'done')?.data.message;
       script = [{ type: 'delta', content: 'Autre' }, { type: 'done', finish_reason: 'stop' }];
-      const second = events((await post(`/messages/${answer.id}/regenerate`)).text).at(-1)?.data.message;
+      const second = events((await post(`/messages/${answer.id}/regenerate`)).text).find((e) => e.event === 'done')?.data.message;
       let read = (await post('/leaf', { message_id: answer.id }).expect(200)).body;
       expect(read.messages.map((m: Json) => m.content)).toEqual(['Question', 'Bonjour']);
       expect(read.settings.leaf_id).toBe(answer.id);

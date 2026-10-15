@@ -16,6 +16,7 @@ import { Observable, Subject } from 'rxjs';
 @Injectable()
 export class EngineBusyGate {
   private holder: string | null = null;
+  private yielder: (() => void) | null = null;
   private readonly releasedSubject = new Subject<void>();
 
   /** Emits each time the gauge is released. */
@@ -32,6 +33,11 @@ export class EngineBusyGate {
     return this.holder;
   }
 
+  /** True while the holder agreed to give the gauge up when someone needs it (the chat while it writes a title). */
+  get preemptible(): boolean {
+    return this.holder !== null && this.yielder !== null;
+  }
+
   /** True when the gauge was free and is now held by `owner`; the caller must `release` it. */
   tryAcquire(owner: string): boolean {
     if (this.holder !== null) return false;
@@ -39,10 +45,35 @@ export class EngineBusyGate {
     return true;
   }
 
+  /**
+   * The holder says it can let go at once if asked (`yieldFn` stops what it does; it still calls `release`). `null`
+   * takes the offer back. Ignored when `owner` does not hold the gauge.
+   */
+  setYield(owner: string, yieldFn: (() => void) | null): void {
+    if (this.holder === owner) this.yielder = yieldFn;
+  }
+
+  /**
+   * Asks a holder that offered to yield to do so, and resolves once the gauge is free (at once when nobody holds it
+   * or the holder did not offer: the caller then still meets `busy` through `tryAcquire`).
+   */
+  preempt(): Promise<void> {
+    const yieldFn = this.yielder;
+    if (!yieldFn) return Promise.resolve();
+    return new Promise((resolve) => {
+      const sub = this.released$.subscribe(() => {
+        sub.unsubscribe();
+        resolve();
+      });
+      yieldFn();
+    });
+  }
+
   /** Releases the gauge if `owner` holds it (a late release by someone else is ignored). */
   release(owner: string): void {
     if (this.holder !== owner) return;
     this.holder = null;
+    this.yielder = null;
     this.releasedSubject.next();
   }
 }

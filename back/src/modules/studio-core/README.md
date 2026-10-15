@@ -161,7 +161,7 @@ Le chat (module `chat`) dépend de `studio-core`, jamais l'inverse. Il se branch
   dont un message contient `q` (recherche de la liste, plafonnée à 500), et `GenerationService.removeConversation` appelle `beforeRemove` avant de
   supprimer la ligne (le chat arrête sa réponse en cours et supprime les fichiers joints ; les lignes partent par cascade). Sans inscription, rien ne change.
 - **`EngineBusyGate`** : le moteur ne tient qu'un modèle à la fois. Pendant une réponse de chat le chat tient la jauge (`tryAcquire('chat')`) ;
-  `GenerationQueueService` ne soumet alors aucun job (les messages restent `queued`) et reprend à `released$`. Dans l'autre sens le chat refuse (`busy`)
+  `GenerationQueueService` ne soumet alors aucun job (les messages restent `queued`) et reprend à `released$`. Un détenteur peut **offrir** la jauge (`setYield`) : le chat le fait pendant qu'il écrit un titre automatique ; la file, un nouvel envoi du chat et `enhance-prompt` appellent alors `preempt()`, qui annule le titre et attend la libération (jamais de `busy` à cause d'un titre). Dans l'autre sens le chat refuse (`busy`)
   tant que `GenerationQueueService.occupied` est vrai (un job court ou attend). Le moteur répond 409 de toute façon à celui qui arrive second : c'est la
   ceinture, la jauge la bretelle. Les deux dépendances sont `@Optional()` du constructeur (un montage sans chat fonctionne comme avant).
 

@@ -26,6 +26,12 @@ export interface AnswerRequest {
   requestedContext: number | null
 }
 
+/**
+ * Streams that stay open after their `done`, for the automatic title that follows it. The answer is finished at `done`
+ * (the thread, the send button and the actions do not wait); a new answer drops them, which makes the server cancel the title.
+ */
+const residual = new Map<string, AbortController>()
+
 /** Writes an event into the conversation of the cache, and keeps the messages this browser has seen. */
 function applyToCache(queryClient: QueryClient, conversationId: string, event: ChatStreamEvent): void {
   queryClient.setQueryData<ChatConversation>(chatKeys.conversation(conversationId), (conversation) => {
@@ -59,19 +65,37 @@ export function startAnswer(queryClient: QueryClient, conversationId: string, re
     toast.error(i18n.get('chat.error.alreadyAnswering'))
     return false
   }
+  // The model is free for this answer: a title still being written is given up (the server cancels it when the stream goes).
+  for (const open of residual.values()) open.abort()
+  residual.clear()
   const controller = new AbortController()
   const reload = contextChangeReloads(request.requestedContext, live.status, request.modelId) ? request.requestedContext : null
   live.begin(conversationId, controller, reload)
+  /** The stream of this answer is still the one the conversation shows (a later answer may have replaced it). */
+  const isCurrent = () => useChatLiveStore.getState().streams[conversationId]?.controller === controller
+  let finished = false
+  const onEvent = (event: ChatStreamEvent) => {
+    handle(queryClient, conversationId, request, event)
+    if (event.type !== 'done') return
+    // The answer is over: the thread, the statistics and the send button are ready. The stream goes on for the title.
+    finished = true
+    residual.set(conversationId, controller)
+    if (isCurrent()) useChatLiveStore.getState().end(conversationId)
+  }
   void (async () => {
     try {
-      await streamAnswer(request.path, request.body, { signal: controller.signal, onEvent: (event) => handle(queryClient, conversationId, request, event) })
+      await streamAnswer(request.path, request.body, { signal: controller.signal, onEvent })
     } catch (error) {
       const failure = error instanceof ChatError ? error : new ChatError((error as Error).message, 'upstream')
-      useChatLiveStore.getState().fail(conversationId, { code: failure.code, message: failure.message })
+      if (isCurrent() && !finished) useChatLiveStore.getState().fail(conversationId, { code: failure.code, message: failure.message })
     } finally {
-      useChatLiveStore.getState().end(conversationId)
-      // After a stop or an error the server's message is the truth (text received, status): read it again.
-      if (controller.signal.aborted || useChatLiveStore.getState().streams[conversationId]?.error) void queryClient.invalidateQueries({ queryKey: chatKeys.conversation(conversationId) })
+      if (residual.get(conversationId) === controller) residual.delete(conversationId)
+      if (isCurrent()) useChatLiveStore.getState().end(conversationId)
+      // After a stop or an error the server's message is the truth (text received, status): read it again. Not after `done`:
+      // the answer was complete, and dropping the stream that waits for a title must not reload a conversation being written.
+      if (!finished && isCurrent() && (controller.signal.aborted || useChatLiveStore.getState().streams[conversationId]?.error)) {
+        void queryClient.invalidateQueries({ queryKey: chatKeys.conversation(conversationId) })
+      }
       void queryClient.invalidateQueries({ queryKey: studioKeys.conversations })
     }
   })()

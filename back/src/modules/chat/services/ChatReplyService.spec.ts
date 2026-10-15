@@ -119,7 +119,7 @@ describe('ChatReplyService', () => {
   it('answers: the user message, the empty answer, the stream, the usage, then done', async () => {
     play(reply('Bon', 'jour'), [{ type: 'delta', content: 'Salutations cordiales' }, { type: 'done', finish_reason: 'stop' }]);
     const sink = await send('Bonjour le monde');
-    expect(sink.names()).toEqual(['message', 'message', 'loading', 'delta', 'delta', 'usage', 'title', 'done']);
+    expect(sink.names()).toEqual(['message', 'message', 'loading', 'delta', 'delta', 'usage', 'done', 'title']); // done first, the title after
     const [user, assistant] = sink.of('message').map((m) => m.message);
     expect(user).toMatchObject({ role: 'user', content: 'Bonjour le monde', parent_id: null, status: 'done' });
     expect(assistant).toMatchObject({ role: 'assistant', content: '', parent_id: user.id, status: 'streaming', model_id: 'llm-a' });
@@ -149,7 +149,7 @@ describe('ChatReplyService', () => {
     play(reply('ok'), [{ type: 'error', code: 'upstream', message: 'boom' }]);
     const sink = await send('Ma première question');
     expect(sink.names()).not.toContain('title');
-    expect(sink.names().at(-1)).toBe('done'); // a failed title is not a failed reply
+    expect(sink.names().at(-1)).toBe('done'); // a failed title is not a failed reply: the stream just ends
     expect(await title()).toBe('Ma première question');
     await dataSource.getRepository(ConversationEntity).update({ id: conv }, { title: 'Mon titre' });
     const second = await send('Suite');
@@ -353,6 +353,148 @@ describe('ChatReplyService', () => {
     expect(stored.attachments.map((a) => a.kind).sort()).toEqual(['image', 'text']);
   });
 
+  describe('the title after done', () => {
+    /** Call 1 answers at once; the title request (call 2) waits until `releaseTitle()`, or until the engine request is closed. */
+    function slowTitle() {
+      let release: () => void = () => undefined;
+      const state = { titleClosed: false, titleAsked: false, calls: 0 };
+      engine.handle((req, res) => {
+        if (req.url !== '/engine/v1/llm/chat') return void res.writeHead(404).end();
+        state.calls++;
+        res.writeHead(200, { 'content-type': 'text/event-stream' });
+        if (state.calls !== 2) {
+          for (const e of reply('Bon', 'jour')) res.write(frame(e));
+          return void res.end();
+        }
+        state.titleAsked = true;
+        res.on('close', () => (state.titleClosed = true));
+        release = () => {
+          res.write(frame({ type: 'delta', content: 'Un bon titre' }));
+          res.write(frame({ type: 'done', finish_reason: 'stop' }));
+          res.end();
+        };
+      });
+      return { state, releaseTitle: () => release() };
+    }
+    const until = async (check: () => boolean) => {
+      for (let i = 0; i < 100 && !check(); i++) await new Promise((r) => setTimeout(r, 10));
+      expect(check()).toBe(true);
+    };
+    const start = (content: string, extra: object = {}) => {
+      const sink = new Sink();
+      const finished = service.send(conv, { content, attachments: [], parentId: undefined, modelId: undefined, ...extra }, sink);
+      return { sink, finished };
+    };
+
+    it('signals the end at once, then writes the title in the background and closes the stream with it', async () => {
+      const { state, releaseTitle } = slowTitle();
+      const { sink, finished } = start('Bonjour le monde');
+      await until(() => sink.names().includes('done'));
+      expect(sink.names()).not.toContain('title');
+      await until(() => state.titleAsked);
+      expect(gate.busy).toBe(true); // the model is in use for the title...
+      expect(gate.preemptible).toBe(true); // ...but offered to whoever needs it
+      expect(service.runningIn(conv)).toBe(false); // the reply itself is over: it can be deleted from, regenerated...
+      expect(await store.getMessage(sink.of('done')[0].message.id)).toMatchObject({ status: 'done', content: 'Bonjour' });
+      releaseTitle();
+      await finished;
+      expect(sink.names().slice(-2)).toEqual(['done', 'title']);
+      expect(sink.of('title')).toEqual([{ title: 'Un bon titre' }]);
+      expect(await title()).toBe('Un bon titre');
+      expect(gate.busy).toBe(false);
+    });
+
+    it('closes the stream at done when no title is to be written (a second exchange, a title the user chose)', async () => {
+      await send('Premier');
+      chatBodies.length = 0;
+      const second = await send('Second');
+      expect(second.names().at(-1)).toBe('done');
+      expect(chatBodies).toHaveLength(1);
+    });
+
+    it('a new message cancels the title and takes the engine at once: never busy because of a title', async () => {
+      const { state, releaseTitle } = slowTitle();
+      const first = start('Premier sujet');
+      await until(() => state.titleAsked);
+      const second = new Sink();
+      const secondDone = service.send(conv, { content: 'Deuxième message', attachments: [], parentId: undefined, modelId: undefined }, second);
+      await secondDone;
+      expect(second.names()).not.toContain('error');
+      expect(second.names()).toContain('done');
+      await first.finished; // the first stream ends, without a title
+      expect(first.sink.names().at(-1)).toBe('done');
+      expect(first.sink.names()).not.toContain('title');
+      await until(() => state.titleClosed); // the engine request was dropped
+      expect(await title()).toBe('Premier sujet'); // the provisional title stays
+      expect(gate.busy).toBe(false);
+      releaseTitle();
+    });
+
+    it.each([
+      ['a regeneration', (done: Json) => service.regenerate(conv, done.id, undefined, new Sink())],
+      ['an edit', (done: Json) => service.edit(conv, done.parent_id, { content: 'Corrigé', attachments: undefined }, new Sink())],
+    ])('%s also takes the engine from a title in progress', async (_name, act) => {
+      const { state } = slowTitle();
+      const first = start('Sujet');
+      await until(() => state.titleAsked);
+      await act(first.sink.of('done')[0].message);
+      await first.finished;
+      await until(() => state.titleClosed);
+      expect(gate.busy).toBe(false);
+    });
+
+    it('lets a queued generation go: the title is cancelled and the engine released', async () => {
+      const { state } = slowTitle();
+      const first = start('Sujet');
+      await until(() => state.titleAsked);
+      const released = gate.released$.pipe().subscribe(() => undefined);
+      void gate.preempt(); // what the generation queue does when it has something to submit
+      await first.finished;
+      released.unsubscribe();
+      await until(() => state.titleClosed);
+      expect(gate.busy).toBe(false);
+    });
+
+    it('is cancelled without noise when the client leaves after done: the provisional title stays, the engine is released', async () => {
+      const { state } = slowTitle();
+      const { sink, finished } = start('Sujet du jour');
+      await until(() => state.titleAsked);
+      sink.controller.abort();
+      await finished;
+      expect(sink.names().at(-1)).toBe('done');
+      expect(sink.names()).not.toContain('error');
+      expect(sink.names()).not.toContain('title');
+      expect(await title()).toBe('Sujet du jour');
+      await until(() => state.titleClosed);
+      expect(gate.busy).toBe(false);
+      const message = sink.of('done')[0].message;
+      expect(await store.getMessage(message.id)).toMatchObject({ status: 'done' }); // the reply itself is untouched
+    });
+
+    it('cancelConversation also stops a title in progress', async () => {
+      const { state } = slowTitle();
+      const { finished } = start('Sujet');
+      await until(() => state.titleAsked);
+      service.cancelConversation(conv);
+      await finished;
+      await until(() => state.titleClosed);
+      expect(gate.busy).toBe(false);
+    });
+
+    it('does not start a title when the client already left at done', async () => {
+      const { state } = slowTitle();
+      const sink = new Sink();
+      const emit = sink.emit.bind(sink);
+      sink.emit = (event, data) => {
+        emit(event, data);
+        if (event === 'done') sink.controller.abort();
+      };
+      await service.send(conv, { content: 'Sujet', attachments: [], parentId: undefined, modelId: undefined }, sink);
+      expect(state.titleAsked).toBe(false);
+      expect(gate.busy).toBe(false);
+    });
+  });
+
   describe('web tools', () => {
     beforeEach(async () => {
       await store.updateSettings(conv, { tools: { web: true } });
@@ -405,7 +547,7 @@ describe('ChatReplyService', () => {
       expect(chatBodies.slice(0, 5).every((b) => Array.isArray(b.tools))).toBe(true);
       expect(chatBodies[5].tools).toBeUndefined();
       expect(webTool.run).toHaveBeenCalledTimes(5);
-      expect(sink.names().at(-1)).toBe('done');
+      expect(sink.names()).toContain('done');
     });
 
     it('ignores a tool call made on the last round, when no tool is offered', async () => {
