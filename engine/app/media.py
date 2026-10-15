@@ -51,26 +51,26 @@ def load_upload(data: bytes) -> Image.Image:
     return img
 
 
-def save_upload(asset_id: str, data: bytes) -> tuple[str, int, int]:
+def save_upload(asset_id: str, data: bytes, folder: Path | None = None) -> tuple[str, int, int]:
     img = load_upload(data)
     filename = f"{asset_id}.png"
-    img.save(UPLOADS_DIR / filename, optimize=False)
+    img.save((folder or UPLOADS_DIR) / filename, optimize=False)
     return filename, img.width, img.height
 
 
-def make_thumb(src: Path, asset_id: str) -> str:
+def make_thumb(src: Path, asset_id: str, folder: Path | None = None) -> str:
     filename = f"{asset_id}.webp"
     with Image.open(src) as img:
         # RGBA outputs (native transparency from Qwen Image 2.1) keep their alpha channel.
         img = img.convert("RGBA" if img.mode in ("RGBA", "LA", "PA") else "RGB")
         img.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.Resampling.LANCZOS)
-        img.save(THUMBS_DIR / filename, quality=86)
+        img.save((folder or THUMBS_DIR) / filename, quality=86)
     return filename
 
 
-def delete_previews(job_id: str) -> None:
+def delete_previews(job_id: str, folder: Path | None = None) -> None:
     """Remove the intermediate preview images of a job."""
-    for p in PREVIEWS_DIR.glob(f"{job_id}_*"):
+    for p in (folder or PREVIEWS_DIR).glob(f"{job_id}_*"):
         p.unlink(missing_ok=True)
 
 
@@ -240,12 +240,12 @@ def read_video_with_audio(path: Path):
     return frames, audio, (int(rate) if audio is not None and rate else None)
 
 
-def video_thumb(src: Path, asset_id: str) -> str:
+def video_thumb(src: Path, asset_id: str, folder: Path | None = None) -> str:
     """WebP thumbnail of the first frame."""
     filename = f"{asset_id}.webp"
     img = read_frames(src, 1)[0]
     img.thumbnail((THUMB_SIZE, THUMB_SIZE), Image.Resampling.LANCZOS)
-    img.save(THUMBS_DIR / filename, quality=86)
+    img.save((folder or THUMBS_DIR) / filename, quality=86)
     return filename
 
 

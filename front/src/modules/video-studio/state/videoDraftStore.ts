@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { privacyStorage, registerPrivacyStore } from '@/modules/private/lib/privacyStorage'
 import type { Asset, GenParams } from '@/modules/studio-core/types'
 import type { VideoSlot, VideoUpload } from '../types'
 
@@ -65,7 +66,11 @@ export const useVideoDraftStore = create<VideoDraftState>()(
     }),
     {
       name: 'cn-video-composer',
+      storage: privacyStorage(),
       partialize: (state) => ({ prompt: state.prompt, paramsByModel: state.paramsByModel, count: state.count }),
     },
   ),
 )
+
+// Private generation: what the user typed is neither read nor written while it is on, and is emptied / read back around it.
+registerPrivacyStore(useVideoDraftStore)

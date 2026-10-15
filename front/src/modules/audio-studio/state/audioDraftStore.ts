@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { privacyStorage, registerPrivacyStore } from '@/modules/private/lib/privacyStorage'
 import type { GenParams } from '@/modules/studio-core'
 import type { VoiceRef } from '@/modules/voices'
 
@@ -67,7 +68,11 @@ export const useAudioDraftStore = create<AudioDraftState>()(
     }),
     {
       name: 'cn-audio-composer',
+      storage: privacyStorage(),
       partialize: (state) => ({ prompt: state.prompt, paramsByModel: state.paramsByModel, voiceByModel: state.voiceByModel, languageByModel: state.languageByModel, instructByModel: state.instructByModel, cast: state.cast, count: state.count, autoplay: state.autoplay }),
     },
   ),
 )
+
+// Private generation: what the user typed is neither read nor written while it is on, and is emptied / read back around it.
+registerPrivacyStore(useAudioDraftStore)

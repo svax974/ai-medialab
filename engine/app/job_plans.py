@@ -40,6 +40,8 @@ class JobRequest:
     # Voices of the caller's library by id (`{"path", "transcript", "name"}`); the engine has no library of its own.
     voices: dict[str, dict[str, Any]] | None = None
     sink: JobSink | None = None  # None: publish on the event bus
+    # Private generation (private_session.py): the session folder every file of this job stays in; nothing is kept after.
+    private_dir: str | None = None
 
     # Runtime state, owned by the JobManager.
     state: str = "queued"  # queued | loading | running | done | failed | cancelled
@@ -58,11 +60,13 @@ def build_plan(job: JobRequest) -> dict[str, Any]:
         spec = get_spec(job.model_id)
     except KeyError as exc:
         raise ValueError(str(exc)) from None
-    if spec.kind == "audio":
-        return _audio_plan(job, spec)
-    if spec.kind == "video":
-        return _video_plan(job, spec)
-    return _image_plan(job, spec)
+    plan = _audio_plan(job, spec) if spec.kind == "audio" else _video_plan(job, spec) if spec.kind == "video" \
+        else _image_plan(job, spec)
+    plan["private_dir"] = job.private_dir
+    if job.private_dir:  # engines that keep measures or caches by request read this flag: nothing of a private run is kept
+        for item in plan["items"]:
+            item["request"].setdefault("extra", {})["private"] = True
+    return plan
 
 
 def _output(job: JobRequest, index: int, ext: str) -> str:

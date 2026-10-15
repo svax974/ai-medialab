@@ -60,6 +60,30 @@ def build_number(binary: Path) -> int | None:
     return int(m.group(1)) if m else None
 
 
+# `--prompt-file` and `--negative-prompt-file` of sd-cli (examples/common/common.cpp): read at master-720, unknown at master-700.
+PROMPT_FILE_MIN_BUILD = 720
+
+
+def prompt_args(binary: Path, prompt: str, negative: str | None, folder: Path | None) -> list[str]:
+    """The prompt arguments of one sd-cli run. With a `folder` (a private session's temporary folder) and a build that
+    reads prompt files, the texts go through files there (0600, removed with the folder) instead of the command line,
+    which other processes of the user can read while the job runs; otherwise `-p` and `-n` as always."""
+    negative = (negative or "").strip()
+    number = build_number(binary)
+    if folder is not None and number is not None and number >= PROMPT_FILE_MIN_BUILD:
+        args: list[str] = []
+        for flag, name, text in (("--prompt-file", "prompt.txt", prompt), ("--negative-prompt-file", "negative.txt", negative)):
+            if flag == "--negative-prompt-file" and not negative:
+                continue
+            path = folder / name
+            fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                handle.write(text)
+            args += [flag, str(path)]
+        return args
+    return ["-p", prompt] + (["-n", negative] if negative else [])
+
+
 def video_unsupported(binary: Path, variant: str) -> str | None:
     """French error when this build cannot run video models, else None (unknown versions are given the benefit of the doubt)."""
     number = build_number(binary)

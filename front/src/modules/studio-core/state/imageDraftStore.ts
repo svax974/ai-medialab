@@ -5,6 +5,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { privacyStorage, registerPrivacyStore } from '@/modules/private/lib/privacyStorage'
 import type { Asset, GenParams } from '../types'
 
 /** An import in progress: a preview of the file is shown until the server answers. */
@@ -91,7 +92,11 @@ export const useImageDraftStore = create<ImageDraftState>()(
     }),
     {
       name: 'cn-composer',
+      storage: privacyStorage(),
       partialize: (state) => ({ prompt: state.prompt, paramsByModel: state.paramsByModel, count: state.count, referenceSize: state.referenceSize }),
     },
   ),
 )
+
+// Private generation: what the user typed is neither read nor written while it is on, and is emptied / read back around it.
+registerPrivacyStore(useImageDraftStore)

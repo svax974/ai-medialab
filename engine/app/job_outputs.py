@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .media import make_thumb, new_id, video_thumb
+from .private_session import session_dir, subfolder
 
 
 def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]:
@@ -21,6 +22,8 @@ def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]
     path = Path(evt["path"])
     asset_id = new_id()
     params = plan["params"]
+    private = plan.get("private_dir")
+    thumbs = subfolder(session_dir(private), "thumbs") if private else None
     out: dict[str, Any] = {
         "index": evt["index"], "media": media, "asset_id": asset_id, "path": str(path), "filename": path.name,
         "thumb": None, "width": None, "height": None, "seed": evt.get("seed"), "duration": None,
@@ -28,7 +31,7 @@ def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]
     if media == "image":
         from PIL import Image
 
-        out["thumb"] = make_thumb(path, asset_id)
+        out["thumb"] = make_thumb(path, asset_id, thumbs)
         with Image.open(path) as img:
             out["width"], out["height"] = img.size
         out["meta"] = {
@@ -36,7 +39,7 @@ def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]
             "guidance": params.get("guidance"), "strength": params.get("strength"), "seconds": evt.get("seconds"),
         }
     elif media == "video":
-        out["thumb"] = video_thumb(path, asset_id)
+        out["thumb"] = video_thumb(path, asset_id, thumbs)
         out.update(width=evt.get("width"), height=evt.get("height"), duration=evt.get("duration"))
         out["meta"] = {
             "model_id": plan["model_id"], "prompt": plan["prompt"], "steps": params["steps"],
@@ -52,4 +55,7 @@ def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]
             "voice": plan.get("voice_label"), "speakers": plan.get("speakers"),
             "sample_rate": evt.get("sample_rate"), "peaks": evt.get("peaks"), "markers": evt.get("markers"),
         }
+    if private:  # the caller already has the prompt in memory; what describes the file must not carry it
+        out["meta"].pop("prompt", None)
+        out["meta"].pop("instruct", None)
     return out

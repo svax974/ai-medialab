@@ -14,6 +14,7 @@ Protocol: the parent sends dicts on `commands`, the worker answers with dicts on
 from __future__ import annotations
 
 import os
+import tempfile
 import time
 import traceback
 from pathlib import Path
@@ -66,6 +67,7 @@ def run_worker(model_id: str, quantize: int | None, options: dict, commands, eve
 
         job_id = cmd["job_id"]
         cancel_event.clear()
+        tempfile.tempdir = cmd.get("tmp_dir")  # private generation: temporary files stay in the session folder
         items: list[dict] = cmd["items"]
         preview_every = int(cmd.get("preview_every") or 0)
         try:

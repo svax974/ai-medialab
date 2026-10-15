@@ -21,6 +21,7 @@ import os
 import queue
 import sys
 import threading
+import tempfile
 import time
 import traceback
 
@@ -112,6 +113,7 @@ def main() -> None:
             continue
         job_id = cmd["job_id"]
         cancel.clear()
+        tempfile.tempdir = cmd.get("tmp_dir")  # private generation: temporary files stay in the session folder
         try:
             for index, item in enumerate(cmd["items"]):
                 emit("item_start", job_id=job_id, index=index, seed=item.get("seed"), t=time.time())

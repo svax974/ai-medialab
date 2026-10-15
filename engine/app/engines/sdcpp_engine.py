@@ -31,6 +31,7 @@ from pathlib import Path
 
 from PIL import Image
 
+from ..sdcpp import prompt_args
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 
 # From this many pixels the VAE works in tiles (`--vae-tiling`): encoding the references and decoding the result at
@@ -89,12 +90,11 @@ class SdcppEngine(Engine):
                 if role in o.get("vision_for_refs", []) and not refs:
                     continue
                 cmd += [f"--{role}", path]
-            cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--steps", str(req.steps),
-                    "-s", str(req.seed), "-o", str(out)]
+            # A private session keeps the prompt off the command line (other processes can read it): see `sdcpp.prompt_args`.
+            cmd += prompt_args(self.binary, req.prompt, req.negative_prompt, tmp if req.extra.get("private") else None)
+            cmd += ["-W", str(req.width), "-H", str(req.height), "--steps", str(req.steps), "-s", str(req.seed), "-o", str(out)]
             if req.guidance is not None:
                 cmd += [o.get("guidance_arg", "--cfg-scale"), str(req.guidance)]
-            if (req.negative_prompt or "").strip():
-                cmd += ["-n", req.negative_prompt.strip()]
             if use_init:
                 cmd += ["-i", refs[0], "--strength", str(req.strength if req.strength is not None else 0.75)]
             else:

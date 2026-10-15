@@ -32,6 +32,7 @@ from .events import bus
 from .job_outputs import describe_output
 from .job_plans import JobRequest, build_plan
 from .media import delete_previews, media_url
+from .private_session import media_url as private_media_url, sanitize_error, session_dir, subfolder
 from .worker import run_worker
 
 HISTORY_SIZE = 100  # finished jobs kept so a reconnecting caller can learn how they ended
@@ -244,8 +245,9 @@ class JobManager:
                 if job_id in self.jobs:  # a path above forgot to finish it
                     self._finish(job, "failed", "Erreur interne : le job s'est arrêté sans résultat.")
                 stats = self.guard.job_stats()
-                print(f"[memory] job {job_id} : mémoire libre au plus bas {stats['min_free_gb']} Go, "
-                      f"processus du modèle au plus haut {stats['peak_worker_gb']} Go", flush=True)
+                if not job.private_dir:  # a private job leaves no line: not even when it ran (the id is a timestamp)
+                    print(f"[memory] job {job_id} : mémoire libre au plus bas {stats['min_free_gb']} Go, "
+                          f"processus du modèle au plus haut {stats['peak_worker_gb']} Go", flush=True)
                 self.current = None
                 self._cancel_requested.discard(job_id)
                 if self.worker and self.worker.alive:
@@ -292,7 +294,8 @@ class JobManager:
                 "job_id": job.job_id,
                 "items": plan["items"],
                 "preview_every": preview_every,
-                "preview_dir": str(PREVIEWS_DIR),
+                "preview_dir": str(subfolder(session_dir(job.private_dir), "previews") if job.private_dir else PREVIEWS_DIR),
+                "tmp_dir": str(subfolder(session_dir(job.private_dir), "tmp")) if job.private_dir else None,
             }
         )
         await self._consume(job, plan)
@@ -353,7 +356,8 @@ class JobManager:
                 self._publish_progress(job)
             elif kind == "preview":
                 name = Path(evt["path"]).name
-                prog["preview_url"] = media_url("previews", name) + f"?t={time.time():.0f}"
+                base = private_media_url(job.private_dir, "previews", name) if job.private_dir else media_url("previews", name)
+                prog["preview_url"] = base + f"?t={time.time():.0f}"
                 self._emit(job, "job.preview", {"index": evt["index"], "path": evt["path"], "filename": name,
                                                 "url": prog["preview_url"]})
             elif kind in ("image", "audio", "video"):
@@ -367,8 +371,8 @@ class JobManager:
                 self._finish(job, "cancelled")
                 return
             elif kind == "error":
-                print(evt.get("trace", ""), flush=True)
-                self._finish(job, "failed", evt["error"])
+                self._report_failure(job, evt)
+                self._finish(job, "failed", self._model_error(job, evt["error"]))
                 return
             elif kind == "exit":
                 pid = _pid(self.worker)
@@ -391,6 +395,14 @@ class JobManager:
         if w:
             self.worker = None
             await w.stop()
+
+        from .llm import llm
+
+        if llm.generating:  # a chat reply is being written: its model stays, this job fails with the reason
+            refused = "Une réponse de chat est en cours : relancez la génération quand elle est terminée."
+            self._finish(job, "failed", refused)
+            return False
+        await llm.stop()  # one model in memory: the chat model leaves before the worker loads
 
         spec = get_spec(model_id)
         refused = self._memory_preflight(spec)
@@ -441,8 +453,8 @@ class JobManager:
                     self.last_error = tripped
                     self._finish(job, "failed", tripped)
                     return False
-                error = evt.get("error") or f"Le processus de chargement s'est arrêté (code {evt.get('code')})."
-                print(evt.get("trace", ""), flush=True)
+                error = self._model_error(job, evt.get("error")) or f"Le processus de chargement s'est arrêté (code {evt.get('code')})."
+                self._report_failure(job, evt)
                 self.last_error = error
                 self._finish(job, "failed", f"Échec du chargement du modèle : {error}")
                 return False
@@ -482,16 +494,30 @@ class JobManager:
         except Exception as exc:  # noqa: BLE001
             print(f"job sink failed on {name} ({job.job_id}): {exc!r}", flush=True)
 
+    @staticmethod
+    def _model_error(job: JobRequest, error: str | None) -> str | None:
+        """An error text a model wrote: it may quote the prompt or the files, so a private job only keeps what is safe."""
+        return sanitize_error(error, job.prompt) if job.private_dir else error
+
+    @staticmethod
+    def _report_failure(job: JobRequest, evt: dict[str, Any]) -> None:
+        """Journal line of a failed job: the trace for a normal one; a private one never writes content (a trace quotes it)."""
+        print(f"[private] job {job.job_id} : échec (détails non journalisés)" if job.private_dir else evt.get("trace", ""),
+              flush=True)
+
     def _finish(self, job: JobRequest, state: str, error: str | None = None) -> None:
-        """Ends a job (`done`, `failed` or `cancelled`): keeps its outcome, cleans the previews, tells the sink."""
+        """Ends a job (`done`, `failed` or `cancelled`): keeps its outcome, cleans the previews, tells the sink.
+
+        A private job leaves no outcome behind: it is not in the history of finished jobs."""
         self.progress.pop(job.job_id, None)
         job.state, job.error = state, error
         self.jobs.pop(job.job_id, None)
-        self.history[job.job_id] = {"job_id": job.job_id, "state": state, "error": error, "outputs": list(job.outputs),
-                                    "queue_position": None, "progress": None}
-        while len(self.history) > HISTORY_SIZE:
-            self.history.popitem(last=False)
-        delete_previews(job.job_id)
+        if not job.private_dir:
+            self.history[job.job_id] = {"job_id": job.job_id, "state": state, "error": error,
+                                        "outputs": list(job.outputs), "queue_position": None, "progress": None}
+            while len(self.history) > HISTORY_SIZE:
+                self.history.popitem(last=False)
+        delete_previews(job.job_id, session_dir(job.private_dir) / "previews" if job.private_dir else None)  # never re-created
         name = {"done": "job.done", "failed": "job.failed", "cancelled": "job.cancelled"}[state]
         self._emit(job, name, {"error": error} if state == "failed" else {"outputs": len(job.outputs)})
 

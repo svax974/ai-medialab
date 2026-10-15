@@ -25,7 +25,9 @@ from ..engines import get_spec
 from ..job_checks import MAX_COUNT, check_generation
 from ..job_plans import JobRequest
 from ..jobs import jobs
+from ..llm import llm
 from ..media import VIDEO_EXTENSIONS, is_video_upload, make_thumb, probe_video, save_upload, video_thumb
+from ..private_session import inside, session_dir, subfolder
 
 jobs_router = APIRouter(tags=["jobs"])
 
@@ -60,6 +62,9 @@ class JobSubmit(BaseModel):
     inputs: list[str] = Field(default_factory=list, description="Absolute paths (inside the data folder).")
     output_dir: str = Field(description="Absolute folder (inside the data folder) the files are written to.")
     voices: dict[str, LibraryVoice] | None = Field(default=None, description="Library voices by id (audio).")
+    private_dir: str | None = Field(
+        default=None, description="Private generation: the session folder (`<data>/private/<id>`) the job keeps all "
+        "of its files in; `output_dir` must be inside it. The engine keeps nothing of such a job once it ended.")
 
 
 class JobOutput(BaseModel):
@@ -102,6 +107,19 @@ def _inside_data_dir(raw: str, what: str) -> Path:
     return resolved
 
 
+def _private_session(raw: str | None, out_dir: Path) -> Path | None:
+    """The session folder of a private job (422 when malformed or when the output folder is not inside it), else None."""
+    if raw is None:
+        return None
+    try:
+        session = session_dir(raw)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    if not inside(out_dir, session):
+        raise HTTPException(422, "output_dir : en dehors de la session privée.")
+    return session
+
+
 @jobs_router.post("/jobs/check", response_model=JobCheck)
 def check_job(body: JobCheckBody) -> dict[str, Any]:
     """Refuses (422, with the message to show) a generation the model cannot do, before anything is stored."""
@@ -120,16 +138,20 @@ def submit_job(body: JobSubmit) -> dict[str, Any]:
         raise HTTPException(422, str(exc)) from None
     if spec.kind != body.kind:
         raise HTTPException(422, f"{spec.name} est un modèle {spec.kind}, pas {body.kind}.")
+    if llm.generating:
+        raise HTTPException(409, "Une réponse de chat est en cours : attendez sa fin avant de lancer une génération.")
     if len(body.params.get("seeds") or []) > MAX_COUNT:
         raise HTTPException(422, f"{MAX_COUNT} résultats au plus par job.")
     out_dir = _inside_data_dir(body.output_dir, "output_dir")
+    private = _private_session(body.private_dir, out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     inputs = [str(_inside_data_dir(p, "inputs")) for p in body.inputs]
     voices = {k: v.model_dump() for k, v in body.voices.items()} if body.voices is not None else None
     for voice in (voices or {}).values():
         voice["path"] = str(_inside_data_dir(voice["path"], "voices"))
     job = JobRequest(job_id=body.job_id, model_id=body.model_id, prompt=body.prompt, params=dict(body.params),
-                     inputs=inputs, output_dir=str(out_dir), voices=voices)
+                     inputs=inputs, output_dir=str(out_dir), voices=voices,
+                     private_dir=str(private) if private else None)
     try:
         jobs.submit(job)
     except ValueError as exc:
@@ -169,6 +191,9 @@ class IngestBody(BaseModel):
     asset_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
     original_name: str | None = None
     content_type: str | None = None
+    private_dir: str | None = Field(
+        default=None, description="Private generation: store the reference and its thumbnail in this session folder "
+        "(`inputs/`, `thumbs/`) instead of `uploads/` and `thumbs/`.")
 
 
 class IngestResult(BaseModel):
@@ -189,32 +214,46 @@ async def ingest_upload(body: IngestBody) -> dict[str, Any]:
     if not source.is_file():
         raise HTTPException(422, "Fichier introuvable.")
     name = body.original_name or source.name
+    folders = _ingest_folders(body.private_dir)
     try:
         if is_video_upload(body.original_name, body.content_type):
-            return await asyncio.to_thread(_ingest_video, source, body.asset_id, name)
-        return await asyncio.to_thread(_ingest_image, source, body.asset_id, name)
+            return await asyncio.to_thread(_ingest_video, source, body.asset_id, name, *folders)
+        return await asyncio.to_thread(_ingest_image, source, body.asset_id, name, *folders)
     finally:
         source.unlink(missing_ok=True)
 
 
-def _ingest_image(source: Path, asset_id: str, name: str) -> dict[str, Any]:
+def _ingest_folders(private_dir: str | None) -> tuple[Path | None, Path | None]:
+    """(folder of the reference, folder of its thumbnail): the session's for a private upload, else the usual ones (None)."""
+    if private_dir is None:
+        return None, None
     try:
-        filename, width, height = save_upload(asset_id, source.read_bytes())
+        session = session_dir(private_dir)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from None
+    return subfolder(session, "inputs"), subfolder(session, "thumbs")
+
+
+def _ingest_image(source: Path, asset_id: str, name: str, uploads: Path | None = None,
+                  thumbs: Path | None = None) -> dict[str, Any]:
+    try:
+        filename, width, height = save_upload(asset_id, source.read_bytes(), uploads)
     except Exception:
         raise HTTPException(422, f"Image illisible : {name}") from None
-    thumb = make_thumb(config.UPLOADS_DIR / filename, asset_id)
+    thumb = make_thumb((uploads or config.UPLOADS_DIR) / filename, asset_id, thumbs)
     return {"media": "image", "filename": filename, "thumb": thumb, "width": width, "height": height, "meta": {}}
 
 
-def _ingest_video(source: Path, asset_id: str, name: str) -> dict[str, Any]:
+def _ingest_video(source: Path, asset_id: str, name: str, uploads: Path | None = None,
+                  thumbs: Path | None = None) -> dict[str, Any]:
     ext = Path(name).suffix.lower()
     ext = ext if ext in VIDEO_EXTENSIONS else ".mp4"
     filename = f"{asset_id}{ext}"
-    target = config.UPLOADS_DIR / filename
+    target = (uploads or config.UPLOADS_DIR) / filename
     shutil.copyfile(source, target)
     try:
         info = probe_video(target)
-        thumb = video_thumb(target, asset_id)
+        thumb = video_thumb(target, asset_id, thumbs)
     except Exception:
         target.unlink(missing_ok=True)
         raise HTTPException(422, f"Vidéo illisible : {name}") from None

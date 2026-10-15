@@ -23,6 +23,8 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 OUTPUTS_DIR = DATA_DIR / "outputs"
 THUMBS_DIR = DATA_DIR / "thumbs"
 PREVIEWS_DIR = DATA_DIR / "previews"
+# Private generation (private_session.py): one random folder per session, never listed in MEDIA_DIRS (its own mount).
+PRIVATE_DIR = DATA_DIR / "private"
 
 # Enables the demo model (synthetic images, no GPU) for UI testing.
 DEMO_MODE = os.environ.get("IMAGEGEN_DEMO", "0") == "1"
@@ -50,3 +52,5 @@ adopt_legacy_data_dir()
 def ensure_dirs() -> None:
     for d in (DATA_DIR, *MEDIA_DIRS.values()):
         d.mkdir(parents=True, exist_ok=True)
+    PRIVATE_DIR.mkdir(parents=True, exist_ok=True)
+    PRIVATE_DIR.chmod(0o700)
