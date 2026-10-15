@@ -21,6 +21,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/engines/llamacpp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Uninstall Runtime
+         * @description Removes llama.cpp (409 while the chat model is loaded or an install runs).
+         */
+        delete: operations["uninstall_runtime_engine_v1_engines_llamacpp_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/engines/llamacpp/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Install Runtime
+         * @description Installs llama.cpp for this machine; the progress comes through the `llamacpp.install` event.
+         */
+        post: operations["install_runtime_engine_v1_engines_llamacpp_install_post"];
+        /** Cancel Runtime Install */
+        delete: operations["cancel_runtime_install_engine_v1_engines_llamacpp_install_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/engines/pack/install": {
         parameters: {
             query?: never;
@@ -141,6 +182,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/hf/trending": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hf Trending Models
+         * @description New models of a kind that are successful and runnable here, best first. Reads the Hub: can take seconds the first time, then an hour from memory.
+         */
+        get: operations["hf_trending_models_engine_v1_hf_trending_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/jobs": {
         parameters: {
             query?: never;
@@ -219,6 +280,85 @@ export interface paths {
          * @description Stops a queued job at once; a running one stops after its current step (the worker is killed while loading).
          */
         post: operations["cancel_job_engine_v1_jobs__job_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/llm/chat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat
+         * @description Streams one reply (`text/event-stream`, events above). Refusals that come before any byte are plain HTTP errors:
+         *     404 unknown model, 422 not a chat model or a request the model cannot take (images, tools), 409 engine or model not
+         *     installed, a media generation or another reply running.
+         */
+        post: operations["chat_engine_v1_llm_chat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/llm/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Llm Status */
+        get: operations["llm_status_engine_v1_llm_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/llm/tokenize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tokenize
+         * @description Tokens of a text, for the context gauge: exact when the model is loaded, else an estimate.
+         */
+        post: operations["tokenize_engine_v1_llm_tokenize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/llm/unload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unload
+         * @description Unloads the chat model (409 while a reply is being generated).
+         */
+        post: operations["unload_engine_v1_llm_unload_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -451,10 +591,277 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/updates/advice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Advise Update
+         * @description Reads public sources about one update (GitHub for an engine, Hugging Face for a model) with the local chat model and
+         *     lists the problems they report. One analysis at a time, about a minute. A 409 carries `{code, message}` (`busy`,
+         *     `no_engine`, `no_model`, `nothing_to_analyse`, `unsupported`), a 502 `no_sources`, `llm` or `llm_output`.
+         */
+        post: operations["advise_update_engine_v1_updates_advice_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/updates/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Check Updates
+         * @description Engines and installed models, each `current`, `update` or (models) `error`. Reads the Hub and GitHub: can take seconds.
+         */
+        get: operations["check_updates_engine_v1_updates_check_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/updates/engines/{engine_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Update Engine
+         * @description `target=pinned`: the release the application was tested with (the update `check` recommends; also the way back from a newer build). `latest`: the newest
+         *     upstream release, untested (`latest` of the check row; stable-diffusion.cpp and audio.cpp only). The caller asks the
+         *     user to confirm that one.
+         */
+        post: operations["update_engine_engine_v1_updates_engines__engine_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/updates/models/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Update Model */
+        post: operations["update_model_engine_v1_updates_models__model_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /**
+         * Advice
+         * @description What the adviser concluded about one update. Informative: nothing is blocked by it.
+         */
+        Advice: {
+            /** Findings */
+            findings: components["schemas"]["AdviceFinding"][];
+            /**
+             * From Version
+             * @description Installed release (engines) or short revision of the cache (models).
+             */
+            from_version: string | null;
+            /** Generated At */
+            generated_at: number;
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "engine" | "model";
+            /** Llm Model Id */
+            llm_model_id: string;
+            /**
+             * Notes
+             * @description What could not be read (rate limit, network).
+             */
+            notes: string[];
+            /**
+             * Rejected
+             * @description Findings dropped because their excerpt is not in the source.
+             */
+            rejected: number;
+            /** Sources */
+            sources: components["schemas"]["AdviceSource"][];
+            /** Summary */
+            summary: string;
+            /**
+             * Target
+             * @enum {string}
+             */
+            target: "pinned" | "latest";
+            /**
+             * To Version
+             * @description Target release (engines) or fingerprint of what changed on the Hub (models).
+             */
+            to_version: string | null;
+            /**
+             * Truncated
+             * @description Sources that did not fit the model's context.
+             */
+            truncated: number;
+            /**
+             * Verdict
+             * @description Computed by the code from the kept findings, never by the model.
+             * @enum {string}
+             */
+            verdict: "none" | "caution" | "discouraged";
+        };
+        /** AdviceBody */
+        AdviceBody: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "engine" | "model";
+            /**
+             * Target
+             * @description Engines: the tested release (`pinned`) or the newest upstream one (`latest`, untested).
+             * @default pinned
+             * @enum {string}
+             */
+            target: "pinned" | "latest";
+        };
+        /** AdviceFinding */
+        AdviceFinding: {
+            /**
+             * Quote
+             * @description Excerpt of the source, copied word for word (checked), or the documented regression.
+             */
+            quote: string;
+            /**
+             * Severity
+             * @enum {string}
+             */
+            severity: "info" | "warning" | "critical";
+            /**
+             * Source Kind
+             * @description release | issue | commit | discussion | card | known
+             */
+            source_kind: string;
+            /** Title */
+            title: string;
+            /**
+             * Url
+             * @description The page the excerpt comes from; empty for a regression the repository documents.
+             */
+            url: string;
+        };
+        /** AdviceSource */
+        AdviceSource: {
+            /** Title */
+            title: string;
+            /** Url */
+            url: string;
+        };
+        /** ChatBody */
+        ChatBody: {
+            /**
+             * Context Size
+             * @description Tokens of context; clamped to the model's range. The model reloads when it changes.
+             */
+            context_size?: number | null;
+            /** Messages */
+            messages: components["schemas"]["ChatMessage"][];
+            /** Model Id */
+            model_id: string;
+            params?: components["schemas"]["SamplingParams"];
+            /**
+             * Private
+             * @description A private session's reply: unloading the model afterwards leaves no log line.
+             * @default false
+             */
+            private: boolean;
+            /**
+             * Reasoning
+             * @default auto
+             * @enum {string}
+             */
+            reasoning: "auto" | "off" | "low" | "medium" | "high";
+            /**
+             * Response Format
+             * @description Constrained JSON answer, as llama-server takes it: {type: 'json_object' | 'json_schema', schema?}.
+             */
+            response_format?: {
+                [key: string]: unknown;
+            } | null;
+            /** Tool Choice */
+            tool_choice?: string | {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Tools
+             * @description OpenAI function schemas.
+             */
+            tools?: {
+                [key: string]: unknown;
+            }[] | null;
+        };
+        /** ChatMessage */
+        ChatMessage: {
+            /** Content */
+            content?: string | components["schemas"]["ChatPart"][] | null;
+            /** Name */
+            name?: string | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "system" | "user" | "assistant" | "tool";
+            /**
+             * Tool Call Id
+             * @description The call a `tool` message answers.
+             */
+            tool_call_id?: string | null;
+            /**
+             * Tool Calls
+             * @description OpenAI-shaped calls of an assistant turn.
+             */
+            tool_calls?: {
+                [key: string]: unknown;
+            }[] | null;
+        };
+        /** ChatPart */
+        ChatPart: {
+            image_url?: components["schemas"]["ImageUrl"] | null;
+            /** Text */
+            text?: string | null;
+            /**
+             * Type
+             * @enum {string}
+             */
+            type: "text" | "image_url";
+        };
         /** CustomModelBody */
         CustomModelBody: {
             /**
@@ -470,6 +877,14 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** ImageUrl */
+        ImageUrl: {
+            /**
+             * Url
+             * @description A data URL, or the absolute path of a file of the data folder.
+             */
+            url: string;
+        };
         /** IngestBody */
         IngestBody: {
             /** Asset Id */
@@ -478,6 +893,11 @@ export interface components {
             content_type?: string | null;
             /** Original Name */
             original_name?: string | null;
+            /**
+             * Private Dir
+             * @description Private generation: store the reference and its thumbnail in this session folder (`inputs/`, `thumbs/`) instead of `uploads/` and `thumbs/`.
+             */
+            private_dir?: string | null;
             /**
              * Source Path
              * @description Raw uploaded file, inside the data folder; consumed.
@@ -622,6 +1042,11 @@ export interface components {
                 [key: string]: unknown;
             };
             /**
+             * Private Dir
+             * @description Private generation: the session folder (`<data>/private/<id>`) the job keeps all of its files in; `output_dir` must be inside it. The engine keeps nothing of such a job once it ended.
+             */
+            private_dir?: string | null;
+            /**
              * Prompt
              * @default
              */
@@ -651,6 +1076,28 @@ export interface components {
              * @default
              */
             transcript: string;
+        };
+        /** LlmStatus */
+        LlmStatus: {
+            /** Context Size */
+            context_size?: number | null;
+            /** Last Error */
+            last_error?: string | null;
+            /** Model Id */
+            model_id?: string | null;
+            /** Pid */
+            pid?: number | null;
+            /** Started At */
+            started_at?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "loading" | "ready" | "generating";
+            /** Variant */
+            variant?: string | null;
+            /** Vision */
+            vision?: boolean | null;
         };
         /** PurgeBody */
         PurgeBody: {
@@ -703,6 +1150,46 @@ export interface components {
                 [key: string]: string;
             };
         };
+        /** SamplingParams */
+        SamplingParams: {
+            /** Frequency Penalty */
+            frequency_penalty?: number | null;
+            /** Max Tokens */
+            max_tokens?: number | null;
+            /** Min P */
+            min_p?: number | null;
+            /** Presence Penalty */
+            presence_penalty?: number | null;
+            /** Repeat Penalty */
+            repeat_penalty?: number | null;
+            /** Seed */
+            seed?: number | null;
+            /** Stop */
+            stop?: string[] | null;
+            /** Temperature */
+            temperature?: number | null;
+            /** Top K */
+            top_k?: number | null;
+            /** Top P */
+            top_p?: number | null;
+        };
+        /** TokenCount */
+        TokenCount: {
+            /**
+             * Exact
+             * @description False: an estimate (the model is not loaded).
+             */
+            exact: boolean;
+            /** Tokens */
+            tokens: number;
+        };
+        /** TokenizeBody */
+        TokenizeBody: {
+            /** Model Id */
+            model_id?: string | null;
+            /** Text */
+            text: string;
+        };
         /** TranscribeBody */
         TranscribeBody: {
             /** Language */
@@ -728,6 +1215,85 @@ export interface components {
             model: string;
             /** Text */
             text: string;
+        };
+        /** TrendingEntry */
+        TrendingEntry: {
+            /** Age Days */
+            age_days: number;
+            /** Author */
+            author: string;
+            /** Compatible */
+            compatible: boolean;
+            /** Created At */
+            created_at: string;
+            /** Downloads */
+            downloads: number;
+            /** Family */
+            family: string;
+            /** Family Label */
+            family_label: string;
+            /** License */
+            license: string;
+            /** License Note */
+            license_note?: ("noncommercial" | "custom") | null;
+            /** Likes */
+            likes: number;
+            /** Name */
+            name: string;
+            option?: components["schemas"]["TrendingOption"] | null;
+            /** Options */
+            options: number;
+            /** Reason */
+            reason: string;
+            /** Repo */
+            repo: string;
+            /** Task */
+            task: string;
+            /** Trending Score */
+            trending_score: number;
+            /** Url */
+            url: string;
+        };
+        /** TrendingHidden */
+        TrendingHidden: {
+            /** Existing */
+            existing: number;
+            /** Heavy */
+            heavy: number;
+        };
+        /**
+         * TrendingOption
+         * @description The variant the add flow would select by default.
+         */
+        TrendingOption: {
+            /** Download Gb */
+            download_gb?: number | null;
+            /** Fit Note */
+            fit_note?: string | null;
+            /** Fits */
+            fits?: boolean | null;
+            /** Key */
+            key?: string | null;
+            /** Label */
+            label?: string | null;
+            /** Precision */
+            precision?: string | null;
+            /** Size Gb */
+            size_gb?: number | null;
+        };
+        /** TrendingResponse */
+        TrendingResponse: {
+            /** Cached */
+            cached: boolean;
+            /** Days */
+            days: number;
+            /** Generated At */
+            generated_at: number;
+            hidden: components["schemas"]["TrendingHidden"];
+            /** Kind */
+            kind: string;
+            /** Results */
+            results: components["schemas"]["TrendingEntry"][];
         };
         /** ValidationError */
         ValidationError: {
@@ -777,6 +1343,72 @@ export interface components {
 export type $defs = Record<string, never>;
 export interface operations {
     unload_engine_engine_v1_engine_unload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    uninstall_runtime_engine_v1_engines_llamacpp_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    install_runtime_engine_v1_engines_llamacpp_install_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    cancel_runtime_install_engine_v1_engines_llamacpp_install_delete: {
         parameters: {
             query?: never;
             header?: never;
@@ -1017,6 +1649,41 @@ export interface operations {
             };
         };
     };
+    hf_trending_models_engine_v1_hf_trending_get: {
+        parameters: {
+            query?: {
+                kind?: "image" | "audio" | "video" | "llm";
+                days?: number;
+                limit?: number;
+                include_heavy?: boolean;
+                refresh?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrendingResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_jobs_engine_v1_jobs_get: {
         parameters: {
             query?: never;
@@ -1163,6 +1830,112 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    chat_engine_v1_llm_chat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    llm_status_engine_v1_llm_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmStatus"];
+                };
+            };
+        };
+    };
+    tokenize_engine_v1_llm_tokenize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TokenizeBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenCount"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unload_engine_v1_llm_unload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmStatus"];
                 };
             };
         };
@@ -1554,6 +2327,129 @@ export interface operations {
             };
             header?: never;
             path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    advise_update_engine_v1_updates_advice_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdviceBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Advice"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_updates_engine_v1_updates_check_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    update_engine_engine_v1_updates_engines__engine_id__post: {
+        parameters: {
+            query?: {
+                target?: "pinned" | "latest";
+            };
+            header?: never;
+            path: {
+                engine_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_model_engine_v1_updates_models__model_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
             cookie?: never;
         };
         requestBody?: never;

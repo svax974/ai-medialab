@@ -4,7 +4,7 @@ Studio local de création d'images, d'audio (synthèse vocale, clonage de voix) 
 machine — Metal (Apple Silicon), NVIDIA (CUDA) ou AMD (ROCm) — sans service externe. L'application embarque
 le serveur d'inférence et le gestionnaire de téléchargement des modèles (Hugging Face).
 
-Trois studios (image, audio, vidéo) partagent conversations, file d'attente, téléchargements et mémoire : l'inventaire de ce qui
+Trois studios (image, audio, vidéo) et un **Chat** avec des modèles de langage locaux partagent conversations, file d'attente, téléchargements et mémoire, et un mode **Génération privée** ne conserve rien : l'inventaire de ce qui
 est construit est dans [FEATURES.md](FEATURES.md), la forme de l'application (processus, contrat, flux, données) dans
 [ARCHITECTURE.md](ARCHITECTURE.md), qui porte aussi la carte de toute la documentation.
 
@@ -248,8 +248,14 @@ LTX-2.5 demandent 48 Go ou plus (LTX-2.3 en Q3_K_M passe de justesse).
 
 **Mesuré sur un M3 Max (36 Go), seul essai réel à ce jour** : Wan 2.2 TI2V 5B Q4_K_M via `sd-cli` (Metal), texte → vidéo, 480×832.
 9 images, 20 étapes : échantillonnage ≈ 6 s par étape, 7 Go de mémoire résidente, MP4 H.264 valide, image cohérente. 33 images :
-≈ 20 s par étape et la mémoire libre du système est tombée sous 6 Go (essai interrompu par le garde-fou) ; les clips sont donc limités
-à 1 s par défaut (2 s au plus) sur ces modèles. À 384×256 le modèle ne produit que du bruit abstrait : rien sous 480p n'est proposé.
+≈ 20 s par étape et la mémoire libre du système est tombée sous 6 Go (essai interrompu par le garde-fou) ; un passage est donc limité
+à 1 s sur ce modèle. **Clips longs (jusqu'à 20 s)** : les modèles GGUF image → vidéo (Wan 2.2 5B, Wan 2.2 I2V 14B, HunyuanVideo 1.5 I2V)
+enchaînent des passages l'un après l'autre, chacun partant de la dernière image du précédent. La longueur d'un passage n'est pas fixée
+d'avance : elle suit la mémoire **mesurée sur la machine** (le premier essai d'un modèle commence par un passage court de 9 images, puis les
+suivants grandissent d'après la mémoire réellement consommée, jusqu'aux 5 s du modèle ; voir `ARCHITECTURE.md`, « Filets de sécurité
+mémoire »). La mémoire reste celle d'un passage, le temps est multiplié et le mouvement peut changer d'une tranche à l'autre.
+**Non mesuré sur du vrai matériel** : ce chaînage n'a été testé qu'avec un faux `sd-cli`, et le prior (≈ 8 Go pour 9 images de Wan 5B en 480p)
+vient d'un seul essai réel. Les modèles texte → vidéo seul (Wan T2V 14B, HunyuanVideo T2V) et LTX (avec son) restent à leur durée d'origine. À 384×256 le modèle ne produit que du bruit abstrait : rien sous 480p n'est proposé.
 Le décodage du VAE complet est le goulot sur Metal (150 à 170 s même pour 9 images, tuilage sans effet) : l'option **« Décodage
 rapide »** (TAEHV, 23 Mo téléchargés au premier usage, vérifiés par SHA-256, activée par défaut sur Mac) le ramène à moins d'une seconde.
 
@@ -263,6 +269,26 @@ de diffusers) sont une inférence ; le GGUF Gemma 4 de LTX-2.5 n'est pas confirm
 code amont (confiance estimée : Kiwi-Edit ≈ 75 %, Bernini ≈ 65 %).
 
 **À essayer en vrai, du plus petit au plus gros** (surveiller la pression mémoire à chaque étape) : Wan 5B image → vidéo (le texte → vidéo est fait) ; Wan 5B en 720p ; HunyuanVideo 480p ; LTX-2.3 Q3_K_M ; sur 48 Go ou plus seulement, Wan 14B et LTX-2.5.
+
+## Chat : modèles de langage locaux
+
+Le Chat tourne sur **llama.cpp** (`llama-server`, modèles GGUF), installé à la demande depuis l'écran « Moteurs » : une invitation s'affiche au lancement tant qu'il
+manque (case « Ne plus me le proposer », rappelée dans les Réglages). Le catalogue propose 11 modèles de 0,7 à 17,7 Go (Qwen3 1.7B, 4B Instruct et 8B, LFM2.5 1.2B et
+8B-A1B, Ministral 3 8B, Gemma 4 E4B, 12B et 26B-A4B, gpt-oss-20b, Qwen3.8 27B) dont des modèles de vision, de raisonnement et MoE ; tailles et licences mesurées sur
+Hugging Face le 2026-10-15, et n'importe quel dépôt GGUF s'ajoute depuis la recherche « LLM ». Le modèle conseillé pour les petites tâches (mises à jour
+analysées, amélioration de prompt) est Qwen3 4B Instruct (2,33 Go).
+
+- **Mémoire** : un seul modèle à la fois pour toute l'application : lancer une génération d'image, d'audio ou de vidéo décharge le modèle de chat, et
+  inversement ; le contexte par défaut est de 16 384 tokens, en changer **recharge le modèle** ; le cache de prompt en mémoire est borné à 1 Go.
+- **Recherche web** (facultative, par conversation) : DuckDuckGo sans clé, ou Brave Search avec une clé saisie dans les Réglages (stockée chiffrée, jamais renvoyée).
+  Les requêtes sortent alors de la machine ; les adresses internes sont refusées.
+- **Génération privée** : bouton cadenas de la barre latérale. Aucune conversation, aucun résultat, aucun prompt n'est conservé (ni base, ni fichiers hors d'un dossier de
+  session effacé à la sortie, ni journaux, ni brouillons) ; ne sont pas couverts la mémoire virtuelle de l'OS, les sauvegardes, l'effacement sécurisé d'un SSD, les captures
+  d'écran, les fichiers que vous enregistrez vous-même et le texte d'`audio.cpp` encore passé en ligne de commande.
+- **Mises à jour** : « Vérifier les mises à jour » compare moteurs et modèles installés ; un petit modèle local peut résumer les notes de version et les discussions
+  (GitHub, Hugging Face) pour signaler d'éventuelles régressions : avis consultatif, jamais bloquant, enregistré et à vérifier.
+- **Non vérifié** : aucun vrai `llama-server` ni modèle de chat n'a été lancé ; le comportement décrit a été testé avec de faux serveurs. Le premier essai réel
+  confirmera le démarrage du serveur, le flux et la détection du GPU.
 
 ## Structure du dépôt
 

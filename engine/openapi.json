@@ -1,6 +1,436 @@
 {
   "components": {
     "schemas": {
+      "Advice": {
+        "description": "What the adviser concluded about one update. Informative: nothing is blocked by it.",
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "from_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Installed release (engines) or short revision of the cache (models).",
+            "title": "From Version"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "engine",
+              "model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "llm_model_id": {
+            "title": "Llm Model Id",
+            "type": "string"
+          },
+          "notes": {
+            "description": "What could not be read (rate limit, network).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "rejected": {
+            "description": "Findings dropped because their excerpt is not in the source.",
+            "title": "Rejected",
+            "type": "integer"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/AdviceSource"
+            },
+            "title": "Sources",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "target": {
+            "enum": [
+              "pinned",
+              "latest"
+            ],
+            "title": "Target",
+            "type": "string"
+          },
+          "to_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Target release (engines) or fingerprint of what changed on the Hub (models).",
+            "title": "To Version"
+          },
+          "truncated": {
+            "description": "Sources that did not fit the model's context.",
+            "title": "Truncated",
+            "type": "integer"
+          },
+          "verdict": {
+            "description": "Computed by the code from the kept findings, never by the model.",
+            "enum": [
+              "none",
+              "caution",
+              "discouraged"
+            ],
+            "title": "Verdict",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "target",
+          "from_version",
+          "to_version",
+          "verdict",
+          "summary",
+          "findings",
+          "sources",
+          "notes",
+          "truncated",
+          "rejected",
+          "llm_model_id",
+          "generated_at"
+        ],
+        "title": "Advice",
+        "type": "object"
+      },
+      "AdviceBody": {
+        "properties": {
+          "id": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "engine",
+              "model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "target": {
+            "default": "pinned",
+            "description": "Engines: the tested release (`pinned`) or the newest upstream one (`latest`, untested).",
+            "enum": [
+              "pinned",
+              "latest"
+            ],
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "AdviceBody",
+        "type": "object"
+      },
+      "AdviceFinding": {
+        "properties": {
+          "quote": {
+            "description": "Excerpt of the source, copied word for word (checked), or the documented regression.",
+            "title": "Quote",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "critical"
+            ],
+            "title": "Severity",
+            "type": "string"
+          },
+          "source_kind": {
+            "description": "release | issue | commit | discussion | card | known",
+            "title": "Source Kind",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "description": "The page the excerpt comes from; empty for a regression the repository documents.",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "title",
+          "quote",
+          "url",
+          "source_kind"
+        ],
+        "title": "AdviceFinding",
+        "type": "object"
+      },
+      "AdviceSource": {
+        "properties": {
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "url"
+        ],
+        "title": "AdviceSource",
+        "type": "object"
+      },
+      "ChatBody": {
+        "properties": {
+          "context_size": {
+            "anyOf": [
+              {
+                "maximum": 1048576.0,
+                "minimum": 256.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Tokens of context; clamped to the model's range. The model reloads when it changes.",
+            "title": "Context Size"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Messages",
+            "type": "array"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "params": {
+            "$ref": "#/components/schemas/SamplingParams"
+          },
+          "private": {
+            "default": false,
+            "description": "A private session's reply: unloading the model afterwards leaves no log line.",
+            "title": "Private",
+            "type": "boolean"
+          },
+          "reasoning": {
+            "default": "auto",
+            "enum": [
+              "auto",
+              "off",
+              "low",
+              "medium",
+              "high"
+            ],
+            "title": "Reasoning",
+            "type": "string"
+          },
+          "response_format": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Constrained JSON answer, as llama-server takes it: {type: 'json_object' | 'json_schema', schema?}.",
+            "title": "Response Format"
+          },
+          "tool_choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool Choice"
+          },
+          "tools": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "maxItems": 64,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OpenAI function schemas.",
+            "title": "Tools"
+          }
+        },
+        "required": [
+          "model_id",
+          "messages"
+        ],
+        "title": "ChatBody",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ChatPart"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "role": {
+            "enum": [
+              "system",
+              "user",
+              "assistant",
+              "tool"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "tool_call_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The call a `tool` message answers.",
+            "title": "Tool Call Id"
+          },
+          "tool_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "OpenAI-shaped calls of an assistant turn.",
+            "title": "Tool Calls"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
+      "ChatPart": {
+        "properties": {
+          "image_url": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageUrl"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          },
+          "type": {
+            "enum": [
+              "text",
+              "image_url"
+            ],
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ChatPart",
+        "type": "object"
+      },
       "CustomModelBody": {
         "properties": {
           "option": {
@@ -30,6 +460,21 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImageUrl": {
+        "properties": {
+          "url": {
+            "description": "A data URL, or the absolute path of a file of the data folder.",
+            "maxLength": 30000000,
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "ImageUrl",
         "type": "object"
       },
       "IngestBody": {
@@ -62,6 +507,18 @@
               }
             ],
             "title": "Original Name"
+          },
+          "private_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Private generation: store the reference and its thumbnail in this session folder (`inputs/`, `thumbs/`) instead of `uploads/` and `thumbs/`.",
+            "title": "Private Dir"
           },
           "source_path": {
             "description": "Raw uploaded file, inside the data folder; consumed.",
@@ -425,6 +882,18 @@
             "title": "Params",
             "type": "object"
           },
+          "private_dir": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Private generation: the session folder (`<data>/private/<id>`) the job keeps all of its files in; `output_dir` must be inside it. The engine keeps nothing of such a job once it ended.",
+            "title": "Private Dir"
+          },
           "prompt": {
             "default": "",
             "title": "Prompt",
@@ -477,6 +946,102 @@
           "path"
         ],
         "title": "LibraryVoice",
+        "type": "object"
+      },
+      "LlmStatus": {
+        "properties": {
+          "context_size": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Context Size"
+          },
+          "last_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Error"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "pid": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pid"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "idle",
+              "loading",
+              "ready",
+              "generating"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Variant"
+          },
+          "vision": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vision"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "LlmStatus",
         "type": "object"
       },
       "PurgeBody": {
@@ -577,6 +1142,188 @@
         "title": "RuntimeSettings",
         "type": "object"
       },
+      "SamplingParams": {
+        "properties": {
+          "frequency_penalty": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": -2.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Frequency Penalty"
+          },
+          "max_tokens": {
+            "anyOf": [
+              {
+                "maximum": 262144.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Tokens"
+          },
+          "min_p": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min P"
+          },
+          "presence_penalty": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": -2.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Presence Penalty"
+          },
+          "repeat_penalty": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Repeat Penalty"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "maximum": 4294967295.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "stop": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 8,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop"
+          },
+          "temperature": {
+            "anyOf": [
+              {
+                "maximum": 2.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Temperature"
+          },
+          "top_k": {
+            "anyOf": [
+              {
+                "maximum": 1000.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top K"
+          },
+          "top_p": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Top P"
+          }
+        },
+        "title": "SamplingParams",
+        "type": "object"
+      },
+      "TokenCount": {
+        "properties": {
+          "exact": {
+            "description": "False: an estimate (the model is not loaded).",
+            "title": "Exact",
+            "type": "boolean"
+          },
+          "tokens": {
+            "title": "Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tokens",
+          "exact"
+        ],
+        "title": "TokenCount",
+        "type": "object"
+      },
+      "TokenizeBody": {
+        "properties": {
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "text": {
+            "maxLength": 2000000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TokenizeBody",
+        "type": "object"
+      },
       "TranscribeBody": {
         "properties": {
           "language": {
@@ -652,6 +1399,261 @@
           "model"
         ],
         "title": "Transcription",
+        "type": "object"
+      },
+      "TrendingEntry": {
+        "properties": {
+          "age_days": {
+            "title": "Age Days",
+            "type": "integer"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "compatible": {
+            "title": "Compatible",
+            "type": "boolean"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "downloads": {
+            "title": "Downloads",
+            "type": "integer"
+          },
+          "family": {
+            "title": "Family",
+            "type": "string"
+          },
+          "family_label": {
+            "title": "Family Label",
+            "type": "string"
+          },
+          "license": {
+            "title": "License",
+            "type": "string"
+          },
+          "license_note": {
+            "anyOf": [
+              {
+                "enum": [
+                  "noncommercial",
+                  "custom"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "License Note"
+          },
+          "likes": {
+            "title": "Likes",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "option": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrendingOption"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "options": {
+            "title": "Options",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "repo": {
+            "title": "Repo",
+            "type": "string"
+          },
+          "task": {
+            "title": "Task",
+            "type": "string"
+          },
+          "trending_score": {
+            "title": "Trending Score",
+            "type": "number"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "repo",
+          "name",
+          "author",
+          "family",
+          "family_label",
+          "task",
+          "created_at",
+          "age_days",
+          "downloads",
+          "likes",
+          "trending_score",
+          "license",
+          "compatible",
+          "reason",
+          "options",
+          "url"
+        ],
+        "title": "TrendingEntry",
+        "type": "object"
+      },
+      "TrendingHidden": {
+        "properties": {
+          "existing": {
+            "title": "Existing",
+            "type": "integer"
+          },
+          "heavy": {
+            "title": "Heavy",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "heavy",
+          "existing"
+        ],
+        "title": "TrendingHidden",
+        "type": "object"
+      },
+      "TrendingOption": {
+        "description": "The variant the add flow would select by default.",
+        "properties": {
+          "download_gb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Download Gb"
+          },
+          "fit_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fit Note"
+          },
+          "fits": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fits"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "precision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Precision"
+          },
+          "size_gb": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Size Gb"
+          }
+        },
+        "title": "TrendingOption",
+        "type": "object"
+      },
+      "TrendingResponse": {
+        "properties": {
+          "cached": {
+            "title": "Cached",
+            "type": "boolean"
+          },
+          "days": {
+            "title": "Days",
+            "type": "integer"
+          },
+          "generated_at": {
+            "title": "Generated At",
+            "type": "number"
+          },
+          "hidden": {
+            "$ref": "#/components/schemas/TrendingHidden"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/TrendingEntry"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "days",
+          "generated_at",
+          "cached",
+          "results",
+          "hidden"
+        ],
+        "title": "TrendingResponse",
         "type": "object"
       },
       "ValidationError": {
@@ -770,6 +1772,75 @@
           }
         },
         "summary": "Unload Engine"
+      }
+    },
+    "/engine/v1/engines/llamacpp": {
+      "delete": {
+        "description": "Removes llama.cpp (409 while the chat model is loaded or an install runs).",
+        "operationId": "uninstall_runtime_engine_v1_engines_llamacpp_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Uninstall Runtime Engine V1 Engines Llamacpp Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Uninstall Runtime",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
+    "/engine/v1/engines/llamacpp/install": {
+      "delete": {
+        "operationId": "cancel_runtime_install_engine_v1_engines_llamacpp_install_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Runtime Install Engine V1 Engines Llamacpp Install Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cancel Runtime Install",
+        "tags": [
+          "llm"
+        ]
+      },
+      "post": {
+        "description": "Installs llama.cpp for this machine; the progress comes through the `llamacpp.install` event.",
+        "operationId": "install_runtime_engine_v1_engines_llamacpp_install_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Install Runtime Engine V1 Engines Llamacpp Install Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Install Runtime",
+        "tags": [
+          "llm"
+        ]
       }
     },
     "/engine/v1/engines/pack/install": {
@@ -1021,6 +2092,100 @@
         "summary": "Hf Search Models"
       }
     },
+    "/engine/v1/hf/trending": {
+      "get": {
+        "description": "New models of a kind that are successful and runnable here, best first. Reads the Hub: can take seconds the first time, then an hour from memory.",
+        "operationId": "hf_trending_models_engine_v1_hf_trending_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "default": "image",
+              "enum": [
+                "image",
+                "audio",
+                "video",
+                "llm"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 90,
+              "maximum": 365,
+              "minimum": 7,
+              "title": "Days",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 30,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_heavy",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Heavy",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "refresh",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Refresh",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrendingResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Hf Trending Models",
+        "tags": [
+          "hf"
+        ]
+      }
+    },
     "/engine/v1/jobs": {
       "get": {
         "description": "Jobs that are queued or running.",
@@ -1210,6 +2375,131 @@
         "summary": "Cancel Job",
         "tags": [
           "jobs"
+        ]
+      }
+    },
+    "/engine/v1/llm/chat": {
+      "post": {
+        "description": "Streams one reply (`text/event-stream`, events above). Refusals that come before any byte are plain HTTP errors:\n404 unknown model, 422 not a chat model or a request the model cannot take (images, tools), 409 engine or model not\ninstalled, a media generation or another reply running.",
+        "operationId": "chat_engine_v1_llm_chat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
+    "/engine/v1/llm/status": {
+      "get": {
+        "operationId": "llm_status_engine_v1_llm_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Llm Status",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
+    "/engine/v1/llm/tokenize": {
+      "post": {
+        "description": "Tokens of a text, for the context gauge: exact when the model is loaded, else an estimate.",
+        "operationId": "tokenize_engine_v1_llm_tokenize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenizeBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenCount"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Tokenize",
+        "tags": [
+          "llm"
+        ]
+      }
+    },
+    "/engine/v1/llm/unload": {
+      "post": {
+        "description": "Unloads the chat model (409 while a reply is being generated).",
+        "operationId": "unload_engine_v1_llm_unload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unload",
+        "tags": [
+          "llm"
         ]
       }
     },
@@ -1711,6 +3001,175 @@
           }
         },
         "summary": "System Info"
+      }
+    },
+    "/engine/v1/updates/advice": {
+      "post": {
+        "description": "Reads public sources about one update (GitHub for an engine, Hugging Face for a model) with the local chat model and\nlists the problems they report. One analysis at a time, about a minute. A 409 carries `{code, message}` (`busy`,\n`no_engine`, `no_model`, `nothing_to_analyse`, `unsupported`), a 502 `no_sources`, `llm` or `llm_output`.",
+        "operationId": "advise_update_engine_v1_updates_advice_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdviceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Advice"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Advise Update",
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/engine/v1/updates/check": {
+      "get": {
+        "description": "Engines and installed models, each `current`, `update` or (models) `error`. Reads the Hub and GitHub: can take seconds.",
+        "operationId": "check_updates_engine_v1_updates_check_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Check Updates Engine V1 Updates Check Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Check Updates",
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/engine/v1/updates/engines/{engine_id}": {
+      "post": {
+        "description": "`target=pinned`: the release the application was tested with (the update `check` recommends; also the way back from a newer build). `latest`: the newest\nupstream release, untested (`latest` of the check row; stable-diffusion.cpp and audio.cpp only). The caller asks the\nuser to confirm that one.",
+        "operationId": "update_engine_engine_v1_updates_engines__engine_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "engine_id",
+            "required": true,
+            "schema": {
+              "title": "Engine Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "target",
+            "required": false,
+            "schema": {
+              "default": "pinned",
+              "enum": [
+                "pinned",
+                "latest"
+              ],
+              "title": "Target",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Engine Engine V1 Updates Engines  Engine Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Engine",
+        "tags": [
+          "updates"
+        ]
+      }
+    },
+    "/engine/v1/updates/models/{model_id}": {
+      "post": {
+        "operationId": "update_model_engine_v1_updates_models__model_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Update Model Engine V1 Updates Models  Model Id  Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Model",
+        "tags": [
+          "updates"
+        ]
       }
     }
   }

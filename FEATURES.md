@@ -4,13 +4,13 @@ Inventaire de ce qui est **construit** (pas un journal des changements), par mod
 même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints, tests) est dans son README, la forme générale dans
 `ARCHITECTURE.md` (carte de la documentation), le guide des modèles pour l'utilisateur dans `README.md`.
 
-*Dernière vérification contre les sources : 2026-10-13. Ce qui n'a jamais été exécuté pour de vrai est signalé « non vérifié ».*
+*Dernière vérification contre les sources : 2026-10-15. Ce qui n'a jamais été exécuté pour de vrai est signalé « non vérifié ». Aucun vrai `llama-server`, modèle de chat ni navigateur n'a servi à vérifier le mode Chat, le mode privé et le conseiller de mises à jour : tout a été testé avec de faux serveurs.*
 
 ## Studios (interface, `front/src/modules/`)
 
 ### `studio-shell` : coquille
-- Barre latérale (masquable) : commutateur de mode image / audio / vidéo, pages du mode, recherche, conversations épinglées et
-  groupées par période (mode « Sélectionner » : suppression de plusieurs conversations d'un coup), carte du moteur, accès aux modèles et aux réglages, langue (français, anglais), thème sombre ou clair.
+- Barre latérale (masquable) : commutateur de mode image / audio / vidéo / chat, bouton « Génération privée », pages du mode, recherche, conversations épinglées et
+  groupées par période (mode « Sélectionner » : suppression de plusieurs conversations d'un coup), carte du moteur, accès aux modèles et aux réglages, « Vérifier les mises à jour » (modale : moteurs installés puis modèles installés, mise à jour par ligne, par section ou globale, avec barres de progression ; filtre image / audio / vidéo ; rien n'est mis à jour sans clic), langue (français, anglais), thème sombre ou clair.
 - Routes : `/`, `/c/:id`, `/galerie`, `/audio`, `/audio/voix`, `/audio/bibliotheque`, `/video`, `/video/bibliotheque` ;
   raccourcis ⌘B, ⌘⇧O, ⌘K, `/`.
 - Abonnement au flux d'événements et traduction en mises à jour du cache (TanStack Query) ; repli sur le rechargement quand le
@@ -42,10 +42,40 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
   « garder comme voix de référence » depuis n'importe quelle prise. Micro et écoute : **à valider par l'utilisateur**.
 
 ### `video-studio`
-- Composeur à trois emplacements (vidéo source, image de départ, image de fin), durée, format et définition, réglages, graine,
+- Composeur à trois emplacements (vidéo source, image de départ, image de fin), durée (jusqu'à 20 s sur les modèles GGUF
+  image → vidéo : passages enchaînés dont la longueur suit la mémoire mesurée sur la machine ; voir le README), format et définition, réglages, graine,
   nombre de clips (1 à 2), avis de licence et d'accès restreint ; clips avec lecteur natif et actions (varier, relancer,
   utiliser comme vidéo source, **dernière image comme départ**, favori, téléchargement) ; dépôt d'images et de vidéos ;
   bibliothèque vidéo.
+
+### `chat`
+- Mode **Chat** (onglet à côté d'image, audio et vidéo) sur des modèles de langage locaux (llama.cpp) : fil avec réponses en streaming,
+  Markdown sûr (images distantes bloquées), code coloré avec copie, formules LaTeX (chargées à la demande), bloc « Réflexion » repliable,
+  appels d'outils affichés (requêtes envoyées, sources), statistiques par réponse (jetons, tokens/s) et jauge de contexte.
+- Conversations **en arbre** : navigateur de branches, modification d'un message (nouvelle branche), régénération, comparaison côte à côte de
+  deux modèles (l'un après l'autre), suppression ; instruction système avec personas ; réglages (température, top-p, top-k, min-p,
+  pénalités, longueur, graine, contexte, raisonnement) avec préréglages ; avis quand changer le contexte recharge le modèle ; pièces jointes
+  (images pour les modèles de vision, fichiers texte) ; recherche web optionnelle par conversation (DuckDuckGo, ou Brave avec une clé) ;
+  titre automatique ; export Markdown / JSON ; recherche plein texte ; brouillon par conversation ; indicateur du modèle chargé avec
+  « Décharger ».
+- **Envoyer vers Image / Vidéo / Audio** depuis une réponse (sélection ou texte entier, sans balisage) et bouton **✨ Améliorer le prompt** dans
+  les trois compositeurs (rétablissement possible). **Non vérifié** : rendu réel, vrai modèle.
+
+### `private` : génération privée
+- Bouton « Génération privée » (cadenas, bandeau et cadre violets) : session éphémère pour image, audio, vidéo **et chat** sans historique, résultat ni
+  prompt conservés (aucune ligne en base, fichiers dans un dossier de session effacé à la sortie, après 30 min d'inactivité, à l'arrêt et au
+  balayage du démarrage ; médias sans cache ; brouillons et compteurs d'usage non écrits ; journaux sans contenu ; mesures vidéo non enregistrées ; prompts
+  de `sd-cli` passés par fichier quand le binaire le permet). Limites annoncées dans l'interface : mémoire et fichier d'échange de l'OS,
+  sauvegardes, effacement non sécurisé sur SSD, captures d'écran, texte d'`audio.cpp` encore en ligne de commande. Recharger la page efface la session.
+
+### `updates` : vérifier les mises à jour
+- Modale « Vérifier les mises à jour » : moteurs installés (stable-diffusion.cpp, audio.cpp, packs Python) puis modèles installés ; mise à jour par
+  ligne, par section ou globale, barres de progression, filtre par type, version épinglée recommandée ou **dernière version amont non testée**
+  (avertissement + confirmation ; régressions connues citées), retour à la version testée.
+- **Conseiller** : un petit modèle local résume des sources structurées (notes de version, issues et commits GitHub ; commits, discussions et fiche
+  Hugging Face) ; chaque constat doit citer un extrait retrouvé dans la source, sinon il est rejeté ; le verdict est calculé par le code ; avis
+  consultatif, jamais bloquant, **enregistré** (`update_advisories`) et restitué à l'ouverture ; analyse automatique facultative. **Non vérifié** : qualité
+  des constats d'un petit modèle, vraies requêtes GitHub / Hugging Face.
 
 ### `media-library` (front)
 - Galerie générique (filtres, pagination par curseur, favoris, mise à jour en direct), liste de la visionneuse, voile de dépôt de
@@ -59,13 +89,18 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
   l'installé le plus utilisé) ; recherche Hugging Face avec quantifications
   proposées par résultat, tenue en mémoire et marqueurs de compatibilité, ajout et retrait de modèles personnalisés, dont
   des LoRA SDXL.
+- Bouton **« Nouveautés »** (« What's new ? ») dans les composeurs : modèles récents (90 jours par défaut) et populaires de Hugging Face, ajoutables par
+  l'app et compatibles avec la machine, sans LLM ; onglet « Modèles de chat » (badges vision / outils / raisonnement / MoE, contexte) et recherche
+  Hugging Face « LLM ».
 
 ### `engines`
 - Cartes « Moteurs » : installation en un clic de stable-diffusion.cpp (SHA-256 vérifiée) et des packs audio et vidéo
-  (environnements Python isolés), annulation, désinstallation ; installation guidée au premier lancement (« Tout installer »).
+  (environnements Python isolés), annulation, désinstallation ; installation guidée au premier lancement (« Tout installer ») ; carte llama.cpp (moteur de chat) ;
+  **invitation au lancement** (fenêtre à fermer, case « Ne plus me le proposer », rappelée dans les Réglages) tant que llama.cpp manque : chat, mises à jour
+  analysées, prompts améliorés, option du modèle conseillé.
 
 ### `settings` et `hardware`
-- Dialogue « Réglages » : délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face facultatif, rappel
+- Dialogue « Réglages » : délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face et clé Brave Search facultatifs, invitation « IA locale au lancement », rappel
   des raccourcis ; chaque réglage a une info-bulle. Carte « Cette machine » (puce ou GPU, mémoire, disque des modèles, GPU
   inutilisables).
 
@@ -74,13 +109,16 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 | Module | Construit |
 |---|---|
 | `engine` | Client HTTP typé du moteur (types générés depuis `engine/openapi.json`), relais du flux d'événements du moteur avec reconnexion, relais des médias `/api/media`, sonde de santé (`degraded` si le moteur ne répond pas) |
-| `studio-core` | Conversations et messages (trois modes), file FIFO des générations (une à la fois), machine d'état des messages, relance, annulation, suppression avec purge des fichiers, reprise au démarrage, événements `studio.*`, file publiée |
+| `studio-core` | Conversations et messages (modes image, audio, vidéo et chat), file FIFO des générations (une à la fois), machine d'état des messages, relance, annulation, suppression avec purge des fichiers, reprise au démarrage, événements `studio.*`, file publiée |
 | `media-library` | Assets (envois et sorties), favoris, liste paginée, ingestion et purge des fichiers par le moteur, limite d'événement relevée à 256 Ko |
 | `audio-studio` | Voix (clone, design), clip de référence préparé par le moteur, transcription suggérée, voix passées aux jobs audio |
 | `settings` | Réglages du studio (configuration de module, jeton Hugging Face chiffré), poussés au moteur à chaque (re)connexion |
 | `hardware` | État de la machine, du moteur, déchargement du modèle (délégué au moteur) |
 | `model-catalog` | Catalogue, téléchargements, modèles personnalisés, recherche Hugging Face (délégués au moteur) |
 | `engines` | Installateurs de moteurs et de packs (délégués au moteur) |
+| `chat` | Arbre de messages (`chat_messages`, réglages par conversation), flux SSE de réponse vers le moteur LLM, outils web (DuckDuckGo / Brave, garde contre les adresses internes), titre automatique, amélioration de prompt, export, recherche, pièces jointes, déchargement et frères d'un message ; jauge d'occupation partagée avec la file des générations |
+| `private` | Session privée en mémoire (conversations et messages sans base), dossier de session, file partagée, chat privé sans état, nettoyage (fin de session, délai, démarrage) |
+| `updates` | Détection des mises à jour (moteurs, modèles), lancement, version non testée, conseiller et avis enregistrés (`update_advisories`) |
 | `legacy-import` | Import idempotent de l'ancienne base du moteur au premier démarrage, puis renommage en `.imported` |
 
 Socle (gabarit vx-public, non détaillé ici) : SQLite, mode local de confiance (`LOCAL_TRUST`), flux d'événements, locales fr et en,
@@ -99,6 +137,11 @@ migrations TypeORM.
 - **Vidéo** : texte vers vidéo, image vers vidéo, édition de vidéo ; Wan 2.2, LTX, HunyuanVideo 1.5, CogVideoX, Kiwi-Edit,
   Bernini-R. **Seul un essai réel** (Wan 2.2 TI2V 5B texte vers vidéo, M3 Max) a été fait : le reste est **non vérifié** (voir
   `README.md`).
+- **Chat (LLM)** : moteur llama.cpp installé depuis l'application (`llama-server`, GGUF, 127.0.0.1 seulement, clé d'API par lancement), 11 modèles
+  vérifiés sur Hugging Face (de 0,7 à 17,7 Go : Qwen3, Gemma 4, Ministral 3, gpt-oss, LFM2.5…), recherche Hugging Face « LLM », flux SSE normalisé
+  (réflexion, appels d'outils, statistiques), un seul modèle en mémoire avec les générations, cache de prompt borné à 1 Go. **Non vérifié** : aucun vrai
+  `llama-server`.
+- Nouveautés Hugging Face (`hf_trending.py`), conseiller de mises à jour (`update_advisor.py`), session privée des jobs (`private_session.py`).
 - Planificateur mémoire (refus argumenté d'un modèle qui ne tient pas), garde mémoire (refus de charger quand la mémoire libre
   manque, arrêt du modèle avant saturation de la machine, relevé par job : `ARCHITECTURE.md`), un modèle chargé à la fois, déchargement après
   inactivité, annulation immédiate, téléchargements dans un processus dédié (reprise, annulation).

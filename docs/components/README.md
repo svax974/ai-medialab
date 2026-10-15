@@ -28,6 +28,7 @@ fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les lic
 | Composant | Rôle | Où est l'épinglage | Licence | Fiche | Dernière revue |
 |---|---|---|---|---|---|
 | **audio.cpp** (ggml) | synthèse vocale GGUF sur Metal, CUDA, Vulkan ou CPU (puis transcription, voir fiche) | `engine/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md) ; tests à faire à la main : [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
+| **llama.cpp** (`llama-server`) | modèles de chat GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/llamacpp.py` (`PINNED_TAG`) | MIT | [llamacpp.md](llamacpp.md) | 2026-10-15 |
 | **Accélération PyTorch** (CUDA, ROCm, XPU, Vulkan) | quels GPU les packs audio PyTorch peuvent utiliser, et le marqueur « lent · processeur » | `engine/app/audio_packs.py` (`torch_acceleration`, `_torch_index`) | – | [pytorch-gpu.md](pytorch-gpu.md) | 2026-10-13 |
 | **stable-diffusion.cpp** | images et vidéo GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/engine_install.py` (`PINNED_TAG`) ; raison de l'épinglage dans le commentaire au-dessus | MIT | à écrire | – |
 | **FFmpeg** (via PyAV) | encodage MP4 (H.264 + AAC), décodage des vidéos envoyées | `engine/pyproject.toml` (`av`) ; encodeurs H.264 : `H264_ENCODERS` (`engine/app/media.py`) | LGPL visée ; roue PyPI actuelle GPL de fait (x264, x265) | [ffmpeg.md](ffmpeg.md) | 2026-10-13 |

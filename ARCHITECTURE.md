@@ -14,18 +14,18 @@ n'existe pas ; une nouvelle annexe s'y ajoute avec son chemin (règle « un fait
 | `FEATURES.md` | Inventaire de ce qui est construit, par module (et ce qui ne l'est pas) |
 | `ARCHITECTURE.md` (ce fichier) | Processus, contrat Nest ↔ moteur, flux d'événements, données et migrations, bureau, mémoire au repos, plan du moteur |
 | `CLAUDE.md` | Règles de travail du projet : gabarit importé, mémoire unifiée (critique), notes de développement |
-| `back/src/modules/<module>/README.md` | Contrat d'un module serveur : rôle, fichiers, endpoints exhaustifs, entités, tests. Modules : `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `studio-core`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/modules/<module>/README.md` | Contrat d'un module serveur : rôle, fichiers, endpoints exhaustifs, entités, tests. Modules : `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | Migrations TypeORM de la base de Nest : usage, génération, vérification |
-| `front/src/modules/<module>/README.md` | Contrat d'un module d'interface : composants, hooks, locales, parité avec l'ancienne interface. Modules : `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `media-library`, `model-catalog`, `engines`, `settings`, `hardware` |
+| `front/src/modules/<module>/README.md` | Contrat d'un module d'interface : composants, hooks, locales, parité avec l'ancienne interface. Modules : `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | Thème « chambre noire » : jetons, surcharges MUI |
 | `desktop/README.md` | Coquille de bureau (Tauri) : configuration, lancement, empaquetage, signature, CI |
 | `engine/openapi.json` | Contrat de l'API interne du moteur (**généré** : `scripts-local/export_engine_openapi.py`) |
-| `docs/components/README.md` | Registre des composants tiers intégrés et procédure de revue ; fiches `audiocpp.md`, `pytorch-gpu.md`, `ffmpeg.md` (build et licence de FFmpeg), `audiocpp-tests-manuels.md` |
+| `docs/components/README.md` | Registre des composants tiers intégrés et procédure de revue ; fiches `audiocpp.md`, `llamacpp.md` (moteur de chat : drapeaux, installation, licences), `pytorch-gpu.md`, `ffmpeg.md` (build et licence de FFmpeg), `audiocpp-tests-manuels.md` |
 | `THIRD_PARTY_LICENSES.md` | Licences des composants et des modèles |
 | `docs/migration/` | Plan et suivi de la migration vers le gabarit vx-public (historique) |
 | `back/.libs/vx-public/template/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Conventions du gabarit et lanceur (hors de ce dépôt : sous-modules) |
 
-*Dernière vérification contre les sources : 2026-10-13 (fin de la migration, tâche H6).*
+*Dernière vérification contre les sources : 2026-10-15 (modes Chat et Génération privée, conseiller de mises à jour). Les sections sur le chat et le mode privé décrivent du code testé avec de faux serveurs : aucun vrai `llama-server` ni navigateur.*
 
 ## Vue d'ensemble : quatre processus
 
@@ -77,9 +77,9 @@ compilation une route, un paramètre ou un corps absent du schéma.
   lancement.
 - **Zones de l'API** (premiers segments ; routes exactes dans `engine/openapi.json` et dans le README du module Nest qui les appelle) :
   `models`, `hf` (catalogue, téléchargements, modèles personnalisés, recherche Hugging Face : `model-catalog`), `engines`
-  (installateurs : `engines`), `system`, `status`, `engine` (matériel, état, déchargement : `hardware`), `runtime` (réglages
+  (installateurs : `engines`), `updates` (détection et lancement des mises à jour des moteurs et des modèles installés : `updates`), `system`, `status`, `engine` (matériel, état, déchargement : `hardware`), `runtime` (réglages
   poussés par Nest : `settings`), `jobs` et `media` (générations et fichiers : `studio-core`, `audio-studio`, `media-library`),
-  `events` (flux SSE du moteur : module `engine`).
+  `events` (flux SSE du moteur : module `engine`), `llm` (serveur de chat, flux SSE de réponse, déchargement : `chat`). Le mode privé n'a pas de zone moteur propre : ses jobs passent par `jobs` avec un champ `private_dir`.
 - **Jobs** : contrat détaillé (corps, erreurs, événements) dans `back/src/modules/engine/README.md`, section « Contrat de jobs ». Le
   moteur refuse hors du dossier de données tout chemin d'entrée, de sortie ou de voix.
 - **Réglages du studio** : propriété de Nest (module `settings`, configuration de module, jeton Hugging Face chiffré). Nest les
@@ -127,7 +127,9 @@ développement ; en bureau le dossier local de l'OS de l'identifiant `app.aimedi
 
 | Élément | Propriétaire | Remarque |
 |---|---|---|
-| `app.db` (SQLite) | Nest | conversations, messages, références, assets (métadonnées), voix, configuration de modules (réglages), marqueur d'import ; schéma versionné par migrations |
+| `app.db` (SQLite) | Nest | conversations, messages, références, assets (métadonnées), voix, messages de chat en arbre (`chat_messages`) et leurs réglages, avis du conseiller de mises à jour (`update_advisories`), configuration de modules (réglages), marqueur d'import ; schéma versionné par migrations. **Rien du mode privé** |
+| `private/<session>/` | moteur (fichiers) | dossier de session du mode privé (entrées, sorties, aperçus, vignettes, temporaires), 0700, effacé à la fin de la session, après 30 min d'inactivité, à l'arrêt et au démarrage (reliquats) |
+| `video-memory.json` | moteur | mesures de mémoire des passages vidéo (cache, pas une donnée applicative ; non écrit en session privée) |
 | `uploads/`, `outputs/`, `thumbs/`, `previews/` | moteur (fichiers) | les lignes d'assets ne gardent que des noms de fichiers relatifs |
 | `engine-state.json` | moteur | recettes des modèles personnalisés Hugging Face (`engines/custom.py` → `engine_state.py`) |
 | `engines/` | moteur | moteurs et packs installés depuis l'application (stable-diffusion.cpp, audio.cpp, environnements Python isolés audio et vidéo) |
@@ -136,7 +138,7 @@ développement ; en bureau le dossier local de l'OS de l'identifiant `app.aimedi
 | cache Hugging Face (`HF_HOME`) | Hugging Face | hors du dossier de données ; poids des modèles |
 
 **Migrations de la base de Nest** : versionnées dans `back/src/migrations/` (en développement TypeORM construit le schéma lui-même ;
-en bureau `DB_SYNC=false` et `DB_MIGRATIONS_RUN=true`). Toute modification d'entité s'accompagne d'une migration dans le même
+en bureau `DB_SCHEMA_MODE=migrations`). Toute modification d'entité s'accompagne d'une migration dans le même
 commit (procédure et test de cohérence : `back/src/migrations/README.md`).
 
 **Reprise des anciennes données (versions d'avant la migration)**, trois étapes indépendantes, dans cet ordre au premier
@@ -167,6 +169,15 @@ avec le profil de la cible (profils : `desktop/runtime/profiles.json`).
 État de vérification : la chaîne de construction de la coquille a été écrite et testée par morceaux, **aucune application n'a été
 assemblée ni lancée de bout en bout** avec la coquille du gabarit (voir le suivi de la migration, `docs/migration/README.md`).
 
+## Mode privé
+
+Une session privée est **éphémère** et ne passe jamais par `app.db` : Nest la tient en mémoire (`back/src/modules/private/`, mêmes formes publiques que
+les conversations normales, pour que le front réutilise ses composants), la file des générations est **partagée** avec le mode normal (une génération à la
+fois) et les fichiers d'une génération vivent dans `private/<session>/`, servis sans cache et effacés à la fin. Le moteur reçoit un champ
+`private_dir` sur ses jobs : il refuse un dossier hors de la session, ne garde aucune trace du job et assainit ses erreurs. Le chat privé est **sans
+état** (le navigateur renvoie tout l'historique). Ce que la session garantit, ce qu'elle ne peut pas garantir (mémoire virtuelle, sauvegardes,
+SSD, captures) et la conception détaillée : `back/src/modules/private/README.md` et `front/src/modules/private/README.md`.
+
 ## Mémoire au repos
 
 Mesurée sans modèle chargé ni génération (macOS arm64, Apple Silicon) :
@@ -195,7 +206,9 @@ engine/app/
   catalog.py, downloads.py, hf_search.py           catalogue, téléchargements, recherche Hugging Face
   system.py          détection GPU, mémoire, disque ; planificateur mémoire
   memory_guard.py    garde mémoire : vérification avant chargement, surveillance du worker, arrêt avant saturation
-  engine_install.py, audio_packs.py, audiocpp.py   installateurs (moteur GGUF, packs audio et vidéo, audio.cpp)
+  engine_install.py, audio_packs.py, audiocpp.py, llamacpp.py   installateurs (moteur GGUF, packs audio et vidéo, audio.cpp, llama.cpp)
+  llm.py             serveur de chat (`llama-server` : démarrage, arbitre mémoire, flux SSE normalisé) ; engines/llm_models.py : catalogue de chat
+  update_advisor.py, hf_trending.py, private_session.py, video_memory.py   conseiller de mises à jour, nouveautés Hugging Face, session privée, longueur des passages vidéo
   runtime_settings.py  réglages poussés par Nest (mémoire seulement) ; engine_state.py  état propre du moteur (fichier JSON)
   legacy_data.py     reprise de l'ancien dossier de données ; events.py  bus d'événements
 engine/audio_runtime/, engine/video_runtime/   code exécuté dans les environnements isolés des packs
@@ -217,7 +230,9 @@ ou redémarre la machine. Les protections, de la plus en amont à la dernière :
 | Surveillance | `memory_guard.MemoryWatchdog`, fil du processus principal du moteur, 5 lectures par seconde | tant qu'un worker vit : sous la réserve, ou si macOS signale une pression mémoire critique, tue le worker **et ses sous-processus** (`sd-cli`) ; le job échoue avec « Arrêté par la protection mémoire : … » |
 | Ancien worker arrêté avant le suivant | `jobs.py` (`_ensure_worker`, `stop`) | un seul modèle en mémoire ; l'arrêt attend la fin du processus, même forcé |
 | Pics d'une génération | `diffusers_engine.py` (`tune_vae`, `_from_pretrained`), `sdcpp_engine.py` (`VAE_TILING_FROM`) | VAE en tuiles de 512 px, sans copie float32 hors float16 ; poids chargés directement sur le GPU d'un Mac ; `--vae-tiling` de `sd-cli` dès 1 Mpx |
+| Serveur de chat | `llm.py`, `jobs.py`, `memory_guard.py` | un seul modèle en mémoire pour toute l'application : charger un LLM arrête le worker de génération et inversement (409 côté refusé) ; `preflight` (poids + cache de contexte estimé) ; le garde mémoire surveille le pid de `llama-server` ; cache de prompt en RAM borné à 1 Gio (`--cache-ram`, 8 Gio par défaut) |
 | Relevé | journal du moteur, ligne `[memory] job …` | mémoire libre au plus bas et pic des processus du modèle, pour chaque job |
+| Longueur des passages vidéo | `video_memory.py`, `sdcpp_video_engine.py` (`_generate_chained`) | un clip long des modèles GGUF image → vidéo sans son se fait par passages enchaînés dont la longueur suit la mémoire **mesurée sur cette machine** : essai court au premier usage d'un modèle (a priori prudent), puis passages de plus en plus longs (jamais plus de 1,6 fois le plus gros passage déjà mesuré) tant que la prévision tient dans la mémoire disponible moins la réserve. Chaque passage enregistre la mémoire réellement consommée (`video-memory.json` du dossier de données : un cache de mesures, pas une donnée de l'application) ; `sd-cli --max-vram` reçoit ce budget (build 956 ou plus récent, `IMAGEGEN_SDCPP_MAX_VRAM=off` le retire) |
 
 Les générations d'un même envoi (jusqu'à 4 images) passent l'une après l'autre dans le même worker, jamais en parallèle.
 
