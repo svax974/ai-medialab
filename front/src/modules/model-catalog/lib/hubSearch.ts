@@ -52,15 +52,18 @@ export const HUB_PLACEHOLDER_KEY: Record<ModelKind, string> = {
   image: 'models.hub.placeholder.image',
   audio: 'models.hub.placeholder.audio',
   video: 'models.hub.placeholder.video',
+  llm: 'models.hub.placeholder.llm',
 }
 export const HUB_HELP_KEY: Record<ModelKind, string> = {
   image: 'models.hub.help.image',
   audio: 'models.hub.help.audio',
   video: 'models.hub.help.video',
+  llm: 'models.hub.help.llm',
 }
 export const HUB_TASK_KEY: Record<HubResult['task'], string> = {
   image: 'models.hub.task.image',
   tts: 'models.hub.task.tts',
   stt: 'models.hub.task.stt',
   video: 'models.hub.task.video',
+  llm: 'models.hub.task.llm',
 }

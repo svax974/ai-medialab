@@ -5,7 +5,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
-import type { DownloadProgress, HubInspect, HubResult, ModelCatalog } from '../types/modelCatalogTypes';
+import type { DownloadProgress, HubInspect, HubResult, HubTrending, ModelCatalog, TrendingQuery } from '../types/modelCatalogTypes';
 
 /** Deleting a large model waits for the files to be gone; a Hugging Face call goes over the network. */
 const SLOW_CALL_MS = 120_000;
@@ -53,6 +53,11 @@ export class ModelCatalogService {
 
   inspectHub(repo: string): Promise<HubInspect> {
     return this.call(() => this.engine.get('/engine/v1/hf/inspect', { query: { repo }, timeoutMs: SLOW_CALL_MS }));
+  }
+
+  /** New, successful models of a kind that this machine can run (already validated by the controller). */
+  trendingHub(query: TrendingQuery): Promise<HubTrending> {
+    return this.call(() => this.engine.get('/engine/v1/hf/trending', { query, timeoutMs: SLOW_CALL_MS }));
   }
 
   private async call<T>(fn: () => Promise<unknown>): Promise<T> {

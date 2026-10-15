@@ -22,7 +22,7 @@ export function useModels(options: { enabled?: boolean } = {}) {
 /** The model a composer uses for a kind (see `resolveActiveModel`); undefined while the catalogue loads. */
 export function useActiveModel(kind: ModelKind = 'image'): ModelInfo | undefined {
   const { data } = useModels()
-  const stored = useModelSelectionStore((s) => s.selected[kind])
+  const stored = useModelSelectionStore((s) => s.selected[kind] ?? null) // a state saved before `llm` existed lacks it
   const usage = useModelUsage()
   return data ? resolveActiveModel(data, kind, stored, usage) : undefined
 }

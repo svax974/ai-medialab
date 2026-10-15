@@ -113,6 +113,28 @@ describe('model-catalog routes (fake engine)', () => {
     expect(engine.requests).toHaveLength(0);
   });
 
+  it('searches the language models of Hugging Face and refuses an unknown kind before it reaches the engine', async () => {
+    answer(200, { results: [{ repo: 'org/m-GGUF', family: 'llm-gguf', task: 'llm' }] });
+    const res = await request(app.getHttpServer()).get('/api/hf/search?kind=llm&q=qwen').expect(200);
+    expect(res.body.results[0]).toMatchObject({ family: 'llm-gguf', task: 'llm' });
+    expect(last().url).toBe('/engine/v1/hf/search?kind=llm&q=qwen');
+    const before = engine.requests.length;
+    for (const kind of ['chat', 'LLM', '..%2Fadmin', 'image%26x%3D1']) await request(app.getHttpServer()).get(`/api/hf/search?kind=${kind}&q=x`).expect(400);
+    expect(engine.requests).toHaveLength(before);
+  });
+
+  it('lets the language models and the chat summary of the catalogue through untouched', async () => {
+    const catalog = {
+      models: [{ id: 'llm-a', kind: 'llm', backend: 'llamacpp', llm: { context_default: 16384, context_max: 32768, vision: false, tools: true, reasoning: 'toggle', moe: false, params_b: 4, active_params_b: null } }],
+      default_model_id: null, recommended_model_id: null, ready: false,
+      audio: { default_model_id: null, recommended_model_id: null, ready: false }, video: { default_model_id: null, recommended_model_id: null, ready: false },
+      llm: { default_model_id: 'llm-a', recommended_model_id: 'llm-a', ready: true },
+    };
+    answer(200, catalog);
+    const res = await request(app.getHttpServer()).get('/api/models').expect(200);
+    expect(res.body).toEqual(catalog);
+  });
+
   it('searches and inspects Hugging Face', async () => {
     answer(200, { results: [] });
     await request(app.getHttpServer()).get('/api/hf/search?kind=video&q=wan').expect(200, { results: [] });
@@ -124,6 +146,35 @@ describe('model-catalog routes (fake engine)', () => {
     expect(res.body.message).toBe('Dépôt introuvable.');
     expect(last().url).toBe('/engine/v1/hf/inspect?repo=a%2Fb');
     await request(app.getHttpServer()).get('/api/hf/inspect').expect(400);
+  });
+
+  describe('what is new on Hugging Face', () => {
+    const body = { kind: 'llm', days: 90, generated_at: 1, cached: false, results: [], hidden: { heavy: 0, existing: 0 } };
+
+    it('relays the answer with the defaults, and the validated parameters', async () => {
+      answer(200, body);
+      await request(app.getHttpServer()).get('/api/hf/trending').expect(200, body);
+      expect(last().url).toBe('/engine/v1/hf/trending?kind=image&days=90&limit=12&include_heavy=false&refresh=false');
+      await request(app.getHttpServer()).get('/api/hf/trending?kind=llm&days=30&limit=5&include_heavy=true&refresh=true').expect(200);
+      expect(last().url).toBe('/engine/v1/hf/trending?kind=llm&days=30&limit=5&include_heavy=true&refresh=true');
+    });
+
+    it.each([
+      ['kind=music'], ['kind=image;drop'], ['days=6'], ['days=366'], ['days=abc'], ['days=30.5'], ['limit=0'], ['limit=31'],
+      ['include_heavy=1'], ['refresh=yes'], ['days=1&days=2'],
+    ])('refuses %s before it reaches the engine', async (query) => {
+      await request(app.getHttpServer()).get(`/api/hf/trending?${query}`).expect(400);
+      expect(engine.requests).toHaveLength(0);
+    });
+
+    it('needs an administrator, relays the engine refusal and the unreachable Hub', async () => {
+      principal = undefined;
+      await request(app.getHttpServer()).get('/api/hf/trending').expect(401);
+      principal = { id: 0, admin: true, kind: 'local-trust' };
+      answer(502, { detail: 'Hugging Face est injoignable.' });
+      const res = await request(app.getHttpServer()).get('/api/hf/trending?kind=audio').expect(502);
+      expect(res.body.message).toBe('Hugging Face est injoignable.');
+    });
   });
 
   it('answers 502 when the engine is unreachable', async () => {

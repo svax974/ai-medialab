@@ -45,6 +45,25 @@ describe('resolveActiveModel', () => {
   })
 })
 
+describe('chat models (kind llm)', () => {
+  const chat = (over: Partial<ModelCatalog> = {}) =>
+    catalog({ models: [m('l1', 'llm'), m('l2', 'llm'), m('i1', 'image')], llm: { default_model_id: 'l2', recommended_model_id: 'l1', ready: false }, ...over })
+  it('uses the engine default of the llm summary, then the first chat model', () => {
+    expect(resolveActiveModel(chat(), 'llm', null)?.id).toBe('l2')
+    expect(resolveActiveModel(chat({ llm: undefined }), 'llm', null)?.id).toBe('l1')
+    expect(resolveActiveModel(chat(), 'llm', 'l1')?.id).toBe('l1')
+  })
+  it('never mixes the kinds', () => {
+    expect(resolveActiveModel(chat(), 'image', null)?.id).toBe('i1')
+  })
+  it('proposes the recommended chat model while none is ready', () => {
+    const c = chat()
+    expect(welcomeModel(c, 'llm', c.models[0])?.id).toBe('l1')
+    expect(welcomeModel(chat({ llm: { default_model_id: 'l2', recommended_model_id: 'l1', ready: true } }), 'llm', c.models[0])).toBeNull()
+    expect(welcomeModel(chat({ llm: undefined }), 'llm', c.models[0])).toBeNull()
+  })
+})
+
 describe('welcomeModel', () => {
   it('proposes the recommended model while nothing is ready', () => {
     const c = catalog()

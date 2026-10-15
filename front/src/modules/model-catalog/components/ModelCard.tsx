@@ -15,7 +15,7 @@ import { alternativeToShow, lacksDiskRoom, noteIsWarning, remainingGb } from '..
 import { useDownloadStore } from '../state/downloadStore'
 import type { ModelInfo } from '../types'
 import { useModelActions } from '../hooks/useModelActions'
-import { GatedNotice, LicenseWarning, VideoBadges } from './ModelBadges'
+import { GatedNotice, LicenseWarning, LlmBadges, VideoBadges } from './ModelBadges'
 import { ModelActions } from './ModelActions'
 import { ModelHeader } from './ModelHeader'
 import { Notice, Tag } from './panels'
@@ -110,6 +110,11 @@ export function ModelCard({ model: m, system, onSetup, onUse }: ModelCardProps) 
       {m.kind === 'video' && (
         <Box sx={{ mt: 1 }}>
           <VideoBadges model={m} />
+        </Box>
+      )}
+      {m.kind === 'llm' && (
+        <Box sx={{ mt: 1 }}>
+          <LlmBadges model={m} />
         </Box>
       )}
       {m.kind === 'video' && (

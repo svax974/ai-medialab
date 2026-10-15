@@ -21,7 +21,7 @@ studio-core/
   hooks/useStudioEvents.ts         abonnement aux sujets studio.* et application au cache (monté par StudioShell)
   hooks/useMessageActions.ts       relance, annulation, suppression (confirmation)
   hooks/useAssetActions.ts         favori, suppression depuis la visionneuse
-  components/StudioModelPicker.tsx sélecteur de modèle des composeurs, classé par usage (`ModelPicker` + `useModelUsage` de `model-catalog` ; la clé `model-usage` est invalidée ici à la fin ou à la suppression d'une génération)
+  components/StudioModelPicker.tsx sélecteur de modèle des composeurs, classé par usage (`ModelPicker` + `useModelUsage` de `model-catalog` ; la clé `model-usage` est invalidée ici à la fin ou à la suppression d'une génération), suivi du bouton « Nouveautés » (`WhatsNewButton` de `model-catalog`) (`onSelect` : ce qu'un choix fait en plus, par exemple le chat qui garde le modèle dans les réglages de la conversation ; le chat l'utilise aussi, pour le type `llm`)
   components/NegativePromptField.tsx ligne « À éviter » sous le prompt (image, vidéo) pour les modèles qui ont un `negative_prompt`,
                                    que `toParamsSchema` retire alors du panneau de réglages (`NEGATIVE_PROMPT`)
   hooks/useNow.ts                  horloge (secondes) rafraîchie chaque seconde tant qu'un chargement dure
@@ -40,6 +40,7 @@ studio-core/
   state/queueStore.ts              file des générations (message courant, messages en attente), tenue à jour par studio.queue.updated (Zustand)
   (lightboxStore : déplacé dans `media-library`, la galerie ouvre la même visionneuse)
   state/imageDraftStore.ts         brouillon du composeur image (Zustand, persisté sous `cn-composer`)
+  state/promptHandoffStore.ts      texte qu'un studio laisse au compositeur d'un autre (le chat → image, vidéo, audio ; en mémoire seulement) ; hooks/usePromptHandoff.ts : le compositeur cible le prend à l'affichage
   components/                      ConversationView, TitleEditor, UserMessage, AssistantMessage, StatusLine, MessageFooter, ImageTile (+ TileActions,
                                    DevelopingTile), StudioLightbox, GenerationParams (réglages + graine, commun aux trois modes), EngineCard, HelpTooltip (+ LabelTooltip)
   locales/                         locales.fr.json, locales.en.json (clés thread.*)
@@ -47,9 +48,9 @@ studio-core/
 
 ## API publique
 
-`ConversationView({ id, adapters })`, `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useModelUsage` (réexporté de `model-catalog`, qui le porte), `StudioModelPicker`, `NegativePromptField`, `useToggleFavorite`,
+`ConversationView({ id, adapters })` (ne dessine pas le mode chat : son fil est celui du module `chat`, choisi par `ConversationPage`), `AssistantMessage`, `EngineCard`, `StudioLightbox({ modeActions })`, `GenerationParams`, `toParamsSchema` / `paramValues` / `isFullReset`, `useStudioEvents`, `useModelUsage` (réexporté de `model-catalog`, qui le porte), `StudioModelPicker`, `NegativePromptField`, `useToggleFavorite`,
 `addAsReference` / `reuseUserMessage` / `reuseGenerationSettings` (actions sur le brouillon), `PARAM_HELP` / `paramHelp`, `HelpTooltip` / `LabelTooltip`,
-`messagesApi`, `upsertMessage`, `useImageDraftStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
+`messagesApi`, `upsertMessage`, `useImageDraftStore`, `usePromptHandoff`, `usePromptHandoffStore`, `useLiveStore`, `useQueueStore` (`assetsApi`, `assetKeys` et `useLightboxStore` sont dans `media-library`), `ModeAdapter`, types.
 
 `ModeAdapter` (`lib/modeAdapter.ts`) : ce qu'un mode branche sur le fil : `Composer`, `AssistantMessage`, `reuseUserMessage`. La page
 `/c/:id` (`studio-shell/pages/ConversationPage.tsx`) passe `{ image: imageStudioAdapter, audio: audioStudioAdapter, video: videoStudioAdapter }` ; une conversation d'un mode sans adaptateur

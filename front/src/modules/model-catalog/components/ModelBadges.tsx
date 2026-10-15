@@ -6,6 +6,9 @@
 import type { ReactNode } from 'react'
 import { Box, Tooltip } from '@mui/material'
 import KeyOutlined from '@mui/icons-material/KeyOutlined'
+import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined'
+import ImageOutlined from '@mui/icons-material/ImageOutlined'
+import BuildOutlined from '@mui/icons-material/BuildOutlined'
 import VolumeUpOutlined from '@mui/icons-material/VolumeUpOutlined'
 import WarningAmberRounded from '@mui/icons-material/WarningAmberRounded'
 import { HelpBody, InfoTip, helpTooltipSlotProps, type Help } from '@/modules_shared/common/components/ui/help'
@@ -50,6 +53,23 @@ export function VideoBadges({ model }: { model: ModelInfo }) {
         </HelpTag>
       )}
       {v.english_only && <HelpTag help={MODEL_HELP.englishOnly}>{t('models.video.english')}</HelpTag>}
+    </Box>
+  )
+}
+
+/** What a chat model can do: vision, tools, thinking, mixture of experts, context and size in parameters. Nothing for other kinds. */
+export function LlmBadges({ model }: { model: ModelInfo }) {
+  const t = useT()
+  const l = model.llm
+  if (!l) return null
+  const size = l.moe && l.params_b && l.active_params_b ? t('models.llm.moe', [l.params_b, l.active_params_b]) : l.params_b ? t('models.llm.params', [l.params_b]) : null
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px' }}>
+      {size && <HelpTag help={l.moe ? MODEL_HELP.llmMoe : MODEL_HELP.llmParams}>{size}</HelpTag>}
+      <HelpTag help={MODEL_HELP.llmContext}>{t('models.llm.context', [Math.round(l.context_max / 1024)])}</HelpTag>
+      {l.vision && <HelpTag help={MODEL_HELP.llmVision}><ImageOutlined sx={{ fontSize: 12 }} /> {t('models.llm.vision')}</HelpTag>}
+      {l.tools && <HelpTag help={MODEL_HELP.llmTools}><BuildOutlined sx={{ fontSize: 12 }} /> {t('models.llm.tools')}</HelpTag>}
+      {l.reasoning !== 'none' && <HelpTag help={MODEL_HELP.llmReasoning}><PsychologyOutlined sx={{ fontSize: 12 }} /> {t(`models.llm.reasoning.${l.reasoning}`)}</HelpTag>}
     </Box>
   )
 }

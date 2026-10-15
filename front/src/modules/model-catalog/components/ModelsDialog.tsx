@@ -14,14 +14,15 @@ import { useT } from '@/modules/studio-shell/hooks/useT'
 import { studioPaths } from '@/modules/studio-shell/lib/routes'
 import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
 import { splitModels } from '../lib/catalogFormat'
+import { modelKindOfMode } from '../lib/modelKind'
 import { useModels } from '../hooks/useModelCatalog'
 import { useModelSelectionStore } from '../state/modelSelectionStore'
 import type { ModelInfo, ModelKind } from '../types'
 import { HubSearch } from './HubSearch'
 import { ModelCard } from './ModelCard'
 
-const KINDS: ModelKind[] = ['image', 'audio', 'video']
-const HOME_PATH: Record<ModelKind, string> = { image: studioPaths.home, audio: studioPaths.audioHome, video: studioPaths.videoHome }
+const KINDS: ModelKind[] = ['image', 'audio', 'video', 'llm']
+const HOME_PATH: Record<ModelKind, string> = { image: studioPaths.home, audio: studioPaths.audioHome, video: studioPaths.videoHome, llm: studioPaths.chatHome }
 
 interface ModelsDialogProps {
   open: boolean
@@ -60,13 +61,13 @@ export function ModelsDialog({ open, onClose, onSetup, renderEngines }: ModelsDi
   const mode = useStudioStore((s) => s.mode)
   const searchKind = useStudioStore((s) => s.modelsSearchKind)
   const select = useModelSelectionStore((s) => s.select)
-  const [tab, setTab] = useState<ModelKind>(mode)
+  const [tab, setTab] = useState<ModelKind>(modelKindOfMode(mode))
   const searchRef = useRef<HTMLInputElement>(null)
   const catalog = useModels({ enabled: open })
   const { data: system } = useSystemInfo({ enabled: open, pollMs: open ? 8_000 : false })
 
   useEffect(() => {
-    if (open) setTab(useStudioStore.getState().modelsSearchKind ?? mode)
+    if (open) setTab(useStudioStore.getState().modelsSearchKind ?? modelKindOfMode(mode))
   }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Opened from "search a model": bring the Hugging Face search into view.

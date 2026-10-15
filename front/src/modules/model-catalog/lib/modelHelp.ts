@@ -14,6 +14,12 @@ export const MODEL_HELP = {
   audioOut: { titleId: 'models.help.audioOut.title', bodyId: 'models.help.audioOut.body' },
   englishOnly: { titleId: 'models.help.englishOnly.title', bodyId: 'models.help.englishOnly.body' },
   license: { titleId: 'models.help.license.title', bodyId: 'models.help.license.body' },
+  llmVision: { titleId: 'models.help.llmVision.title', bodyId: 'models.help.llmVision.body' },
+  llmTools: { titleId: 'models.help.llmTools.title', bodyId: 'models.help.llmTools.body' },
+  llmReasoning: { titleId: 'models.help.llmReasoning.title', bodyId: 'models.help.llmReasoning.body' },
+  llmMoe: { titleId: 'models.help.llmMoe.title', bodyId: 'models.help.llmMoe.body' },
+  llmParams: { titleId: 'models.help.llmParams.title', bodyId: 'models.help.llmParams.body' },
+  llmContext: { titleId: 'models.help.llmContext.title', bodyId: 'models.help.llmContext.body' },
 } as const
 
 /** Tooltip of a video task badge. */

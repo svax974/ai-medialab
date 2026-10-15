@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-export type ModelKind = 'image' | 'audio' | 'video'
+/** What a model produces: pictures, speech/transcription, clips, or text (chat, run by llama.cpp). */
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm'
 export type InstallState = 'installed' | 'partial' | 'missing'
 export type ReferenceMode = 'none' | 'init' | 'multi' | 'face'
 
@@ -37,6 +38,8 @@ export interface VideoCaps {
   default_seconds: number
   min_seconds: number
   max_seconds: number
+  /** Set: a clip longer than this is made of chained runs of this length (each starts from the last frame of the previous). */
+  segment_seconds?: number | null
   resolutions: VideoResolution[]
   default_resolution: string
   image_input: 'none' | 'optional' | 'required'
@@ -63,6 +66,22 @@ export interface AudioCaps {
   sample_rate: number
 }
 
+/** Thinking support of a chat model: none, a switch, always on, or low/medium/high levels. */
+export type LlmReasoning = 'none' | 'toggle' | 'always' | 'levels'
+
+/** What the chat can offer for a language model (`ModelInfo.llm`, from the engine's `LlmCaps`). */
+export interface LlmCaps {
+  /** Tokens of context a chat opens with (the cache is paid for up front). */
+  context_default: number
+  context_max: number
+  vision: boolean
+  tools: boolean
+  reasoning: LlmReasoning
+  moe: boolean
+  params_b: number | null
+  active_params_b: number | null
+}
+
 export interface DownloadProgress {
   model_id: string
   state: 'running' | 'error' | 'cancelled' | 'done'
@@ -86,7 +105,7 @@ export interface ModelVariant {
   selected: boolean
 }
 
-export type Backend = 'mlx' | 'torch' | 'sdcpp' | 'pack' | 'demo'
+export type Backend = 'mlx' | 'torch' | 'sdcpp' | 'llamacpp' | 'pack' | 'demo'
 
 /** One entry of `GET /api/models` (shape of the engine's `catalog.describe_models`). */
 export interface ModelInfo {
@@ -94,6 +113,7 @@ export interface ModelInfo {
   kind: ModelKind
   audio: AudioCaps | null
   video?: VideoCaps | null
+  llm?: LlmCaps | null
   engine_pack: string | null
   engine_name: string | null
   /** What installing the engine brings, in one sentence. */
@@ -154,15 +174,16 @@ export interface KindSummary {
   ready: boolean
 }
 
-/** `GET /api/models`: the image summary is the top level (as the engine answers); audio and video are nested. */
+/** `GET /api/models`: the image summary is the top level (as the engine answers); audio, video and llm are nested. */
 export interface ModelCatalog extends KindSummary {
   models: ModelInfo[]
   audio: KindSummary
   video: KindSummary
+  llm?: KindSummary
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {})
-export type HubTask = 'image' | 'tts' | 'stt' | 'video'
+export type HubTask = 'image' | 'tts' | 'stt' | 'video' | 'llm'
 
 export interface HubResult {
   repo: string
@@ -204,4 +225,55 @@ export interface HubInspect {
   options: HubOption[]
   compatible: boolean
   reason: string
+}
+
+/** What « What's new » covers: the three studios and, for the chat, the language models. */
+export type TrendingKind = ModelKind
+
+/** The variant the add flow selects by default for a new model. */
+export interface TrendingOption {
+  key: string | null
+  label: string | null
+  precision: string | null
+  size_gb: number | null
+  /** What adding it downloads: the file plus the shared files of the reference model still missing. */
+  download_gb: number | null
+  fits: boolean | null
+  fit_note: string | null
+}
+
+/** One new, successful model (`GET /api/hf/trending`). */
+export interface TrendingEntry {
+  repo: string
+  name: string
+  author: string
+  family: HubFamily
+  family_label: string
+  task: string
+  created_at: string
+  age_days: number
+  /** Downloads of the last 30 days. */
+  downloads: number
+  likes: number
+  trending_score: number
+  license: string
+  /** `noncommercial` or `custom` when the licence is not a plain open one. */
+  license_note: 'noncommercial' | 'custom' | null
+  /** The proposed variant fits this machine and its engine is usable. */
+  compatible: boolean
+  reason: string
+  options: number
+  option: TrendingOption | null
+  url: string
+}
+
+export interface HubTrending {
+  kind: TrendingKind
+  days: number
+  /** When the engine computed the list (epoch seconds); it keeps it for an hour. */
+  generated_at: number
+  cached: boolean
+  results: TrendingEntry[]
+  /** Left out of `results`: too heavy for this machine (when not asked for), already in the catalog. */
+  hidden: { heavy: number; existing: number }
 }

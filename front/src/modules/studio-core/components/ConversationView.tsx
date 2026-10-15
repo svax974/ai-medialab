@@ -75,6 +75,8 @@ export function ConversationView({ id, adapters }: { id: string; adapters: ModeA
     )
   }
 
+  // A chat is drawn by the `chat` module (its messages are not generations): see `ConversationPage`.
+  if (conversation.mode === 'chat') return null
   const adapter = adapters[conversation.mode]
   const kind = conversation.mode
   const messages = conversation.messages

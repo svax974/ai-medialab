@@ -16,7 +16,7 @@ interface ModelSelectionState {
 export const useModelSelectionStore = create<ModelSelectionState>()(
   persist(
     (set) => ({
-      selected: { image: null, audio: null, video: null },
+      selected: { image: null, audio: null, video: null, llm: null },
       select: (kind, modelId) => set((state) => ({ selected: { ...state.selected, [kind]: modelId } })),
     }),
     { name: 'cn-models' },

@@ -4,7 +4,7 @@
  */
 
 import { studioRequest } from '@/modules/studio-shell/services/studioHttp'
-import type { DownloadProgress, HubInspect, HubResult, ModelCatalog, ModelKind } from '../types'
+import type { DownloadProgress, HubInspect, HubResult, HubTrending, ModelCatalog, ModelKind, TrendingKind } from '../types'
 
 /** Nest routes `/api/models*` and `/api/hf/*` (they delegate to the Python engine). */
 export const modelCatalogApi = {
@@ -33,6 +33,11 @@ export const modelCatalogApi = {
   async hubSearch(kind: ModelKind, query: string): Promise<HubResult[]> {
     const { results } = await studioRequest<{ results: HubResult[] }>('get', `/hf/search?kind=${kind}&q=${encodeURIComponent(query)}`)
     return results
+  },
+  /** New, successful models of a kind this machine can run; `refresh` asks the engine to read the Hub again (it keeps an hour). */
+  hubTrending(kind: TrendingKind, options: { days: number; includeHeavy?: boolean; refresh?: boolean }): Promise<HubTrending> {
+    const query = new URLSearchParams({ kind, days: String(options.days), include_heavy: String(!!options.includeHeavy), refresh: String(!!options.refresh) })
+    return studioRequest<HubTrending>('get', `/hf/trending?${query.toString()}`)
   },
   hubInspect(repo: string): Promise<HubInspect> {
     return studioRequest<HubInspect>('get', `/hf/inspect?repo=${encodeURIComponent(repo)}`)

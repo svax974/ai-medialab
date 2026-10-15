@@ -40,6 +40,14 @@ describe('modelCatalogApi', () => {
     expect(await modelCatalogApi.hubSearch('video', 'wan 2.1')).toEqual([{ repo: 'a/b' }])
     expect(studioRequest).toHaveBeenCalledWith('get', '/hf/search?kind=video&q=wan%202.1')
   })
+  it('asks what is new with the kind, the window and the flags', async () => {
+    await modelCatalogApi.hubTrending('llm', { days: 30 })
+    await modelCatalogApi.hubTrending('image', { days: 90, includeHeavy: true, refresh: true })
+    expect(studioRequest.mock.calls).toEqual([
+      ['get', '/hf/trending?kind=llm&days=30&include_heavy=false&refresh=false'],
+      ['get', '/hf/trending?kind=image&days=90&include_heavy=true&refresh=true'],
+    ])
+  })
   it('inspects a repository with the encoded name', async () => {
     await modelCatalogApi.hubInspect('org/name')
     expect(studioRequest).toHaveBeenCalledWith('get', '/hf/inspect?repo=org%2Fname')

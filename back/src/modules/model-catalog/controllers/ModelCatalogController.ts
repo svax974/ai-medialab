@@ -8,11 +8,34 @@ import { ApiExcludeController } from '@nestjs/swagger';
 import { NoTransportCrypt } from 'src/modules_shared/common/decorators/NoTransportCrypt';
 import { AdminOnlyInterceptor } from 'src/modules_shared/common/interceptors/AdminOnlyInterceptor';
 import { ModelCatalogService } from '../services/ModelCatalogService';
-import type { DownloadProgress, HubInspect, HubResult, ModelCatalog } from '../types/modelCatalogTypes';
+import { HUB_SEARCH_KINDS, TRENDING_KINDS, type DownloadProgress, type HubInspect, type HubResult, type HubTrending, type ModelCatalog, type TrendingKind } from '../types/modelCatalogTypes';
 
 const asText = (value: unknown, name: string): string => {
   if (typeof value !== 'string') throw new BadRequestException(`"${name}" must be a string`);
   return value;
+};
+
+/** Allowed values of `GET /api/hf/trending`: nothing else reaches the engine. */
+const TRENDING_DAYS = { min: 7, max: 365, fallback: 90 };
+const TRENDING_LIMIT = { min: 1, max: 30, fallback: 12 };
+
+const asKind = (value: unknown): TrendingKind => {
+  if (value === undefined) return 'image';
+  if (typeof value === 'string' && (TRENDING_KINDS as readonly string[]).includes(value)) return value as TrendingKind;
+  throw new BadRequestException(`"kind" must be one of: ${TRENDING_KINDS.join(', ')}`);
+};
+
+const asBoundedInt = (value: unknown, name: string, bounds: { min: number; max: number; fallback: number }): number => {
+  if (value === undefined) return bounds.fallback;
+  const n = typeof value === 'string' && /^\d{1,4}$/.test(value) ? Number(value) : NaN;
+  if (!Number.isInteger(n) || n < bounds.min || n > bounds.max) throw new BadRequestException(`"${name}" must be an integer from ${bounds.min} to ${bounds.max}`);
+  return n;
+};
+
+const asFlag = (value: unknown, name: string): boolean => {
+  if (value === undefined) return false;
+  if (value === 'true' || value === 'false') return value === 'true';
+  throw new BadRequestException(`"${name}" must be true or false`);
 };
 
 /** `/api/models*` and `/api/hf/*`: same URLs and shapes as the engine's legacy routes. Admin only. */
@@ -59,7 +82,26 @@ export class ModelCatalogController {
 
   @Get('hf/search')
   search(@Query('kind') kind = 'image', @Query('q') q = ''): Promise<{ results: HubResult[] }> {
+    if (!(HUB_SEARCH_KINDS as readonly string[]).includes(kind)) throw new BadRequestException(`"kind" must be one of: ${HUB_SEARCH_KINDS.join(', ')}`);
     return this.catalog.searchHub(kind, q);
+  }
+
+  /** New models of a kind that are successful and runnable on this machine (the engine ranks and keeps them an hour). */
+  @Get('hf/trending')
+  trending(
+    @Query('kind') kind?: string,
+    @Query('days') days?: string,
+    @Query('limit') limit?: string,
+    @Query('include_heavy') includeHeavy?: string,
+    @Query('refresh') refresh?: string,
+  ): Promise<HubTrending> {
+    return this.catalog.trendingHub({
+      kind: asKind(kind),
+      days: asBoundedInt(days, 'days', TRENDING_DAYS),
+      limit: asBoundedInt(limit, 'limit', TRENDING_LIMIT),
+      include_heavy: asFlag(includeHeavy, 'include_heavy'),
+      refresh: asFlag(refresh, 'refresh'),
+    });
   }
 
   @Get('hf/inspect')

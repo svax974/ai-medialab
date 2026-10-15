@@ -16,23 +16,27 @@ model-catalog/
   index.ts                       exports (voir « API publique »)
   types.ts                       ModelInfo, ModelCatalog, DownloadProgress, HubResult, HubInspect... (formes du moteur)
   services/modelCatalogApi.ts    GET /models, POST|DELETE /models/:id/download, DELETE /models/:id, POST /models/custom,
-                                 DELETE /models/:id/custom, GET /hf/search, GET /hf/inspect
+                                 DELETE /models/:id/custom, GET /hf/search, GET /hf/inspect, GET /hf/trending
   hooks/useModelCatalog.ts       useModels, useActiveModel, useWelcomeModel, useRefreshCatalog, useStartDownload, useCancelDownload
   hooks/useModelUsage.ts         générations terminées par modèle (`GET /api/messages/model-usage`, clé `model-usage`, invalidée par `studio-core`)
   hooks/useModelActions.ts       supprimer / retirer (confirmation, attente de la libération, message)
-  hooks/useHubSearch.ts          useDebouncedQuery, useHubSearch, useHubInspect, useAddCustomModel
+  hooks/useHubSearch.ts          useDebouncedQuery, useHubSearch, useHubInspect, useAddCustomModel (répond l'id du modèle ajouté)
+  hooks/useWhatsNew.ts           useWhatsNew, useRefreshWhatsNew (« Nouveautés » : modèles récents qui ont du succès)
   hooks/useDownloadEvents.ts     abonnement à engine.download.progress (monté par la coquille)
   hooks/useSizeLabel.ts          « 650 Mo » / « 4,5 Go » localisés
   lib/catalogFormat.ts           tailles, tri « installés d'abord », séparation générateurs/transcription, place disque,
                                  libellé du moteur, choix de précision, alternative GPU (pur, testé)
   lib/downloads.ts               téléchargement actif (direct > catalogue), erreur, mise à jour, analyse d'événement (pur, testé)
   lib/hubSearch.ts               compteurs, variante par défaut, blocage de l'ajout, tables de clés (pur, testé)
+  lib/whatsNew.ts                âge, taille à télécharger, pastille « nouveau » (dernière ouverture par type, `localStorage` protégé) (pur, testé)
   lib/activeModel.ts             modèle actif d'un composeur, modèle de la carte d'accueil (pur, testé)
+  lib/modelKind.ts               `modelKindOfMode` : le chat utilise les modèles `llm`, les autres modes leur type (pur, testé)
   lib/modelHelp.ts, modelCatalogKeys.ts
   state/downloadStore.ts         progression en direct par modèle (Zustand)
   state/modelSelectionStore.ts   modèle choisi par type (persisté sous `cn-models`)
   components/                    ModelsDialog, ModelCard, ModelHeader, ModelActions, VariantPicker, QuantizeControl, HubSearch,
-                                 ModelPicker, ModelBadges (VideoBadges, LicenseWarning, GatedNotice, HelpTag), panels (Section, Tag, Notice)
+                                 ModelPicker, ModelBadges (VideoBadges, LlmBadges, LicenseWarning, GatedNotice, HelpTag), panels (Section, Tag, Notice),
+                                 WhatsNewButton, WhatsNewDialog, WhatsNewRow
   locales/                       locales.fr.json, locales.en.json (clés models.*)
 ```
 
@@ -42,8 +46,16 @@ model-catalog/
 `engines`), `ModelPicker` (`<ModelPicker model={actif} usage? onSelect? />` : les plus utilisés d'abord selon `usage`, puis les autres
 installés, puis le reste ; les modèles trop lourds pour la machine (`plan.fits` faux) masqués derrière « Afficher les modèles trop
 lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker` de `studio-core`, qui fournit `usage`), `useModelUsage`, `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
-`useModelSelectionStore`, `useDownloadStore`, `activeDownload`, `modelCatalogApi`, `modelCatalogKeys`, `VideoBadges`, `LicenseWarning`,
+`WhatsNewButton` (`<WhatsNewButton kind />`, `kind` : `image`, `audio`, `video` ou `llm`), `useWhatsNew`, `useModelSelectionStore`, `useDownloadStore`, `activeDownload`, `modelCatalogApi`, `modelCatalogKeys`, `VideoBadges`, `LlmBadges`, `modelKindOfMode`, `LicenseWarning`,
 `GatedNotice` (réutilisés par le composeur vidéo, H4.6), `MODEL_HELP` (info-bulles des badges, reprises par les avis du composeur vidéo), `Section`, `Tag`, `Notice`, types.
+
+## Modèles de chat (`kind: 'llm'`)
+
+Quatrième type, à côté d'image, audio et vidéo : les modèles de langage GGUF que le moteur exécute avec llama.cpp (`backend: 'llamacpp'`). Le dialogue a un onglet « Modèles de chat » (la carte du moteur au-dessus est celle de
+llama.cpp, module `engines`) ; `ModelInfo.llm` (`LlmCaps` : contexte par défaut et maximal, vision, outils, raisonnement `none | toggle | always | levels`, MoE, paramètres) est montré par `LlmBadges` (carte et ligne du sélecteur) ;
+la recherche Hugging Face passe `kind=llm` ; le catalogue porte un bloc `llm` (`default_model_id`, `recommended_model_id`, `ready`) lu par `resolveActiveModel` / `welcomeModel` ; la sélection (`cn-models`) a une entrée `llm`
+(un état enregistré avant son existence n'en a pas : lue comme « aucune »). Le mode courant donne le type de l'onglet initial par `modelKindOfMode` (le chat → `llm`). L'usage (`useModelUsage`) ne compte que les générations
+de médias : les modèles de chat ne sont pas classés par usage.
 
 ## Comportement
 
@@ -64,6 +76,18 @@ lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker
   Résultats incompatibles estompés ; variantes qui ne tiennent pas en mémoire estompées et **barrées** (infobulle = `fit_note`) ; la
   variante par défaut est une Q4_K qui tient, jamais une qui ne tient pas quand une autre tient ; l'ajout est bloqué si la machine ne
   peut pas faire tourner le modèle ou si la variante choisie ne tient pas. « Ajouter et télécharger » ajoute le dépôt puis démarre le téléchargement.
+- **« Nouveautés » (`WhatsNewButton`)** : bouton à côté du sélecteur de modèle de chaque composeur (un seul point de montage :
+  `StudioModelPicker` de `studio-core`, donc les pages image, audio et vidéo ; la page Chat le montera avec `kind="llm"`). Il ouvre une
+  fenêtre (`WhatsNewDialog`) listant les modèles Hugging Face **récents** (30, 90 ou 180 jours), **qui ont du succès** et que **cette
+  machine peut faire tourner**, calculés par le moteur sans IA (`engine/app/hf_trending.py` : signaux du Hub, seuils par type ; voir
+  « Nouveautés » dans `back/src/modules/model-catalog/README.md`). Chaque ligne : nom, auteur, famille, variante proposée et taille
+  à télécharger, âge, téléchargements 30 j, mentions « j'aime », licence (avertissement si non commerciale ou particulière),
+  « Ajouter » (le flux de la recherche : `useAddCustomModel` avec la variante proposée, puis la barre de progression du téléchargement),
+  « Variantes (n) » (le détail de la recherche, `Detail` de `HubSearch`, pour choisir la quantification) et le lien Hugging Face.
+  États : chargement, vide (avec ce qui compte), erreur avec « Réessayer » ; « Actualiser » relit le Hub (le moteur garde une heure) ;
+  les modèles trop lourds sont masqués derrière « Afficher aussi… (n) », comme dans le sélecteur. Une **pastille** sur le bouton
+  signale des modèles publiés depuis la dernière ouverture de ce type (lue 3 s après l'affichage de la page, dernière ouverture gardée
+  dans le navigateur : confort par visiteur, l'application marche sans).
 - **Marqueur « lent · processeur »** (`plan.degraded`) : pastille sur la carte (infobulle = note du plan) ; l'alternative qui utilise le GPU
   est nommée par la note du moteur (`plan.note`) et, si la note ne la nomme pas, par une ligne dédiée.
 - **Accès restreint** (`gated`) : encadré avec la marche à suivre, plus l'état du jeton (« Un jeton est enregistré. » / « Aucun jeton n'est enregistré. »).
@@ -105,6 +129,7 @@ Textes de `frontend/src/lib/help.ts` (supprimé en H6) repris à l'identique en 
 ## Tests
 
 Un fichier à la fois, depuis `front/` : `../docs/migration/tools/guarded_run.sh 3 npx vitest run src/modules/model-catalog/lib/catalogFormat.spec.ts`
-(idem `downloads`, `hubSearch`, `activeModel`, `services/modelCatalogApi`, `state/stores`, `locales/locales`). Logique pure et services
-simulés ; le rendu des composants n'est pas testé (environnement Node). `locales.spec.ts` vérifie la parité fr/en, les marqueurs `{n}` et
+(idem `downloads`, `hubSearch`, `whatsNew`, `activeModel`, `services/modelCatalogApi`, `state/stores`, `locales/locales`, `components/whatsNew.smoke`).
+Logique pure et services simulés ; le rendu des composants se limite à un rendu serveur (sans DOM) de la ligne et du bouton « Nouveautés » :
+la fenêtre (portail) n'est pas rendue en test. `locales.spec.ts` vérifie la parité fr/en, les marqueurs `{n}` et
 que chaque clé `models.*` écrite dans les sources existe.

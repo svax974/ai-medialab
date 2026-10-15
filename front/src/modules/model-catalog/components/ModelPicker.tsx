@@ -21,7 +21,7 @@ import { MODEL_HELP } from '../lib/modelHelp'
 import { useModels } from '../hooks/useModelCatalog'
 import { useModelSelectionStore } from '../state/modelSelectionStore'
 import type { ModelInfo } from '../types'
-import { GatedNotice, HelpTag, LicenseWarning, VideoBadges } from './ModelBadges'
+import { GatedNotice, HelpTag, LicenseWarning, LlmBadges, VideoBadges } from './ModelBadges'
 import { useSizeLabel } from '../hooks/useSizeLabel'
 import { Tag } from './panels'
 
@@ -72,6 +72,7 @@ function PickerRow({ model: m, active, loaded }: { model: ModelInfo; active: boo
         <Box sx={{ pl: 1.5 }}>
           <Box component="p" sx={{ m: 0, mt: '2px', fontSize: 12.5, lineHeight: 1.4, color: 'var(--muted)', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{m.description}</Box>
           {m.kind === 'video' && <Box sx={{ mt: '4px' }}><VideoBadges model={m} /></Box>}
+          {m.kind === 'llm' && <Box sx={{ mt: '4px' }}><LlmBadges model={m} /></Box>}
           {m.kind === 'video' && <Box sx={{ mt: '6px' }}><LicenseWarning model={m} compact /></Box>}
           <Box sx={{ mt: '6px' }}><GatedNotice model={m} compact /></Box>
           {m.tags.length > 0 && (

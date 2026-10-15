@@ -61,8 +61,8 @@ function OptionPicker({ options, chosenKey, onPick }: { options: HubOption[]; ch
   )
 }
 
-/** Detail of an opened result: quantizations, licence, notes, memory remarks and the "add and download" button. */
-function Detail({ result: r }: { result: HubResult }) {
+/** Detail of an opened result: quantizations, licence, notes, memory remarks and the "add and download" button (also used by "What's new"). */
+export function Detail({ result: r }: { result: Pick<HubResult, 'repo' | 'already'> }) {
   const t = useT()
   const lang = useLang()
   const { data, error, isLoading } = useHubInspect(r.repo)

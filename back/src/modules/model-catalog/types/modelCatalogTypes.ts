@@ -5,7 +5,9 @@
 
 /** Shapes relayed from the engine (`engine/app/catalog.py`, `downloads.py`, `hf_search.py`). The engine owns them. */
 
-export type ModelKind = 'image' | 'audio' | 'video';
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm';
+/** Kinds `GET /api/hf/search` accepts (the kinds of the catalog: nothing else reaches the engine). */
+export const HUB_SEARCH_KINDS: readonly ModelKind[] = ['image', 'audio', 'video', 'llm'];
 export type InstallState = 'installed' | 'partial' | 'missing';
 
 export interface DownloadProgress {
@@ -30,6 +32,19 @@ export interface ModelVariant {
   selected: boolean;
 }
 
+/** Capabilities of a language model: the chat checks `tools` and `vision` before offering a tool or an image. */
+export interface LlmCapabilities {
+  context_default: number;
+  context_max: number;
+  vision: boolean;
+  tools: boolean;
+  /** `none`: no thinking; `toggle`: when asked; `always`; `levels`: low / medium / high. */
+  reasoning: 'none' | 'toggle' | 'always' | 'levels';
+  moe: boolean;
+  params_b: number | null;
+  active_params_b: number | null;
+}
+
 /** One entry of `GET /api/models` (the capability blocks `audio`/`video`/`params` are passed through untouched). */
 export interface ModelInfo {
   id: string;
@@ -37,9 +52,11 @@ export interface ModelInfo {
   name: string;
   family: string;
   description: string;
-  backend: 'mlx' | 'torch' | 'sdcpp' | 'pack' | 'demo';
+  backend: 'mlx' | 'torch' | 'sdcpp' | 'pack' | 'demo' | 'llamacpp';
   audio: { task: 'tts' | 'stt'; [key: string]: unknown } | null;
   video?: { [key: string]: unknown } | null;
+  /** What a chat model can do (`engine/app/engines/base.py` `LlmCaps`); null for the other kinds. */
+  llm?: LlmCapabilities | null;
   engine_pack: string | null;
   engine_name: string | null;
   engine_detail: string;
@@ -79,11 +96,12 @@ export interface KindSummary {
   ready: boolean;
 }
 
-/** `GET /api/models`: the image models are the top level (as the engine answers), audio and video are summarised. */
+/** `GET /api/models`: the image models are the top level (as the engine answers), audio, video and chat are summarised. */
 export interface ModelCatalog extends KindSummary {
   models: ModelInfo[];
   audio: KindSummary;
   video: KindSummary;
+  llm: KindSummary;
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {});
@@ -92,7 +110,7 @@ export interface HubResult {
   repo: string;
   family: HubFamily;
   family_label: string;
-  task: 'image' | 'tts' | 'stt' | 'video';
+  task: 'image' | 'tts' | 'stt' | 'video' | 'llm';
   downloads: number;
   likes: number;
   base: string;
@@ -124,4 +142,58 @@ export interface HubInspect {
   options: HubOption[];
   compatible: boolean;
   reason: string;
+}
+
+/** Kinds « what's new » covers: the three studios and, for the chat, the language models. */
+export const TRENDING_KINDS = ['image', 'audio', 'video', 'llm'] as const;
+export type TrendingKind = (typeof TRENDING_KINDS)[number];
+
+/** The variant the add flow selects by default for a new model. */
+export interface TrendingOption {
+  key: string | null;
+  label: string | null;
+  precision: string | null;
+  size_gb: number | null;
+  download_gb: number | null;
+  fits: boolean | null;
+  fit_note: string | null;
+}
+
+/** One new, successful model of `GET /api/hf/trending` (shape of the engine). */
+export interface TrendingEntry {
+  repo: string;
+  name: string;
+  author: string;
+  family: HubFamily;
+  family_label: string;
+  task: string;
+  created_at: string;
+  age_days: number;
+  downloads: number;
+  likes: number;
+  trending_score: number;
+  license: string;
+  license_note: 'noncommercial' | 'custom' | null;
+  compatible: boolean;
+  reason: string;
+  options: number;
+  option: TrendingOption | null;
+  url: string;
+}
+
+export interface HubTrending {
+  kind: TrendingKind;
+  days: number;
+  generated_at: number;
+  cached: boolean;
+  results: TrendingEntry[];
+  hidden: { heavy: number; existing: number };
+}
+
+export interface TrendingQuery {
+  kind: TrendingKind;
+  days: number;
+  limit: number;
+  include_heavy: boolean;
+  refresh: boolean;
 }
