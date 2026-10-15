@@ -17,6 +17,8 @@ how to run are accepted:
                    matching built-in model (same pipeline family)
     video-gguf     another GGUF of the Wan 2.2 TI2V 5B transformer (text encoder and VAE are kept), run by
                    stable-diffusion.cpp; recipes saved before that ran it with diffusers and still do
+    llm-gguf       a language model in GGUF (one file or split in shards, optionally with its multimodal projector),
+                   chatted with through llama.cpp
 """
 
 from __future__ import annotations
@@ -28,8 +30,8 @@ from typing import Any
 
 from .. import engine_state
 from ..config import DATA_DIR
-from . import audio_specs, gguf_models, torch_models, video_gguf, video_specs
-from .base import AudioCaps, HfSource, ModelSpec, ParamSpec, PresetVoice
+from . import audio_specs, gguf_models, llm_models, torch_models, video_gguf, video_specs
+from .base import AudioCaps, HfSource, LlmCaps, ModelSpec, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
 
@@ -284,8 +286,41 @@ def _video_gguf(r: dict[str, Any]) -> ModelSpec:
     return spec
 
 
+# Names of models that think before answering: their recipe gets a reasoning switch (an unknown model gets none).
+_REASONING_NAME = re.compile(r"think|reason|qwq|-r1|magistral", re.I)
+LLM_CONTEXT_CAP = 131072  # the most a custom model is offered, whatever its card says
+
+
+def _llm_gguf(r: dict[str, Any]) -> ModelSpec:
+    """A language model of the Hub: its architecture is unknown, so the KV cache is guessed from the weights
+    (`llm_models.kv_cache_gb`) and every capability that cannot be read from the repo is left off, except function calls
+    (llama.cpp has a generic format for models whose template it does not know)."""
+    repo, primary, size = r["repo"], r["file"], float(r["size_gb"])
+    files, mmproj, mm_gb = list(r.get("files") or [primary]), r.get("mmproj"), float(r.get("mmproj_gb") or 0)
+    model_gb = round(size - mm_gb, 2)
+    sources = [HfSource(repo, files, files, model_gb)]
+    paths = {"model": (repo, primary)}
+    if mmproj:
+        sources.append(HfSource(repo, [mmproj], [mmproj], mm_gb))
+        paths["mmproj"] = (repo, mmproj)
+    ctx_max = min(int(r.get("context_max") or 32768), LLM_CONTEXT_CAP)
+    caps = LlmCaps(context_default=min(16384, ctx_max), context_max=ctx_max, vision=bool(mmproj), tools=True,
+                   reasoning="toggle" if _REASONING_NAME.search(repo) else "none")
+    spec = ModelSpec(
+        id=r["id"], name=r["name"], family="Chat", custom=True, engine="", backend="llamacpp", kind="llm",
+        description=f"Modèle de conversation du dépôt {repo} ({r['precision']}), exécuté par llama.cpp. Ses capacités "
+                    "exactes ne sont pas connues : le cache de contexte est estimé largement.",
+        text_to_image=False, default_quantize=None, quantize_options=[], sources=sources, download_size_gb=size,
+        weights_gb=size, largest_component_gb=model_gb, license=r.get("license") or "voir le dépôt",
+        tags=["Hugging Face", "GGUF"] + (["vision"] if mmproj else []), precision=r["precision"], llm=caps,
+        options={"files": paths, "repo": repo})
+    spec.options["overhead_gb"] = round(llm_models.kv_cache_gb(None, caps.context_default, size) + llm_models.COMPUTE_BUFFER_GB, 2)
+    spec.memory_hint = f"≈ {size:.1f} Go de poids ({r['precision']}) et ≈ {spec.options['overhead_gb']:.1f} Go de cache et de tampons."
+    return spec
+
+
 BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "sdxl-lora": _sdxl_lora, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper,
-            "video-diffusers": _video_diffusers, "video-gguf": _video_gguf}
+            "video-diffusers": _video_diffusers, "video-gguf": _video_gguf, "llm-gguf": _llm_gguf}
 
 
 def build(recipe: dict[str, Any]) -> ModelSpec:

@@ -22,6 +22,8 @@ def check_generation(model_id: str, reference_media: list[str]) -> dict[str, Any
         spec = get_spec(model_id)
     except KeyError as exc:
         raise ValueError(str(exc)) from None
+    if spec.kind == "llm":
+        raise ValueError(f"{spec.name} est un modèle de chat : il ne génère ni image, ni audio, ni vidéo.")
     if spec.kind == "image" and spec.requires_references and not reference_media:
         raise ValueError(f"{spec.name} a besoin d'au moins une image de référence.")
     if spec.kind == "audio" and spec.audio.task != "tts":

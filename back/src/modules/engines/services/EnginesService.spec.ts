@@ -95,6 +95,20 @@ describe('engines routes (fake engine)', () => {
     expect(last()).toMatchObject({ method: 'POST', url: '/engine/v1/engines/sdcpp/install' });
   });
 
+  it('installs, cancels and removes llama.cpp (the chat runtime), and relays its refusals', async () => {
+    answer(200, { state: 'running', variant: 'metal' });
+    await request(app.getHttpServer()).post('/api/engines/llamacpp/install').expect(200, { state: 'running', variant: 'metal' });
+    expect(last()).toMatchObject({ method: 'POST', url: '/engine/v1/engines/llamacpp/install' });
+    answer(200, { ok: true });
+    await request(app.getHttpServer()).delete('/api/engines/llamacpp/install').expect(200, { ok: true });
+    expect(last()).toMatchObject({ method: 'DELETE', url: '/engine/v1/engines/llamacpp/install' }); // "install" is not an engine path
+    await request(app.getHttpServer()).delete('/api/engines/llamacpp').expect(200, { ok: true });
+    expect(last()).toMatchObject({ method: 'DELETE', url: '/engine/v1/engines/llamacpp' });
+    answer(409, { detail: "Le moteur de chat est en cours d'utilisation : déchargez le modèle d'abord." });
+    const refused = await request(app.getHttpServer()).delete('/api/engines/llamacpp').expect(409);
+    expect(refused.body.message).toMatch(/déchargez le modèle/);
+  });
+
   it('answers 502 when the engine is unreachable', async () => {
     const down = new EnginesService(new EngineClient(testConfig('http://127.0.0.1:1')));
     await expect(down.installSdcpp()).rejects.toMatchObject({ status: 502 });

@@ -31,17 +31,31 @@ FAMILY_LABEL = {
     "whisper-ct2": "Whisper",
     "video-diffusers": "Vidéo",
     "video-gguf": "Vidéo GGUF",
+    "llm-gguf": "Chat (GGUF)",
 }
 TASK = {"gguf-variant": "image", "sd-diffusers": "image", "sdxl-lora": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
-        "video-diffusers": "video", "video-gguf": "video"}
+        "video-diffusers": "video", "video-gguf": "video", "llm-gguf": "llm"}
 # Engine (backend, audio pack) that runs each family, as the presets declare it.
 FAMILY_ENGINE: dict[str, tuple[str, str | None]] = {
     "gguf-variant": ("sdcpp", None), "video-gguf": ("sdcpp", None), "sd-diffusers": ("torch", None),
     "sdxl-lora": ("torch", None),
     "video-diffusers": ("torch", None), "qwen3-tts": ("pack", "qwen3"), "whisper-ct2": ("pack", "speech"),
+    "llm-gguf": ("llamacpp", None),
 }
 # Repos quantized in a format the Python Qwen3-TTS engine can't load.
 _NOT_TORCH = re.compile(r"gguf|mlx|onnx|gptq|awq|bnb|[-_ ](?:4|8)-?bit|int[48]|fp8", re.I)
+
+
+# Hub tasks of a repo a chat can run (every one is also tagged `gguf`), and the tasks that exclude it.
+LLM_TASKS = {"text-generation", "image-text-to-text", "any-to-any"}
+NOT_LLM_TASKS = {"text-to-image", "text-to-video", "image-to-video", "image-to-image", "feature-extraction",
+                 "sentence-similarity", "text-to-speech", "text-to-audio", "automatic-speech-recognition",
+                 "audio-to-audio", "fill-mask", "token-classification", "zero-shot-classification"}
+_NOT_A_CHAT = re.compile(r"embed|rerank", re.I)
+# Auxiliary files of an LLM repo that are not the model: drafts for speculative decoding.
+_AUX_GGUF = re.compile(r"(^|/)(mtp|dflash|eagle\d*)[-_]|/MTP/", re.I)
+_SHARD = re.compile(r"-0*\d+-of-0*\d+(?=\.gguf$)", re.I)
+_MMPROJ_PREFERENCE = ("bf16", "f16", "q8_0")
 
 
 class HubError(RuntimeError):
@@ -80,6 +94,8 @@ def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
         return "qwen3-tts", {}
     if "ctranslate2" in ts and "whisper" in repo.lower() and not _NOT_TORCH.search(repo):
         return "whisper-ct2", {}
+    if "gguf" in ts and ts & LLM_TASKS and not ts & NOT_LLM_TASKS and not _NOT_A_CHAT.search(repo):
+        return "llm-gguf", {"base": next(iter(_tag_values(tags, "base_model:quantized:")), "")}
     return None
 
 
@@ -108,6 +124,9 @@ def listing_precisions(family: str, repo: str, filenames: list[str], params: dic
         ggufs = [f for f in filenames if f.endswith(".gguf") and "mmproj" not in f.lower()
                  and (family == "gguf-variant" or "/" not in f)]
         return sorted({quant_from_name(f) or "GGUF" for f in ggufs}, key=_quant_rank)
+    if family == "llm-gguf":
+        groups = group_gguf_files({f: 0 for f in filenames})
+        return sorted({g["label"] for g in groups}, key=_quant_rank)
     if family == "whisper-ct2":
         return [_ct2_precision(repo)]
     if family == "sdxl-lora":
@@ -127,7 +146,9 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
                             "expand": ["downloads", "likes", "tags", "siblings", "safetensors"]}
     if q:
         base["search"] = q
-    if kind == "image":
+    if kind == "llm":
+        qs = [{**base, "filter": "gguf", "pipeline_tag": task} for task in sorted(LLM_TASKS)]
+    elif kind == "image":
         qs = [{**base, "filter": f"diffusers:{p}", "pipeline_tag": "text-to-image"} for p in SD_PIPELINES]
         qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": "text-to-image"}
                 for b in GGUF_TEMPLATES]
@@ -143,7 +164,7 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
 
 
 def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
-    if kind not in ("image", "audio", "video"):
+    if kind not in ("image", "audio", "video", "llm"):
         raise HubError("Type de modèle inconnu.")
     api = _api()
 
@@ -175,6 +196,33 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
         }
     # Models this machine can run first, then by popularity.
     return sorted(seen.values(), key=lambda r: (not r["compatible"], -r["downloads"]))[:limit]
+
+
+def group_gguf_files(files: dict[str, int]) -> list[dict[str, Any]]:
+    """The models of a GGUF repo: one per quantization, the shards of a split file grouped (`x-00001-of-00003.gguf`), the
+    multimodal projectors and the speculative-decoding drafts left out. {label, primary, files, size}, smallest first."""
+    groups: dict[str, dict[str, Any]] = {}
+    for name, size in files.items():
+        if not name.endswith(".gguf") or "mmproj" in name.lower() or _AUX_GGUF.search(name):
+            continue
+        key = _SHARD.sub("", name)
+        g = groups.setdefault(key, {"label": quant_from_name(key) or "GGUF", "files": [], "size": 0})
+        g["files"].append(name)
+        g["size"] += size
+    for g in groups.values():
+        g["files"].sort()
+        g["primary"] = g["files"][0]
+    return sorted(groups.values(), key=lambda g: (g["size"], g["primary"]))
+
+
+def pick_mmproj(files: dict[str, int]) -> tuple[str, int] | None:
+    """The multimodal projector to use, if the repo has any: bf16, then f16, then q8_0, else the first."""
+    projectors = sorted((n, s) for n, s in files.items() if n.endswith(".gguf") and "mmproj" in n.lower())
+    for wanted in _MMPROJ_PREFERENCE:
+        for name, size in projectors:
+            if wanted in name.lower():
+                return name, size
+    return projectors[0] if projectors else None
 
 
 def _size_gb(n: int | None) -> float:
@@ -263,6 +311,9 @@ def _inspect(repo: str) -> dict[str, Any]:
     license_ = _license(tags)
     out: dict[str, Any] = {"repo": repo, "family": family, "family_label": FAMILY_LABEL[family], "license": license_,
                            "notes": [], "options": [], **engine_compat(*FAMILY_ENGINE[family])}
+
+    if family == "llm-gguf":
+        return _inspect_llm(info, files, out)
 
     if family == "gguf-variant":
         template = next(m for m in MODELS.values() if m.id == details["template"])
@@ -360,6 +411,25 @@ def _inspect(repo: str) -> dict[str, Any]:
     return out
 
 
+def _inspect_llm(info: Any, files: dict[str, int], out: dict[str, Any]) -> dict[str, Any]:
+    groups = group_gguf_files(files)
+    if not groups:
+        raise HubError("Aucun fichier GGUF de modèle dans ce dépôt.")
+    mm = pick_mmproj(files)
+    gguf = getattr(info, "gguf", None) or {}
+    context = int(gguf.get("context_length") or 0) or None
+    for g in groups:
+        total = g["size"] + (mm[1] if mm else 0)
+        extra = {"file": g["primary"], "files": g["files"], "mmproj": mm[0] if mm else None,
+                 "mmproj_gb": _size_gb(mm[1]) if mm else 0, "context_max": context}
+        out["options"].append({"key": g["primary"], "label": g["label"], "precision": g["label"], "size_gb": _size_gb(total),
+                               **extra, "_r": dict(extra)})
+    out["notes"].append("Exécuté par llama.cpp : appels de fonctions pris en charge"
+                        + (", lit les images (projecteur du dépôt)" if mm else "")
+                        + ". Les capacités exactes du modèle ne sont pas connues : le cache de contexte est estimé largement.")
+    return out
+
+
 def _select_diffusers(repo: str, files: dict[str, int], pipeline: str, allowed=SD_PIPELINES) -> dict[str, Any]:
     index = _json(repo, "model_index.json")
     if index.get("_class_name") not in allowed:
@@ -424,6 +494,10 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
         who = " ".join(words) or repo.split("/")[0]
         return {**base, "id": slug(repo, opt["label"]), "template": info["template"]["id"], "file": opt["file"],
                 "name": f"{who} {opt['label']}"}
+    if family == "llm-gguf":
+        return {**base, "id": slug(repo, opt["label"]), "name": f"{_title(repo)} {opt['label']}".strip(),
+                "file": opt["file"], "files": opt["files"], "mmproj": opt.get("mmproj"), "mmproj_gb": opt.get("mmproj_gb", 0),
+                "context_max": opt.get("context_max")}
     api_info = _api().model_info(repo, files_metadata=True)
     files = {s.rfilename: (s.size or 0) for s in api_info.siblings or []}
     if family == "sdxl-lora":

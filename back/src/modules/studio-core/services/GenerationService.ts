@@ -110,6 +110,7 @@ export class GenerationService {
   async removeConversation(conversationId: string): Promise<{ ok: true }> {
     for (const id of await this.messages.busyIds(conversationId)) await this.queue.cancel(id);
     const assets = await this.messages.assetsOfConversation(conversationId);
+    await this.conversations.beforeRemove(conversationId);
     await this.conversations.remove(conversationId);
     await this.files.purge(assets);
     this.events.publish('conversation.deleted', { id: conversationId });

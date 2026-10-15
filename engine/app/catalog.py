@@ -23,6 +23,9 @@ AUDIO_STARTER_ORDER = ["pocket-tts", "kokoro-82m", "qwen3-tts-custom-small"]
 # Video: Wan 2.2 TI2V 5B in GGUF first (runs on every GPU), then its PyTorch version and the lightest CogVideoX.
 # HunyuanVideo (restrictive licence) and the gated LTX-2.5 are never suggested.
 VIDEO_STARTER_ORDER = ["wan-2.2-ti2v-5b-gguf", "wan-2.2-ti2v-5b", "cogvideox-2b"]
+# Chat: Qwen3 4B Instruct (2.3 GB, Apache 2.0, good in French), then the small Gemma 4 (reads images), Qwen3 8B (thinks)
+# and the lightest model.
+LLM_STARTER_ORDER = ["llm-qwen3-4b-instruct-2507", "llm-gemma-4-e4b", "llm-qwen3-8b", "llm-lfm2.5-1.2b"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
@@ -82,7 +85,7 @@ def precision_of(spec, quantize: int | None) -> str:
         return spec.precision
     if spec.backend == "mlx":
         return f"{quantize} bits" if quantize else "bf16"
-    if spec.backend == "sdcpp":
+    if spec.backend in ("sdcpp", "llamacpp"):
         diffusion = spec.options.get("files", {}).get("diffusion-model") or spec.options.get("files", {}).get("model")
         return quant_from_name(diffusion[1]) if diffusion else ""
     return ""
@@ -94,7 +97,8 @@ _SDCPP_DEVICE = {"metal": "Metal", "cuda": "CUDA", "rocm": "ROCm", "vulkan": "Vu
 def _engine_name(spec, engine: dict[str, Any]) -> str:
     if spec.backend == "pack":
         return engine.get("pack_engine") or engine.get("pack_name") or ""
-    return {"sdcpp": "GGUF (stable-diffusion.cpp)", "torch": "PyTorch + diffusers", "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
+    return {"sdcpp": "GGUF (stable-diffusion.cpp)", "llamacpp": "llama.cpp", "torch": "PyTorch + diffusers",
+            "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
 
 
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
@@ -108,6 +112,10 @@ def _engine_detail(spec, engine: dict[str, Any]) -> str:
         dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
         return ("Petit programme autonome qui exécute les modèles GGUF, sans Python"
                 + (f" ({dev})" if dev else "") + ". Il est téléchargé une seule fois et sert à tous les modèles GGUF.")
+    if spec.backend == "llamacpp":
+        dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
+        return ("Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python"
+                + (f" ({dev})" if dev else "") + ". Il est téléchargé une seule fois et sert à tous les modèles de chat.")
     return ""
 
 
@@ -214,4 +222,5 @@ def describe_models() -> dict[str, Any]:
     image = pick("image", STARTER_ORDER)
     audio = pick("audio", AUDIO_STARTER_ORDER)
     video = pick("video", VIDEO_STARTER_ORDER)
-    return {"models": models, **image, "audio": audio, "video": video}
+    llm = pick("llm", LLM_STARTER_ORDER)
+    return {"models": models, **image, "audio": audio, "video": video, "llm": llm}

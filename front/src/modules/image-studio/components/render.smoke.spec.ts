@@ -38,7 +38,7 @@ import { ImageHome } from '../components/ImageHome'
 import { ReferenceStrip } from '../components/ReferenceStrip'
 import { imageStudioAdapter } from '../imageStudioAdapter'
 
-for (const [dir, module] of [['modules/studio-core', ''], ['modules/image-studio', ''], ['modules/studio-shell', ''], ['modules/model-catalog', ''], ['modules/engines', ''], ['modules/hardware', '']] as const) {
+for (const [dir, module] of [['modules/studio-core', ''], ['modules/image-studio', ''], ['modules/studio-shell', ''], ['modules/model-catalog', ''], ['modules/engines', ''], ['modules/hardware', ''], ['modules/chat', '']] as const) {
   Object.assign(fr.texts, JSON.parse(readFileSync(resolve(__dirname, '../../../..', 'src', dir, 'locales/locales.fr.json'), 'utf8')), module ? {} : {})
 }
 
@@ -128,6 +128,8 @@ describe('screens render without error and without raw keys', () => {
     expect(html).toContain('Portrait')
     expect(html).toContain('Derniers tirages')
     expect(html).toContain('1024×1024')
+    expect(html).toContain('Nouveautés') // the « What's new ? » button next to the model picker
+    expect(html).toContain('pour améliorer vos prompts') // the ✨ button, off while no chat model is installed
     noRawKeys(html)
   })
 

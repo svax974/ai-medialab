@@ -148,6 +148,7 @@ def _compute() -> dict[str, Any]:
         "mlx": _engine_mlx(apple),
         "torch": _engine_torch(torch_info, accelerators),
         "sdcpp": _engine_sdcpp(accelerators),
+        "llamacpp": _engine_llamacpp(accelerators),
     }
     from huggingface_hub import constants
 
@@ -223,6 +224,13 @@ def _engine_sdcpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
     return res
 
 
+def _engine_llamacpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
+    """llama.cpp (chat models): installed, or installable by the app (every release has a CPU build, so always)."""
+    from . import llamacpp
+
+    return llamacpp.pick([a["vendor"] for a in accelerators])
+
+
 def get_system(refresh: bool = False) -> dict[str, Any]:
     global _cache
     with _lock:
@@ -246,6 +254,26 @@ def _disk_info(path: str) -> dict[str, Any]:
 def warm_up() -> None:
     """Run detection in the background at server startup."""
     threading.Thread(target=get_system, daemon=True, name="system-probe").start()
+
+
+def _llamacpp_plan(need_gb: float, system: dict[str, Any], accel: dict[str, Any] | None) -> dict[str, Any]:
+    """Chat model (weights plus KV cache plus buffers, see `engines/llm_models.memory_need_gb`) on llama.cpp: on the GPU
+    when it holds everything (`-ngl all`), else the layers that do not fit run on the CPU (slower, `--fit` places them),
+    and without a GPU everything runs on the CPU. Unified memory is one pool, kept to 1.2 times the need."""
+    ram = system["ram_gb"]
+    if accel is not None and accel["unified"]:
+        ok = ram >= need_gb * 1.2
+        return {"fits": ok, "strategy": "full",
+                "note": "" if ok else f"Il faut ≈ {need_gb * 1.2:.0f} Go de mémoire ({ram:.0f} Go ici)."}
+    vram = (accel or {}).get("memory_gb")
+    if accel is not None and (vram is None or vram >= need_gb * 1.1):
+        return {"fits": True, "strategy": "full", "note": ""}
+    if ram + (vram or 0) >= need_gb * 1.3:
+        where = "Aucun GPU détecté" if accel is None else f"{vram:.0f} Go de VRAM < {need_gb:.0f} Go"
+        return {"fits": True, "strategy": "model_offload",
+                "note": f"{where} : tout ou partie du modèle tourne sur le processeur (plus lent)."}
+    return {"fits": False, "strategy": "none",
+            "note": f"{(vram or 0):.0f} Go de VRAM et {ram:.0f} Go de RAM ne suffisent pas ({need_gb:.0f} Go nécessaires)."}
 
 
 def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict[str, Any], engine: str,
@@ -286,6 +314,9 @@ def memory_plan(weights_gb: float | None, largest_gb: float | None, system: dict
                     "note": f"{vram:.0f} Go de VRAM < {weights_gb:.0f} Go de poids : une partie reste en RAM (plus lent)."}
         return {"fits": False, "strategy": "none",
                 "note": f"{vram:.0f} Go de VRAM + {ram:.0f} Go de RAM ne suffisent pas ({weights_gb:.0f} Go de poids)."}
+
+    if engine == "llamacpp":
+        return _llamacpp_plan(weights_gb + overhead_gb, system, accel)
 
     if accel is None:
         return {"fits": False, "strategy": "none", "note": "Aucun GPU compatible détecté."}

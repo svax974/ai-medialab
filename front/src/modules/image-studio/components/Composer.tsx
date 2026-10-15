@@ -16,7 +16,8 @@ import { useActiveModel, useModels, useWelcomeModel, useModelSelectionStore, typ
 import { pickerBackendKey } from '@/modules/model-catalog/lib/catalogFormat'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, useImageDraftStore } from '@/modules/studio-core'
+import { EnhancePromptButton } from '@/modules/chat/components/EnhancePromptButton'
+import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, useImageDraftStore, usePromptHandoff } from '@/modules/studio-core'
 import { useSendMessage } from '../hooks/useSendMessage'
 import { composerNotices, multiAlternative, placeholderKey, sendState } from '../lib/composerRules'
 import { attachHelp } from '../lib/help'
@@ -64,6 +65,7 @@ function SendButton({ enabled, sending, tipKey, onSend }: { enabled: boolean; se
 function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conversationId: string | null; hero: boolean }) {
   const t = useT()
   const draft = useImageDraftStore()
+  usePromptHandoff('image', draft.setPrompt)
   const { data: catalog } = useModels()
   const welcomeShown = !!useWelcomeModel('image')
   const send = useSendMessage(conversationId)
@@ -147,6 +149,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
         <AspectPicker model={model} params={params} reference={draft.references[sizeIndex]} referenceSize={draft.referenceSize} onChange={(patch) => draft.setParams(model.id, patch)} />
         <GenerationParams model={model} params={params} hasRefs={hasRefs} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />
         <CountPicker value={draft.count} onChange={draft.setCount} />
+        <EnhancePromptButton kind="image" prompt={draft.prompt} onChange={draft.setPrompt} />
         <Box sx={{ flex: 1 }} />
         <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, pr: '4px', fontSize: 11, color: 'var(--faint)' }}>{t('imageStudio.send.newline')}</Box>
         <SendButton enabled={state.canSend} sending={send.isPending} tipKey={state.tipKey} onSend={submit} />

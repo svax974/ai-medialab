@@ -20,7 +20,7 @@ Module d'application (pas un module partagé) ; branché dans `modules/app/AppMo
 | `EngineClient` | `services/EngineClient.ts` | Client typé (`get/post/put/patch/delete/request`, `openEventStream`, `buildUrl`, `authHeaders`). |
 | `EngineError`, `EngineUnavailableError` | `services/EngineError.ts` | Réponse non 2xx (`status`, `detail` FastAPI) / moteur injoignable ou délai dépassé. |
 | `EngineEventRelay` | `services/EngineEventRelay.ts` | Abonnement à `/engine/v1/events` avec reconnexion ; relais vers `EventStreamService` ; flux serveur `events$`. |
-| `SseParser` | `services/sseParser.ts` | Analyse incrémentale d'un flux SSE (trames `event:` / `data:`). |
+| `SseParser` | `services/sseParser.ts` | Analyse incrémentale d'un flux SSE (trames `event:` / `data:`). Exporté : le client de réponses du module `chat` (`EngineLlmClient`) lit le flux `POST /engine/v1/llm/chat` avec. |
 | `EngineHealthContributor` | `services/EngineHealthContributor.ts` | Contribution `engine` de `GET /api/v1/health`. |
 | `engineErrorToHttp` | `services/engineHttpError.ts` | Erreur du moteur vers erreur HTTP d'une route Nest (statut et message relayés, injoignable : 502). |
 | `EngineMediaService`, `EngineMediaController` | `services/`, `controllers/` | Relais `GET`/`HEAD /api/media/<dossier>/<fichier>` vers `/media/...` du moteur (plages `Range` transmises, sans jeton). |
@@ -99,9 +99,12 @@ test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json`
 | `engine.download.progress` | `download.progress` | `DownloadProgress` : `model_id`, `state` (`running`, `done`, `error`, `cancelled`), `done`, `total` (octets), `rate` (octets/s), `eta` (s ou `null`), `error` | au plus toutes les 0,4 s pendant un téléchargement, puis à la fin ; rejoué à chaque connexion pour les téléchargements en cours |
 | `engine.engine.install` | `engine.install` | `EngineInstallState` (stable-diffusion.cpp) : `state` (`idle`, `running`, `done`, `error`, `cancelled`), `variant`, `done`, `total` (octets), `message`, `error` | toutes les 0,4 s pendant l'installation ; l'état courant est rejoué à chaque connexion |
 | `engine.pack.install` | `pack.install` | `PackInstallState` (audio/vidéo) : `state`, `pack`, `name`, `message`, `detail`, `started_at` (s epoch), `size_mb`, `error` | à chaque étape de l'installation d'un pack (pas de pourcentage) ; rejoué à chaque connexion |
+| `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, le moteur du chat) : même forme que `engine.engine.install` | pendant l'installation ; l'état courant est rejoué à chaque connexion |
+| `engine.llm.status` | `llm.status` | `LlmStatus` : `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | à chaque changement d'état du modèle de chat ; rejoué à chaque connexion |
 | `engine.models.changed` | `models.changed` | `{}` | fin d'un téléchargement, d'une suppression, d'un ajout ou retrait de modèle personnalisé, d'une (dés)installation de pack ou de moteur : le catalogue et `/api/system` sont à relire |
 
-Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`.
+Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`. Le relais est générique : tout événement du moteur
+(donc `llamacpp.install` et `llm.status`) arrive au navigateur sans code propre au module `chat`.
 
 ## Contrat de jobs (H4.3a)
 
@@ -111,10 +114,10 @@ réservées à Nest (jeton `X-Engine-Token`) :
 | Route | Rôle |
 |---|---|
 | `POST /engine/v1/jobs/check` `{ model_id, reference_media }` | Refuse (422, message à afficher tel quel) une génération que le modèle ne sait pas faire ; renvoie `{ kind, name, max_count, default_params }`. |
-| `POST /engine/v1/jobs` `{ job_id, kind, model_id, prompt, params, inputs, output_dir, voices? }` (202) | Met le job en file. `inputs`, `output_dir` et les chemins de `voices` : absolus et **dans le dossier de données** (422 sinon). `job_id` déjà actif : 409. Le contenu (prompt vide, référence absente, modèle non installé…) est vérifié à l'exécution et signalé par `job.failed`. `voices` (audio) : la bibliothèque de l'appelant ; donnée, même vide, le moteur ne consulte pas sa propre base. |
+| `POST /engine/v1/jobs` `{ job_id, kind, model_id, prompt, params, inputs, output_dir, voices?, private_dir? }` (202) | Met le job en file. `private_dir` (génération privée, module `private`) : le dossier de session `<données>/private/<id>` où le job garde TOUS ses fichiers (sorties, vignettes, aperçus, fichiers temporaires) ; `output_dir` doit y être (422 sinon), le moteur ne garde alors aucune trace du job (pas d'entrée dans l'historique des jobs terminés, erreurs assainies, aucune ligne de journal, `meta` des sorties sans prompt). `inputs`, `output_dir` et les chemins de `voices` : absolus et **dans le dossier de données** (422 sinon). `job_id` déjà actif : 409. Le contenu (prompt vide, référence absente, modèle non installé…) est vérifié à l'exécution et signalé par `job.failed`. `voices` (audio) : la bibliothèque de l'appelant ; donnée, même vide, le moteur ne consulte pas sa propre base. |
 | `GET /engine/v1/jobs` / `GET /engine/v1/jobs/{id}` | Jobs actifs / état d'un job (`queued`, `loading`, `running`, `done`, `failed`, `cancelled`, `outputs`, `error`) ; les 100 derniers jobs terminés restent consultables (404 sinon). |
 | `POST /engine/v1/jobs/{id}/cancel` | Un job en file s'arrête aussitôt ; un job en cours s'arrête après l'étape courante (pendant le chargement du modèle, le worker est tué ; `sd-cli` est arrêté par son moteur). 409 s'il n'est plus en cours, 404 s'il est inconnu. |
-| `POST /engine/v1/media/ingest` `{ source_path, asset_id, original_name, content_type }` | Transforme un envoi brut en référence stockée (PNG ou vidéo conservée, vignette) ; renvoie `{ media, filename, thumb, width, height, duration, meta }` ; consomme le fichier source. |
+| `POST /engine/v1/media/ingest` `{ source_path, asset_id, original_name, content_type, private_dir? }` | Transforme un envoi brut en référence stockée (PNG ou vidéo conservée, vignette) ; renvoie `{ media, filename, thumb, width, height, duration, meta }` ; consomme le fichier source. |
 | `POST /engine/v1/media/purge` `{ files: [{ folder, filename, thumb? }] }` | Supprime des fichiers médias et leurs vignettes (noms seuls). |
 | `POST /engine/v1/media/voice-reference` `{ source_path, voice_id }` (H4.5) | Prépare un clip de référence (mono, 24 kHz, silences de bord retirés, 1 à 30 s) dans `uploads/voice_<id>.wav` ; renvoie `{ filename, duration, peaks }` (120 valeurs) ; 422 (illisible, trop court, hors du dossier de données) ; la source n'est pas supprimée. |
 | `POST /engine/v1/media/transcribe` `{ path, language?, model_id? }` (H4.5) | Suggestion de transcription par le premier modèle installé (Whisper, puis Qwen3-ASR) : `{ text, language, duration, model }` ; 409 avec la raison à afficher si aucun modèle ou moteur n'est installé, 500 si le modèle échoue. |
@@ -130,6 +133,8 @@ réservées à Nest (jeton `X-Engine-Token`) :
 | `job.done` | `outputs` (nombre de fichiers) |
 | `job.failed` | `error` (texte à afficher) |
 | `job.cancelled` | `outputs` |
+
+Un job privé (`private_dir`) publie les mêmes événements, avec des URL `/media/private/<session>/…` (aperçus) et sans `prompt` dans `meta`.
 
 Garde-fous conservés : un modèle chargé à la fois, une génération à la fois, déchargement après inactivité (`keep_alive_minutes`),
 annulation. Les vignettes et le sondage des médias restent au moteur (`media.py`, `job_outputs.py`).

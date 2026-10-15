@@ -14,7 +14,8 @@ import { SetupPrompt } from '@/modules/engines'
 import { useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
+import { EnhancePromptButton } from '@/modules/chat/components/EnhancePromptButton'
+import { GenerationParams, LabelTooltip, StudioModelPicker, usePromptHandoff } from '@/modules/studio-core'
 import { approxDuration, MAX_TEXT_LENGTH } from '../lib/audioText'
 import { AUDIO_HELP, maxCharsHelp } from '../lib/audioHelp'
 import { useAudioComposer } from '../hooks/useAudioComposer'
@@ -86,6 +87,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
   const t = useT()
   const composer = useAudioComposer(model, conversationId)
   const { draft, caps, language, params, voice, instruct, speakers, state } = composer
+  usePromptHandoff('audio', draft.setPrompt)
   const welcomeShown = !!useWelcomeModel('audio')
   const textarea = useRef<HTMLTextAreaElement>(null)
 
@@ -129,6 +131,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
         <GenerationParams model={model} params={params} hasRefs={false} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />
         <TakesPicker value={draft.count} onChange={draft.setCount} />
         <AutoplayToggle enabled={draft.autoplay} onChange={draft.setAutoplay} />
+        <EnhancePromptButton kind="audio" prompt={draft.prompt} onChange={draft.setPrompt} />
         <Box sx={{ flex: 1 }} />
         <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, pr: '4px', fontSize: 11, color: 'var(--faint)' }}>{t('audioStudio.send.newline')}</Box>
         <SendButton enabled={state.canSend} sending={composer.sending} tipKey={state.tipKey} onSend={composer.submit} />

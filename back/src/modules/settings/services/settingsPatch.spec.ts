@@ -18,6 +18,8 @@ describe('parseSettingsPatch', () => {
   it('trims the token and accepts an empty one (removal)', () => {
     expect(parseSettingsPatch({ hf_token: '  hf_x ' })).toEqual({ hf_token: 'hf_x' });
     expect(parseSettingsPatch({ hf_token: '' })).toEqual({ hf_token: '' });
+    expect(parseSettingsPatch({ brave_api_key: ' BSA ' })).toEqual({ brave_api_key: 'BSA' });
+    expect(() => parseSettingsPatch({ brave_api_key: 'x'.repeat(513) })).toThrow();
   });
 
   it('accepts the model maps', () => {
@@ -58,6 +60,6 @@ describe('applyPatch / toPublic', () => {
     expect(pub).not.toHaveProperty('hf_token');
     expect(pub.has_hf_token).toBe(true);
     expect(toPublic(DEFAULT_SETTINGS).has_hf_token).toBe(false);
-    expect(Object.keys(pub).sort()).toEqual(['has_hf_token', 'keep_alive_minutes', 'low_memory', 'previews', 'quantize', 'variant']);
+    expect(Object.keys(pub).sort()).toEqual(['has_brave_api_key', 'has_hf_token', 'keep_alive_minutes', 'low_memory', 'previews', 'quantize', 'variant']);
   });
 });

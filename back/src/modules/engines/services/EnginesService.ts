@@ -12,8 +12,8 @@ const UNINSTALL_MS = 120_000;
 
 /**
  * Installers of the inference engines, delegated to the Python engine: audio/video packs (isolated environments) and
- * stable-diffusion.cpp. Installing is long and runs in the engine; the state is pushed as `engine.pack.install` and
- * `engine.engine.install` events (not polled). The installed/installable status of each engine is part of
+ * stable-diffusion.cpp and llama.cpp. Installing is long and runs in the engine; the state is pushed as `engine.pack.install`,
+ * `engine.engine.install` and `engine.llamacpp.install` events (not polled). The installed/installable status of each engine is part of
  * `GET /api/system` (module `hardware`).
  */
 @Injectable()
@@ -39,6 +39,20 @@ export class EnginesService {
 
   cancelSdcppInstall(): Promise<{ ok: true }> {
     return this.call(() => this.engine.delete('/engine/v1/engines/sdcpp/install'));
+  }
+
+  /** llama.cpp (the chat's runtime): the progress comes as `engine.llamacpp.install` events. */
+  installLlamacpp(): Promise<EngineInstallState> {
+    return this.call(() => this.engine.post('/engine/v1/engines/llamacpp/install'));
+  }
+
+  cancelLlamacppInstall(): Promise<{ ok: true }> {
+    return this.call(() => this.engine.delete('/engine/v1/engines/llamacpp/install'));
+  }
+
+  /** Removes llama.cpp (409 while the chat model is loaded or an install runs); the downloaded models are kept. */
+  uninstallLlamacpp(): Promise<{ ok: true }> {
+    return this.call(() => this.engine.delete('/engine/v1/engines/llamacpp', { timeoutMs: UNINSTALL_MS }));
   }
 
   private async call<T>(fn: () => Promise<unknown>): Promise<T> {

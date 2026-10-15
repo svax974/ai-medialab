@@ -15,10 +15,15 @@ export interface StudioSettings {
   variant: Record<string, string>;
   /** Hugging Face token; empty = none. Never leaves the server. */
   hf_token: string;
+  /** Brave Search API key of the chat's web search (DuckDuckGo is used without it); empty = none. Never leaves Nest. */
+  brave_api_key: string;
 }
 
-/** Public shape of `GET/PUT /api/settings`: the token is replaced by `has_hf_token`. */
-export type PublicSettings = Omit<StudioSettings, 'hf_token'> & { has_hf_token: boolean };
+/** Public shape of `GET/PUT /api/settings`: the secrets are replaced by `has_hf_token` and `has_brave_api_key`. */
+export type PublicSettings = Omit<StudioSettings, 'hf_token' | 'brave_api_key'> & { has_hf_token: boolean; has_brave_api_key: boolean };
+
+/** What the engine receives: the studio settings without what only Nest uses (the Brave key). */
+export type EngineSettings = Omit<StudioSettings, 'brave_api_key'>;
 
 /** Body of `PUT /api/settings`: any subset. `hf_token: ''` removes the token. Maps are merged into the stored ones. */
 export type SettingsPatch = Partial<StudioSettings>;

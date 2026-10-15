@@ -48,7 +48,7 @@ import { VideoHome } from './VideoHome'
 import { VideoViewerActions } from './VideoViewerActions'
 import { ClipCountPicker, DurationPicker, FormatPicker } from './VideoPickers'
 
-for (const dir of ['modules/studio-core', 'modules/video-studio', 'modules/image-studio', 'modules/studio-shell', 'modules/model-catalog', 'modules/engines', 'modules/hardware', 'modules/media-library', 'modules_shared/common']) {
+for (const dir of ['modules/studio-core', 'modules/video-studio', 'modules/image-studio', 'modules/studio-shell', 'modules/model-catalog', 'modules/engines', 'modules/hardware', 'modules/chat', 'modules/media-library', 'modules_shared/common']) {
   Object.assign(fr.texts, JSON.parse(readFileSync(resolve(__dirname, '../../../..', 'src', dir, 'locales/locales.fr.json'), 'utf8')))
 }
 
@@ -118,6 +118,8 @@ describe('video screens render without error and without raw keys', () => {
     expect(html).toContain('Générer la vidéo')
     expect(html).toContain('comprend surtout l&#x27;anglais')
     expect(html).toContain('génère aussi une bande son')
+    expect(html).toContain('Nouveautés') // the « What's new ? » button next to the model picker
+    expect(html).toContain('pour améliorer vos prompts') // the ✨ button, off while no chat model is installed
     noRawKeys(html)
   })
 

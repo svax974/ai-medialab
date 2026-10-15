@@ -15,7 +15,8 @@ import { SetupPrompt } from '@/modules/engines'
 import { GatedNotice, LicenseWarning, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker } from '@/modules/studio-core'
+import { EnhancePromptButton } from '@/modules/chat/components/EnhancePromptButton'
+import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, usePromptHandoff } from '@/modules/studio-core'
 import { useVideoComposer } from '../hooks/useVideoComposer'
 import { useVideoInputs } from '../hooks/useVideoInputs'
 import { placeholderKey } from '../lib/composerRules'
@@ -56,6 +57,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
   const composer = useVideoComposer(model, conversationId)
   const { importFiles } = useVideoInputs()
   const { draft, params, state } = composer
+  usePromptHandoff('video', draft.setPrompt)
   const caps = model.video!
   const welcomeShown = !!useWelcomeModel('video')
   const textarea = useRef<HTMLTextAreaElement>(null)
@@ -136,6 +138,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
         <FormatPicker model={model} aspect={String(params.aspect)} resolution={String(params['resolution'])} onChange={(patch) => draft.setParams(model.id, patch)} />
         <GenerationParams model={model} params={params} hasRefs={composer.editing} seed={draft.seed} onChange={(patch) => draft.setParams(model.id, patch)} onReset={() => draft.resetParams(model.id)} onSeed={draft.setSeed} />
         <ClipCountPicker value={Math.min(2, draft.count)} onChange={draft.setCount} />
+        <EnhancePromptButton kind="video" prompt={draft.prompt} onChange={draft.setPrompt} />
         <Box sx={{ flex: 1 }} />
         <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, pr: '4px', fontSize: 11, color: 'var(--faint)' }}>{t('videoStudio.send.newline')}</Box>
         <SendButton enabled={state.canSend} sending={composer.sending} tipKey={state.tipKey} onSend={composer.submit} />

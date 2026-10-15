@@ -42,8 +42,8 @@ class ParamSpec:
     requires_references: bool = False
 
 
-Backend = Literal["mlx", "torch", "sdcpp", "pack", "demo"]
-Kind = Literal["image", "audio", "video"]
+Backend = Literal["mlx", "torch", "sdcpp", "llamacpp", "pack", "demo"]
+Kind = Literal["image", "audio", "video", "llm"]
 
 
 @dataclass
@@ -102,6 +102,10 @@ class VideoCaps:
     default_seconds: float = 5.0
     min_seconds: float = 1.0
     max_seconds: float = 5.0
+    # Longest span one model run may produce (the model's own clip length). A longer clip is made of several runs chained
+    # image-to-video (each starts from the last frame of the previous one), whose real length is the longest the memory
+    # measured on this machine allows (video_memory.py); None: one run, so `max_seconds` is also the run length.
+    segment_seconds: float | None = None
     resolutions: list[VideoResolution] = field(default_factory=list)
     default_resolution: str = ""
     image_input: Literal["none", "optional", "required"] = "none"  # start image
@@ -112,6 +116,21 @@ class VideoCaps:
     audio_out: bool = False
     english_only: bool = False
     license_warning: str = ""  # shown prominently when not empty
+
+
+@dataclass
+class LlmCaps:
+    """What the chat can offer for a language model (run by llama.cpp, see `llm.py`)."""
+
+    context_default: int = 16384  # tokens of context a chat opens with (the KV cache is paid for up front)
+    context_max: int = 32768  # what the model was trained for (or what we allow)
+    vision: bool = False  # reads images through a multimodal projector (`options["files"]["mmproj"]`)
+    tools: bool = False  # can call functions (OpenAI-style `tools`)
+    # "none": no thinking; "toggle": thinks when asked; "always": always thinks; "levels": thinks at low/medium/high.
+    reasoning: Literal["none", "toggle", "always", "levels"] = "none"
+    moe: bool = False  # mixture of experts: runs like its active parameters, loads like its total
+    params_b: float | None = None  # billions of parameters (total)
+    active_params_b: float | None = None  # billions of parameters active per token (MoE)
 
 
 @dataclass
@@ -147,7 +166,7 @@ class ModelSpec:
     family: str
     description: str
     engine: str  # "module:Class", imported lazily in the worker
-    # Inference backend: "mlx" (native Metal, Mac), "torch" (CUDA / ROCm / MPS), "sdcpp", "pack", "demo".
+    # Inference backend: "mlx" (native Metal, Mac), "torch" (CUDA / ROCm / MPS), "sdcpp", "llamacpp" (chat), "pack", "demo".
     backend: Backend = "mlx"
     # References: "none" (text only), "init" (one start image, img2img), "multi" (multi-image editing), "face" (image 1:
     # a face followed through an IP-Adapter, image 2: an optional start image)
@@ -180,10 +199,11 @@ class ModelSpec:
     precision: str = ""
     # Added by the user from Hugging Face (see engines/custom.py).
     custom: bool = False
-    # "image" (image generation), "audio" (TTS, transcription) or "video".
+    # "image" (image generation), "audio" (TTS, transcription), "video" or "llm" (chat).
     kind: Kind = "image"
     audio: AudioCaps | None = None
     video: VideoCaps | None = None
+    llm: LlmCaps | None = None
     # Engine-specific options (pipeline class, argument names...).
     options: dict[str, Any] = field(default_factory=dict)
     # Models spread over several repos (e.g. GGUF + encoder + VAE); takes precedence over hf_repo.

@@ -7,6 +7,8 @@ import type { ConversationMode } from '../entities/ConversationEntity';
 import type { MessageRole, MessageStatus } from '../entities/MessageEntity';
 
 export const DEFAULT_CONVERSATION_TITLE = 'Nouvelle création';
+/** Title of a conversation of the chat studio until its first exchange names it. */
+export const DEFAULT_CHAT_TITLE = 'Nouvelle conversation';
 export const MAX_TITLE_LENGTH = 200;
 /** Statuses of a generation that is still going (the legacy `busy` flag and the interruption sweep). */
 export const BUSY_STATUSES: MessageStatus[] = ['queued', 'loading', 'running'];
@@ -14,7 +16,7 @@ export const BUSY_STATUSES: MessageStatus[] = ['queued', 'loading', 'running'];
 export interface CreateConversationInput {
   /** Trimmed; empty or missing gives `Nouvelle création`. */
   title?: string;
-  /** Anything other than audio / video gives `image`. */
+  /** Anything other than audio / video / chat gives `image`. */
   mode?: string;
 }
 

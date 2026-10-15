@@ -30,6 +30,9 @@ Module d'application. Tâche H4.2.
 | `DELETE` | `/api/engines/pack/:packId` | Admin | Désinstalle le pack (réponse une fois l'environnement supprimé, délai 120 s) : `{ ok: true }` ; les modèles téléchargés sont conservés ; 404 pack inconnu, 409 si un modèle du pack est chargé. |
 | `POST` | `/api/engines/sdcpp/install` | Admin | Démarre l'installation de stable-diffusion.cpp (200, `EngineInstallState`) ; 409 refus. |
 | `DELETE` | `/api/engines/sdcpp/install` | Admin | Annule ; 409 si aucune installation en cours. |
+| `POST` | `/api/engines/llamacpp/install` | Admin | Démarre l'installation de llama.cpp, le moteur du chat (200, `EngineInstallState`) ; la progression arrive par l'événement `engine.llamacpp.install` ; 409 refus. |
+| `DELETE` | `/api/engines/llamacpp/install` | Admin | Annule ; 409 si aucune installation en cours. |
+| `DELETE` | `/api/engines/llamacpp` | Admin | Désinstalle llama.cpp (les modèles téléchargés restent) ; 409 si le modèle de chat est chargé ou si une installation tourne. |
 
 Le segment `engines` délègue au moteur par `EngineClient`.
 

@@ -22,6 +22,8 @@ from .. import hf_search
 from ..engines import MODELS, custom, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings
+from ..llamacpp import installer as llamacpp_installer
+from ..llm import llm
 from ..system import get_system
 
 # Mounted by main.py under `/engine/v1` with the `X-Engine-Token` check (NestJS is the only caller).
@@ -40,6 +42,7 @@ def system_info(refresh: bool = False) -> dict[str, Any]:
     info = get_system(refresh=refresh)
     engines = {k: dict(v) for k, v in info["engines"].items()}
     engines["sdcpp"]["install"] = installer.public()  # live state, outside the detection cache
+    engines["llamacpp"]["install"] = llamacpp_installer.public()
     packs = {
         p.id: {"name": p.name, "size_mb": p.size_mb, "installed": audio_packs.is_installed(p.id),
                **{k: v for k, v in audio_packs.engine_info(p.id).items() if k in ("installable", "reason")}}
@@ -251,6 +254,8 @@ async def events(request: Request) -> StreamingResponse:
                 yield f"event: download.progress\ndata: {json.dumps(dl)}\n\n"
             yield f"event: engine.install\ndata: {json.dumps(installer.public())}\n\n"
             yield f"event: pack.install\ndata: {json.dumps(pack_installer.public())}\n\n"
+            yield f"event: llamacpp.install\ndata: {json.dumps(llamacpp_installer.public())}\n\n"
+            yield f"event: llm.status\ndata: {json.dumps(llm.status())}\n\n"
             while True:
                 if await request.is_disconnected():
                     break

@@ -46,7 +46,7 @@ import { AudioHome } from './AudioHome'
 import { CastPanel } from './CastPanel'
 import { TakeCard } from './TakeCard'
 
-for (const dir of ['modules/studio-core', 'modules/audio-studio', 'modules/voices', 'modules/image-studio', 'modules/studio-shell', 'modules/model-catalog', 'modules/engines', 'modules/hardware', 'modules/media-library', 'modules_shared/common']) {
+for (const dir of ['modules/studio-core', 'modules/audio-studio', 'modules/voices', 'modules/image-studio', 'modules/studio-shell', 'modules/model-catalog', 'modules/engines', 'modules/hardware', 'modules/chat', 'modules/media-library', 'modules_shared/common']) {
   Object.assign(fr.texts, JSON.parse(readFileSync(resolve(__dirname, '../../../..', 'src', dir, 'locales/locales.fr.json'), 'utf8')))
 }
 
@@ -136,6 +136,8 @@ describe('audio screens render without error and without raw keys', () => {
     expect(html).toContain('Narration')
     expect(html).toContain('Dernières prises')
     expect(html).toContain('Alice : Bonjour')
+    expect(html).toContain('Nouveautés') // the « What's new ? » button next to the model picker
+    expect(html).toContain('pour améliorer vos prompts') // the ✨ button, off while no chat model is installed
     noRawKeys(html)
   })
 

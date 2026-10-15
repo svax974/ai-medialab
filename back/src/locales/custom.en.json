@@ -25,5 +25,7 @@
   "custom.settings.quantize": "Quantization per model",
   "custom.settings.variant": "Variant per model",
   "custom.settings.hfToken": "Hugging Face token",
-  "custom.settings.hfToken.description": "Required to download gated models; stored encrypted."
+  "custom.settings.hfToken.description": "Required to download gated models; stored encrypted.",
+  "custom.settings.braveApiKey": "Brave Search key",
+  "custom.settings.braveApiKey.description": "Brave Search API key for the chat's web search (DuckDuckGo is used without one); stored encrypted, never sent back to the browser."
 }

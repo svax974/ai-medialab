@@ -28,7 +28,7 @@ audio-studio/
   lib/audioStatus.ts               ligne d'état d'un message audio (testé)
   lib/cloner.ts                    modèle à utiliser pour une voix de la bibliothèque (testé)
   lib/audioHelp.ts                 info-bulles et textes de départ ; lib/audioDraftActions.ts : reprise d'un texte, de réglages
-  components/                      AudioHome, AudioComposer, AudioAssistantMessage (+ AudioStatusLine, AudioMessageFooter), TakeCard (+ RateMenu, TakeMenu, PendingTake, VoiceSavedToast),
+  components/                      AudioHome, AudioComposer (avec le bouton ✨ `EnhancePromptButton` du module `chat` : texte corrigé pour une lecture naturelle ; il prend aussi le texte qu'une réponse du chat lui envoie, `usePromptHandoff('audio', …)`), AudioAssistantMessage (+ AudioStatusLine, AudioMessageFooter), TakeCard (+ RateMenu, TakeMenu, PendingTake, VoiceSavedToast),
                                    VoicePicker, LanguagePicker, CastPanel, TakesPicker, AutoplayToggle, AudioGallery
   locales/                         locales.fr.json, locales.en.json (clés audioStudio.*)
 ```

@@ -45,4 +45,21 @@ export class EnginesController {
   cancelSdcppInstall(): Promise<{ ok: true }> {
     return this.engines.cancelSdcppInstall();
   }
+
+  @Post('llamacpp/install')
+  @HttpCode(200)
+  installLlamacpp(): Promise<EngineInstallState> {
+    return this.engines.installLlamacpp();
+  }
+
+  /** Declared before `llamacpp` (uninstall) so that `install` is never read as part of another route. */
+  @Delete('llamacpp/install')
+  cancelLlamacppInstall(): Promise<{ ok: true }> {
+    return this.engines.cancelLlamacppInstall();
+  }
+
+  @Delete('llamacpp')
+  uninstallLlamacpp(): Promise<{ ok: true }> {
+    return this.engines.uninstallLlamacpp();
+  }
 }

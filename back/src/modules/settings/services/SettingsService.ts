@@ -8,10 +8,11 @@ import { ModuleConfigService } from 'src/modules_shared/common/CommonModule';
 import { ConfigurationService } from 'src/modules_shared/common/services/ConfigurationService';
 import { EngineClient, EngineUnavailableError, engineErrorToHttp } from 'src/modules/engine';
 import { SETTINGS_MODULE_ID } from '../configSchema';
-import type { PublicSettings, SettingsPatch, StudioSettings } from '../types/settingsTypes';
+import type { EngineSettings, PublicSettings, SettingsPatch, StudioSettings } from '../types/settingsTypes';
 import { DEFAULT_SETTINGS, applyPatch, toPublic } from './settingsPatch';
 
 const TOKEN_KEY = 'studio_hfToken';
+const BRAVE_KEY = 'studio_braveApiKey';
 
 const isNumberMap = (v: unknown): v is Record<string, number | null> =>
   typeof v === 'object' && v !== null && !Array.isArray(v) && Object.values(v).every((x) => x === null || typeof x === 'number');
@@ -85,11 +86,20 @@ export class SettingsService {
       quantize: isNumberMap(v.studio_quantize) ? v.studio_quantize : {},
       variant: isStringMap(v.studio_variant) ? v.studio_variant : {},
       hf_token: this.moduleConfig.getDecryptedSecretValue(SETTINGS_MODULE_ID, TOKEN_KEY) ?? '',
+      brave_api_key: this.moduleConfig.getDecryptedSecretValue(SETTINGS_MODULE_ID, BRAVE_KEY) ?? '',
     };
   }
 
+  /** The Brave Search key for the chat's web search tool ('' when none). Server side only: never sent to a browser. */
+  async braveApiKey(): Promise<string> {
+    await this.configuration.getConfiguration();
+    return this.moduleConfig.getDecryptedSecretValue(SETTINGS_MODULE_ID, BRAVE_KEY) ?? '';
+  }
+
+  /** The engine gets everything but the Brave key (it has no use for it). */
   private push(settings: StudioSettings): Promise<unknown> {
-    return this.engine.put('/engine/v1/runtime/settings', { body: settings });
+    const { brave_api_key: _brave, ...forEngine } = settings;
+    return this.engine.put('/engine/v1/runtime/settings', { body: forEngine satisfies EngineSettings });
   }
 
   private async persist(current: StudioSettings, next: StudioSettings): Promise<void> {
@@ -101,9 +111,13 @@ export class SettingsService {
       studio_variant: next.variant,
       // An empty secret is skipped by updateModuleConfig (it keeps the stored one): removal is written below.
       ...(next.hf_token ? { [TOKEN_KEY]: next.hf_token } : {}),
+      ...(next.brave_api_key ? { [BRAVE_KEY]: next.brave_api_key } : {}),
     });
     if (!next.hf_token && current.hf_token) {
       await this.configuration.updateAll([{ name: TOKEN_KEY, value: '', description: '' }]);
+    }
+    if (!next.brave_api_key && current.brave_api_key) {
+      await this.configuration.updateAll([{ name: BRAVE_KEY, value: '', description: '' }]);
     }
   }
 

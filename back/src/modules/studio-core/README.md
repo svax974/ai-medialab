@@ -4,7 +4,8 @@
 
 Les **conversations** et les **messages** (prompts de l'utilisateur et générations de l'assistant), avec les liens vers leurs
 assets de référence, **et la file des générations** (« quel message ensuite ») qui pilote le moteur. Les trois studios
-(image, audio, vidéo) partagent ces tables ; `mode` distingue la conversation.
+(image, audio, vidéo) partagent ces tables ; `mode` distingue la conversation. Le mode **`chat`** réutilise la table `conversations` (liste, titre,
+épingle, suppression) mais garde ses messages dans le module `chat` (`chat_messages`) : voir « Modes qui gardent leurs messages ailleurs ».
 
 État (tâche H4.3a) : persistance (H2), routes `/api/conversations*` et `/api/messages*` (mêmes URLs et mêmes formes publiques
 que l'ancienne API du moteur), file des générations, relais des événements du moteur vers les messages, les assets et le
@@ -26,10 +27,12 @@ navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations :
 | Contrôleur | `controllers/ConversationController.ts` | `/api/conversations*` (liste, création, détail, titre et épingle, suppression). |
 | Contrôleur | `controllers/MessageController.ts` | `/api/messages*` (création, relance, annulation, suppression, usage des modèles). |
 | Contrôleur | `controllers/QueueController.ts` | `GET /api/queue` : la file des générations (état initial d'un navigateur). |
-| Service | `services/ConversationService.ts` | `list`, `get`, `getSummary`, `create`, `update`, `touch`, `remove`. |
+| Service | `services/ConversationService.ts` | `list`, `get`, `getSummary`, `create`, `update`, `touch`, `remove`, `beforeRemove`. |
+| Service | `services/ConversationModeRegistry.ts` | Registre où un mode qui garde ses messages ailleurs (le chat) déclare ses chiffres de résumé, sa recherche de contenu et ce qui précède sa suppression. |
+| Service | `services/EngineBusyGate.ts` | Jauge d'occupation du moteur partagée avec le chat : tenue pendant une réponse, la file ne soumet aucun job tant qu'elle l'est. |
 | Service | `services/MessageService.ts` | `get`, `listByConversation`, `create`, `update`, `remove`, `removeMany`, `failInterrupted`, `toDtos`, requêtes de la file et de la purge (`referencesOf`, `assetsOfMessages`, `assetsOfConversation`, `busyIds`, `childIds`). |
 | Service | `services/GenerationService.ts` | Création, relance, annulation et suppression des générations ; suppression d'une conversation (assets et fichiers purgés). |
-| Service | `services/GenerationQueueService.ts` | **File et exécuteur** : une génération à la fois, soumission au moteur, machine d'état des messages, événements navigateur, reprise. |
+| Service | `services/GenerationQueueService.ts` | **File et exécuteur** : une génération à la fois, soumission au moteur, machine d'état des messages, événements navigateur, reprise. `occupied` et `idle$` (émis quand plus rien n'est en cours ni en attente) servent au module `private`, dont les générations attendent cette file et tiennent `EngineBusyGate` pendant leur job. |
 | Service | `services/JobRequestBuilder.ts` | Message vers corps de `POST /engine/v1/jobs` (chemins absolus des références, dossier de sortie). |
 | Pures | `services/generationParams.ts` | `parseCreateMessage`, `parseRetry` (422), `titleFromPrompt`, `seedsFor`. |
 | Pures | `mappers/jobEventMapper.ts` | Fusion de la progression, forme navigateur de `job.progress`, `job.output` vers une ligne d'asset. |
@@ -53,8 +56,8 @@ erreurs ont la forme de Nest (`{ statusCode, message }`) avec les mêmes statuts
 
 | Méthode | Endpoint | Réponse | Erreurs |
 |---|---|---|---|
-| `GET` | `/api/conversations?q=&mode=` | liste de résumés (épinglées d'abord, puis `updated_at` décroissant) | |
-| `POST` | `/api/conversations` `{ title?, mode? }` | détail (`messages: []`) ; publie `conversation.updated` | 422 types |
+| `GET` | `/api/conversations?q=&mode=` | liste de résumés (épinglées d'abord, puis `updated_at` décroissant) ; `mode` : `image`, `audio`, `video`, `chat` (autre valeur : pas de filtre) ; `q` cherche aussi dans le texte des messages de chat | |
+| `POST` | `/api/conversations` `{ title?, mode? }` | détail (`messages: []`) ; `mode` `audio`, `video` ou `chat` (sinon `image`) ; titre par défaut `Nouvelle création`, `Nouvelle conversation` pour le chat ; publie `conversation.updated` | 422 types |
 | `GET` | `/api/conversations/:id` | détail avec `messages` | 404 |
 | `PATCH` | `/api/conversations/:id` `{ title?, pinned? }` | résumé ; publie `conversation.updated` | 404, 422 |
 | `DELETE` | `/api/conversations/:id` | `{ ok: true }` ; arrête les générations, supprime messages, assets et fichiers ; publie `conversation.deleted` | (idempotent) |
@@ -130,7 +133,7 @@ restent relayés tels quels par le module `engine` : les composants migrés cons
 
 ## Entités
 
-- `ConversationEntity` (`conversations`) : `id`, `title`, `pinned`, `mode` (`image` | `audio` | `video`, défaut
+- `ConversationEntity` (`conversations`) : `id`, `title`, `pinned`, `mode` (`image` | `audio` | `video` | `chat`, défaut
   `image`), `createdAt`, `updatedAt` (secondes, flottant). Index `(mode, updated_at)`.
 - `MessageEntity` (`messages`) : `id`, `conversationId` (suppression en cascade), `parentId` (le prompt auquel répond une
   génération, cascade), `role` (`user` | `assistant`), `prompt`, `modelId`, `params` (JSON libre : contrat avec le
@@ -147,7 +150,20 @@ Formes publiques (snake_case, champs absents à `null`) :
 - Message : `id, conversation_id, parent_id, role, prompt, model_id, params, status, error, created_at, started_at,
   finished_at, references, outputs` (`references` : assets de référence dans l'ordre ; `outputs` : assets générés,
   par `position`).
-- Liste : épinglées d'abord, puis `updated_at` décroissant ; filtres `mode` et `q` (titre ou prompt d'un message).
+- Liste : épinglées d'abord, puis `updated_at` décroissant ; filtres `mode` et `q` (titre, prompt d'un message ou, pour le chat, texte d'un message).
+
+## Modes qui gardent leurs messages ailleurs
+
+Le chat (module `chat`) dépend de `studio-core`, jamais l'inverse. Il se branche par deux points d'extension, sans que ce module n'importe rien de lui :
+
+- **`ConversationModeRegistry`** : au démarrage, `ChatBootstrap` y inscrit `{ mode: 'chat', stats, matching, beforeRemove }`. `ConversationService` lui demande
+  `generation_count` (messages de la branche active) et `busy` d'une conversation de ce mode (`cover` reste `null`), les identifiants des conversations
+  dont un message contient `q` (recherche de la liste, plafonnée à 500), et `GenerationService.removeConversation` appelle `beforeRemove` avant de
+  supprimer la ligne (le chat arrête sa réponse en cours et supprime les fichiers joints ; les lignes partent par cascade). Sans inscription, rien ne change.
+- **`EngineBusyGate`** : le moteur ne tient qu'un modèle à la fois. Pendant une réponse de chat le chat tient la jauge (`tryAcquire('chat')`) ;
+  `GenerationQueueService` ne soumet alors aucun job (les messages restent `queued`) et reprend à `released$`. Dans l'autre sens le chat refuse (`busy`)
+  tant que `GenerationQueueService.occupied` est vrai (un job court ou attend). Le moteur répond 409 de toute façon à celui qui arrive second : c'est la
+  ceinture, la jauge la bretelle. Les deux dépendances sont `@Optional()` du constructeur (un montage sans chat fonctionne comme avant).
 
 ## Points d'extension
 
@@ -178,6 +194,7 @@ npx jest --runInBand src/modules/studio-core/services/generationParams.spec.ts  
 npx jest --runInBand src/modules/studio-core/services/AudioGeneration.spec.ts           # voix des jobs audio, mesure de la taille des événements audio
 npx jest --runInBand src/modules/studio-core/services/VideoGeneration.spec.ts           # jobs vidéo : entrées dans l'ordre, clips bornés à 2, étapes, affiche, durée et fps de l'asset, relance
 npx jest --runInBand src/modules/studio-core/mappers/jobEventMapper.spec.ts            # correspondance des événements
+npx jest --runInBand src/modules/studio-core/services/EngineBusyGate.spec.ts            # jauge d'occupation et file qui attend la fin d'une réponse de chat
 npx jest --runInBand src/modules/studio-core/controllers/studioRoutes.spec.ts          # formes publiques identiques à l'ancienne API
 npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts              # bout en bout avec le vrai moteur (démo)
 ```

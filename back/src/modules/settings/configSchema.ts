@@ -66,5 +66,12 @@ export const settingsConfigSchema: ModuleConfigSchema = {
       type: 'secret',
       group: 'sources',
     },
+    {
+      key: 'studio_braveApiKey',
+      label: 'custom.settings.braveApiKey',
+      description: 'custom.settings.braveApiKey.description',
+      type: 'secret',
+      group: 'sources',
+    },
   ],
 };

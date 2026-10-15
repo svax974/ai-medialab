@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { AssetEntity, newId, nowSeconds } from 'src/modules/media-library';
@@ -15,11 +15,13 @@ import { ConversationStats, toConversationDetailDto, toConversationDto } from '.
 import {
   BUSY_STATUSES,
   CreateConversationInput,
+  DEFAULT_CHAT_TITLE,
   DEFAULT_CONVERSATION_TITLE,
   ListConversationsQuery,
   MAX_TITLE_LENGTH,
   UpdateConversationInput,
 } from '../types/studioTypes';
+import { ConversationModeRegistry } from './ConversationModeRegistry';
 import { MessageService } from './MessageService';
 
 /** Reads and writes conversations. Same summaries and ordering as the legacy `GET /conversations`. */
@@ -30,6 +32,8 @@ export class ConversationService {
     @InjectRepository(MessageEntity) private readonly messages: Repository<MessageEntity>,
     @InjectRepository(AssetEntity) private readonly assets: Repository<AssetEntity>,
     private readonly messageService: MessageService,
+    /** The modes that keep their messages elsewhere (chat) plug in here; absent in a wiring without them. */
+    @Optional() private readonly modes?: ConversationModeRegistry,
   ) {}
 
   /** Pinned first, then most recently updated. */
@@ -37,25 +41,26 @@ export class ConversationService {
     const qb = this.conversations.createQueryBuilder('c');
     if (query.mode) qb.andWhere('c.mode = :mode', { mode: query.mode });
     if (query.q) {
+      const extra = await this.matchingElsewhere(query.q);
       qb.andWhere(
-        '(c.title LIKE :q OR EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.prompt LIKE :q))',
-        { q: `%${query.q}%` },
+        `(c.title LIKE :q OR EXISTS (SELECT 1 FROM messages m WHERE m.conversation_id = c.id AND m.prompt LIKE :q)${extra.length ? ' OR c.id IN (:...extra)' : ''})`,
+        { q: `%${query.q}%`, extra },
       );
     }
     const rows = await qb.orderBy('c.pinned', 'DESC').addOrderBy('c.updatedAt', 'DESC').getMany();
-    return Promise.all(rows.map(async (c) => toConversationDto(c, await this.statsOf(c.id))));
+    return Promise.all(rows.map(async (c) => toConversationDto(c, await this.statsOf(c))));
   }
 
   async getSummary(id: string): Promise<ConversationDto | null> {
     const conversation = await this.conversations.findOneBy({ id });
-    return conversation ? toConversationDto(conversation, await this.statsOf(id)) : null;
+    return conversation ? toConversationDto(conversation, await this.statsOf(conversation)) : null;
   }
 
   async get(id: string): Promise<ConversationDetailDto | null> {
     const conversation = await this.conversations.findOneBy({ id });
     if (!conversation) return null;
     const messages = await this.messageService.listByConversation(id);
-    return toConversationDetailDto(conversation, await this.statsOf(id), messages);
+    return toConversationDetailDto(conversation, await this.statsOf(conversation), messages);
   }
 
   async create(input: CreateConversationInput = {}): Promise<ConversationDetailDto> {
@@ -63,9 +68,9 @@ export class ConversationService {
     const conversation = await this.conversations.save(
       this.conversations.create({
         id: newId(),
-        title: input.title?.trim() || DEFAULT_CONVERSATION_TITLE,
+        title: input.title?.trim() || (input.mode === 'chat' ? DEFAULT_CHAT_TITLE : DEFAULT_CONVERSATION_TITLE),
         pinned: false,
-        mode: input.mode === 'audio' || input.mode === 'video' ? (input.mode as ConversationMode) : 'image',
+        mode: input.mode === 'audio' || input.mode === 'video' || input.mode === 'chat' ? (input.mode as ConversationMode) : 'image',
         createdAt: now,
         updatedAt: now,
       }),
@@ -96,7 +101,22 @@ export class ConversationService {
     return (result.affected ?? 0) > 0;
   }
 
-  private async statsOf(conversationId: string): Promise<ConversationStats> {
+  /** What the mode's own module says before the row goes (stop a reply, delete its files). No-op for the media modes. */
+  async beforeRemove(id: string): Promise<void> {
+    const conversation = await this.conversations.findOneBy({ id });
+    if (conversation) await this.modes?.get(conversation.mode)?.beforeRemove(id);
+  }
+
+  /** Conversations of the other modes whose messages contain `q` (capped: SQLite takes 999 parameters). */
+  private async matchingElsewhere(q: string): Promise<string[]> {
+    const lists = await Promise.all((this.modes?.all() ?? []).map((m) => m.matching(q)));
+    return lists.flat().slice(0, 500);
+  }
+
+  private async statsOf(conversation: ConversationEntity): Promise<ConversationStats> {
+    const conversationId = conversation.id;
+    const own = await this.modes?.get(conversation.mode)?.stats(conversationId);
+    if (own) return { cover: null, generationCount: own.generationCount, busy: own.busy };
     const cover = await this.assets.findOne({
       where: { conversationId, kind: 'generated', media: In(['image', 'video']) },
       order: { createdAt: 'DESC' },

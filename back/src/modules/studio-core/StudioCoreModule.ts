@@ -14,7 +14,9 @@ import { QueueController } from './controllers/QueueController';
 import { ConversationEntity } from './entities/ConversationEntity';
 import { MessageEntity } from './entities/MessageEntity';
 import { MessageRefEntity } from './entities/MessageRefEntity';
+import { ConversationModeRegistry } from './services/ConversationModeRegistry';
 import { ConversationService } from './services/ConversationService';
+import { EngineBusyGate } from './services/EngineBusyGate';
 import { GenerationQueueService } from './services/GenerationQueueService';
 import { GenerationService } from './services/GenerationService';
 import { JobRequestBuilder } from './services/JobRequestBuilder';
@@ -24,7 +26,7 @@ import { MessageService } from './services/MessageService';
 @Module({
   imports: [CommonModule, MediaLibraryModule, AudioStudioModule, TypeOrmModule.forFeature([ConversationEntity, MessageEntity, MessageRefEntity])],
   controllers: [ConversationController, MessageController, QueueController],
-  providers: [ConversationService, MessageService, JobRequestBuilder, GenerationQueueService, GenerationService],
-  exports: [TypeOrmModule, ConversationService, MessageService, GenerationQueueService, GenerationService],
+  providers: [ConversationModeRegistry, EngineBusyGate, ConversationService, MessageService, JobRequestBuilder, GenerationQueueService, GenerationService],
+  exports: [TypeOrmModule, ConversationModeRegistry, EngineBusyGate, ConversationService, MessageService, GenerationQueueService, GenerationService],
 })
 export class StudioCoreModule {}

@@ -12,13 +12,14 @@ import { SettingsService } from './SettingsService';
 /** In-memory stand-in of the module config (values, secret and the clear-token path). */
 function fakeConfig() {
   const store: Record<string, unknown> = {};
-  let token = '';
+  const secrets: Record<string, string> = {};
+  const isSecret = (key: string) => key === 'studio_hfToken' || key === 'studio_braveApiKey';
   const moduleConfig = {
     getModuleConfigWithValues: jest.fn(async () => ({ currentValues: { ...store } })),
-    getDecryptedSecretValue: jest.fn(() => token),
+    getDecryptedSecretValue: jest.fn((_id: string, key: string) => secrets[key] ?? ''),
     updateModuleConfig: jest.fn(async (_id: string, values: Record<string, unknown>) => {
       for (const [k, v] of Object.entries(values)) {
-        if (k === 'studio_hfToken') token = v as string;
+        if (isSecret(k)) secrets[k] = v as string;
         else store[k] = v;
       }
       return null;
@@ -27,7 +28,7 @@ function fakeConfig() {
   const configuration = {
     getConfiguration: jest.fn(async () => []),
     updateAll: jest.fn(async (dtos: { name: string; value: string }[]) => {
-      for (const d of dtos) if (d.name === 'studio_hfToken') token = d.value;
+      for (const d of dtos) if (isSecret(d.name)) secrets[d.name] = d.value;
       return [];
     }),
   };
@@ -52,14 +53,14 @@ describe('SettingsService', () => {
   afterEach(() => engine.close());
 
   it('returns the defaults and has_hf_token false when nothing is stored', async () => {
-    expect(await service.getPublic()).toEqual({ keep_alive_minutes: 10, previews: true, low_memory: true, quantize: {}, variant: {}, has_hf_token: false });
+    expect(await service.getPublic()).toEqual({ keep_alive_minutes: 10, previews: true, low_memory: true, quantize: {}, variant: {}, has_hf_token: false, has_brave_api_key: false });
   });
 
   it('pushes the whole state to the engine, then stores it', async () => {
     const result = await service.update({ keep_alive_minutes: 0, hf_token: 'hf_x', variant: { m: 'q4' } });
     expect(engine.requests[0]).toMatchObject({ method: 'PUT', url: '/engine/v1/runtime/settings' });
     expect(pushed()[0]).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, hf_token: 'hf_x' });
-    expect(result).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, has_hf_token: true });
+    expect(result).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, has_hf_token: true, has_brave_api_key: false });
     expect(JSON.stringify(result)).not.toContain('hf_x');
     expect((await service.getPublic()).has_hf_token).toBe(true);
   });
@@ -105,5 +106,17 @@ describe('SettingsService', () => {
     expect(pushed()[0].low_memory).toBe(false);
     make('http://127.0.0.1:1');
     expect(await service.pushToEngine()).toBe(false);
+  });
+
+  it('keeps the Brave key for the chat only: stored encrypted, never pushed to the engine, never public', async () => {
+    const result = await service.update({ brave_api_key: 'BSA-secret' });
+    expect(result.has_brave_api_key).toBe(true);
+    expect(JSON.stringify(result)).not.toContain('BSA-secret');
+    expect(JSON.stringify(pushed())).not.toContain('BSA-secret');
+    expect(pushed()[0]).not.toHaveProperty('brave_api_key');
+    expect(await service.braveApiKey()).toBe('BSA-secret');
+    expect((await service.getPublic()).has_brave_api_key).toBe(true);
+    expect((await service.update({ brave_api_key: '' })).has_brave_api_key).toBe(false);
+    expect(await service.braveApiKey()).toBe('');
   });
 });

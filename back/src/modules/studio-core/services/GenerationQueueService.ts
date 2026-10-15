@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
-import { Subscription, filter } from 'rxjs';
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
+import { Observable, Subject, Subscription, filter } from 'rxjs';
 import { EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError } from 'src/modules/engine';
 import { AssetEntity, AssetFileService, AssetService, StudioEvents, nowSeconds } from 'src/modules/media-library';
 import { MessageEntity, MessageStatus } from '../entities/MessageEntity';
@@ -13,6 +13,7 @@ import {
   ENGINE_UNREACHABLE, INTERRUPTED_BY_ENGINE, type EngineJobOutput, type EngineJobState, type JobEventData, type JobKind,
   type QueueEntry,
 } from '../types/jobTypes';
+import { EngineBusyGate } from './EngineBusyGate';
 import { JobRequestBuilder } from './JobRequestBuilder';
 import { MessageService } from './MessageService';
 
@@ -48,6 +49,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   private chain: Promise<void> = Promise.resolve();
   private lastQueueKey = '';
   private readonly subscriptions: Subscription[] = [];
+  private readonly idleSubject = new Subject<void>();
 
   constructor(
     private readonly messages: MessageService,
@@ -57,6 +59,8 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     private readonly engine: EngineClient,
     private readonly relay: EngineEventRelay,
     private readonly events: StudioEvents,
+    /** Held while a chat reply runs: no job is handed to the engine meanwhile (it would answer 409). */
+    @Optional() private readonly gate?: EngineBusyGate,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -66,11 +70,22 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       this.relay.events$.subscribe((event) => this.serial(() => this.handle(event))),
       this.relay.linkChanges$.pipe(filter((connected) => connected)).subscribe(() => this.serial(() => this.reconcile())),
     );
+    if (this.gate) this.subscriptions.push(this.gate.released$.subscribe(() => this.serial(() => this.pump())));
     if (this.relay.connected) this.serial(() => this.reconcile());
   }
 
   onModuleDestroy(): void {
     this.subscriptions.forEach((s) => s.unsubscribe());
+  }
+
+  /** True while a generation runs or waits: the chat answers `busy` then (one model at a time). */
+  get occupied(): boolean {
+    return this.current !== null || this.pending.length > 0;
+  }
+
+  /** Emits each time the queue has nothing running or waiting after a step: what a private generation waits for. */
+  get idle$(): Observable<void> {
+    return this.idleSubject.asObservable();
   }
 
   snapshot(): QueueSnapshot {
@@ -140,7 +155,10 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   private serial(task: () => Promise<void>): void {
     this.chain = this.chain.then(task).catch((error: unknown) => {
       this.logger.error(`generation queue: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
-    }).then(() => this.publishQueue());
+    }).then(() => {
+      this.publishQueue();
+      if (!this.occupied) this.idleSubject.next();
+    });
   }
 
   /** Test hook: resolves when everything queued so far was handled. */
@@ -149,7 +167,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   }
 
   private async pump(): Promise<void> {
-    while (!this.current && this.pending.length) {
+    while (!this.current && this.pending.length && !this.gate?.busy) {
       const entry = this.pending.shift() as QueueEntry;
       this.current = entry; // held from here: a cancellation now is recorded on the entry
       const message = await this.messages.getEntity(entry.messageId);

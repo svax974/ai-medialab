@@ -25,5 +25,7 @@
   "custom.settings.quantize": "Quantification par modèle",
   "custom.settings.variant": "Variante par modèle",
   "custom.settings.hfToken": "Jeton Hugging Face",
-  "custom.settings.hfToken.description": "Requis pour télécharger les modèles à accès restreint ; stocké chiffré."
+  "custom.settings.hfToken.description": "Requis pour télécharger les modèles à accès restreint ; stocké chiffré.",
+  "custom.settings.braveApiKey": "Clé Brave Search",
+  "custom.settings.braveApiKey.description": "Clé d'API de Brave Search, pour la recherche web du chat (DuckDuckGo est utilisé sans clé) ; stockée chiffrée, jamais renvoyée au navigateur."
 }
