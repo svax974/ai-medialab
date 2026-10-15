@@ -11,9 +11,9 @@ Migrations versionnées de la base de Nest (SQLite ; Postgres n'est pas une cibl
 
 ## Utilisation
 
-- **Dev** : `DB_SYNC` non défini, TypeORM construit les tables (`synchronize`, défaut hors production). Les migrations
+- **Dev** : `DB_SCHEMA_MODE` non défini (ou `sync`), TypeORM construit les tables (`synchronize`, défaut hors production). Les migrations
   ne servent pas.
-- **Bureau et production** : `DB_SYNC=false` et `DB_MIGRATIONS_RUN=true` (voir `back/.env.example`) : les migrations
+- **Bureau et production** : `DB_SCHEMA_MODE=migrations` (voir `back/.env.example`) : les migrations
   en attente s'exécutent au démarrage. Ne jamais mélanger `synchronize` et migrations sur un même fichier `app.db` : une
   base construite par `synchronize` n'a pas la table `migrations`, la migration initiale échouerait (« table already
   exists »). Repartir d'un `app.db` vide, ou le supprimer en dev (rien d'irremplaçable : les données d'origine sont dans
@@ -27,7 +27,7 @@ colonne) s'accompagne d'une migration, dans le même commit :
 
 ```sh
 cd back
-DATABASE_ENGINE=sqlite DB_PATH=/tmp/gen.db DB_SYNC=false CRYPT_DB_MASTER_KEY=<clé> \
+DB_ENGINE=sqlite DB_PATH=/tmp/gen.db CRYPT_DB_MASTER_KEY=<clé> \
   node -r ts-node/register -r tsconfig-paths/register ./node_modules/typeorm/cli.js \
   migration:generate -d src/config/Datasource.ts src/migrations/<Nom>
 ```

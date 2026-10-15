@@ -101,7 +101,7 @@ Example with a sidecar:
    (32 random bytes, base64, same rule as `backEnvValues` in `scripts/create-project.mjs`), generated on first launch only.
 4. **Environment of the back**: the config `env`, then the secrets, then these variables, which always win:
    `HOST=127.0.0.1`, `NODE_PORT`, `CLIENT_ORIGINS` (`http://127.0.0.1:<port>`, `http://localhost:<port>`),
-   `LOCAL_TRUST=true`, `DATABASE_ENGINE=sqlite`, `DB_PATH=<data>/<dbFile>`, `DB_MIGRATIONS_RUN=true`,
+   `LOCAL_TRUST=true`, `DB_ENGINE=sqlite`, `DB_PATH=<data>/<dbFile>`, `DB_MIGRATIONS_RUN=true`,
    `APP_DATA_DIR=<data>`, `LOG_DIR=<data>/logs`, `SHARED_DIRECTORY=<data>/shared`, `DISABLE_TRANSPORT_CRYPTO=true`,
    `APP_ENV=desktop`, `SERVE_FRONT_DIR`, `DESKTOP_PARENT_PID` (the shell pid; the back exits when it disappears, see
    `nest/common/README.md`). Sidecars receive only their config `env` plus the shared token.
@@ -233,7 +233,7 @@ Resources for the target must have been assembled with the same `--target`; for 
   (`productName`, `identifier`, `sidecars`) and sync `tauri.conf.json`, and add `desktop:dev` / `desktop:build` to
   `back/package.local.json` (run them from `back/`; `desktop:dev` needs the Rust toolchain).
 - Refused with the `user` module (the shell forces `LOCAL_TRUST=true`), with a database other than SQLite (it forces
-  `DATABASE_ENGINE=sqlite`), with an invalid identifier, and when `desktop/` or the workflow already exists (nothing is
+  `DB_ENGINE=sqlite`), with an invalid identifier, and when `desktop/` or the workflow already exists (nothing is
   overwritten). Once installed, `desktop/desktop.config.json` is the source of truth: the `desktop` section of
   `project.config.json` only records the answers.
 - CI: `tools/ci-sandbox.sh anonymous-sqlite-desktop` checks the generation (files, configs, scripts, `build-desktop.mjs --dry-run`)

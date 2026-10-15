@@ -135,7 +135,7 @@ pub fn server_core_env(f: &ServerFacts) -> BTreeMap<String, String> {
         ("NODE_PORT", f.port.to_string()),
         ("CLIENT_ORIGINS", format!("{origin},http://localhost:{}", f.port)),
         ("LOCAL_TRUST", "true".into()),
-        ("DATABASE_ENGINE", "sqlite".into()),
+        ("DB_ENGINE", "sqlite".into()),
         ("DB_PATH", p(&f.data_dir.join(f.db_file))),
         ("DB_MIGRATIONS_RUN", "true".into()),
         ("APP_DATA_DIR", p(f.data_dir)),
@@ -258,7 +258,7 @@ mod tests {
         assert_eq!(env["NODE_PORT"], "4321");
         assert_eq!(env["CLIENT_ORIGINS"], "http://127.0.0.1:4321,http://localhost:4321");
         assert_eq!(env["LOCAL_TRUST"], "true");
-        assert_eq!(env["DATABASE_ENGINE"], "sqlite");
+        assert_eq!(env["DB_ENGINE"], "sqlite");
         assert_eq!(env["DB_PATH"], "/d/app.db");
         assert_eq!(env["DB_MIGRATIONS_RUN"], "true");
         assert_eq!(env["SHARED_DIRECTORY"], "/d/shared");
