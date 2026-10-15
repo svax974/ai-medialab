@@ -108,7 +108,7 @@ def _pocket_sources(models_langs: list[str], voices: list[str]) -> list[HfSource
         aux += [f"languages/{l}/tokenizer.*"] + [f"languages/{l}/embeddings/{v}.safetensors" for v in voices]
     check = [f"languages/{models_langs[0]}/tokenizer.json", f"languages/{models_langs[0]}/embeddings/{voices[0]}.safetensors"]
     return [
-        HfSource("kyutai/pocket-tts", model_patterns, model_patterns, 0.22 * len(models_langs)),
+        HfSource("kyutai/pocket-tts", model_patterns, model_patterns, 0.23 * len(models_langs)),
         HfSource("kyutai/pocket-tts-without-voice-cloning", aux, check, 0.07 * len(models_langs)),
     ]
 
@@ -125,7 +125,7 @@ POCKET = ModelSpec(
     options={"pack": "speech", "language": "fr"},
     text_to_image=False,
     sources=_pocket_sources(["english", "french"], _POCKET_BASE + ["estelle"]),
-    download_size_gb=0.65,
+    download_size_gb=0.6,
     weights_gb=0.6,
     license="CC-BY-4.0",
     tags=["clonage", "rapide", "CPU"],
@@ -210,7 +210,7 @@ QWEN_CUSTOM = _qwen(
     twin="qwen3-tts-gguf-custom",
 )
 QWEN_CUSTOM_SMALL = _qwen(
-    "qwen3-tts-custom-small", "Qwen3-TTS · Voix & style 0.6B", "0.6B-CustomVoice", 2.52,
+    "qwen3-tts-custom-small", "Qwen3-TTS · Voix & style 0.6B", "0.6B-CustomVoice", 2.5,
     AudioCaps(languages=QWEN_LANGS, voices=_QWEN_SPEAKERS, clone="none", instruct=False, max_chars=400),
     "Version compacte de Qwen3-TTS : mêmes neuf voix multilingues, deux fois plus légère (sans consigne de style).",
     ["multilingue", "léger"], [_QWEN_TEMPERATURE],

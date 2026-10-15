@@ -237,7 +237,7 @@ def _cog(mid: str, name: str, repo: str, i2v: bool, size: float, weights: float,
 
 
 COGVIDEOX_2B = _cog(
-    "cogvideox-2b", "CogVideoX 2B", "zai-org/CogVideoX-2b", False, 14.2, 13.8, "Apache 2.0",
+    "cogvideox-2b", "CogVideoX 2B", "zai-org/CogVideoX-2b", False, 13.8, 13.8, "Apache 2.0",
     "≈ 14 Go de poids (fp16), 14 Go à télécharger (dont 9,5 Go d'encodeur de texte). Le plus accessible : Mac avec 24 Go "
     "de mémoire minimum, GPU 12 Go+. Pas de version GGUF utilisable avec diffusers.",
     "Léger et peu gourmand en mémoire, clips courts 480p.",
