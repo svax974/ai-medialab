@@ -117,16 +117,20 @@ WAN_TI2V_5B = _model(
     size_multiple=32,
     # Measured with the Q4_K_M on an M3 Max (36 GB): at 384x256 the 5B draws abstract noise whatever the step count (6 or
     # 20), so nothing below 480p is offered; native sizes are 480x832 and 704x1280. At 480x832, 20 steps: 9 frames take
-    # about 6 s per step and ~7 GB; 33 frames about 20 s per step and push the whole machine to < 6 GB free, so clips
-    # are kept short (1 s by default, 2 s at most) and 20 steps is the default.
+    # about 6 s per step and ~7 GB; 33 frames about 20 s per step and push the whole machine to < 6 GB free, so one run
+    # is kept short and 20 steps is the default. Clips up to 20 s are chained runs, each one starting from the last frame
+    # of the previous; a run is as long as the memory measured on this machine allows, up to the model's 5 s clip
+    # (121 frames at 24 fps), see SdcppVideoEngine._generate_chained and video_memory.py.
     video=VideoCaps(
-        tasks=["t2v", "i2v"], fps=24, frame_step=4, default_seconds=1.0, min_seconds=1.0, max_seconds=2.0,
+        tasks=["t2v", "i2v"], fps=24, frame_step=4, default_seconds=1.0, min_seconds=1.0, max_seconds=20.0,
+        segment_seconds=5.0,
         resolutions=[_res("480p", 480, 832), _res("720p", 704, 1280)], default_resolution="480p", image_input="optional",
     ),
     license="Apache 2.0",
     memory_hint="≈ 8,5 Go de poids (Q4_K_M : diffusion 3,4 + encodeur de texte 3,7 + VAE 1,4) et quelques Go de calcul. "
     "Mac Apple Silicon avec 24 Go de mémoire minimum. 480p recommandé : la 720p et le décodage du VAE sont très longs. "
-    "Mesuré sur un M3 Max (36 Go) : clip d'une seconde en 480p, environ 7 Go ; au-delà de 1,5 s la mémoire devient juste. "
+    "Mesuré sur un M3 Max (36 Go) : clip d'une seconde en 480p, environ 7 Go ; au-delà de 1,5 s la mémoire devient juste, "
+    "donc les clips plus longs (jusqu'à 20 s) sont faits par tranches enchaînées, chacune partant de la dernière image de la précédente ; la longueur d'une tranche suit la mémoire mesurée sur la machine (courte au premier essai, puis ajustée). Durée multipliée et mouvement qui peut changer d'une tranche à l'autre. "
     "La variante Q8_0 gagne en finesse. Le décodage rapide (TAEHV, 23 Mo téléchargés au premier usage) ramène le décodage de plusieurs minutes à une seconde sur Mac.",
     tags=["texte→vidéo", "image→vidéo", "24 ips", "GGUF", "Apache 2.0"],
     options={"files": {}, "cli_args": WAN_CLI, "offload_to_cpu": True, "default_negative": WAN_NEGATIVE, "overhead_gb": 5.0,
@@ -155,7 +159,8 @@ def _wan14(task: str, kind: str, desc: str) -> ModelSpec:
                 FAST_DECODE, NEGATIVE],
         size_multiple=32,
         video=VideoCaps(
-            tasks=["t2v"] if t2v else ["i2v"], fps=16, frame_step=4, default_seconds=3.0, min_seconds=1.0, max_seconds=5.0,
+            tasks=["t2v"] if t2v else ["i2v"], fps=16, frame_step=4, default_seconds=3.0, min_seconds=1.0,
+            max_seconds=5.0 if t2v else 20.0, segment_seconds=None if t2v else 5.0,  # i2v: chained runs, up to the model's 5 s clip
             resolutions=[_res("480p", 480, 832), _res("720p", 720, 1280)], default_resolution="480p",
             image_input="none" if t2v else "required", last_frame=not t2v,
         ),
@@ -273,7 +278,8 @@ def _hunyuan(task: str, desc: str) -> ModelSpec:
         params=[_steps(30, 15, 50), _guidance(6.0), NEGATIVE],
         size_multiple=32,
         video=VideoCaps(
-            tasks=["t2v"] if t2v else ["i2v"], fps=24, frame_step=4, default_seconds=3.0, min_seconds=1.0, max_seconds=5.0,
+            tasks=["t2v"] if t2v else ["i2v"], fps=24, frame_step=4, default_seconds=3.0, min_seconds=1.0,
+            max_seconds=5.0 if t2v else 20.0, segment_seconds=None if t2v else 5.0,  # i2v: chained runs, up to the model's 5 s clip
             resolutions=[_res("480p", 480, 848)], default_resolution="480p",
             image_input="none" if t2v else "required", license_warning=TENCENT_WARNING,
         ),

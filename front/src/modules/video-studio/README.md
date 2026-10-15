@@ -20,7 +20,7 @@ video-studio/
   hooks/useVideoInputs.ts          ce qui remplit les emplacements : fichiers (avec progression), asset, clip comme source, dernière image comme départ ; change de modèle au besoin
   hooks/useSendVideo.ts            envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
   hooks/useVideoDrop.ts            dépôt sur la fenêtre (règles de `media-library/lib/dropRules.ts`)
-  lib/videoMath.ts                 formats, nombre d'images (n × pas + 1), taille de sortie, paramètres effectifs bornés au modèle (testé)
+  lib/videoMath.ts                 formats, nombre d'images (n × pas + 1), taille de sortie, paramètres effectifs bornés au modèle, nombre de passages d'un clip enchaîné (`runCount`) et raison de la limite de durée (`durationLimitKey`) (testé)
   lib/slots.ts                     types de fichiers, modèle de remplacement, emplacement d'un asset, plan d'un import (testé)
   lib/composerRules.ts             exigences, ce qui bloque l'envoi et info-bulle du bouton, avis, emplacements affichés et leur rôle (testé)
   lib/sendRequest.ts               corps de POST /api/messages (testé)
@@ -28,7 +28,7 @@ video-studio/
   lib/videoHelp.ts                 info-bulles (durée, format, définition, nombre de clips, emplacements avec l'état du modèle), textes de départ (testé)
   lib/videoDraftActions.ts         « Reprendre dans le composeur » (prompt + entrées), « Reprendre ces réglages »
   lib/frameCapture.ts              image d'une vidéo (canvas, dans le navigateur) ; lib/dropTarget.ts : emplacement visé par un dépôt ; lib/playback.ts : une seule vidéo à la fois
-  components/                      VideoHome, VideoComposer, SlotTile, VideoPickers (DurationPicker, FormatPicker, ClipCountPicker), VideoAssistantMessage (+ VideoStatusLine,
+  components/                      VideoHome, VideoComposer, SlotTile, VideoPickers (DurationPicker : curseur borné au maximum du modèle, avec la raison du maximum et, pour un clip enchaîné, le nombre de tranches ; FormatPicker, ClipCountPicker), VideoAssistantMessage (+ VideoStatusLine,
                                    VideoMessageFooter), ClipTile (+ ClipActions, PendingClip), VideoGallery, VideoDropLayer, VideoViewerActions
   locales/                         locales.fr.json, locales.en.json (clés videoStudio.*)
 ```
@@ -105,6 +105,7 @@ Cases cochées = vérifiées par la logique testée (`lib/*.spec.ts`) et le rend
 
 **Écarts**
 - Le prompt négatif, quand le modèle en a un, se saisit sous le prompt (`NegativePromptField` de `studio-core`), pas dans les réglages.
+- Le bouton ✨ de la barre du composeur (`EnhancePromptButton` du module `chat`) réécrit le prompt avec le modèle de chat et garde l'original ; le composeur prend aussi le texte qu'une réponse du chat lui envoie (`usePromptHandoff('video', …)`).
 - Les réglages du modèle et la graine passent par `GenerationParams`, **remonté dans `studio-core`** (écart de H4.3b / H4.5 soldé) ; son bouton affiche « Réglages » pour l'audio et la vidéo (comme avant), le nombre d'étapes pour l'image.
 - « Reprendre ces réglages » n'enregistre plus les valeurs que le moteur recalcule (`frames`, `fps`, `task`), qui s'ajoutaient aux réglages du modèle sans servir.
 - Les actions de la visionneuse propres à la vidéo s'appliquent à tout clip, quel que soit le mode affiché (avant : idem) ; elles sont fournies par `video-studio` à `StudioLightbox` (`modeActions`) pour que `studio-core` ne dépende pas de la vidéo.

@@ -162,6 +162,11 @@ class TestPlan:
         assert (p["width"], p["height"]) == (1248, 704) and len(plan["items"]) == 2  # capped at 2 clips
         assert plan["items"][0]["output"].endswith("m_0.mp4") and plan["items"][0]["request"]["extra"]["frames"] == 121
 
+    def test_a_long_gguf_clip_keeps_its_whole_duration_in_the_plan(self):
+        p = self._plan("wan-2.2-ti2v-5b-gguf", {"seconds": 20, "seeds": [1]})["params"]
+        assert p["frames"] == 481 and p["seconds"] == 20.04  # chained 1 s runs are the engine's job, the plan asks for all
+        assert self._plan("wan-2.2-ti2v-5b-gguf", {"seconds": 60, "seeds": [1]})["params"]["frames"] == 481  # still capped
+
     def test_aspect_resolution_and_seconds(self):
         p = self._plan("cogvideox-2b", {"aspect": "9:16", "resolution": "480p", "seconds": 3, "seeds": [5]})["params"]
         assert p["frames"] == 25 and (p["width"], p["height"]) == (400, 720)  # 9:16 capped by the long side

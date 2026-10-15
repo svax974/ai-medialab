@@ -23,6 +23,19 @@ export function frameCount(seconds: number, caps: Pick<VideoCaps, 'fps' | 'frame
   return n * step + 1
 }
 
+/** Sd runs a clip of `seconds` is made of: 1 unless the model chains short runs (`segment_seconds`) and the clip is longer. */
+export function runCount(seconds: number, caps: Pick<VideoCaps, 'fps' | 'frame_step' | 'segment_seconds'>): number {
+  if (!caps.segment_seconds) return 1
+  const total = frameCount(seconds, caps)
+  const perRun = frameCount(caps.segment_seconds, caps)
+  return total <= perRun ? 1 : Math.ceil((total - 1) / (perRun - 1))
+}
+
+/** Locale key explaining why the duration stops at `max_seconds`: the drift of chained runs, or the model's own limit. */
+export function durationLimitKey(caps: Pick<VideoCaps, 'segment_seconds'>): string {
+  return caps.segment_seconds ? 'videoStudio.duration.limit.chain' : 'videoStudio.duration.limit.model'
+}
+
 /** Approximate output size for a format at a definition (the area of the model's native size, sides multiple of 16). `null` without a definition. */
 export function videoSize(aspect: string, res: Pick<VideoResolution, 'short_side' | 'long_side'> | undefined): { width: number; height: number } | null {
   if (!res) return null

@@ -12,7 +12,7 @@ import type { ModelInfo } from '@/modules/model-catalog'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
 import { HelpTooltip, ratioOf } from '@/modules/studio-core'
 import { formatSeconds } from '@/modules/studio-core/lib/format'
-import { frameCount, videoSize, VIDEO_ASPECTS } from '../lib/videoMath'
+import { durationLimitKey, frameCount, runCount, videoSize, VIDEO_ASPECTS } from '../lib/videoMath'
 import { resolutionHelp, VIDEO_HELP } from '../lib/videoHelp'
 import { MAX_CLIPS } from '../lib/sendRequest'
 
@@ -28,6 +28,7 @@ export function DurationPicker({ model, seconds, onChange }: { model: ModelInfo;
   const caps = model.video!
   const frames = frameCount(seconds, caps)
   const actual = frames / caps.fps
+  const runs = runCount(seconds, caps)
   return (
     <>
       <HelpTooltip help={VIDEO_HELP.seconds}>
@@ -49,6 +50,8 @@ export function DurationPicker({ model, seconds, onChange }: { model: ModelInfo;
           <span>{formatSeconds(caps.min_seconds, lang)}</span>
           <span>{formatSeconds(caps.max_seconds, lang)}</span>
         </Box>
+        {runs > 1 && <Box component="p" role="note" sx={{ m: 0, mt: 1, fontSize: 11, lineHeight: 1.4, color: 'var(--muted)' }}>{t('videoStudio.duration.chained', [formatSeconds(caps.segment_seconds as number, lang), runs])}</Box>}
+        <Box component="p" role="note" sx={{ m: 0, mt: 1, fontSize: 11, lineHeight: 1.4, color: seconds >= caps.max_seconds ? 'var(--warn)' : 'var(--faint)' }}>{t(durationLimitKey(caps), [formatSeconds(caps.max_seconds, lang)])}</Box>
         {Math.abs(actual - seconds) > 0.05 && <Box component="p" sx={{ m: 0, mt: 1, fontSize: 11, lineHeight: 1.4, color: 'var(--faint)' }}>{t('videoStudio.duration.steps', [formatSeconds(actual, lang)])}</Box>}
       </Popover>
     </>

@@ -35,6 +35,8 @@ STUB = textwrap.dedent('''\
     a = sys.argv[1:]
     import os, json
     if os.environ.get("STUB_ARGV"): open(os.environ["STUB_ARGV"], "w").write(json.dumps(a))
+    if os.environ.get("STUB_ARGV") and "--prompt-file" in a:
+        open(os.environ["STUB_ARGV"] + ".prompt", "w").write(open(a[a.index("--prompt-file") + 1], encoding="utf-8").read())
     def opt(name, default=None):
         return a[a.index(name) + 1] if name in a else default
     out, frames = opt("-o"), int(opt("--video-frames", "1"))
@@ -77,7 +79,7 @@ STUB = textwrap.dedent('''\
         c.close()
     else:
         for i in range(real):
-            Image.fromarray(np.full((h, w, 3), i * 10, np.uint8)).save(out % i)
+            Image.fromarray(np.full((h, w, 3), i * 10 % 256, np.uint8)).save(out % i)
     log(f"[INFO ] save result video to '{{out}}'\\n")
 ''')
 
@@ -98,6 +100,7 @@ def machine(tmp_path, monkeypatch):
     monkeypatch.setattr("huggingface_hub.hf_hub_download", lambda repo, filename, **kw: f"/cache/{repo}/{filename}")
     monkeypatch.setattr("tempfile.tempdir", str(tmp_path))
     monkeypatch.setattr("app.config.ENGINES_DIR", tmp_path / "engines")
+    monkeypatch.setattr("app.video_memory.store_path", lambda: tmp_path / "video-memory.json")
     monkeypatch.setenv("STUB_ARGV", str(tmp_path / "argv.json"))
     return binary
 
@@ -347,6 +350,15 @@ class TestProgress:
         assert len(self.feed(t, ["|=>| 2/4 - 1s/it", "|=>| 2/4 - 1s/it"])) == 1
 
 
+class TestChainedModels:
+    def test_every_chained_model_is_image_capable_and_silent(self):
+        for spec in video_gguf.SPECS:
+            v = spec.video
+            if v.segment_seconds:
+                assert "i2v" in v.tasks and v.image_role == "start" and not v.audio_out
+                assert v.segment_seconds <= v.max_seconds
+
+
 class TestEngine:
     def test_wan_frames_become_an_mp4(self, machine, tmp_path):
         eng = engine("wan-2.2-ti2v-5b-gguf")
@@ -361,6 +373,104 @@ class TestEngine:
         phases = [e[1] for e in hooks.events if e[0] == "phase"]
         assert phases == ["prepare", "sampling", "decode", "encode"]
         assert [e for e in hooks.events if e[0] == "step"][-2:] == [("step", 3, 3), ("step", 3, 3)]
+
+    def test_a_long_clip_is_chained_runs_from_the_last_frame(self, machine, tmp_path):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 24.0  # plenty free: only the growth limit shapes the runs
+        hooks = Recorder()
+        result = eng.generate(request(frames=49), hooks)
+        assert len(list((result.folder / "frames").glob("*.png"))) == 49 and result.path is None
+        argv = json.loads((tmp_path / "argv.json").read_text())
+        assert "-i" in argv  # every run after the first starts from an image
+        steps = [e for e in hooks.events if e[0] == "step"]
+        assert steps[-1][1] == steps[-1][2]  # one progress bar over all runs
+        assert eng.save(result, tmp_path / "long.mp4")["frames"] == 49
+        assert not result.folder.exists() and not list(tmp_path.glob("sdcpp-video-*"))  # the runs' own folders are gone
+
+    def test_the_first_runs_of_a_new_model_start_with_the_probe_then_grow_by_measure(self, machine, tmp_path):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 24.0
+        counts = []
+        original = eng._generate_clip
+
+        def spy(req, hooks, budget_gb=None, meter=None):
+            counts.append(int(req.extra["frames"]))
+            return original(req, hooks, budget_gb, meter)
+
+        eng._generate_clip = spy
+        result = eng.generate(request(frames=49), Recorder())
+        result.cleanup()
+        assert counts == [9, 13, 17, 13]  # probe, then at most 1.6x the biggest measured run, then what is left
+        measures = json.loads((tmp_path / "video-memory.json").read_text())
+        assert len(next(iter(measures.values()))) == 3  # one measure per distinct size (9, 13, 17 frames)
+
+    def test_measures_kept_from_a_previous_clip_skip_the_probe(self, machine, tmp_path):
+        from app import video_memory as vm
+
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 24.0
+        mv = vm.mvox(25, 64, 48)
+        vm.record(f"{eng.spec.id}|{eng.spec.variant}|1", vm.Sample(mv, 3.0))
+        counts = []
+        original = eng._generate_clip
+        eng._generate_clip = lambda req, hooks, budget_gb=None, meter=None: (counts.append(int(req.extra["frames"])),
+                                                                              original(req, hooks, budget_gb, meter))[1]
+        eng.generate(request(frames=49, fast_decode=True), Recorder()).cleanup()
+        assert counts[0] == 37  # 1.6 x 25 frames, not the 9-frame probe
+
+    def test_a_machine_without_memory_for_the_shortest_run_is_told_so(self, machine, tmp_path):
+        from app import video_memory as vm
+
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 4.0  # below the reserve
+        vm.record(f"{eng.spec.id}|{eng.spec.variant}|0", vm.Sample(vm.mvox(9, 64, 48), 6.0))
+        with pytest.raises(RuntimeError, match="Mémoire insuffisante"):
+            eng.generate(request(frames=25), Recorder())
+        assert not list(tmp_path.glob("sdcpp-video-*"))
+
+    def test_the_memory_budget_goes_to_sd_cli_when_the_build_knows_it(self, machine, tmp_path, monkeypatch):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 20.0
+        eng.generate(request(frames=9), Recorder()).cleanup()
+        argv = json.loads((tmp_path / "argv.json").read_text())
+        assert "--max-vram" in argv and 1.0 <= float(argv[argv.index("--max-vram") + 1]) < 20.0
+        monkeypatch.setenv("IMAGEGEN_SDCPP_MAX_VRAM", "off")
+        eng.generate(request(frames=9), Recorder()).cleanup()
+        assert "--max-vram" not in json.loads((tmp_path / "argv.json").read_text())
+        (eng.binary.parent / "VERSION.json").write_text(json.dumps({"tag": "master-900-abcdef0"}))
+        monkeypatch.delenv("IMAGEGEN_SDCPP_MAX_VRAM")
+        eng.generate(request(frames=9), Recorder()).cleanup()
+        assert "--max-vram" not in json.loads((tmp_path / "argv.json").read_text())  # build 900 does not know it
+
+    def test_a_private_clip_keeps_its_prompt_off_the_command_line_and_records_no_measure(self, machine, tmp_path, capsys):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 24.0
+        sentinel = "PHRASE-TEMOIN-5d1e"
+        req = GenerationRequest(prompt=f"un chat {sentinel}", width=64, height=48, steps=3, seed=7, guidance=6.0,
+                                negative_prompt="flou", extra={"task": "t2v", "frames": 25, "fps": 8, "private": True})
+        eng.generate(req, Recorder()).cleanup()
+        argv = json.loads((tmp_path / "argv.json").read_text())
+        assert "-p" not in argv and "-n" not in argv and sentinel not in json.dumps(argv)
+        assert (tmp_path / "argv.json.prompt").read_text() == f"un chat {sentinel}"  # the file held it while sd-cli ran
+        assert not (tmp_path / "video-memory.json").exists() and "[video-memory]" not in capsys.readouterr().out
+        assert not list(tmp_path.glob("sdcpp-video-*"))  # the prompt files went with the run folders
+
+    def test_a_private_clip_on_an_old_build_keeps_the_command_line_and_a_normal_one_records(self, machine, tmp_path, capsys):
+        eng = engine("wan-2.2-ti2v-5b-gguf")
+        eng.read_available = lambda: 24.0
+        (eng.binary.parent / "VERSION.json").write_text(json.dumps({"tag": "master-700-abcdef0"}))
+        eng.generate(request(frames=9, private=True), Recorder()).cleanup()
+        assert "-p" in json.loads((tmp_path / "argv.json").read_text())  # build 700: no prompt file to hand over
+        (eng.binary.parent / "VERSION.json").write_text(json.dumps({"tag": "master-956-1b0ba10"}))
+        eng.generate(request(frames=9), Recorder()).cleanup()
+        assert (tmp_path / "video-memory.json").exists() and "[video-memory]" in capsys.readouterr().out
+        argv = json.loads((tmp_path / "argv.json").read_text())
+        assert "-p" in argv and "--prompt-file" not in argv  # a normal run is unchanged
+
+    def test_a_model_that_cannot_chain_keeps_one_run(self, machine):
+        eng = engine("wan-2.2-t2v-a14b-gguf")  # text-to-video only: no start image to chain from
+        assert not eng._chained(request(frames=25))
+        assert engine("wan-2.2-ti2v-5b-gguf")._chained(request(frames=25))
 
     def test_image_to_video_passes_a_fitted_start_image(self, machine, tmp_path):
         from PIL import Image

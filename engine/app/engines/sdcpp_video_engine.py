@@ -18,6 +18,10 @@ step (Wan/Hunyuan 4k+1, LTX 8k+1).
     high_noise        Wan 2.2 A14B: {"steps_ratio": share of the steps run by the high-noise expert, "sampling": method}
     tae               Wan fast decode: name of the TAEHV file (taehv.py) passed as `--tae` in place of the `vae` file
     sigmas            fixed sigma schedule (distilled LTX); `steps` must match its length - 1
+
+A model that takes a start image and makes no sound (`VideoCaps.segment_seconds`) renders long clips as chained runs whose
+length follows the memory measured on this machine (`video_memory.py`); `IMAGEGEN_SDCPP_MAX_VRAM=off` stops passing
+`--max-vram` (the memory budget of sd-cli, build 956 or newer).
 """
 
 from __future__ import annotations
@@ -30,14 +34,20 @@ import shutil
 import subprocess
 import tempfile
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
+from ..memory_guard import available_gb, reserve_gb, total_gb
+from ..sdcpp import prompt_args
+from ..video_memory import PeakMeter
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 from .sdcpp_engine import PROGRESS, _explain, _kill, _pump
 
 log = logging.getLogger(__name__)
+
+# First sd.cpp release documented with `--max-vram` and segmented execution (docs/performance.md at master-956).
+MAX_VRAM_MIN_BUILD = 956
 
 # Log lines that mark the phases of vid_gen (stable-diffusion.cpp src/pipeline/video.cpp).
 SAMPLING_START = re.compile(r"\bgenerate_video \d+x\d+x\d+")
@@ -122,7 +132,8 @@ def split_steps(options: dict[str, Any], steps: int) -> tuple[int, int | None]:
 
 
 def build_command(binary: str, variant: str, spec, paths: dict[str, str], req: GenerationRequest, output: str,
-                  references: list[str], offload: bool, tae: str | None = None) -> list[str]:
+                  references: list[str], offload: bool, tae: str | None = None, max_vram: float | None = None,
+                  prompt_dir: Path | None = None) -> list[str]:
     o = spec.options
     frames = int(req.extra["frames"])
     fps = int(req.extra.get("fps") or spec.video.fps)
@@ -134,7 +145,9 @@ def build_command(binary: str, variant: str, spec, paths: dict[str, str], req: G
         cmd += [f"--{role}", path]
     if tae:
         cmd += ["--tae", tae]
-    cmd += ["-p", req.prompt, "-W", str(req.width), "-H", str(req.height), "--video-frames", str(frames),
+    negative = (req.negative_prompt or "").strip() or o.get("default_negative") or ""
+    cmd += prompt_args(Path(binary), req.prompt, negative, prompt_dir)  # files instead of the command line in a private session
+    cmd += ["-W", str(req.width), "-H", str(req.height), "--video-frames", str(frames),
             "--fps", str(fps), "--steps", str(low), "-s", str(req.seed), "-o", output]
     if req.guidance is not None:
         cmd += ["--cfg-scale", str(req.guidance)]
@@ -143,9 +156,6 @@ def build_command(binary: str, variant: str, spec, paths: dict[str, str], req: G
     if high:
         cmd += ["--high-noise-steps", str(high), "--high-noise-sampling-method",
                 (o.get("high_noise") or {}).get("sampling", "euler")]
-    negative = (req.negative_prompt or "").strip() or o.get("default_negative") or ""
-    if negative:
-        cmd += ["-n", negative]
     if references:
         cmd += ["-i", references[0]]
         if len(references) > 1:
@@ -157,10 +167,15 @@ def build_command(binary: str, variant: str, spec, paths: dict[str, str], req: G
         cmd += ["--diffusion-fa"]
     if offload:
         cmd += ["--offload-to-cpu"]
+    if max_vram is not None:
+        cmd += ["--max-vram", f"{max_vram:.1f}"]  # managed memory budget: a graph over it runs in segments, slower
     return cmd
 
 
 class SdcppVideoEngine(Engine):
+    # Memory the machine has available now (a field, so that tests can set it).
+    read_available = staticmethod(available_gb)
+
     def load(self) -> None:
         from huggingface_hub import hf_hub_download
         from huggingface_hub.errors import LocalEntryNotFoundError
@@ -204,7 +219,90 @@ class SdcppVideoEngine(Engine):
             log.warning("%s Décodage complet du VAE à la place.", e)
             return None
 
+    def _chained(self, req: GenerationRequest) -> bool:
+        """Whether the clip is rendered as chained runs sized by the measured memory (`VideoCaps.segment_seconds`)."""
+        caps = self.spec.video
+        return bool(caps.segment_seconds) and not caps.audio_out and req.extra.get("task", "t2v") != "v2v"
+
+    def _max_vram(self, budget_gb: float) -> float | None:
+        """Budget handed to `sd-cli --max-vram`: None when the build predates it (956) or `IMAGEGEN_SDCPP_MAX_VRAM=off`."""
+        from ..sdcpp import build_number
+
+        if (os.environ.get("IMAGEGEN_SDCPP_MAX_VRAM") or "").lower() in ("0", "off", "false"):
+            return None
+        number = build_number(self.binary)
+        return max(1.0, budget_gb) if number is not None and number >= MAX_VRAM_MIN_BUILD else None
+
     def generate(self, req: GenerationRequest, hooks: Hooks) -> SdcppVideoResult:
+        if not self._chained(req):
+            return self._generate_clip(req, hooks)
+        return self._generate_chained(req, hooks)
+
+    def _generate_chained(self, req: GenerationRequest, hooks: Hooks) -> SdcppVideoResult:
+        """The clip as runs one after the other (one sd-cli process, so one model in memory, at a time). Each run starts
+        from the last frame of the previous, whose own first frame is dropped as a duplicate. Its length is the longest
+        that the memory measured on this machine allows (`video_memory`); what a run really drew is recorded for the next."""
+        from .. import video_memory as vm
+        from ..media import video_frame_count
+
+        caps, total = self.spec.video, int(req.extra["frames"])
+        fps = int(req.extra.get("fps") or caps.fps)
+        ceiling = video_frame_count(caps.segment_seconds, fps, caps.frame_step, caps.min_seconds, caps.segment_seconds)
+        key = f"{self.spec.id}|{self.spec.variant or ''}|{int(bool(req.extra.get('fast_decode')))}"
+        samples = vm.load_samples(key)
+        reserve = reserve_gb(total_gb())
+        tmp = Path(tempfile.mkdtemp(prefix="sdcpp-video-long-"))
+        frames_dir = tmp / "frames"
+        frames_dir.mkdir()
+        start, end, planned, written, runs_done = req.references[:1], req.references[1:2], 0, 0, 0
+        try:
+            while planned < total:
+                budget = self.read_available() - reserve
+                count, measured = vm.next_run_frames(
+                    new_needed=total - planned, first=planned == 0, step=caps.frame_step, ceiling=ceiling, width=req.width,
+                    height=req.height, samples=samples, budget_gb=budget, weights_gb=self.spec.weights_gb)
+                volume = vm.mvox(count, req.width, req.height)
+                predicted, _ = vm.predict_gb(samples, volume, self.spec.weights_gb)
+                if measured and count == caps.frame_step + 1 and predicted > budget:
+                    raise RuntimeError(vm.explain_refusal(count, predicted, budget, self.spec.name))
+                new = count if planned == 0 else count - 1
+                runs_left = -(-(total - planned - new) // max(1, count - 1))  # runs after this one, at this length
+                last = planned + new >= total
+                run_req = replace(req, seed=req.seed + runs_done, references=start + (end if last else []),
+                                  extra={**req.extra, "frames": count, "task": "i2v" if start else "t2v"})
+                run_hooks = Hooks(
+                    on_step=lambda done, _t, r=runs_done, n=runs_left: hooks.on_step(r * req.steps + done, (r + 1 + n) * req.steps),
+                    on_preview=hooks.on_preview, is_cancelled=hooks.is_cancelled, preview_every=hooks.preview_every,
+                    on_phase=hooks.on_phase)
+                meter = vm.PeakMeter(self.read_available)
+                clip = self._generate_clip(run_req, run_hooks, budget, meter)
+                try:
+                    files = sorted((clip.folder / "frames").glob("*.png"))
+                    if not files:
+                        raise RuntimeError("sd-cli n'a produit aucune image.")
+                    if req.extra.get("private"):  # no file, no line: the measures only live for this clip (runs still grow)
+                        samples = [*samples, vm.Sample(volume, meter.used_gb)]
+                    else:
+                        vm.record(key, vm.Sample(volume, meter.used_gb))
+                        samples = vm.load_samples(key)
+                        print(f"[video-memory] {self.spec.id} {count} images {req.width}x{req.height} : "
+                              f"{meter.used_gb:.1f} Go utilisés, budget {budget:.1f} Go", flush=True)
+                    shutil.copy(files[-1], tmp / f"start{runs_done + 1}.png")
+                    start = [str(tmp / f"start{runs_done + 1}.png")]
+                    for f in files if planned == 0 else files[1:]:
+                        shutil.move(str(f), frames_dir / f"{written:05d}.png")
+                        written += 1
+                finally:
+                    clip.cleanup()
+                planned += new  # the plan, not the files: sd-cli's own count is trusted when it aligns a run differently
+                runs_done += 1
+        except BaseException:
+            shutil.rmtree(tmp, ignore_errors=True)
+            raise
+        return SdcppVideoResult(tmp, None, fps)
+
+    def _generate_clip(self, req: GenerationRequest, hooks: Hooks, budget_gb: float | None = None,
+                       meter: "PeakMeter | None" = None) -> SdcppVideoResult:
         from PIL import Image, ImageOps
 
         from ..media import fit_image
@@ -229,7 +327,8 @@ class SdcppVideoEngine(Engine):
                 img.save(refs[-1])
             tae = self._fast_decoder(req, hooks)
             cmd = build_command(str(self.binary), self.variant, self.spec, self.paths, req, str(output), refs,
-                                offload_enabled(o), tae)
+                                offload_enabled(o), tae, self._max_vram(budget_gb) if budget_gb is not None else None,
+                                tmp if req.extra.get("private") else None)
             hooks.on_phase("prepare")
 
             lines: "queue.Queue[str | None]" = queue.Queue()
@@ -244,6 +343,8 @@ class SdcppVideoEngine(Engine):
                     line = ""
                 if line is None:
                     break
+                if meter:
+                    meter.sample()
                 if line:
                     tail = (tail + [line])[-25:]
                     for event in tracker.feed(line):
