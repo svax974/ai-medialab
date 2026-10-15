@@ -10,10 +10,13 @@ import type { EngineInstallState, PackInstallState } from '../types'
 interface InstallState {
   packInstall: PackInstallState
   engineInstall: EngineInstallState
+  /** llama.cpp (the chat's engine): same shape as stable-diffusion.cpp's installation. */
+  llamacppInstall: EngineInstallState
   /** Model to download as soon as its engine is installed (two steps behind one click). */
   pendingModelId: string | null
   setPackInstall: (state: PackInstallState) => void
   setEngineInstall: (state: EngineInstallState) => void
+  setLlamacppInstall: (state: EngineInstallState) => void
   setPending: (modelId: string | null) => void
   /** After a stream reconnection the system state is the source again. */
   reset: () => void
@@ -22,9 +25,11 @@ interface InstallState {
 export const useInstallStore = create<InstallState>()((set) => ({
   packInstall: { state: 'idle' },
   engineInstall: { state: 'idle' },
+  llamacppInstall: { state: 'idle' },
   pendingModelId: null,
   setPackInstall: (packInstall) => set({ packInstall }),
   setEngineInstall: (engineInstall) => set({ engineInstall }),
+  setLlamacppInstall: (llamacppInstall) => set({ llamacppInstall }),
   setPending: (pendingModelId) => set({ pendingModelId }),
-  reset: () => set({ packInstall: { state: 'idle' }, engineInstall: { state: 'idle' } }),
+  reset: () => set({ packInstall: { state: 'idle' }, engineInstall: { state: 'idle' }, llamacppInstall: { state: 'idle' } }),
 }))

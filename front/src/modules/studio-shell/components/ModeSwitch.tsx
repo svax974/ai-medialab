@@ -15,9 +15,10 @@ const MODE_LABELS: Record<StudioMode, string> = {
   image: 'studio.mode.image',
   audio: 'studio.mode.audio',
   video: 'studio.mode.video',
+  chat: 'studio.mode.chat',
 }
 
-/** Image / audio / video switch: a segmented control whose pill slides (Tabs indicator, see the theme). */
+/** Image / audio / video / chat switch: a segmented control whose pill slides (Tabs indicator, see the theme). */
 export function ModeSwitch() {
   const t = useT()
   const navigate = useNavigate()

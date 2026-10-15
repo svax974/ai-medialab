@@ -4,6 +4,7 @@
  */
 
 import GraphicEqRounded from '@mui/icons-material/GraphicEqRounded'
+import ChatBubbleOutlineRounded from '@mui/icons-material/ChatBubbleOutlineRounded'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import MovieCreationOutlined from '@mui/icons-material/MovieCreationOutlined'
 import type { StudioMode } from '../types'
@@ -13,5 +14,6 @@ export function ModeIcon({ mode, fontSize = 16 }: { mode: StudioMode; fontSize?:
   const sx = { fontSize }
   if (mode === 'audio') return <GraphicEqRounded sx={sx} />
   if (mode === 'video') return <MovieCreationOutlined sx={sx} />
+  if (mode === 'chat') return <ChatBubbleOutlineRounded sx={sx} />
   return <ImageOutlined sx={sx} />
 }

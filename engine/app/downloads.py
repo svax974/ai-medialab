@@ -75,7 +75,9 @@ class DownloadManager:
     def job(self, model_id: str) -> DownloadJob | None:
         return self.jobs.get(model_id)
 
-    async def start(self, model_id: str) -> DownloadJob:
+    async def start(self, model_id: str, *, refresh: bool = False, need_gb: float | None = None) -> DownloadJob:
+        """Starts the download of a model. `refresh`: fetch what changed on the Hub for a model that is already installed
+        (an update, see `updates.py`); `need_gb` is then the size of the changed files, for the disk check."""
         spec = get_spec(model_id)
         if not spec.all_sources():
             raise ValueError("Ce modèle n'a rien à télécharger.")
@@ -88,7 +90,7 @@ class DownloadManager:
 
         self.invalidate()
         status = self.status(spec)
-        need_gb = max(0.0, (spec.download_size_gb or 0) - status["size_gb"])
+        need_gb = need_gb if need_gb is not None else max(0.0, (spec.download_size_gb or 0) - status["size_gb"])
         free_gb = get_system()["disk"]["free_gb"]
         if need_gb and free_gb < need_gb + 1:
             raise RuntimeError(
@@ -98,7 +100,7 @@ class DownloadManager:
 
         job = DownloadJob(model_id=model_id)
         self.jobs[model_id] = job
-        asyncio.create_task(self._run(job, spec))
+        asyncio.create_task(self._run(job, spec, refresh))
         self._publish(job)
         return job
 
@@ -133,8 +135,9 @@ class DownloadManager:
                   and any((s.repo, p) in mine for s in m.all_sources() for p in (s.patterns or ["*"]))]
         return {"freed_gb": round(freed / 1024**3, 2), "also_affects": shared}
 
-    async def _run(self, job: DownloadJob, spec: ModelSpec) -> None:
-        """Download each repo in turn, with progress accumulated across all of them."""
+    async def _run(self, job: DownloadJob, spec: ModelSpec, refresh: bool = False) -> None:
+        """Download each repo in turn, with progress accumulated across all of them. `refresh` also visits the repos that
+        are installed: `snapshot_download` fetches only the files whose id changed on the Hub."""
         sources = spec.all_sources()
         estimates = [int((s.size_gb or 0) * 1024**3) for s in sources]
         known: list[int | None] = [None] * len(sources)  # real sizes, known once a repo has been handled
@@ -149,7 +152,7 @@ class DownloadManager:
             if job.cancelled:
                 break
             st = _source_status(src)
-            if st["state"] == "installed":
+            if st["state"] == "installed" and not refresh:
                 known[i] = st["size"]
                 done_before += st["size"]
                 continue
@@ -197,6 +200,11 @@ class DownloadManager:
             job.done = job.total = done_before or job.total
             for src in sources:
                 self._clean_incomplete(src.repo)
+                if refresh:  # the replaced files of the old revision are dead weight now
+                    from .updates import prune_replaced
+
+                    await asyncio.to_thread(prune_replaced, src.repo)
+            self.invalidate()
         self._publish(job)
         bus.publish("models.changed", {})
 

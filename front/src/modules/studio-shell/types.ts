@@ -3,10 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** Creation mode of the studio: one per medium. */
-export type StudioMode = 'image' | 'audio' | 'video'
+/** Mode of the studio: one per medium, and the chat with language models. */
+export type StudioMode = 'image' | 'audio' | 'video' | 'chat'
 
-export const STUDIO_MODES: readonly StudioMode[] = ['image', 'audio', 'video']
+export const STUDIO_MODES: readonly StudioMode[] = ['image', 'audio', 'video', 'chat']
 
 /** Cover of a conversation (subset of the engine's asset). */
 export interface ConversationCover {

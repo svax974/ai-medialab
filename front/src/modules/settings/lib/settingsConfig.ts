@@ -35,4 +35,6 @@ export const SETTINGS_HELP = {
   previews: { titleId: 'settings.help.previews.title', bodyId: 'settings.help.previews.body' },
   lowMemory: { titleId: 'settings.help.lowMemory.title', bodyId: 'settings.help.lowMemory.body', tipId: 'settings.help.lowMemory.tip' },
   hfToken: { titleId: 'settings.help.hfToken.title', bodyId: 'settings.help.hfToken.body', tipId: 'settings.help.hfToken.tip' },
+  localAi: { titleId: 'settings.help.localAi.title', bodyId: 'settings.help.localAi.body' },
+  braveKey: { titleId: 'settings.help.braveKey.title', bodyId: 'settings.help.braveKey.body', tipId: 'settings.help.braveKey.tip' },
 } as const

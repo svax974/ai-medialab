@@ -23,6 +23,16 @@ describe('enginesApi', () => {
       ['delete', '/engines/pack/audio%20tts'],
     ])
   })
+  it('installs, cancels and uninstalls llama.cpp', async () => {
+    await enginesApi.installLlamacpp()
+    await enginesApi.cancelLlamacppInstall()
+    await enginesApi.uninstallLlamacpp()
+    expect(studioRequest.mock.calls).toEqual([
+      ['post', '/engines/llamacpp/install'],
+      ['delete', '/engines/llamacpp/install'],
+      ['delete', '/engines/llamacpp'],
+    ])
+  })
   it('installs and cancels stable-diffusion.cpp', async () => {
     await enginesApi.installSdcpp()
     await enginesApi.cancelSdcppInstall()

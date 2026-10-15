@@ -9,6 +9,7 @@ import type { ModelInfo, ModelKind } from '@/modules/model-catalog'
 /** Topics of the engine's installer events, relayed by Nest (back/src/modules/engine/README.md). */
 export const PACK_INSTALL_TOPIC = 'engine.pack.install'
 export const SDCPP_INSTALL_TOPIC = 'engine.engine.install'
+export const LLAMACPP_INSTALL_TOPIC = 'engine.llamacpp.install'
 
 /** The live state (events) when something is happening or happened since the page loaded, else the one read with the system. */
 export function selectInstall<T extends { state: InstallStatus }>(live: T, fromSystem: T | undefined): T {
@@ -88,7 +89,8 @@ export function setupPlan(model: ModelInfo): SetupPlan | null {
 }
 
 /** The installer to follow: only one runs at a time, so the one working (or just done) is the relevant one. */
-export function relevantInstall(sd: EngineInstallState, pack: PackInstallState): EngineInstallState | PackInstallState {
+export function relevantInstall(sd: EngineInstallState, pack: PackInstallState, llama: EngineInstallState = { state: 'idle' }): EngineInstallState | PackInstallState {
+  if (llama.state === 'running' || (sd.state === 'idle' && pack.state === 'idle' && llama.state !== 'idle')) return llama
   return pack.state === 'running' || (sd.state === 'idle' && pack.state !== 'idle') ? pack : sd
 }
 

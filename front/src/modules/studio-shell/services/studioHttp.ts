@@ -5,12 +5,15 @@
 
 import { httpService } from '@/modules_shared/common/core/http/HttpService'
 import { configurationService } from '@/modules_shared/common/services/ConfigurationService'
+import { EMPTY_ASSET_PAGE, isLibraryListing, isPersistingRequest, privatePath } from '@/modules/private/lib/privateRouting'
 
 /** Error of a studio API call; `status` is the HTTP status (0 when the server was unreachable). */
 export class StudioApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /** The `code` a route adds to its refusal (e.g. `busy`, `no_model`), when it has one. */
+    readonly code?: string,
   ) {
     super(message)
     this.name = 'StudioApiError'
@@ -30,10 +33,16 @@ export function resolveMediaUrl(url: string, apiBase: string = studioApiBase()):
   return url.startsWith('/media/') ? `${apiBase}${url}` : url
 }
 
-type Payload = { message?: string; statusCode?: number } | null
+/** The refusal of a request that would keep a trace of a private session (the text is read from the locales when it happens). */
+async function privateRefusal(): Promise<never> {
+  const { i18n } = await import('@/modules_shared/common/core/i18n/I18n')
+  throw new StudioApiError(i18n.get('private.error.unavailable'), 409, 'private')
+}
+
+type Payload = { message?: string; statusCode?: number; code?: string } | null
 
 function toError(payload: Payload): StudioApiError {
-  return new StudioApiError(payload?.message ?? 'Request failed', payload?.statusCode ?? 0)
+  return new StudioApiError(payload?.message ?? 'Request failed', payload?.statusCode ?? 0, typeof payload?.code === 'string' ? payload.code : undefined)
 }
 
 /**
@@ -41,7 +50,11 @@ function toError(payload: Payload): StudioApiError {
  * these routes answer plain JSON.
  */
 export function studioRequest<T>(method: 'get' | 'post' | 'put' | 'patch' | 'delete', path: string, body?: unknown): Promise<T> {
-  const url = studioApiBase() + path
+  // Private generation (module `private`): the studio routes answer from memory under `/private`, what would keep a
+  // trace in the library or the database is refused, and there is no gallery to list.
+  if (isPersistingRequest(method, path)) return privateRefusal()
+  if (isLibraryListing(method, path)) return Promise.resolve(EMPTY_ASSET_PAGE as T)
+  const url = studioApiBase() + privatePath(path)
   const options = { skipTransport: true }
   return new Promise<T>((resolve, reject) => {
     const result =
@@ -69,7 +82,7 @@ export function studioUpload<T>(path: string, formData: FormData, options: Studi
   const { onProgress, signal } = options
   return new Promise<T>((resolve, reject) => {
     httpService
-      .upload(studioApiBase() + path, formData, { skipTransport: true, signal, onProgress: onProgress ? (progress) => onProgress(progress.percent) : undefined })
+      .upload(studioApiBase() + privatePath(path), formData, { skipTransport: true, signal, onProgress: onProgress ? (progress) => onProgress(progress.percent) : undefined })
       .then((data) => resolve(data as T))
       .fail((payload) => reject(toError(payload)))
       .error((payload) => reject(toError(payload)))

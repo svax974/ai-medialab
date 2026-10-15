@@ -25,9 +25,35 @@ export function useInstallSdcpp() {
   return useMutation({ mutationFn: () => enginesApi.installSdcpp(), onSuccess: setEngineInstall, onError: showError })
 }
 
+export function useInstallLlamacpp() {
+  const setLlamacppInstall = useInstallStore((s) => s.setLlamacppInstall)
+  return useMutation({ mutationFn: () => enginesApi.installLlamacpp(), onSuccess: setLlamacppInstall, onError: showError })
+}
+
 /** Cancels the running installation (nothing to say when none is running any more: the engine answers 409). */
-export function useCancelInstall(kind: 'pack' | 'sdcpp') {
-  return useMutation({ mutationFn: () => (kind === 'pack' ? enginesApi.cancelPackInstall() : enginesApi.cancelSdcppInstall()) })
+export function useCancelInstall(kind: 'pack' | 'sdcpp' | 'llamacpp') {
+  const cancel = { pack: enginesApi.cancelPackInstall, sdcpp: enginesApi.cancelSdcppInstall, llamacpp: enginesApi.cancelLlamacppInstall }[kind]
+  return useMutation({ mutationFn: () => cancel() })
+}
+
+/** Uninstalls llama.cpp after confirmation (the downloaded chat models stay). */
+export function useUninstallLlamacpp(): { removing: boolean; uninstall: () => Promise<void> } {
+  const queryClient = useQueryClient()
+  const [removing, setRemoving] = useState(false)
+  const uninstall = async () => {
+    const ok = await confirm({ titleId: 'engines.uninstall.title', messageId: 'engines.uninstall.llamacpp', confirmLabelId: 'engines.uninstall.confirm', danger: true })
+    if (!ok) return
+    setRemoving(true)
+    try {
+      await enginesApi.uninstallLlamacpp()
+      await Promise.all([queryClient.invalidateQueries({ queryKey: modelCatalogKeys.models }), queryClient.invalidateQueries({ queryKey: hardwareKeys.system })])
+    } catch (error) {
+      toast.error((error as Error).message)
+    } finally {
+      setRemoving(false)
+    }
+  }
+  return { removing, uninstall }
 }
 
 /**

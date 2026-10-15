@@ -355,7 +355,8 @@ class PackInstaller:
         self.state = {**self.state, **kw}
         bus.publish("pack.install", self.public())
 
-    async def start(self, pack_id: str) -> dict[str, Any]:
+    async def start(self, pack_id: str, tag: str | None = None) -> dict[str, Any]:
+        """Starts the install; `tag` (native packs only, i.e. audio.cpp): a release other than the pinned one."""
         from .system import get_system
 
         pack = PACKS.get(pack_id)
@@ -382,7 +383,7 @@ class PackInstaller:
         accelerators = system["accelerators"]
         if pack.gpu or pack.native:  # the pack brings its own runtime: use the GPU the OS sees even if the main one can't
             accelerators = accelerators + system.get("unusable_gpus", [])
-        asyncio.create_task(asyncio.to_thread(self._run, pack, accelerators))
+        asyncio.create_task(asyncio.to_thread(self._run, pack, accelerators, tag))
         return self.public()
 
     def cancel(self) -> bool:
@@ -439,7 +440,7 @@ class PackInstaller:
         if not kept:
             raise RuntimeError("Le code officiel téléchargé ne contient pas les dossiers attendus.")
 
-    def _run_native(self, pack: PackDef, accelerators: list[dict[str, Any]]) -> None:
+    def _run_native(self, pack: PackDef, accelerators: list[dict[str, Any]], tag: str | None = None) -> None:
         from . import audiocpp
         from .engine_install import InstallCancelled
 
@@ -449,7 +450,7 @@ class PackInstaller:
                 self._set(message=message, detail=f"{done >> 20} / {total >> 20} Mo")
 
         try:
-            res = audiocpp.install([a["vendor"] for a in accelerators], progress=progress, cancel=self._cancel)
+            res = audiocpp.install([a["vendor"] for a in accelerators], progress=progress, cancel=self._cancel, tag=tag)
             self._set(state="done", message="Installé", detail=res["variant"])
             bus.publish("models.changed", {})
         except InstallCancelled:
@@ -457,9 +458,9 @@ class PackInstaller:
         except Exception as exc:  # noqa: BLE001
             self._set(state="error", error=str(exc), message="Échec de l'installation", detail="")
 
-    def _run(self, pack: PackDef, accelerators: list[dict[str, Any]]) -> None:
+    def _run(self, pack: PackDef, accelerators: list[dict[str, Any]], tag: str | None = None) -> None:
         if pack.native:
-            return self._run_native(pack, accelerators)
+            return self._run_native(pack, accelerators, tag)
         target = pack_dir(pack.id)
         venv = target / "venv"
         try:

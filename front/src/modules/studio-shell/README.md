@@ -2,7 +2,7 @@
 
 ## Rôle
 
-Coquille du studio dans le nouveau front : barre latérale (mode image / audio / vidéo, pages du mode, recherche et liste des
+Coquille du studio dans le nouveau front : barre latérale (mode image / audio / vidéo / chat, pages du mode, recherche et liste des
 conversations épinglées et groupées par période, carte du moteur, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
 abonnements au flux d'événements (`engine.*` du moteur, `studio.*` de Nest). Les écrans eux-mêmes sont des **pages minces** : l'accueil et la conversation
@@ -21,10 +21,10 @@ studio-shell/
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
   components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem, SelectionBar,
                            SidebarFooter, Mark, modeIcons
-  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), VideoHomePage, VideoLibraryPage, ConversationPage (ConversationView + adaptateurs image, audio et vidéo), ComingSoonPage (page de repli d'une route sans page)
+  pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), VideoHomePage, VideoLibraryPage, ChatHomePage (ChatHome, chargée à la demande), ConversationPage (ConversationView + adaptateurs image, audio et vidéo ; le fil du chat quand la conversation est de mode `chat`, chargé à la demande), ComingSoonPage (page de repli d'une route sans page)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
   lib/                     logique pure : periods, shortcuts, routes, eventEffects, queryKeys, focusRegistry
-  services/                studioHttp (routes `/api/<segment>` de Nest, médias), conversationsApi
+  services/                studioHttp (routes `/api/<segment>` de Nest, médias ; `StudioApiError` porte le `code` que la route ajoute à un refus, p. ex. `busy` ; en génération privée, les routes du studio vont sous `/private`, voir le module `private`), conversationsApi
   state/                   studioStore (Zustand), queryClient
   locales/                 locales.fr.json, locales.en.json (+ registre : src/locales/registerModuleLocales.ts)
 ```
@@ -38,13 +38,14 @@ gabarit ; la coquille reste montée d'une page à l'autre, donc la recherche et 
 | Chemin | Page | Mode | Tâche qui la remplit |
 |---|---|---|---|
 | `/` | Accueil du studio image (`ImageHome`) | image | H4.3b (fait) |
-| `/c/:id` | Conversation (`ConversationView`) | de la conversation | H4.3b (fait), audio : H4.5 (fait), vidéo : H4.6 (fait) |
+| `/c/:id` | Conversation (`ConversationView`, ou `ChatConversationView` du module `chat` pour le mode chat) | de la conversation | H4.3b (fait), audio : H4.5 (fait), vidéo : H4.6 (fait), chat (fait) |
 | `/galerie` | Galerie (`ImageGallery`) | image | H4.4 (fait) |
 | `/audio` | Accueil audio (`AudioHome`) | audio | H4.5 (fait) |
 | `/audio/voix` | Mes voix (`VoicesLibrary`) | audio | H4.5 (fait) |
 | `/audio/bibliotheque` | Bibliothèque audio (`AudioGallery`) | audio | H4.5 (fait) |
 | `/video` | Accueil vidéo (`VideoHome`) | vidéo | H4.6 (fait) |
 | `/video/bibliotheque` | Bibliothèque vidéo (`VideoGallery`) | vidéo | H4.6 (fait) |
+| `/chat` | Accueil du chat (`ChatHome`, module `chat`, chargé à la demande) | chat | mode Chat (fait) |
 
 Table unique : `lib/routes.ts` (`STUDIO_ROUTES`, `studioPaths`, `matchStudioRoute`). Pour remplacer une page : changer l'`element`
 de sa route dans `routes.tsx` (ou passer un `lazy`).
@@ -72,12 +73,12 @@ Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolv
   Défauts : `staleTime` 30 s, pas de rechargement au focus (le flux d'événements invalide), un nouvel essai.
 - **Flux d'événements** : `hooks/useStudioEvents` du module `studio-core` (monté par `StudioShell`) suit les sujets `studio.*` publiés par Nest pour les conversations, messages, images,
   assets et la progression, et écrit directement dans le cache (voir son README). `hooks/useEngineEventSync.ts` (monté par `StudioShell`) : abonnement aux sujets
-  `engine.engine.status`, `engine.models.changed`, `engine.download.progress`, `engine.engine.install`, `engine.pack.install` (clés `['engine-status']` et
+  `engine.engine.status`, `engine.models.changed`, `engine.download.progress`, `engine.engine.install`, `engine.pack.install`, `engine.llamacpp.install` (clés `['engine-status']` et
   `['system']` du module `hardware`, `['models']` du module `model-catalog` ; la progression en cours n'invalide rien, elle alimente les stores `model-catalog` et `engines`), `engine.link` (relais du moteur par Nest). `lib/eventEffects.ts` traduit chaque événement en invalidations/retraits du cache
   (regroupés sur 250 ms) ; `engine.link` revenu à `connected: true` et la trame `resync` rechargent tout. Quand le flux est
   indisponible (`fallback`), la liste se relit au montage ; les composants H4 ajoutent leurs sujets dans `ENGINE_TOPICS` et leurs effets.
 - **Actions** (`useConversationActions`) : épingler/renommer en mise à jour optimiste avec retour arrière et message d'erreur
-  (react-toastify) ; supprimer avec confirmation (`confirm()` de `common`) puis retour à l'accueil du mode si la conversation était ouverte. `removeMany` supprime plusieurs conversations une à une
+  (react-toastify) ; supprimer avec confirmation (`confirm()` de `common`) puis retour à l'accueil du mode si la conversation était ouverte. `remove` et `removeMany` oublient aussi l'arbre de messages d'une conversation de chat privé (`private/lib/privateChatMemory.ts`). `removeMany` supprime plusieurs conversations une à une
   (route `DELETE` existante, pas de route groupée) et renvoie `{ done, failed }` ; un échec partiel est signalé avec son nombre.
 - **Zustand** (`state/studioStore.ts`) : `mode`, `lastPathByMode` (dernière page par mode, pour la bascule), `sidebarOpen`
   (persisté sous `cn-prefs`, comme avant), `settingsOpen`, `modelsOpen`, `modelsSearchKind` (ouverture du dialogue sur la recherche Hugging Face d'un type : `openModelSearch(kind)`). Les modules H4 y ajoutent leurs tranches.
@@ -98,20 +99,20 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 
 | Nom | Description |
 |---|---|
-| `StudioShell` | Mise en page (barre latérale 284 px masquable + page), raccourcis, suivi du mode, abonnements aux événements (`engine.*`, `studio.*`), dialogues, visionneuse (`StudioLightbox`), dépôt d'images sur la fenêtre en mode image (`ImageDropLayer`), `ConfirmHost`. |
-| `Sidebar` | Marque (`custom.app.name`), masquage, `ModeSwitch`, pages du mode (`NavItem`), `SearchField`, `ConversationList`, `SidebarFooter`. |
-| `ModeSwitch` | `Tabs` MUI en commande segmentée ; revient à la dernière page du mode. |
+| `StudioShell` | Mise en page (barre latérale 284 px masquable + page), raccourcis, suivi du mode, abonnements aux événements (`engine.*`, `studio.*`), lanceur des mises à jour (`useUpdateRunner`, module `updates`), dialogues, visionneuse (`StudioLightbox`), dépôt d'images sur la fenêtre en mode image (`ImageDropLayer`), `ConfirmHost`, bandeau et garde-fous de la génération privée (`PrivateBanner`, `PrivateHost`, module `private` ; son bouton est dans `SidebarFooter`). |
+| `Sidebar` | Marque (`custom.app.name`), masquage, `ModeSwitch`, pages du mode (`NavItem` ; le chat n'a que « Nouvelle conversation »), `SearchField`, `ConversationList` (en mode chat, les extraits des messages qui contiennent la recherche, `chat/ChatSearchHits`), `SidebarFooter`. |
+| `ModeSwitch` | `Tabs` MUI en commande segmentée (image, audio, vidéo, chat) ; revient à la dernière page du mode. |
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
 | `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. `SelectionBar` (« Sélectionner ») bascule la liste en mode sélection : cases à cocher, compteur, tout (dé)sélectionner, suppression groupée après confirmation ; seules les conversations encore listées comptent (recherche ou changement de mode ne suppriment rien hors de vue). États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
-| `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
+| `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Vérifier les mises à jour (`UpdatesDialog`, module `updates`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
 | `ComingSoonPage` | Page provisoire (le `ComingSoonDialog` a disparu avec H4.2 : plus aucun dialogue provisoire). |
 
 Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.
 
 ## Types principaux
 
-`StudioMode` (`'image' | 'audio' | 'video'`), `ConversationSummary` (forme du moteur : `updated_at` en secondes, `cover.thumb_url`,
+`StudioMode` (`'image' | 'audio' | 'video' | 'chat'`), `ConversationSummary` (forme du moteur : `updated_at` en secondes, `cover.thumb_url`,
 `generation_count`, `busy`, `pinned`), `Conversation<TMessage>` (+ `messages`, typés par `studio-core` : `ConversationDetail`), `ConversationPatch`,
 `StudioRouteDef`, `PeriodKey`, `ShortcutAction`, `CacheEffect`.
 

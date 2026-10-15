@@ -6,9 +6,11 @@
 import { Box, Button, CircularProgress, Dialog, DialogContent, DialogTitle } from '@mui/material'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
+import { useLocalAiPromptStore } from '@/modules/engines'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useSaveSettings, useSettings } from '../hooks/useSettings'
 import { SETTINGS_HELP, SHORTCUT_ROWS } from '../lib/settingsConfig'
+import { BraveKeyField } from './BraveKeyField'
 import { HfTokenField } from './HfTokenField'
 import { KeepAliveControl } from './KeepAliveControl'
 import { SectionText, SectionTitle, SwitchRow } from './SettingsSection'
@@ -44,6 +46,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const t = useT()
   const { data: settings, isPending, isError, refetch } = useSettings(open)
   const save = useSaveSettings()
+  const localAiOptOut = useLocalAiPromptStore((s) => s.optOut)
+  const setLocalAiOptOut = useLocalAiPromptStore((s) => s.setOptOut)
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth aria-labelledby="settings-title" slotProps={{ paper: { sx: { maxWidth: 560 } } }}>
@@ -90,7 +94,15 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               checked={settings.low_memory}
               onChange={(lowMemory) => save.mutate({ low_memory: lowMemory })}
             />
+            <SwitchRow
+              title={t('engines.localAi.launch.settings.title')}
+              description={t('engines.localAi.launch.settings.description')}
+              help={SETTINGS_HELP.localAi}
+              checked={!localAiOptOut}
+              onChange={(offered) => setLocalAiOptOut(!offered)}
+            />
             <HfTokenField />
+            <BraveKeyField />
             <ShortcutList />
           </Box>
         )}

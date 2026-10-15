@@ -16,6 +16,7 @@ describe('matchStudioRoute', () => {
       ['/audio/bibliotheque', 'audio-library'],
       ['/video', 'video-home'],
       ['/video/bibliotheque', 'video-library'],
+      ['/chat', 'chat-home'],
     ]
     for (const [path, name] of cases) expect(matchStudioRoute(path)?.route.name, path).toBe(name)
   })
@@ -52,6 +53,7 @@ describe('homePathForMode', () => {
     expect(homePathForMode('image')).toBe('/')
     expect(homePathForMode('audio')).toBe('/audio')
     expect(homePathForMode('video')).toBe('/video')
-    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video' })
+    expect(homePathForMode('chat')).toBe('/chat')
+    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat' })
   })
 })

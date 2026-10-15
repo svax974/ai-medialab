@@ -4,6 +4,7 @@
  */
 
 export { SettingsDialog } from './components/SettingsDialog'
+export { BraveKeyField } from './components/BraveKeyField'
 export { HfTokenField } from './components/HfTokenField'
 export { useSettings, useSaveSettings } from './hooks/useSettings'
 export { settingsApi } from './services/settingsApi'

@@ -12,6 +12,7 @@ import { homePathForMode, matchStudioRoute } from '../lib/routes'
 import { useConversationActions, useConversationList } from '../hooks/useConversations'
 import { useLang, useT } from '../hooks/useT'
 import type { StudioMode } from '../types'
+import { ChatSearchHits } from '@/modules/chat/components/ChatSearchHits'
 import { ConversationItem } from './ConversationItem'
 import { SelectionBar } from './SelectionBar'
 
@@ -19,12 +20,14 @@ const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
   image: 'studio.conversation.delete.media.image',
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
+  chat: 'studio.conversation.delete.media.chat',
 }
 
 const EMPTY_KEYS: Record<StudioMode, string> = {
   image: 'studio.list.empty.image',
   audio: 'studio.list.empty.audio',
   video: 'studio.list.empty.video',
+  chat: 'studio.list.empty.chat',
 }
 
 function Note({ children }: { children: React.ReactNode }) {
@@ -129,6 +132,7 @@ export function ConversationList({ mode, query }: { mode: StudioMode; query: str
           </Box>
         )
       })}
+      {mode === 'chat' && <ChatSearchHits query={query} />}
     </Box>
   )
 }

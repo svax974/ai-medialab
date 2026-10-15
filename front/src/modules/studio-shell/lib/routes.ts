@@ -15,6 +15,7 @@ export type StudioRouteName =
   | 'audio-library'
   | 'video-home'
   | 'video-library'
+  | 'chat-home'
 
 export interface StudioRouteDef {
   name: StudioRouteName
@@ -35,6 +36,7 @@ export const STUDIO_ROUTES: readonly StudioRouteDef[] = [
   { name: 'audio-library', path: '/audio/bibliotheque', mode: 'audio', titleKey: 'studio.page.audioLibrary.title' },
   { name: 'video-home', path: '/video', mode: 'video', titleKey: 'studio.page.videoHome.title' },
   { name: 'video-library', path: '/video/bibliotheque', mode: 'video', titleKey: 'studio.page.videoLibrary.title' },
+  { name: 'chat-home', path: '/chat', mode: 'chat', titleKey: 'studio.page.chatHome.title' },
 ]
 
 export const studioPaths = {
@@ -46,6 +48,7 @@ export const studioPaths = {
   audioLibrary: '/audio/bibliotheque',
   videoHome: '/video',
   videoLibrary: '/video/bibliotheque',
+  chatHome: '/chat',
 } as const
 
 export interface StudioRouteMatch {
@@ -71,7 +74,8 @@ export function modeOfRoute(match: StudioRouteMatch | null, conversationMode: St
 
 /** Start page of a mode (target of "new creation" and of the mode switch before any page was visited). */
 export function homePathForMode(mode: StudioMode): string {
+  if (mode === 'chat') return studioPaths.chatHome
   return mode === 'audio' ? studioPaths.audioHome : mode === 'video' ? studioPaths.videoHome : studioPaths.home
 }
 
-export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video' }
+export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat' }

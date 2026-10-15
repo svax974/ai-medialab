@@ -43,5 +43,20 @@
   "settings.help.lowMemory.tip": "activez-le si la mémoire de la machine est juste.",
   "settings.help.hfToken.title": "Jeton Hugging Face",
   "settings.help.hfToken.body": "Identifiant personnel de votre compte Hugging Face, créé dans ses paramètres (« Access Tokens »). Il est stocké chiffré sur cet ordinateur, sert uniquement aux téléchargements et à la recherche sur Hugging Face, et n'est jamais réaffiché.",
-  "settings.help.hfToken.tip": "laissez vide tant qu'aucun modèle ne le demande."
+  "settings.help.hfToken.tip": "laissez vide tant qu'aucun modèle ne le demande.",
+  "settings.braveKey.title": "Clé Brave Search",
+  "settings.braveKey.optional": "(facultatif)",
+  "settings.braveKey.description": "La recherche web du chat utilise DuckDuckGo sans compte. Avec une clé Brave Search (gratuite jusqu'à un certain volume, à créer sur brave.com/search/api), elle utilise Brave, plus stable. La clé est stockée localement, chiffrée.",
+  "settings.braveKey.present": "Une clé est enregistrée.",
+  "settings.braveKey.placeholder": "BSA…",
+  "settings.braveKey.aria": "Clé Brave Search",
+  "settings.braveKey.save": "Enregistrer",
+  "settings.braveKey.remove": "Retirer",
+  "settings.braveKey.saved": "Clé enregistrée",
+  "settings.braveKey.removed": "Clé supprimée",
+  "settings.help.braveKey.title": "Clé Brave Search",
+  "settings.help.braveKey.body": "Identifiant de l'API Brave Search. Il est stocké chiffré sur cet ordinateur, sert uniquement à la recherche web du chat (les requêtes sortent alors de la machine vers Brave) et n'est jamais réaffiché.",
+  "settings.help.braveKey.tip": "laissez vide pour utiliser DuckDuckGo.",
+  "settings.help.localAi.title": "IA locale au lancement",
+  "settings.help.localAi.body": "Le moteur de chat (llama.cpp) et un petit modèle donnent le Chat, des mises à jour analysées avant installation et l'amélioration des prompts, le tout sur votre machine. Désactivé, l'invitation d'installation ne s'affiche plus ; vous pouvez toujours installer le moteur depuis la liste des modèles du Chat."
 }

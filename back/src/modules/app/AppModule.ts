@@ -17,9 +17,12 @@ import { EngineModule } from 'src/modules/engine/EngineModule';
 import { EnginesModule } from 'src/modules/engines';
 import { HardwareModule } from 'src/modules/hardware';
 import { AudioStudioModule } from 'src/modules/audio-studio';
+import { ChatModule } from 'src/modules/chat';
 import { LegacyImportModule } from 'src/modules/legacy-import';
 import { MediaLibraryModule } from 'src/modules/media-library';
 import { ModelCatalogModule } from 'src/modules/model-catalog';
+import { PrivateModule } from 'src/modules/private';
+import { UpdatesModule } from 'src/modules/updates';
 import { SettingsModule } from 'src/modules/settings';
 import { StudioCoreModule } from 'src/modules/studio-core';
 import AppDataSource, { dbContext } from 'src/config/Datasource';
@@ -49,10 +52,13 @@ if (authPlugins.length > 1) {
     MediaLibraryModule,
     StudioCoreModule,
     AudioStudioModule,
+    ChatModule,
+    PrivateModule,
     SettingsModule,
     HardwareModule,
     ModelCatalogModule,
     EnginesModule,
+    UpdatesModule,
     LegacyImportModule,
   ],
   controllers: [],

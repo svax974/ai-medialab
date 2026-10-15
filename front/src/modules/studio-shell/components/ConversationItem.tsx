@@ -24,11 +24,19 @@ const META_KEYS: Record<StudioMode, string> = {
   image: 'studio.conversation.meta.image',
   audio: 'studio.conversation.meta.audio',
   video: 'studio.conversation.meta.video',
+  chat: 'studio.conversation.meta.chat',
 }
 const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
   image: 'studio.conversation.delete.media.image',
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
+  chat: 'studio.conversation.delete.media.chat',
+}
+const DELETE_MESSAGE_KEYS: Record<StudioMode, string> = {
+  image: 'studio.conversation.delete.message',
+  audio: 'studio.conversation.delete.message',
+  video: 'studio.conversation.delete.message',
+  chat: 'studio.conversation.delete.message.chat',
 }
 
 /** Thumbnail: the cover, else the mode's icon on the tray gradient; a breathing dot while a job is running. */
@@ -96,7 +104,7 @@ export function ConversationItem({ conversation, active, selecting = false, sele
     setMenuAnchor(null)
     const ok = await confirm({
       titleId: 'studio.conversation.delete.title',
-      messageId: 'studio.conversation.delete.message',
+      messageId: DELETE_MESSAGE_KEYS[conversation.mode],
       params: [conversation.title, conversation.generation_count, t(DELETE_MEDIA_KEYS[conversation.mode])],
       confirmLabelId: 'studio.conversation.delete.confirm',
       danger: true,

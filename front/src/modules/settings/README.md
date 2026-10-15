@@ -10,12 +10,12 @@ valeurs sont celles de `GET/PUT /api/settings` (back : `back/src/modules/setting
 
 ```
 settings/
-  index.ts                  exports : SettingsDialog, HfTokenField, useSettings, useSaveSettings, settingsApi, settingsKeys
+  index.ts                  exports : SettingsDialog, HfTokenField, BraveKeyField, useSettings, useSaveSettings, settingsApi, settingsKeys
   types.ts                  Settings, SettingsPatch
   services/settingsApi.ts   GET/PUT /api/settings (studioRequest)
   hooks/useSettings.ts      useSettings(enabled) (requête), useSaveSettings(onSaved?) (mutation)
   lib/settingsConfig.ts     KEEP_ALIVE_OPTIONS, SHORTCUT_ROWS, SETTINGS_HELP, settingsKeys
-  components/               SettingsDialog, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField
+  components/               SettingsDialog, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField
   locales/                  locales.fr.json, locales.en.json (clés settings.*)
 ```
 
@@ -29,6 +29,10 @@ Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouto
   409 génération en cours) s'affiche en message (react-toastify) et l'affichage reste sur la valeur enregistrée.
 - Jeton : champ à écriture seule ; le serveur ne dit que `has_hf_token` (« Un jeton est enregistré », bouton « Retirer »).
   Enregistrer ou retirer affiche un message de confirmation. `HfTokenField` est aussi monté par le dialogue des modèles (H4.2). `useSaveSettings` y sert aux choix de quantification (`quantize`) et de variante (`variant`).
+
+- **IA locale au lancement** : interrupteur (`SwitchRow`) lié à `useLocalAiPromptStore.optOut` du module `engines` (navigateur, `cn-local-ai`) : activé, l'invitation d'installation de llama.cpp s'affiche à chaque lancement tant qu'il manque.
+- **Clé Brave Search** (`BraveKeyField`, facultative) : champ secret, enregistré par `PUT /api/settings { brave_api_key }` (`''` la retire) ; le serveur la stocke chiffrée et ne la renvoie jamais, seulement `has_brave_api_key`.
+  Elle sert à la recherche web du chat (Brave au lieu de DuckDuckGo) : `back/src/modules/settings/README.md`, `back/src/modules/chat/README.md`.
 
 ## Info-bulles
 

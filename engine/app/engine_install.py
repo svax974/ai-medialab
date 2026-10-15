@@ -216,7 +216,8 @@ class EngineInstaller:
     def running(self) -> bool:
         return self.state.get("state") == "running"
 
-    async def start(self, variant: str | None = None) -> dict[str, Any]:
+    async def start(self, variant: str | None = None, tag: str | None = None) -> dict[str, Any]:
+        """Starts the install; `tag`: a release other than the pinned one (an update to a newer, untested build)."""
         from .system import get_system
 
         if self.running:
@@ -233,7 +234,7 @@ class EngineInstaller:
         self._loop = asyncio.get_running_loop()
         self._cancel.clear()
         self._set(state="running", variant=variants[0], done=0, total=0, message="Préparation…", error=None)
-        asyncio.create_task(asyncio.to_thread(self._run, variants))
+        asyncio.create_task(asyncio.to_thread(self._run, variants, tag))
         return self.public()
 
     def cancel(self) -> bool:
@@ -244,13 +245,13 @@ class EngineInstaller:
 
     # Runs in a worker thread.
 
-    def _run(self, variants: list[str]) -> None:
+    def _run(self, variants: list[str], tag: str | None = None) -> None:
         notes: list[str] = []
         try:
             for variant in variants:
                 self._set(variant=variant, done=0, total=0, message=f"Moteur « {variant} »…")
                 try:
-                    install_variant(host_os(), variant, ENGINES_DIR / "sdcpp", progress=self._progress, cancel=self._cancel)
+                    install_variant(host_os(), variant, ENGINES_DIR / "sdcpp", tag=tag, progress=self._progress, cancel=self._cancel)
                 except InstallCancelled:
                     raise
                 except Exception as exc:  # noqa: BLE001

@@ -23,4 +23,13 @@ export const enginesApi = {
   cancelSdcppInstall(): Promise<{ ok: true }> {
     return studioRequest<{ ok: true }>('delete', '/engines/sdcpp/install')
   },
+  installLlamacpp(): Promise<EngineInstallState> {
+    return studioRequest<EngineInstallState>('post', '/engines/llamacpp/install')
+  },
+  cancelLlamacppInstall(): Promise<{ ok: true }> {
+    return studioRequest<{ ok: true }>('delete', '/engines/llamacpp/install')
+  },
+  uninstallLlamacpp(): Promise<{ ok: true }> {
+    return studioRequest<{ ok: true }>('delete', '/engines/llamacpp')
+  },
 }

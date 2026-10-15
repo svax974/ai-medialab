@@ -46,6 +46,9 @@ const NAV: Record<StudioMode, NavEntry[]> = {
     { route: 'video-home', to: studioPaths.videoHome, labelKey: 'studio.nav.newVideo', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
     { route: 'video-library', to: studioPaths.videoLibrary, labelKey: 'studio.nav.library', icon: <VideoLibraryOutlined sx={icon} /> },
   ],
+  chat: [
+    { route: 'chat-home', to: studioPaths.chatHome, labelKey: 'studio.nav.newChat', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
+  ],
   audio: [
     { route: 'audio-home', to: studioPaths.audioHome, labelKey: 'studio.nav.newAudio', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
     { route: 'voices', to: studioPaths.voices, labelKey: 'studio.nav.voices', icon: <MicNoneOutlined sx={icon} /> },

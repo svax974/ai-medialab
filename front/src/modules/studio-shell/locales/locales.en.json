@@ -65,5 +65,12 @@
   "studio.page.voices.title": "My voices",
   "studio.page.audioLibrary.title": "Audio library",
   "studio.page.videoHome.title": "New video",
-  "studio.page.videoLibrary.title": "Video library"
+  "studio.page.videoLibrary.title": "Video library",
+  "studio.mode.chat": "Chat",
+  "studio.nav.newChat": "New chat",
+  "studio.list.empty.chat": "Your chats will appear here.",
+  "studio.conversation.meta.chat": "{0} msg · {1}",
+  "studio.conversation.delete.media.chat": "messages and attachments",
+  "studio.conversation.delete.message.chat": "“{0}” and its {1} message(s) will be permanently deleted, attachments included.",
+  "studio.page.chatHome.title": "New chat"
 }

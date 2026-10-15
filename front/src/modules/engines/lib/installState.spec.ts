@@ -79,6 +79,14 @@ describe('relevantInstall and nextSetupStep', () => {
     expect(relevantInstall({ state: 'idle' }, { state: 'done' })).toEqual({ state: 'done' })
     expect(relevantInstall(sd, { state: 'idle' })).toBe(sd)
   })
+  it('follows llama.cpp (the chat engine) while it installs, or when it is the only installer that did', () => {
+    const idle = { state: 'idle' as const }
+    expect(relevantInstall(idle, idle, { state: 'running' })).toEqual({ state: 'running' })
+    expect(relevantInstall({ state: 'done' }, idle, { state: 'running' })).toEqual({ state: 'running' })
+    expect(relevantInstall(idle, idle, { state: 'done' })).toEqual({ state: 'done' })
+    expect(relevantInstall(idle, idle, { state: 'error' })).toEqual({ state: 'error' })
+    expect(relevantInstall({ state: 'done' }, idle, idle)).toEqual({ state: 'done' }) // without llama.cpp nothing changes
+  })
   it('waits while installing, gives up on error or cancel, downloads once done', () => {
     expect(nextSetupStep(null, 'done')).toBe('wait')
     expect(nextSetupStep('m', 'idle')).toBe('wait')

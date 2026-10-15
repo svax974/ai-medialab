@@ -65,5 +65,12 @@
   "studio.page.voices.title": "Mes voix",
   "studio.page.audioLibrary.title": "Bibliothèque audio",
   "studio.page.videoHome.title": "Nouvelle vidéo",
-  "studio.page.videoLibrary.title": "Bibliothèque vidéo"
+  "studio.page.videoLibrary.title": "Bibliothèque vidéo",
+  "studio.mode.chat": "Chat",
+  "studio.nav.newChat": "Nouvelle conversation",
+  "studio.list.empty.chat": "Vos conversations apparaîtront ici.",
+  "studio.conversation.meta.chat": "{0} msg · {1}",
+  "studio.conversation.delete.media.chat": "messages et pièces jointes",
+  "studio.conversation.delete.message.chat": "« {0} » et ses {1} message(s) seront définitivement supprimés, pièces jointes comprises.",
+  "studio.page.chatHome.title": "Nouvelle conversation"
 }

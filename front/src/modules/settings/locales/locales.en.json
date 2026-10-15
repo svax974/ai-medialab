@@ -43,5 +43,20 @@
   "settings.help.lowMemory.tip": "turn it on if the machine's memory is tight.",
   "settings.help.hfToken.title": "Hugging Face token",
   "settings.help.hfToken.body": "Personal key of your Hugging Face account, created in its settings (\"Access Tokens\"). It is stored encrypted on this computer, used only for Hugging Face downloads and search, and never shown again.",
-  "settings.help.hfToken.tip": "leave it empty until a model asks for it."
+  "settings.help.hfToken.tip": "leave it empty until a model asks for it.",
+  "settings.braveKey.title": "Brave Search key",
+  "settings.braveKey.optional": "(optional)",
+  "settings.braveKey.description": "The chat's web search uses DuckDuckGo without an account. With a Brave Search API key (free up to a certain volume, created at brave.com/search/api) it uses Brave, which is more stable. The key is stored locally, encrypted.",
+  "settings.braveKey.present": "A key is saved.",
+  "settings.braveKey.placeholder": "BSA…",
+  "settings.braveKey.aria": "Brave Search key",
+  "settings.braveKey.save": "Save",
+  "settings.braveKey.remove": "Remove",
+  "settings.braveKey.saved": "Key saved",
+  "settings.braveKey.removed": "Key removed",
+  "settings.help.braveKey.title": "Brave Search key",
+  "settings.help.braveKey.body": "Identifier of the Brave Search API. It is stored encrypted on this computer, only used for the chat's web search (queries then leave the machine for Brave) and is never shown again.",
+  "settings.help.braveKey.tip": "leave empty to use DuckDuckGo.",
+  "settings.help.localAi.title": "Local AI at launch",
+  "settings.help.localAi.body": "The chat engine (llama.cpp) and a small model bring Chat, updates analysed before you install them and prompt improvement, all on your machine. Turned off, the install invitation no longer shows; you can still install the engine from the Chat model list."
 }

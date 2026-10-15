@@ -7,7 +7,7 @@ import { useEffect } from 'react'
 import { toast } from 'react-toastify'
 import { eventStreamClient } from '@/modules_shared/common/core/events'
 import { modelCatalogApi, useDownloadStore, type ModelInfo } from '@/modules/model-catalog'
-import { nextSetupStep, PACK_INSTALL_TOPIC, parseInstallState, relevantInstall, SDCPP_INSTALL_TOPIC } from '../lib/installState'
+import { LLAMACPP_INSTALL_TOPIC, nextSetupStep, PACK_INSTALL_TOPIC, parseInstallState, relevantInstall, SDCPP_INSTALL_TOPIC } from '../lib/installState'
 import { enginesApi } from '../services/enginesApi'
 import { useInstallStore } from '../state/installStore'
 import type { EngineInstallState, PackInstallState } from '../types'
@@ -22,9 +22,11 @@ export async function startSetup(model: ModelInfo): Promise<void> {
     if (model.needs_engine_install) {
       // A finished previous install must not look like this one is done: reset before the pending model is set.
       if (model.engine_pack) store.setPackInstall({ state: 'idle' })
+      else if (model.backend === 'llamacpp') store.setLlamacppInstall({ state: 'idle' })
       else store.setEngineInstall({ state: 'idle' })
       store.setPending(model.install === 'installed' ? null : model.id)
       if (model.engine_pack) store.setPackInstall(await enginesApi.installPack(model.engine_pack))
+      else if (model.backend === 'llamacpp') store.setLlamacppInstall(await enginesApi.installLlamacpp())
       else store.setEngineInstall(await enginesApi.installSdcpp())
     } else if (model.install !== 'installed') {
       useDownloadStore.getState().setDownload(await modelCatalogApi.download(model.id))
@@ -35,19 +37,21 @@ export async function startSetup(model: ModelInfo): Promise<void> {
   }
 }
 
-/** Feeds the installers' live state from the event stream (`engine.pack.install`, `engine.engine.install`). */
+/** Feeds the installers' live state from the event stream (`engine.pack.install`, `engine.engine.install`, `engine.llamacpp.install`). */
 export function useInstallEvents(): void {
   useEffect(() => {
-    const { setPackInstall, setEngineInstall, reset } = useInstallStore.getState()
+    const { setPackInstall, setEngineInstall, setLlamacppInstall, reset } = useInstallStore.getState()
     return eventStreamClient.subscribe(
-      [PACK_INSTALL_TOPIC, SDCPP_INSTALL_TOPIC],
+      [PACK_INSTALL_TOPIC, SDCPP_INSTALL_TOPIC, LLAMACPP_INSTALL_TOPIC],
       (event) => {
         if (event.topic === PACK_INSTALL_TOPIC) {
           const state = parseInstallState<PackInstallState>(event.data)
           if (state) setPackInstall(state)
         } else {
           const state = parseInstallState<EngineInstallState>(event.data)
-          if (state) setEngineInstall(state)
+          if (!state) return
+          if (event.topic === LLAMACPP_INSTALL_TOPIC) setLlamacppInstall(state)
+          else setEngineInstall(state)
         }
       },
       { onResync: reset },
@@ -62,8 +66,9 @@ export function useInstallEvents(): void {
 export function useSetupController(): void {
   const sd = useInstallStore((s) => s.engineInstall)
   const pack = useInstallStore((s) => s.packInstall)
+  const llama = useInstallStore((s) => s.llamacppInstall)
   const pending = useInstallStore((s) => s.pendingModelId)
-  const engineState = relevantInstall(sd, pack).state
+  const engineState = relevantInstall(sd, pack, llama).state
   useEffect(() => {
     const step = nextSetupStep(pending, engineState)
     if (step === 'wait' || !pending) return

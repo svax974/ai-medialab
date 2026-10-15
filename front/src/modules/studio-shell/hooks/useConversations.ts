@@ -6,6 +6,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'react-toastify'
 import { i18n } from '@/modules_shared/common/core/i18n/I18n'
+import { forgetPrivateChat } from '@/modules/private/lib/privateChatMemory'
 import { studioKeys } from '../lib/queryKeys'
 import { conversationsApi } from '../services/conversationsApi'
 import type { ConversationPatch, ConversationSummary, StudioMode } from '../types'
@@ -54,6 +55,7 @@ export function useConversationActions() {
     mutationFn: (id: string) => conversationsApi.remove(id),
     onSuccess: (_data, id) => {
       queryClient.removeQueries({ queryKey: studioKeys.conversation(id) })
+      forgetPrivateChat(id) // a private chat conversation lives only in this page's memory: deleting it forgets it
     },
     onError: () => toast.error(i18n.get('studio.conversation.error.delete')),
     onSettled: refresh,
@@ -74,7 +76,10 @@ export function useConversationActions() {
       return { done, failed: ids.length - done.length }
     },
     onSuccess: ({ done, failed }) => {
-      for (const id of done) queryClient.removeQueries({ queryKey: studioKeys.conversation(id) })
+      for (const id of done) {
+        queryClient.removeQueries({ queryKey: studioKeys.conversation(id) })
+        forgetPrivateChat(id)
+      }
       if (failed > 0) toast.error(i18n.get('studio.conversation.error.deleteMany', [failed]))
     },
     onSettled: refresh,

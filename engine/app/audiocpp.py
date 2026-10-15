@@ -200,14 +200,14 @@ def install_variant(os_name: str, arch: str, variant: str, *, tag: str | None = 
 
 
 def install(vendors: list[str], progress: Callable[[int, int, str], None] | None = None,
-            cancel: threading.Event | None = None) -> dict[str, Any]:
+            cancel: threading.Event | None = None, tag: str | None = None) -> dict[str, Any]:
     """Install the best build that works here. Tries each candidate and keeps the first that sees a GPU,
     or the CPU build as a last resort. Returns {variant, device, notes}."""
     notes: list[str] = []
     os_name, arch = ei.host_os(), host_arch()
     for variant in candidate_variants(vendors, os_name, arch):
         try:
-            install_variant(os_name, arch, variant, progress=progress, cancel=cancel)
+            install_variant(os_name, arch, variant, tag=tag, progress=progress, cancel=cancel)
         except ei.InstallCancelled:
             raise
         except Exception as exc:  # noqa: BLE001

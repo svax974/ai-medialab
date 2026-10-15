@@ -37,10 +37,12 @@ function Steps({ plan, engineState }: { plan: SetupPlan; engineState: InstallSta
   )
 }
 
-/** The state of the engine this model needs: its pack's installer, or the shared stable-diffusion.cpp one. */
+/** The state of the engine this model needs: its pack's installer, llama.cpp's (chat models), or the shared stable-diffusion.cpp one. */
 function useEngineOf(model: ModelInfo): EngineInstallState | PackInstallState {
   const sd = useInstallStore((s) => s.engineInstall)
+  const llama = useInstallStore((s) => s.llamacppInstall)
   const pack = useInstallStore((s) => s.packInstall)
+  if (model.backend === 'llamacpp') return llama
   if (!model.engine_pack) return sd
   return pack.pack === model.engine_pack ? pack : { state: 'idle' }
 }
@@ -74,7 +76,7 @@ export function SetupPrompt({ model, welcome = false }: { model: ModelInfo; welc
   const engine = useEngineOf(model)
   const live = useDownloadStore((s) => s.downloads[model.id])
   const pending = useInstallStore((s) => s.pendingModelId)
-  const cancelInstall = useCancelInstall(model.engine_pack ? 'pack' : 'sdcpp')
+  const cancelInstall = useCancelInstall(model.engine_pack ? 'pack' : model.backend === 'llamacpp' ? 'llamacpp' : 'sdcpp')
   const [busy, setBusy] = useState(false)
   const plan = setupPlan(model)
   if (!plan) return null

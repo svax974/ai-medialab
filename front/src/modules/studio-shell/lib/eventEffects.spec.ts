@@ -22,6 +22,7 @@ describe('effectOfEvent', () => {
     expect(effectOfEvent({ topic: 'engine.models.changed' }).invalidate).toEqual([['models'], ['system']])
     expect(effectOfEvent({ topic: 'engine.engine.install', data: { state: 'done' } }).invalidate).toEqual([['models'], ['system']])
     expect(effectOfEvent({ topic: 'engine.pack.install', data: { state: 'error' } }).invalidate).toEqual([['models'], ['system']])
+    expect(effectOfEvent({ topic: 'engine.llamacpp.install', data: { state: 'done' } }).invalidate).toEqual([['models'], ['system']])
   })
 
   it('a finished download refreshes the catalogue and the free disk; a running one changes nothing', () => {
@@ -34,6 +35,7 @@ describe('effectOfEvent', () => {
   it('a running install (many progress events) changes nothing', () => {
     expect(effectOfEvent({ topic: 'engine.engine.install', data: { state: 'running' } })).toEqual({ invalidate: [], remove: [] })
     expect(effectOfEvent({ topic: 'engine.pack.install', data: { state: 'running' } })).toEqual({ invalidate: [], remove: [] })
+    expect(effectOfEvent({ topic: 'engine.llamacpp.install', data: { state: 'running' } })).toEqual({ invalidate: [], remove: [] })
   })
 
   it('ignores other topics', () => {

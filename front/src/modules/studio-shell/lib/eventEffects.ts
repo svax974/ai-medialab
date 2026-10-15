@@ -17,6 +17,7 @@ export const ENGINE_TOPICS = [
   'engine.download.progress',
   'engine.engine.install',
   'engine.pack.install',
+  'engine.llamacpp.install',
   'engine.link',
 ] as const
 
@@ -46,6 +47,7 @@ export function effectOfEvent(event: EventLike): CacheEffect {
       return { invalidate: [modelCatalogKeys.models, hardwareKeys.system], remove: [] }
     case 'engine.engine.install':
     case 'engine.pack.install':
+    case 'engine.llamacpp.install':
     case 'engine.download.progress':
       // Only a finished install or download changes what the machine can run (a running one emits many progress
       // events: the live progress is kept in the model-catalog and engines stores, not in the query cache).

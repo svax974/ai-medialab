@@ -6,6 +6,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { DEFAULT_LAST_PATHS } from '../lib/routes'
+import type { ModelKind } from '@/modules/model-catalog'
 import type { StudioMode } from '../types'
 
 /**
@@ -27,8 +28,8 @@ interface StudioState {
   modelsOpen: boolean
   setModelsOpen: (open: boolean) => void
   /** Opened from "search a model": the dialog opens on this kind and focuses its Hugging Face search. */
-  modelsSearchKind: StudioMode | null
-  openModelSearch: (kind: StudioMode) => void
+  modelsSearchKind: ModelKind | null
+  openModelSearch: (kind: ModelKind) => void
   clearModelSearch: () => void
 }
 
