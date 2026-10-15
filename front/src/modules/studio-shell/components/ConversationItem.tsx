@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react'
-import { Box, ButtonBase, IconButton, InputBase, Menu, MenuItem, Divider } from '@mui/material'
+import { Box, ButtonBase, Checkbox, IconButton, InputBase, Menu, MenuItem, Divider } from '@mui/material'
 import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import EditOutlined from '@mui/icons-material/EditOutlined'
 import MoreHorizRounded from '@mui/icons-material/MoreHorizRounded'
@@ -62,8 +62,17 @@ function Thumbnail({ conversation }: { conversation: ConversationSummary }) {
   )
 }
 
-/** One conversation of the list: open, rename (double click or menu), pin, delete. */
-export function ConversationItem({ conversation, active }: { conversation: ConversationSummary; active: boolean }) {
+interface ConversationItemProps {
+  conversation: ConversationSummary
+  active: boolean
+  /** Selection mode: a click ticks the row instead of opening it. */
+  selecting?: boolean
+  selected?: boolean
+  onToggle?: (id: string) => void
+}
+
+/** One conversation of the list: open, rename (double click or menu), pin, delete; ticked in selection mode. */
+export function ConversationItem({ conversation, active, selecting = false, selected = false, onToggle }: ConversationItemProps) {
   const t = useT()
   const lang = useLang()
   const navigate = useNavigate()
@@ -110,20 +119,31 @@ export function ConversationItem({ conversation, active }: { conversation: Conve
         px: 1,
         py: '6px',
         borderRadius: '12px',
-        backgroundColor: active ? 'var(--surface-3)' : 'transparent',
+        backgroundColor: selected ? 'var(--surface-3)' : active ? 'var(--surface-3)' : 'transparent',
         transition: 'background-color 0.15s',
         '&:hover': { backgroundColor: active ? 'var(--surface-3)' : 'var(--surface-2)' },
         '&:hover .row-actions, & .row-actions:focus-within': { opacity: 1 },
       }}
     >
-      <ButtonBase
-        component={Link}
-        to={studioPaths.conversation(conversation.id)}
-        aria-label={conversation.title}
-        aria-current={active ? 'page' : undefined}
-        onDoubleClick={() => setRenaming(true)}
-        sx={{ position: 'absolute', inset: 0, borderRadius: '12px' }}
-      />
+      {selecting ? (
+        <ButtonBase
+          role="checkbox"
+          aria-checked={selected}
+          aria-label={t('studio.select.row', [conversation.title])}
+          onClick={() => onToggle?.(conversation.id)}
+          sx={{ position: 'absolute', inset: 0, borderRadius: '12px' }}
+        />
+      ) : (
+        <ButtonBase
+          component={Link}
+          to={studioPaths.conversation(conversation.id)}
+          aria-label={conversation.title}
+          aria-current={active ? 'page' : undefined}
+          onDoubleClick={() => setRenaming(true)}
+          sx={{ position: 'absolute', inset: 0, borderRadius: '12px' }}
+        />
+      )}
+      {selecting && <Checkbox checked={selected} tabIndex={-1} size="small" disableRipple sx={{ position: 'relative', p: 0, pointerEvents: 'none' }} />}
       <Thumbnail conversation={conversation} />
       <Box sx={{ position: 'relative', minWidth: 0, flex: 1, pointerEvents: 'none' }}>
         {renaming ? (
@@ -156,11 +176,13 @@ export function ConversationItem({ conversation, active }: { conversation: Conve
           {t(META_KEYS[conversation.mode], [conversation.generation_count, formatClock(conversation.updated_at, lang)])}
         </Box>
       </Box>
-      <Box className="row-actions" sx={{ position: 'relative', opacity: menuAnchor ? 1 : 0, transition: 'opacity 0.15s' }}>
-        <IconButton size="small" aria-label={t('studio.conversation.actions')} onClick={(event) => setMenuAnchor(event.currentTarget)} sx={{ width: 24, height: 24 }}>
-          <MoreHorizRounded sx={{ fontSize: 16 }} />
-        </IconButton>
-      </Box>
+      {!selecting && (
+        <Box className="row-actions" sx={{ position: 'relative', opacity: menuAnchor ? 1 : 0, transition: 'opacity 0.15s' }}>
+          <IconButton size="small" aria-label={t('studio.conversation.actions')} onClick={(event) => setMenuAnchor(event.currentTarget)} sx={{ width: 24, height: 24 }}>
+            <MoreHorizRounded sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+      )}
       <Menu anchorEl={menuAnchor} open={menuAnchor !== null} onClose={() => setMenuAnchor(null)} anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }} transformOrigin={{ vertical: 'top', horizontal: 'left' }} slotProps={{ list: { dense: true } }}>
         <MenuItem
           onClick={() => {

@@ -11,6 +11,10 @@ export const modelCatalogApi = {
   catalog(): Promise<ModelCatalog> {
     return studioRequest<ModelCatalog>('get', '/models')
   },
+  /** Finished generations per model id (the library's own history). */
+  usage(): Promise<{ counts: Record<string, number> }> {
+    return studioRequest<{ counts: Record<string, number> }>('get', '/messages/model-usage')
+  },
   download(modelId: string): Promise<DownloadProgress> {
     return studioRequest<DownloadProgress>('post', `/models/${encodeURIComponent(modelId)}/download`)
   },

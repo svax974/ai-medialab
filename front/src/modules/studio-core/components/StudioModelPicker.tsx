@@ -3,8 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ModelPicker, type ModelInfo } from '@/modules/model-catalog'
-import { useModelUsage } from '../hooks/useModelUsage'
+import { ModelPicker, useModelUsage, type ModelInfo } from '@/modules/model-catalog'
 
 /** The model picker of a composer, its models ordered by use (finished generations of this library). */
 export function StudioModelPicker({ model }: { model: ModelInfo }) {

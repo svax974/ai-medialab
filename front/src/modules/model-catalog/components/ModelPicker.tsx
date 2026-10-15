@@ -93,7 +93,7 @@ function PickerRow({ model: m, active, loaded }: { model: ModelInfo; active: boo
 
 interface ModelPickerProps {
   model: ModelInfo
-  /** Finished generations per model id (`useModelUsage` of studio-core): the most used are listed first. */
+  /** Finished generations per model id (`useModelUsage`): the most used are listed first. */
   usage?: Record<string, number>
   onSelect?: (model: ModelInfo) => void
 }

@@ -18,6 +18,7 @@ model-catalog/
   services/modelCatalogApi.ts    GET /models, POST|DELETE /models/:id/download, DELETE /models/:id, POST /models/custom,
                                  DELETE /models/:id/custom, GET /hf/search, GET /hf/inspect
   hooks/useModelCatalog.ts       useModels, useActiveModel, useWelcomeModel, useRefreshCatalog, useStartDownload, useCancelDownload
+  hooks/useModelUsage.ts         générations terminées par modèle (`GET /api/messages/model-usage`, clé `model-usage`, invalidée par `studio-core`)
   hooks/useModelActions.ts       supprimer / retirer (confirmation, attente de la libération, message)
   hooks/useHubSearch.ts          useDebouncedQuery, useHubSearch, useHubInspect, useAddCustomModel
   hooks/useDownloadEvents.ts     abonnement à engine.download.progress (monté par la coquille)
@@ -40,7 +41,7 @@ model-catalog/
 `ModelsDialog` (monté par `StudioShell`, qui lui passe `onSetup` et `renderEngines` du module `engines` : le module ne dépend pas de
 `engines`), `ModelPicker` (`<ModelPicker model={actif} usage? onSelect? />` : les plus utilisés d'abord selon `usage`, puis les autres
 installés, puis le reste ; les modèles trop lourds pour la machine (`plan.fits` faux) masqués derrière « Afficher les modèles trop
-lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker` de `studio-core`, qui fournit `usage`), `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
+lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker` de `studio-core`, qui fournit `usage`), `useModelUsage`, `useModels`, `useActiveModel(kind)`, `useWelcomeModel(kind)`,
 `useModelSelectionStore`, `useDownloadStore`, `activeDownload`, `modelCatalogApi`, `modelCatalogKeys`, `VideoBadges`, `LicenseWarning`,
 `GatedNotice` (réutilisés par le composeur vidéo, H4.6), `MODEL_HELP` (info-bulles des badges, reprises par les avis du composeur vidéo), `Section`, `Tag`, `Notice`, types.
 
@@ -58,7 +59,7 @@ lourds », sauf le modèle actif ; les composeurs passent par `StudioModelPicker
 - **Quantification et précision** : enregistrées comme réglages `variant` et `quantize` (`useSaveSettings` du module `settings`, qui
   invalide le catalogue) ; seule la variante choisie est téléchargée.
 - **Utiliser** : mémorise le modèle du type (`modelSelectionStore`), va à l'accueil du mode et ferme le dialogue. Les composeurs
-  lisent `useActiveModel(kind)` (choix mémorisé, sinon défaut du serveur, sinon premier du type ; jamais un modèle de transcription).
+  lisent `useActiveModel(kind)` (choix mémorisé, sinon le modèle installé le plus utilisé, sinon défaut du serveur, sinon premier du type ; jamais un modèle de transcription).
 - **Recherche Hugging Face** : saisie temporisée 350 ms, résultats gardés 60 s, détail d'un dépôt gardé 5 min, aucun nouvel essai.
   Résultats incompatibles estompés ; variantes qui ne tiennent pas en mémoire estompées et **barrées** (infobulle = `fit_note`) ; la
   variante par défaut est une Q4_K qui tient, jamais une qui ne tient pas quand une autre tient ; l'ajout est bloqué si la machine ne

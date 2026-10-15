@@ -30,7 +30,7 @@ function patchLists(lists: [readonly unknown[], ConversationSummary[] | undefine
   return lists.map(([key, data]) => [key, data?.map((c) => (c.id === id ? { ...c, ...patch } : c))] as const)
 }
 
-/** Pin / rename (optimistic, rolled back on error) and delete of a conversation. */
+/** Pin / rename (optimistic, rolled back on error), delete of a conversation and of several at once. */
 export function useConversationActions() {
   const queryClient = useQueryClient()
   const refresh = () => queryClient.invalidateQueries({ queryKey: studioKeys.conversations })
@@ -59,5 +59,26 @@ export function useConversationActions() {
     onSettled: refresh,
   })
 
-  return { update, remove }
+  // One request after the other: each deletion removes files, and a failure must not leave the rest half done.
+  const removeMany = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const done: string[] = []
+      for (const id of ids) {
+        try {
+          await conversationsApi.remove(id)
+          done.push(id)
+        } catch {
+          // reported once, with the count, by onSettled
+        }
+      }
+      return { done, failed: ids.length - done.length }
+    },
+    onSuccess: ({ done, failed }) => {
+      for (const id of done) queryClient.removeQueries({ queryKey: studioKeys.conversation(id) })
+      if (failed > 0) toast.error(i18n.get('studio.conversation.error.deleteMany', [failed]))
+    },
+    onSettled: refresh,
+  })
+
+  return { update, remove, removeMany }
 }

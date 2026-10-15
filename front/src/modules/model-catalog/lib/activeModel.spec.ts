@@ -27,6 +27,16 @@ describe('resolveActiveModel', () => {
     expect(resolveActiveModel(catalog(), 'image', null)?.id).toBe('i2')
     expect(resolveActiveModel(catalog(), 'video', null)?.id).toBe('v1')
   })
+  it('prefers the installed model used the most over the server default', () => {
+    const c = catalog({ models: [{ ...m('i1', 'image'), ready: true }, { ...m('i2', 'image'), ready: true }, { ...m('i3', 'image'), ready: true }] as ModelInfo[] })
+    expect(resolveActiveModel(c, 'image', null, { i1: 4, i3: 9 })?.id).toBe('i3')
+    expect(resolveActiveModel(c, 'image', 'i1', { i3: 9 })?.id).toBe('i1')  // an explicit choice still wins
+  })
+  it('ignores a used model that is no longer installed, and falls back to the default when nothing was used', () => {
+    const c = catalog({ models: [{ ...m('i1', 'image'), ready: true }, { ...m('i2', 'image'), ready: false }] as ModelInfo[] })
+    expect(resolveActiveModel(c, 'image', null, { i2: 12, i1: 1 })?.id).toBe('i1')
+    expect(resolveActiveModel(c, 'image', null, {})?.id).toBe('i2')
+  })
   it('never offers a transcription model as generator', () => {
     expect(resolveActiveModel(catalog(), 'audio', 'a-stt')?.id).toBe('a-tts')
   })

@@ -9,6 +9,7 @@ export { GatedNotice, LicenseWarning, VideoBadges } from './components/ModelBadg
 export { Notice, Section, Tag } from './components/panels'
 export { useSizeLabel } from './hooks/useSizeLabel'
 export { useActiveModel, useModels, useRefreshCatalog, useStartDownload, useCancelDownload, useWelcomeModel } from './hooks/useModelCatalog'
+export { useModelUsage } from './hooks/useModelUsage'
 export { DOWNLOAD_TOPIC, useDownloadEvents } from './hooks/useDownloadEvents'
 export { MODEL_HELP } from './lib/modelHelp'
 export { activeDownload, downloadError } from './lib/downloads'

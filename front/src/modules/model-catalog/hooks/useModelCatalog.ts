@@ -9,6 +9,7 @@ import { hardwareKeys } from '@/modules/hardware'
 import { resolveActiveModel, welcomeModel } from '../lib/activeModel'
 import { modelCatalogKeys } from '../lib/modelCatalogKeys'
 import { modelCatalogApi } from '../services/modelCatalogApi'
+import { useModelUsage } from './useModelUsage'
 import { useDownloadStore } from '../state/downloadStore'
 import { useModelSelectionStore } from '../state/modelSelectionStore'
 import type { ModelInfo, ModelKind } from '../types'
@@ -22,7 +23,8 @@ export function useModels(options: { enabled?: boolean } = {}) {
 export function useActiveModel(kind: ModelKind = 'image'): ModelInfo | undefined {
   const { data } = useModels()
   const stored = useModelSelectionStore((s) => s.selected[kind])
-  return data ? resolveActiveModel(data, kind, stored) : undefined
+  const usage = useModelUsage()
+  return data ? resolveActiveModel(data, kind, stored, usage) : undefined
 }
 
 /** The model the welcome card proposes: while nothing is ready, the one recommended for this machine. */

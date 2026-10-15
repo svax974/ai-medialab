@@ -24,10 +24,6 @@ export const messagesApi = {
   remove(id: string): Promise<{ ok: true; deleted: string[] }> {
     return studioRequest<{ ok: true; deleted: string[] }>('delete', path(id))
   },
-  /** Finished generations per model id: the model pickers list the most used first. */
-  modelUsage(): Promise<{ counts: Record<string, number> }> {
-    return studioRequest<{ counts: Record<string, number> }>('get', '/messages/model-usage')
-  },
   /** The generation queue (running message and waiting ones, in order): initial state, then `studio.queue.updated`. */
   queue(): Promise<QueueState> {
     return studioRequest<QueueState>('get', '/queue')

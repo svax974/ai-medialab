@@ -10,7 +10,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 
 ### `studio-shell` : coquille
 - Barre latérale (masquable) : commutateur de mode image / audio / vidéo, pages du mode, recherche, conversations épinglées et
-  groupées par période, carte du moteur, accès aux modèles et aux réglages, langue (français, anglais), thème sombre ou clair.
+  groupées par période (mode « Sélectionner » : suppression de plusieurs conversations d'un coup), carte du moteur, accès aux modèles et aux réglages, langue (français, anglais), thème sombre ou clair.
 - Routes : `/`, `/c/:id`, `/galerie`, `/audio`, `/audio/voix`, `/audio/bibliotheque`, `/video`, `/video/bibliotheque` ;
   raccourcis ⌘B, ⌘⇧O, ⌘K, `/`.
 - Abonnement au flux d'événements et traduction en mises à jour du cache (TanStack Query) ; repli sur le rechargement quand le
@@ -55,7 +55,8 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 - Dialogue « Modèles » : catalogue par type, installé / incomplet / incompatible avec la raison (planificateur mémoire),
   téléchargement avec progression, débit, temps restant, reprise, annulation, suppression, variantes (quantifications) ;
   sélecteur de modèle réutilisable (description en retrait sous le titre ; les plus utilisés d'abord, puis les autres
-  installés, puis le reste ; modèles trop lourds pour la machine masqués par défaut) ; recherche Hugging Face avec quantifications
+  installés, puis le reste ; modèles trop lourds pour la machine masqués par défaut ; le modèle présélectionné est, à défaut de choix mémorisé,
+  l'installé le plus utilisé) ; recherche Hugging Face avec quantifications
   proposées par résultat, tenue en mémoire et marqueurs de compatibilité, ajout et retrait de modèles personnalisés, dont
   des LoRA SDXL.
 

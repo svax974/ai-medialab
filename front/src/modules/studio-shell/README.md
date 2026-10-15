@@ -19,7 +19,7 @@ studio-shell/
   StudioProviders.tsx      QueryClientProvider (client : state/queryClient.ts)
   routes.tsx               studioRoutes (PluginRoute[], layout 'fullscreen') pour components/Router.tsx
   types.ts                 StudioMode, ConversationSummary, Conversation, ConversationPatch
-  components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem,
+  components/              StudioShell, Sidebar, ModeSwitch, NavItem, SearchField, ConversationList, ConversationItem, SelectionBar,
                            SidebarFooter, Mark, modeIcons
   pages/                   HomePage (ImageHome), GalleryPage (ImageGallery), AudioHomePage, AudioLibraryPage, VoicesPage (VoicesLibrary), VideoHomePage, VideoLibraryPage, ConversationPage (ConversationView + adaptateurs image, audio et vidéo), ComingSoonPage (page de repli d'une route sans page)
   hooks/                   useConversations (requêtes + actions), useEngineEventSync, useModeSync, useShortcuts, useT
@@ -77,7 +77,8 @@ Les médias du moteur (`/media/...`) sont servis sous `/api/media/...` : `resolv
   (regroupés sur 250 ms) ; `engine.link` revenu à `connected: true` et la trame `resync` rechargent tout. Quand le flux est
   indisponible (`fallback`), la liste se relit au montage ; les composants H4 ajoutent leurs sujets dans `ENGINE_TOPICS` et leurs effets.
 - **Actions** (`useConversationActions`) : épingler/renommer en mise à jour optimiste avec retour arrière et message d'erreur
-  (react-toastify) ; supprimer avec confirmation (`confirm()` de `common`) puis retour à l'accueil du mode si la conversation était ouverte.
+  (react-toastify) ; supprimer avec confirmation (`confirm()` de `common`) puis retour à l'accueil du mode si la conversation était ouverte. `removeMany` supprime plusieurs conversations une à une
+  (route `DELETE` existante, pas de route groupée) et renvoie `{ done, failed }` ; un échec partiel est signalé avec son nombre.
 - **Zustand** (`state/studioStore.ts`) : `mode`, `lastPathByMode` (dernière page par mode, pour la bascule), `sidebarOpen`
   (persisté sous `cn-prefs`, comme avant), `settingsOpen`, `modelsOpen`, `modelsSearchKind` (ouverture du dialogue sur la recherche Hugging Face d'un type : `openModelSearch(kind)`). Les modules H4 y ajoutent leurs tranches.
 
@@ -102,7 +103,7 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 | `ModeSwitch` | `Tabs` MUI en commande segmentée ; revient à la dernière page du mode. |
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
-| `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
+| `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. `SelectionBar` (« Sélectionner ») bascule la liste en mode sélection : cases à cocher, compteur, tout (dé)sélectionner, suppression groupée après confirmation ; seules les conversations encore listées comptent (recherche ou changement de mode ne suppriment rien hors de vue). États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
 | `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
 | `ComingSoonPage` | Page provisoire (le `ComingSoonDialog` a disparu avec H4.2 : plus aucun dialogue provisoire). |
 
