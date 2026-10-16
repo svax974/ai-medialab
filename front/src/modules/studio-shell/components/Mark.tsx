@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** Logo: a lens / an actinic-safe light. */
+/** Logo of the app (public/logo-for-*.png, transparent): the variant for the dark theme or the light one, picked by the page's color scheme. */
 export function Mark({ size = 24 }: { size?: number }) {
+  const common = { height: size, alt: '', 'aria-hidden': true, draggable: false } as const
   return (
-    <svg viewBox="0 0 32 32" width={size} height={size} aria-hidden>
-      <circle cx="16" cy="16" r="10.5" fill="none" stroke="var(--safe)" strokeWidth="3" />
-      <circle cx="16" cy="16" r="3.5" fill="var(--safe)" />
-    </svg>
+    <>
+      <img {...common} className="cn-logo-for-dark" src="/logo-for-dark.png" />
+      <img {...common} className="cn-logo-for-light" src="/logo-for-light.png" />
+    </>
   )
 }

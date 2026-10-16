@@ -2,7 +2,20 @@
 <html lang="fr" data-theme="chambre-noire" data-color-scheme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/favicon-64.png" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <style>
+      /* Logo variants: the one for the current color scheme only (also used by the first paint below). */
+      .cn-logo-for-light { display: none; }
+      [data-color-scheme="light"] .cn-logo-for-light { display: inline-block; }
+      [data-color-scheme="light"] .cn-logo-for-dark { display: none; }
+      html, body { margin: 0; background: #0d0b0a; }
+      [data-color-scheme="light"], [data-color-scheme="light"] body { background: #f3eee6; }
+      #boot { position: fixed; inset: 0; display: grid; place-items: center; }
+      #boot img { height: 72px; animation: boot-breathe 2.4s ease-in-out infinite; }
+      @keyframes boot-breathe { 50% { opacity: .55; } }
+    </style>
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <title>AI MediaLab</title>
@@ -20,7 +33,7 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" aria-hidden="true"><img class="cn-logo-for-dark" src="/logo-for-dark.png" alt="" /><img class="cn-logo-for-light" src="/logo-for-light.png" alt="" /></div></div>
     <script>
       // Ensure Node-like globals for some browser bundles
       (function(){
