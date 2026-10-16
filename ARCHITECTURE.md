@@ -25,7 +25,7 @@ n'existe pas ; une nouvelle annexe s'y ajoute avec son chemin (règle « un fait
 | `docs/migration/` | Plan et suivi de la migration vers le gabarit vx-public (historique) |
 | `back/.libs/vx-public/template/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Conventions du gabarit et lanceur (hors de ce dépôt : sous-modules) |
 
-*Dernière vérification contre les sources : 2026-10-15 (modes Chat et Génération privée, conseiller de mises à jour). Les sections sur le chat et le mode privé décrivent du code testé avec de faux serveurs : aucun vrai `llama-server` ni navigateur.*
+*Dernière vérification contre les sources : 2026-10-16 (outils de création du chat) et 2026-10-15 (modes Chat et Génération privée, conseiller de mises à jour). Les sections sur le chat et le mode privé décrivent du code testé avec de faux serveurs : aucun vrai `llama-server` ni navigateur.*
 
 ## Vue d'ensemble : quatre processus
 
@@ -177,6 +177,16 @@ fois) et les fichiers d'une génération vivent dans `private/<session>/`, servi
 `private_dir` sur ses jobs : il refuse un dossier hors de la session, ne garde aucune trace du job et assainit ses erreurs. Le chat privé est **sans
 état** (le navigateur renvoie tout l'historique). Ce que la session garantit, ce qu'elle ne peut pas garantir (mémoire virtuelle, sauvegardes,
 SSD, captures) et la conception détaillée : `back/src/modules/private/README.md` et `front/src/modules/private/README.md`.
+
+## Chat et générations (outils de création)
+
+Le modèle de chat (ou une commande `/image`, `/video`, `/audio`) peut lancer une génération des studios sans quitter la conversation. Le chemin
+reste celui des studios : le module `chat` n'appelle jamais le moteur pour cela, il crée un prompt et sa génération dans `studio-core`
+(`GenerationService.create`), **rattachés à la conversation de chat**, et la **file** les envoie au moteur. Le chat tient la jauge du moteur
+(`EngineBusyGate`) pendant sa réponse : l'outil rend la main aussitôt (« génération lancée ») et le job part quand la réponse a rendu la
+mémoire (un seul modèle en mémoire). L'état et les fichiers d'une carte sont lus chez `studio-core` à chaque lecture (une source), le navigateur est
+prévenu par les événements `studio.*` ; le modèle de chaque studio est celui que le navigateur a sélectionné (Nest ne le connaît pas : il
+l'envoie avec chaque message). Le moteur n'a rien de nouveau. Détail et limites (session privée) : `back/src/modules/chat/README.md`, « Outils de création ».
 
 ## Mémoire au repos
 

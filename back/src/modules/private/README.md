@@ -81,7 +81,7 @@ Flux SSE (`Cache-Control: no-store, no-transform`), les évènements du chat nor
 | `done` | `{ id, stats, tool_runs }` (le texte, le navigateur l'a déjà reçu). |
 | `error` | `{ code, message, id? }` : `id` seulement si la réponse avait démarré. Texte général pour une erreur inattendue ; rien n'est journalisé. |
 
-Annuler = fermer la connexion (rien n'est émis). Les outils web sont **éteints** sauf `settings.tools.web` (le navigateur le demande après une confirmation) et un modèle qui appelle des fonctions ;
+Annuler = fermer la connexion (rien n'est émis). Les outils de création (image, vidéo, son) sont **éteints** dans une session privée (`parsePrivateChatBody` impose `tools.creation = false`) : une génération privée passe par `PrivateGenerationService` et sa mémoire, que le chat sans état ne tient pas. Les outils web sont **éteints** sauf `settings.tools.web` (le navigateur le demande après une confirmation) et un modèle qui appelle des fonctions ;
 la garde SSRF et `throttledFetch` du chat s'appliquent. Les pièces jointes vivent dans le dossier de session. À la fin de la session le modèle de chat est **déchargé** (le cache de prompt de
 `llama-server` vit dans sa mémoire) s'il a servi. La jauge du moteur est prise sous le propriétaire `private-chat` (distinct de `private`, celui des générations).
 

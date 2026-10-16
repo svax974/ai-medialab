@@ -6,7 +6,7 @@
 import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
 import { jsonColumnType } from 'src/modules_shared/common/utils/dbEngine';
 import { ConversationEntity } from 'src/modules/studio-core';
-import type { ChatRole, ChatStats, ChatStatus, StoredAttachment, ToolRun } from '../types/chatTypes';
+import type { ChatRole, ChatStats, ChatStatus, StoredAttachment, StoredGeneration, ToolRun } from '../types/chatTypes';
 
 /**
  * One message of a chat conversation. Messages form a tree: a reply, an edit or a regeneration is a new child of the
@@ -45,6 +45,10 @@ export class ChatMessageEntity {
 
   @Column({ name: 'tool_runs', type: jsonColumnType(), default: () => "'[]'" })
   toolRuns: ToolRun[];
+
+  /** Images, videos and sounds the reply asked the studios for (the creation tools of the chat); `null` for a message that has none. */
+  @Column({ type: jsonColumnType(), nullable: true })
+  generations: StoredGeneration[] | null;
 
   @Column({ type: jsonColumnType(), default: () => "'[]'" })
   attachments: StoredAttachment[];

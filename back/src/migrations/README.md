@@ -8,6 +8,7 @@ Migrations versionnées de la base de Nest (SQLite ; Postgres n'est pas une cibl
 | `1791891387395-InitialSchema.ts` | Tout le schéma de départ : tables de `common` (`config`, `themes`, `cookie_consent_log`) et de l'application (`conversations`, `messages`, `message_refs`, `assets`, `voices`, `import_markers`) avec leurs index et clés étrangères. |
 | `1792061048743-UpdateAdvisories.ts` | Le conseiller de mises à jour : `update_advisories` (avis enregistrés sur une mise à jour de moteur ou de modèle : verdict, résumé, constats cités, sources, modèle utilisé), un index par élément et date. |
 | `1792058442183-ChatTables.ts` | Le chat : `chat_messages` (arbre de messages, clés étrangères en cascade vers la conversation et le message parent) et `chat_conversation_settings` (réglages et feuille active de chaque conversation de chat). |
+| `1792070000000-ChatGenerations.ts` | Les outils de création du chat : colonne `chat_messages.generations` (JSON, nullable : les messages existants ne changent pas). |
 
 ## Utilisation
 

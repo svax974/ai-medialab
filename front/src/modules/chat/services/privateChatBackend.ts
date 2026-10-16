@@ -8,6 +8,7 @@ import { privateChats, registerPrivateCleanup, trackPrivateStream, type PrivateC
 import { StudioApiError, studioApiBase, studioRequest } from '@/modules/studio-shell/services/studioHttp'
 import type { ConversationSummary } from '@/modules/studio-shell/types'
 import { ChatError, codeOfStatus } from '../lib/errors'
+import { mergeSettings } from '../lib/settingsMerge'
 import {
   activeBranch, branchTo, historyTo, leafAfterRemoval, newestLeafBelow, nextCreatedAt, siblingsOf, subtreeIds, toMarkdown, withSiblings,
 } from '../lib/privateTree'
@@ -90,7 +91,7 @@ export const privateChatApi = {
 
   async patchSettings(id: string, patch: ChatSettingsPatch): Promise<ChatSettings> {
     const chat = chatOf(id)
-    chat.settings = { ...chat.settings, ...patch }
+    chat.settings = mergeSettings(chat.settings, patch)
     return { ...chat.settings }
   },
 
@@ -160,7 +161,7 @@ interface Turn {
 
 function blank(chat: PrivateChat, conversationId: string, fields: Partial<ChatMessage> & Pick<ChatMessage, 'role'>): ChatMessage {
   return {
-    id: newId(), conversation_id: conversationId, parent_id: null, content: '', reasoning: null, tool_runs: [], attachments: [], model_id: null, params: null,
+    id: newId(), conversation_id: conversationId, parent_id: null, content: '', reasoning: null, tool_runs: [], generations: [], attachments: [], model_id: null, params: null,
     status: 'done', error: null, stats: null, created_at: nextCreatedAt(chat.messages), sibling_ids: [], sibling_index: 0, ...fields,
   }
 }

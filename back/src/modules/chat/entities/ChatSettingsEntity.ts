@@ -34,7 +34,8 @@ export class ChatSettingsEntity {
   reasoning: ChatReasoning;
 
   @Column({ type: jsonColumnType(), default: () => `'{"web":false}'` })
-  tools: { web: boolean };
+  /** `creation` is absent in rows written before the creation tools existed: it then counts as on. */
+  tools: { web: boolean; creation?: boolean };
 
   /** Last message of the active branch (no foreign key: a deleted branch moves it in code). */
   @Column({ name: 'leaf_id', type: 'varchar', nullable: true })

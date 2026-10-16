@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+import type { MessageDto } from 'src/modules/studio-core';
 import type { ChatMessageEntity } from '../entities/ChatMessageEntity';
 import type { ChatSettingsEntity } from '../entities/ChatSettingsEntity';
-import type { ChatAttachment, ChatMessage, ChatSettings, StoredAttachment } from '../types/chatTypes';
+import type { ChatAttachment, ChatGeneration, ChatMessage, ChatSettings, StoredAttachment, StoredGeneration } from '../types/chatTypes';
 import { DEFAULT_CHAT_SETTINGS } from '../types/chatTypes';
 
 /** URL of an attachment's file under the media relay (`uploads/` of the data folder is one of the engine's mounts). */
@@ -27,7 +28,14 @@ export function siblingGroups(messages: Pick<ChatMessageEntity, 'id' | 'parentId
   return ordered;
 }
 
-export function toChatMessage(entity: ChatMessageEntity, groups: Map<string, string[]>): ChatMessage {
+/** A stored generation with the state and the files of its `studio-core` message (`live`, by message id); `pending` while it waits for the user. */
+export function toChatGeneration(stored: StoredGeneration, conversationId: string, live: Map<string, MessageDto>): ChatGeneration {
+  const run = stored.message_id ? live.get(stored.message_id) : undefined;
+  const state = stored.pending ? 'pending' : run?.status ?? 'cancelled';
+  return { ...stored, state, error: run?.error ?? null, assets: run?.outputs ?? [], conversation_id: conversationId };
+}
+
+export function toChatMessage(entity: ChatMessageEntity, groups: Map<string, string[]>, live: Map<string, MessageDto> = new Map()): ChatMessage {
   const siblings = groups.get(`${entity.parentId ?? ''}|${entity.role}`) ?? [entity.id];
   return {
     id: entity.id,
@@ -37,6 +45,7 @@ export function toChatMessage(entity: ChatMessageEntity, groups: Map<string, str
     content: entity.content,
     reasoning: entity.reasoning,
     tool_runs: entity.toolRuns ?? [],
+    generations: (entity.generations ?? []).map((g) => toChatGeneration(g, entity.conversationId, live)),
     attachments: (entity.attachments ?? []).map(toPublicAttachment),
     model_id: entity.modelId,
     params: entity.params,
@@ -50,14 +59,14 @@ export function toChatMessage(entity: ChatMessageEntity, groups: Map<string, str
 }
 
 export function toChatSettings(entity: ChatSettingsEntity | null): ChatSettings {
-  if (!entity) return { ...DEFAULT_CHAT_SETTINGS, params: {}, tools: { web: false } };
+  if (!entity) return { ...DEFAULT_CHAT_SETTINGS, params: {}, tools: { web: false, creation: true } };
   return {
     model_id: entity.modelId,
     system_prompt: entity.systemPrompt,
     params: entity.params ?? {},
     context_size: entity.contextSize,
     reasoning: entity.reasoning,
-    tools: { web: Boolean(entity.tools?.web) },
+    tools: { web: Boolean(entity.tools?.web), creation: entity.tools?.creation !== false },
     leaf_id: entity.leafId,
   };
 }

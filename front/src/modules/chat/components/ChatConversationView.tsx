@@ -19,6 +19,7 @@ import { studioPaths } from '@/modules/studio-shell/lib/routes'
 import { StudioApiError } from '@/modules/studio-shell/services/studioHttp'
 import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
 import { useChatConversation } from '../hooks/useChat'
+import { useGenerationSync } from '../hooks/useGenerationSync'
 import { answerPaths } from '../services/chatApi'
 import { startAnswer } from '../services/answerRunner'
 import { useChatDraftStore } from '../state/chatDraftStore'
@@ -40,6 +41,7 @@ export function ChatConversationView({ id }: { id: string }) {
   const queryClient = useQueryClient()
   const { data: summary } = useConversation(id)
   const { data, isLoading, error } = useChatConversation(id)
+  useGenerationSync(id)
   const scrollRef = useRef<HTMLDivElement>(null)
   const lastCount = useRef(0)
   const [atBottom, setAtBottom] = useState(true)

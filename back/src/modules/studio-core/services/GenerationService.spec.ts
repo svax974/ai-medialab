@@ -45,6 +45,17 @@ describe('GenerationService', () => {
       expect(s.published[0].data).toMatchObject({ id: result.conversation_id, busy: true });
     });
 
+    it('attaches a generation to an existing conversation of another mode (the chat tools), keeping its title and mode, and removes it cleanly', async () => {
+      const chat = await s.conversations.create({ title: 'Ma discussion', mode: 'chat' });
+      const result = await s.generations.create(input({ conversationId: chat.id }));
+      await s.queue.idle();
+      expect(result.conversation_id).toBe(chat.id);
+      expect(await s.conversations.getSummary(chat.id)).toMatchObject({ title: 'Ma discussion', mode: 'chat' });
+      expect(s.engine.submitted()).toEqual([result.assistant_message.id]);
+      await s.generations.remove(result.user_message.id);
+      expect(await s.messages.get(result.assistant_message.id)).toBeNull();
+    });
+
     it('counts up from a fixed seed and never asks for more results than the model allows', async () => {
       s.engine.on('POST /engine/v1/jobs/check', () => ({ kind: 'video', name: 'Vidéo', max_count: 2, default_params: {} }));
       const result = await s.generations.create(input({ modelId: 'vid', count: 4, params: { seed: 40 } }));

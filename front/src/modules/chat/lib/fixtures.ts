@@ -15,6 +15,7 @@ export const message = (id: string, extra: Partial<ChatMessage> = {}): ChatMessa
   content: '',
   reasoning: null,
   tool_runs: [],
+  generations: [],
   attachments: [],
   model_id: null,
   params: null,
@@ -27,7 +28,7 @@ export const message = (id: string, extra: Partial<ChatMessage> = {}): ChatMessa
   ...extra,
 })
 
-export const settings = (extra: Partial<ChatSettings> = {}): ChatSettings => ({ model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false }, leaf_id: null, ...extra })
+export const settings = (extra: Partial<ChatSettings> = {}): ChatSettings => ({ model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false, creation: true }, leaf_id: null, ...extra })
 
 export const summary: ConversationSummary = { id: 'c1', mode: 'chat', title: 'Bonjour', pinned: false, created_at: 1_700_000_000, updated_at: 1_700_000_100, cover: null, generation_count: 0, busy: false }
 

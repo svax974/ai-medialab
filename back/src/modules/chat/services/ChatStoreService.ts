@@ -3,15 +3,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
-import { ConversationEntity, ConversationService } from 'src/modules/studio-core';
+import { ConversationEntity, ConversationService, MessageService, type MessageDto } from 'src/modules/studio-core';
 import { newId, nowSeconds } from 'src/modules/media-library';
 import { ChatMessageEntity } from '../entities/ChatMessageEntity';
 import { ChatSettingsEntity } from '../entities/ChatSettingsEntity';
 import { siblingGroups, toChatMessage, toChatSettings } from '../mappers/chatMapper';
-import type { ChatMessage, ChatSettings, ChatSettingsPatch, ChatStats, ChatStatus, StoredAttachment, ToolRun } from '../types/chatTypes';
+import type { ChatMessage, ChatSettings, ChatSettingsPatch, ChatStats, ChatStatus, StoredAttachment, StoredGeneration, ToolRun } from '../types/chatTypes';
 import { SEARCH_LIMIT, type ChatRole } from '../types/chatTypes';
 
 export interface NewChatMessage {
@@ -20,6 +20,7 @@ export interface NewChatMessage {
   role: ChatRole;
   content?: string;
   attachments?: StoredAttachment[];
+  generations?: StoredGeneration[] | null;
   modelId?: string | null;
   params?: Record<string, unknown> | null;
   status?: ChatStatus;
@@ -30,6 +31,7 @@ export interface ChatMessageUpdate {
   content?: string;
   reasoning?: string | null;
   toolRuns?: ToolRun[];
+  generations?: StoredGeneration[] | null;
   status?: ChatStatus;
   error?: string | null;
   stats?: ChatStats | null;
@@ -57,6 +59,7 @@ export class ChatStoreService {
     @InjectRepository(ChatSettingsEntity) private readonly settings: Repository<ChatSettingsEntity>,
     @InjectRepository(ConversationEntity) private readonly conversations: Repository<ConversationEntity>,
     private readonly conversationService: ConversationService,
+    @Optional() private readonly studioMessages?: MessageService,
   ) {}
 
   /** The conversation row; 404 when it does not exist or is not a chat conversation. */
@@ -79,7 +82,7 @@ export class ChatStoreService {
     if (patch.params !== undefined) row.params = patch.params;
     if (patch.context_size !== undefined) row.contextSize = patch.context_size;
     if (patch.reasoning !== undefined) row.reasoning = patch.reasoning;
-    if (patch.tools !== undefined) row.tools = patch.tools;
+    if (patch.tools !== undefined) row.tools = { ...row.tools, ...patch.tools };
     await this.settings.save(row);
     return toChatSettings(row);
   }
@@ -91,7 +94,7 @@ export class ChatStoreService {
   }
 
   private defaults(): Pick<ChatSettingsEntity, 'modelId' | 'systemPrompt' | 'params' | 'contextSize' | 'reasoning' | 'tools' | 'leafId'> {
-    return { modelId: null, systemPrompt: '', params: {}, contextSize: null, reasoning: 'auto', tools: { web: false }, leafId: null };
+    return { modelId: null, systemPrompt: '', params: {}, contextSize: null, reasoning: 'auto', tools: { web: false, creation: true }, leafId: null };
   }
 
   // Messages -----------------------------------------------------------------------------------------------------
@@ -106,6 +109,7 @@ export class ChatStoreService {
         content: input.content ?? '',
         reasoning: null,
         toolRuns: [],
+        generations: input.generations ?? null,
         attachments: input.attachments ?? [],
         modelId: input.modelId ?? null,
         params: input.params ?? null,
@@ -151,7 +155,9 @@ export class ChatStoreService {
   async branch(conversationId: string): Promise<{ settings: ChatSettings; messages: ChatMessage[] }> {
     const [settings, all] = await Promise.all([this.getSettings(conversationId), this.all(conversationId)]);
     const groups = siblingGroups(all);
-    return { settings, messages: pathTo(all, settings.leaf_id).map((m) => toChatMessage(m, groups)) };
+    const path = pathTo(all, settings.leaf_id);
+    const live = await this.liveGenerations(path);
+    return { settings, messages: path.map((m) => toChatMessage(m, groups, live)) };
   }
 
   /** The siblings of a message (same parent and role, itself included), complete, oldest first: what a comparison shows. */
@@ -162,12 +168,21 @@ export class ChatStoreService {
     const groups = siblingGroups(all);
     const ids = groups.get(`${target.parentId ?? ''}|${target.role}`) ?? [target.id];
     const byId = new Map(all.map((m) => [m.id, m]));
-    return ids.flatMap((id) => (byId.has(id) ? [toChatMessage(byId.get(id) as ChatMessageEntity, groups)] : []));
+    const live = await this.liveGenerations(ids.flatMap((id) => byId.get(id) ?? []));
+    return ids.flatMap((id) => (byId.has(id) ? [toChatMessage(byId.get(id) as ChatMessageEntity, groups, live)] : []));
   }
 
   /** One message in its public form (its siblings are read from the conversation). */
   async toDto(entity: ChatMessageEntity): Promise<ChatMessage> {
-    return toChatMessage(entity, siblingGroups(await this.all(entity.conversationId)));
+    return toChatMessage(entity, siblingGroups(await this.all(entity.conversationId)), await this.liveGenerations([entity]));
+  }
+
+  /** The `studio-core` messages (state and files) behind the generations of these chat messages, by id. */
+  private async liveGenerations(messages: ChatMessageEntity[]): Promise<Map<string, MessageDto>> {
+    const ids = messages.flatMap((m) => (m.generations ?? []).flatMap((g) => (g.message_id ? [g.message_id] : [])));
+    if (!ids.length || !this.studioMessages) return new Map();
+    const rows = (await Promise.all(ids.map((id) => this.studioMessages?.get(id)))).filter((m): m is MessageDto => Boolean(m));
+    return new Map(rows.map((m) => [m.id, m]));
   }
 
   /**

@@ -6,7 +6,7 @@
 import { BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import {
   MAX_ATTACHMENTS, MAX_CONTENT_CHARS, MAX_SYSTEM_PROMPT_CHARS,
-  type ChatParams, type ChatReasoning, type ChatSettingsPatch,
+  type ChatParams, type ChatReasoning, type ChatSettingsPatch, type CreationModels,
 } from '../types/chatTypes';
 
 /** Server-side validation of every body and parameter of the chat routes: allow-lists and bounds, nothing trusted. */
@@ -55,12 +55,27 @@ function parseAttachmentNames(value: unknown): string[] {
   return [...new Set(names)];
 }
 
+/**
+ * `creation_models` of a message: the model each studio has selected (the browser holds that choice). Only the shape is
+ * checked here; a model the catalog does not know or that is not ready simply makes its tool unavailable.
+ */
+export function parseCreationModels(value: unknown): CreationModels | undefined {
+  if (value == null) return undefined;
+  if (!isRecord(value)) return unprocessable('creation_models : objet attendu.');
+  const out: CreationModels = {};
+  for (const kind of ['image', 'video', 'audio'] as const) {
+    if (value[kind] != null) out[kind] = parseModelId(value[kind]);
+  }
+  return out;
+}
+
 export interface SendBody {
   content: string;
   attachments: string[];
   /** `undefined`: the current leaf; `null`: a new root. */
   parentId: string | null | undefined;
   modelId: string | undefined;
+  creationModels?: CreationModels | undefined;
 }
 
 /** Body of `POST /api/chat/conversations/:id/messages`: a message needs text or an attachment. */
@@ -75,26 +90,33 @@ export function parseSendBody(body: unknown): SendBody {
     attachments,
     parentId: parent === undefined ? undefined : parent === null ? null : parseId(parent, 'parent_id'),
     modelId: body.model_id == null ? undefined : parseModelId(body.model_id),
+    creationModels: parseCreationModels(body.creation_models),
   };
 }
 
-export function parseRegenerateBody(body: unknown): { modelId: string | undefined } {
-  if (body == null) return { modelId: undefined };
+export interface RegenerateBody {
+  modelId?: string | undefined;
+  creationModels?: CreationModels | undefined;
+}
+
+export function parseRegenerateBody(body: unknown): RegenerateBody {
+  if (body == null) return { modelId: undefined, creationModels: undefined };
   if (!isRecord(body)) return unprocessable('Corps JSON attendu.');
-  return { modelId: body.model_id == null ? undefined : parseModelId(body.model_id) };
+  return { modelId: body.model_id == null ? undefined : parseModelId(body.model_id), creationModels: parseCreationModels(body.creation_models) };
 }
 
 export interface EditBody {
   content: string;
   /** `undefined`: the attachments of the original message stay. */
   attachments: string[] | undefined;
+  creationModels?: CreationModels | undefined;
 }
 
 export function parseEditBody(body: unknown): EditBody {
   if (!isRecord(body)) return unprocessable('Corps JSON attendu.');
   const attachments = body.attachments === undefined ? undefined : parseAttachmentNames(body.attachments);
   const kept = attachments === undefined ? true : attachments.length > 0;
-  return { content: parseContent(body.content ?? '', kept), attachments };
+  return { content: parseContent(body.content ?? '', kept), attachments, creationModels: parseCreationModels(body.creation_models) };
 }
 
 export function parseLeafBody(body: unknown): string {
@@ -149,7 +171,9 @@ export function parseSettingsPatch(body: unknown): ChatSettingsPatch {
   }
   if ('tools' in body) {
     const tools = body.tools;
-    patch.tools = isRecord(tools) && typeof tools.web === 'boolean' ? { web: tools.web } : unprocessable('tools : { web: booléen } attendu.');
+    const known = isRecord(tools) && Object.keys(tools).length > 0 && Object.entries(tools).every(([k, v]) => (k === 'web' || k === 'creation') && typeof v === 'boolean');
+    if (!known) return unprocessable('tools : { web?: booléen, creation?: booléen } attendu.');
+    patch.tools = tools as { web?: boolean; creation?: boolean };
   }
   return patch;
 }
@@ -169,4 +193,18 @@ export function parseSearchQuery(q: unknown): string {
 
 export function parseExportFormat(format: unknown): ExportFormat {
   return EXPORT_FORMATS.includes(format as ExportFormat) ? (format as ExportFormat) : bad(`format : ${EXPORT_FORMATS.join(' ou ')} attendu.`);
+}
+
+export interface ConfirmBody {
+  seconds?: number;
+  voiceId?: string;
+}
+
+/** Body of `POST .../generations/:gid/confirm`: the duration of a video or the voice of an audio, whichever the card asked for. */
+export function parseConfirmBody(body: unknown): ConfirmBody {
+  if (!isRecord(body)) return unprocessable('Corps JSON attendu.');
+  const out: ConfirmBody = {};
+  if (body.seconds != null) out.seconds = number(body.seconds, 'seconds', 0.1, 600);
+  if (body.voice_id != null) out.voiceId = typeof body.voice_id === 'string' && ID_PATTERN.test(body.voice_id) ? body.voice_id : unprocessable('voice_id : identifiant invalide.');
+  return out;
 }

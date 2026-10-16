@@ -11,6 +11,8 @@ import { studioKeys } from '@/modules/studio-shell/lib/queryKeys'
 import { attachmentRefs } from '../lib/attachments'
 import { chatKeys } from '../lib/chatKeys'
 import { requestedContext } from '../lib/context'
+import { withCreation } from '../lib/creation'
+import { useCreationModels } from './useCreationModels'
 import { answerPaths, chatApi } from '../services/chatApi'
 import { startAnswer, stopAnswer } from '../services/answerRunner'
 import type { ChatConversation, ChatMessage, ChatSettings } from '../types'
@@ -21,6 +23,7 @@ import type { ChatConversation, ChatMessage, ChatSettings } from '../types'
  */
 export function useChatActions(conversationId: string, settings: ChatSettings | null, model: ModelInfo | undefined) {
   const queryClient = useQueryClient()
+  const creation = useCreationModels()
   const context = settings ? requestedContext(settings, model) : null
   const setConversation = (conversation: ChatConversation) => {
     queryClient.setQueryData(chatKeys.conversation(conversationId), conversation)
@@ -31,11 +34,11 @@ export function useChatActions(conversationId: string, settings: ChatSettings | 
   const regenerate = (message: ChatMessage, modelId?: string) => {
     const target = modelId ?? message.model_id ?? model?.id
     if (!target) return
-    startAnswer(queryClient, conversationId, { path: answerPaths.regenerate(conversationId, message.id), body: { model_id: target }, modelId: target, requestedContext: context })
+    startAnswer(queryClient, conversationId, { path: answerPaths.regenerate(conversationId, message.id), body: { model_id: target, ...withCreation(settings, creation) }, modelId: target, requestedContext: context })
   }
   const edit = (message: ChatMessage, content: string) => {
     const target = message.model_id ?? model?.id ?? ''
-    startAnswer(queryClient, conversationId, { path: answerPaths.edit(conversationId, message.id), body: { content, attachments: attachmentRefs(message.attachments) }, modelId: model?.id ?? target, requestedContext: context })
+    startAnswer(queryClient, conversationId, { path: answerPaths.edit(conversationId, message.id), body: { content, attachments: attachmentRefs(message.attachments), ...withCreation(settings, creation) }, modelId: model?.id ?? target, requestedContext: context })
   }
   const switchBranch = (messageId: string) => {
     chatApi.setLeaf(conversationId, messageId).then(setConversation, fail)

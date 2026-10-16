@@ -134,7 +134,7 @@ describe('the private chat: a conversation that is nowhere', () => {
     const llm = new EngineLlmClient(engineClient);
     const models = { resolve: async () => { if (resolved instanceof ChatError) throw resolved; return resolved; } } as never;
     const replies = new ChatReplyService(
-      {} as never, llm, models, {} as never, webTool as never, {} as never, {} as never, { get occupied() { return occupied; } } as never, gate, {} as never,
+      {} as never, llm, models, {} as never, webTool as never, {} as never, {} as never, {} as never, { get occupied() { return occupied; } } as never, gate, {} as never,
     );
     const enhancer = { enhance: jest.fn(async () => ({ prompt: 'mieux', model_id: 'llm-a' })) } as never;
     service = new PrivateChatService(session, replies, models, attachments, enhancer, { get occupied() { return occupied; } } as never, gate, engineClient);

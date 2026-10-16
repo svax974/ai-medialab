@@ -60,6 +60,15 @@ export const settingsConfigSchema: ModuleConfigSchema = {
       hidden: true,
     },
     {
+      key: 'studio_chatVoiceId',
+      label: 'custom.settings.chatVoiceId',
+      description: 'custom.settings.chatVoiceId.description',
+      type: 'string',
+      defaultValue: '',
+      group: 'general',
+      hidden: true,
+    },
+    {
       key: 'studio_hfToken',
       label: 'custom.settings.hfToken',
       description: 'custom.settings.hfToken.description',

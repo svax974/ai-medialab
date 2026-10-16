@@ -53,14 +53,14 @@ describe('SettingsService', () => {
   afterEach(() => engine.close());
 
   it('returns the defaults and has_hf_token false when nothing is stored', async () => {
-    expect(await service.getPublic()).toEqual({ keep_alive_minutes: 10, previews: true, low_memory: true, quantize: {}, variant: {}, has_hf_token: false, has_brave_api_key: false });
+    expect(await service.getPublic()).toEqual({ keep_alive_minutes: 10, previews: true, low_memory: true, quantize: {}, variant: {}, chat_voice_id: '', has_hf_token: false, has_brave_api_key: false });
   });
 
   it('pushes the whole state to the engine, then stores it', async () => {
     const result = await service.update({ keep_alive_minutes: 0, hf_token: 'hf_x', variant: { m: 'q4' } });
     expect(engine.requests[0]).toMatchObject({ method: 'PUT', url: '/engine/v1/runtime/settings' });
     expect(pushed()[0]).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, hf_token: 'hf_x' });
-    expect(result).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, has_hf_token: true, has_brave_api_key: false });
+    expect(result).toEqual({ keep_alive_minutes: 0, previews: true, low_memory: true, quantize: {}, variant: { m: 'q4' }, chat_voice_id: '', has_hf_token: true, has_brave_api_key: false });
     expect(JSON.stringify(result)).not.toContain('hf_x');
     expect((await service.getPublic()).has_hf_token).toBe(true);
   });

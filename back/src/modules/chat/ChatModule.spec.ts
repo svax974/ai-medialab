@@ -8,12 +8,13 @@ import { describe, expect, it } from '@jest/globals';
 import type { Provider } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
+import { VoiceService } from 'src/modules/audio-studio';
 import { EngineClient } from 'src/modules/engine';
 import { StudioEvents } from 'src/modules/media-library';
 import { ModelCatalogService } from 'src/modules/model-catalog';
 import { SettingsService } from 'src/modules/settings';
 import {
-  ConversationEntity, ConversationModeRegistry, ConversationService, EngineBusyGate, GenerationQueueService, GenerationService,
+  ConversationEntity, ConversationModeRegistry, ConversationService, EngineBusyGate, GenerationQueueService, GenerationService, MessageService,
 } from 'src/modules/studio-core';
 import { ChatModule } from './ChatModule';
 import { ChatController } from './controllers/ChatController';
@@ -33,7 +34,7 @@ describe('ChatModule wiring', () => {
     const needs: [string, unknown][] = [
       ['ConversationService', ConversationService], ['GenerationService', GenerationService], ['GenerationQueueService', GenerationQueueService],
       ['EngineBusyGate', EngineBusyGate], ['ConversationModeRegistry', ConversationModeRegistry], ['StudioEvents', StudioEvents],
-      ['ModelCatalogService', ModelCatalogService], ['SettingsService', SettingsService],
+      ['ModelCatalogService', ModelCatalogService], ['SettingsService', SettingsService], ['VoiceService', VoiceService], ['MessageService', MessageService],
     ];
     for (const [name, token] of needs) expect([name, exportedByImports.has(token)]).toEqual([name, true]);
   });
@@ -55,7 +56,7 @@ describe('ChatModule wiring', () => {
       providers: [
         ...providers.filter((p) => p !== ChatBootstrap), // its start-up work needs a database: the wiring is what is checked here
         repo(ChatMessageEntity), repo(ChatSettingsEntity), repo(ConversationEntity),
-        ...[ConversationService, GenerationService, GenerationQueueService, EngineBusyGate, ConversationModeRegistry, StudioEvents, ModelCatalogService, SettingsService, EngineClient].map(standIn),
+        ...[ConversationService, GenerationService, GenerationQueueService, EngineBusyGate, ConversationModeRegistry, StudioEvents, ModelCatalogService, SettingsService, EngineClient, VoiceService, MessageService].map(standIn),
       ],
     }).compile();
     expect(moduleRef.get(ChatController)).toBeInstanceOf(ChatController);

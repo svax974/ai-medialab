@@ -20,6 +20,9 @@ describe('parseSettingsPatch', () => {
     expect(parseSettingsPatch({ hf_token: '' })).toEqual({ hf_token: '' });
     expect(parseSettingsPatch({ brave_api_key: ' BSA ' })).toEqual({ brave_api_key: 'BSA' });
     expect(() => parseSettingsPatch({ brave_api_key: 'x'.repeat(513) })).toThrow();
+    expect(parseSettingsPatch({ chat_voice_id: ' v1 ' })).toEqual({ chat_voice_id: 'v1' });
+    expect(parseSettingsPatch({ chat_voice_id: '' })).toEqual({ chat_voice_id: '' });
+    expect(() => parseSettingsPatch({ chat_voice_id: 4 })).toThrow();
   });
 
   it('accepts the model maps', () => {
@@ -60,6 +63,6 @@ describe('applyPatch / toPublic', () => {
     expect(pub).not.toHaveProperty('hf_token');
     expect(pub.has_hf_token).toBe(true);
     expect(toPublic(DEFAULT_SETTINGS).has_hf_token).toBe(false);
-    expect(Object.keys(pub).sort()).toEqual(['has_brave_api_key', 'has_hf_token', 'keep_alive_minutes', 'low_memory', 'previews', 'quantize', 'variant']);
+    expect(Object.keys(pub).sort()).toEqual(['chat_voice_id', 'has_brave_api_key', 'has_hf_token', 'keep_alive_minutes', 'low_memory', 'previews', 'quantize', 'variant']);
   });
 });

@@ -7,6 +7,7 @@ import { Box } from '@mui/material'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import type { ChatMessage } from '../types'
 import { Markdown } from './Markdown'
+import { Generations } from './GenerationCard'
 import { ReasoningBlock, StatsLine, ToolRuns } from './MessageParts'
 
 /**
@@ -21,7 +22,8 @@ export function AssistantBody({ message }: { message: ChatMessage }) {
     <Box>
       {message.reasoning && <ReasoningBlock text={message.reasoning} thinking={thinking} />}
       <ToolRuns runs={message.tool_runs} />
-      {message.content !== '' ? <Markdown text={message.content} streaming={streaming} /> : streaming && !message.reasoning && message.tool_runs.length === 0 ? <Box aria-label={t('chat.waiting')} role="status" sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--safe)', animation: 'var(--animate-breathe)' }} /> : null}
+      <Generations message={message} />
+      {message.content !== '' ? <Markdown text={message.content} streaming={streaming} /> : streaming && !message.reasoning && message.tool_runs.length === 0 && !message.generations?.length ? <Box aria-label={t('chat.waiting')} role="status" sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: 'var(--safe)', animation: 'var(--animate-breathe)' }} /> : null}
       {message.status === 'cancelled' && <Box sx={{ mt: 1, fontSize: 12, color: 'var(--faint)' }}>{t('chat.stopped')}</Box>}
       {message.status === 'error' && <Box role="alert" sx={{ mt: 1, fontSize: 12.5, color: 'var(--danger)' }}>{message.error ?? t('chat.error.upstream')}</Box>}
       {!streaming && <Box sx={{ mt: 1 }}><StatsLine message={message} /></Box>}

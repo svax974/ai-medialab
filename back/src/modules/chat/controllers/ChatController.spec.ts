@@ -83,8 +83,8 @@ describe('chat routes', () => {
     const attachments = new ChatAttachmentService(store);
     const models = { resolve: async () => { const m = resolveModel(); if (m instanceof ChatError) throw m; return m; } } as never;
     const queue = { get occupied() { return occupied; } } as never;
-    const replies = new ChatReplyService(store, llm, models, attachments, { begin: () => ({}), run: async () => ({}) } as never, services.conversations, { publishConversation: () => Promise.resolve() } as never, queue, gate, {} as never);
-    const chat = new ChatService(store, services.conversations, attachments, replies, engineClient, gate);
+    const replies = new ChatReplyService(store, llm, models, attachments, { begin: () => ({}), run: async () => ({}) } as never, { prepare: async () => null } as never, services.conversations, { publishConversation: () => Promise.resolve() } as never, queue, gate, {} as never);
+    const chat = new ChatService(store, services.conversations, attachments, replies, { discard: async () => undefined } as never, engineClient, gate);
     await new ChatBootstrap(registry, store, replies, attachments).onApplicationBootstrap();
     const enhancer = new PromptEnhanceService(llm, models, engineClient, queue, gate);
 

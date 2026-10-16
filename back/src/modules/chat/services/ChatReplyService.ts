@@ -14,11 +14,12 @@ import { buildHistory, type EngineChatMessage } from './chatHistory';
 import { ChatModelService, type ResolvedModel } from './ChatModelService';
 import { ChatStoreService } from './ChatStoreService';
 import { EngineLlmClient, type LlmChatRequest, type LlmToolCall, type LlmUsage } from './EngineLlmClient';
+import { CreationToolsService, isCreationTool, parseCommand, type CreationCommand, type CreationRun } from './CreationToolsService';
 import { WEB_TOOL_SCHEMAS, WebToolsService } from './WebToolsService';
-import type { EditBody, SendBody } from './chatValidation';
+import type { EditBody, RegenerateBody, SendBody } from './chatValidation';
 import {
   ChatError, MAX_TITLE_CHARS, MAX_TOOL_ROUNDS,
-  type ChatSettings, type ChatStats, type StoredAttachment, type ToolRun,
+  type ChatSettings, type ChatStats, type CreationModels, type StoredAttachment, type StoredGeneration, type ToolRun,
 } from '../types/chatTypes';
 
 /** Where a reply's events go: the SSE response of the route (and the signal that says the client left). */
@@ -40,12 +41,14 @@ const TITLE_SYSTEM = 'Donne un titre très court (4 à 6 mots) à cette conversa
 
 const BUSY_GENERATION = "Une génération d'image, d'audio ou de vidéo est en cours ou en attente : attendez sa fin ou annulez-la avant de discuter.";
 const BUSY_REPLY = 'Une réponse est déjà en cours de génération.';
+const GENERATION_STARTED = 'Génération lancée : le résultat apparaîtra ci-dessous dès que le modèle aura terminé.';
 
 /** Mutable state of one reply: what has been written, and the throttled write to the database. */
 export class ReplyState {
   content = '';
   reasoning = '';
   toolRuns: ToolRun[] = [];
+  generations: StoredGeneration[] = [];
   promptTokens = 0;
   completionTokens = 0;
   tokensPerSecond: number | null = null;
@@ -84,7 +87,7 @@ export class ReplyState {
     this.timer = null;
     if (!this.dirty && !Object.keys(extra).length) return;
     this.dirty = false;
-    await this.write({ content: this.content, reasoning: this.reasoning || null, toolRuns: this.toolRuns, ...extra });
+    await this.write({ content: this.content, reasoning: this.reasoning || null, toolRuns: this.toolRuns, generations: this.generations.length ? this.generations : null, ...extra });
   }
 }
 
@@ -103,6 +106,7 @@ export class ChatReplyService implements OnModuleDestroy {
     private readonly models: ChatModelService,
     private readonly attachments: ChatAttachmentService,
     private readonly tools: WebToolsService,
+    private readonly creation: CreationToolsService,
     private readonly conversations: ConversationService,
     private readonly generations: GenerationService,
     private readonly queue: GenerationQueueService,
@@ -134,16 +138,18 @@ export class ChatReplyService implements OnModuleDestroy {
       if (parent.role !== 'assistant') throw new UnprocessableEntityException('parent_id : une réponse du modèle est attendue.');
     }
     const attachments = await this.attachments.resolve(body.attachments);
-    await this.run(conversationId, sink, body.modelId, { kind: 'new_user', parentId, content: body.content, attachments });
+    const command = settings.tools.creation && !attachments.length ? parseCommand(body.content) : null;
+    if (command) return this.runCommand(conversationId, settings, parentId, body, command, sink);
+    await this.run(conversationId, sink, body.modelId, { kind: 'new_user', parentId, content: body.content, attachments }, body.creationModels);
   }
 
   /** A new answer to the same message as `messageId` (an assistant message): another try, possibly with another model. */
-  async regenerate(conversationId: string, messageId: string, modelId: string | undefined, sink: ReplySink): Promise<void> {
+  async regenerate(conversationId: string, messageId: string, body: RegenerateBody, sink: ReplySink): Promise<void> {
     await this.store.requireConversation(conversationId);
     const answer = await this.store.requireMessage(conversationId, messageId);
     if (answer.role !== 'assistant' || !answer.parentId) throw new UnprocessableEntityException('Seule une réponse du modèle peut être régénérée.');
     const user = await this.store.requireMessage(conversationId, answer.parentId);
-    await this.run(conversationId, sink, modelId, { kind: 'answer', user });
+    await this.run(conversationId, sink, body.modelId, { kind: 'answer', user }, body.creationModels);
   }
 
   /** A new version of a user message (a sibling of `messageId`) and its answer. Attachments omitted: the original ones stay. */
@@ -152,12 +158,37 @@ export class ChatReplyService implements OnModuleDestroy {
     const original = await this.store.requireMessage(conversationId, messageId);
     if (original.role !== 'user') throw new UnprocessableEntityException('Seul un message utilisateur peut être modifié.');
     const attachments = body.attachments ? await this.attachments.resolve(body.attachments) : original.attachments;
-    await this.run(conversationId, sink, undefined, { kind: 'new_user', parentId: original.parentId, content: body.content, attachments });
+    await this.run(conversationId, sink, undefined, { kind: 'new_user', parentId: original.parentId, content: body.content, attachments }, body.creationModels);
+  }
+
+  /**
+   * `/image`, `/video`, `/audio`: the generation starts without the language model (nothing is loaded, the engine gauge is
+   * not taken: the queue of `studio-core` runs it) and the reply is one fixed sentence.
+   */
+  private async runCommand(
+    conversationId: string, settings: ChatSettings, parentId: string | null, body: SendBody, command: CreationCommand, sink: ReplySink,
+  ): Promise<void> {
+    if (this.runningIn(conversationId)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
+    let generation: StoredGeneration;
+    try {
+      generation = await this.creation.runCommand(conversationId, command, body.creationModels);
+    } catch (error) {
+      if (error instanceof ChatError) return this.refuse(sink, error);
+      throw error;
+    }
+    const plan: TurnPlan = { kind: 'new_user', parentId, content: body.content, attachments: [] };
+    const turn = await this.open(conversationId, settings, null, plan, sink);
+    const content = generation.pending === 'duration' ? 'Choisissez la durée de la vidéo ci-dessous.' : GENERATION_STARTED;
+    await this.store.updateMessage(turn.assistant.id, { content, generations: [generation], status: 'done', error: null });
+    sink.emit('done', { message: await this.store.toDto((await this.store.getMessage(turn.assistant.id)) as ChatMessageEntity) });
+    void this.generations.publishConversation(conversationId);
   }
 
   // One turn ------------------------------------------------------------------------------------------------------
 
-  private async run(conversationId: string, sink: ReplySink, requestedModel: string | undefined, plan: TurnPlan): Promise<void> {
+  private async run(
+    conversationId: string, sink: ReplySink, requestedModel: string | undefined, plan: TurnPlan, creationModels?: CreationModels,
+  ): Promise<void> {
     if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', BUSY_GENERATION));
     await this.gate.preempt(); // a title still being written gives the engine up: it never makes a request busy
     if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
@@ -167,7 +198,7 @@ export class ChatReplyService implements OnModuleDestroy {
       const model = await this.models.resolve(requestedModel ?? settings.model_id);
       const turn = await this.open(conversationId, settings, model, plan, sink);
       generating = true; // `generate` releases the gauge itself when the reply ends
-      await this.generate(conversationId, settings, model, turn, sink);
+      await this.generate(conversationId, settings, model, turn, sink, creationModels);
     } catch (error) {
       if (!(error instanceof ChatError)) throw error;
       this.refuse(sink, error);
@@ -181,13 +212,13 @@ export class ChatReplyService implements OnModuleDestroy {
   }
 
   /** Stores the user message (when new) and the empty answer, and tells the browser. */
-  private async open(conversationId: string, settings: ChatSettings, model: ResolvedModel, plan: TurnPlan, sink: ReplySink) {
+  private async open(conversationId: string, settings: ChatSettings, model: Pick<ResolvedModel, 'id'> | null, plan: TurnPlan, sink: ReplySink) {
     const before = await this.store.path(conversationId, settings.leaf_id);
     const user = plan.kind === 'answer'
       ? plan.user
       : await this.store.addMessage({ conversationId, parentId: plan.parentId, role: 'user', content: plan.content, attachments: plan.attachments });
     const assistant = await this.store.addMessage({
-      conversationId, parentId: user.id, role: 'assistant', status: 'streaming', modelId: model.id, params: { ...settings.params, reasoning: settings.reasoning },
+      conversationId, parentId: user.id, role: 'assistant', status: 'streaming', modelId: model?.id ?? null, params: { ...settings.params, reasoning: settings.reasoning },
     });
     await this.store.setLeaf(conversationId, assistant.id);
     await this.store.touch(conversationId);
@@ -210,6 +241,7 @@ export class ChatReplyService implements OnModuleDestroy {
   private async generate(
     conversationId: string, settings: ChatSettings, model: ResolvedModel,
     turn: { user: ChatMessageEntity; assistant: ChatMessageEntity; wasDefaultTitle: boolean; firstExchange: boolean }, sink: ReplySink,
+    creationModels?: CreationModels,
   ): Promise<void> {
     const abort = new AbortController();
     const stop = () => abort.abort();
@@ -225,7 +257,8 @@ export class ChatReplyService implements OnModuleDestroy {
         imagePath: (name) => this.attachments.pathOf(name),
         readText: (name) => this.attachments.readText(name),
       });
-      await this.streamRounds(settings, model, history, state, id, sink, abort.signal);
+      const creation = settings.tools.creation && model.caps.tools ? await this.creation.prepare(conversationId, creationModels) : null;
+      await this.streamRounds(settings, model, history, state, id, sink, abort.signal, false, creation);
       await state.flush({ status: 'done', stats: state.stats(), error: null });
       sink.emit('done', { message: await this.store.toDto((await this.store.getMessage(id)) as ChatMessageEntity) });
       void this.generations.publishConversation(conversationId);
@@ -258,7 +291,7 @@ export class ChatReplyService implements OnModuleDestroy {
 
   // Rounds (the model answers, calls tools, answers again) ------------------------------------------------------------
 
-  private request(settings: ChatSettings, model: ResolvedModel, messages: EngineChatMessage[], withTools: boolean, isPrivate: boolean): LlmChatRequest {
+  private request(settings: ChatSettings, model: ResolvedModel, messages: EngineChatMessage[], tools: Record<string, unknown>[], isPrivate: boolean): LlmChatRequest {
     const { seed, ...sampling } = settings.params;
     return {
       model_id: model.id,
@@ -267,7 +300,7 @@ export class ChatReplyService implements OnModuleDestroy {
       params: { ...sampling, ...(seed === null || seed === undefined ? {} : { seed }) },
       ...(settings.context_size ? { context_size: settings.context_size } : {}),
       reasoning: settings.reasoning,
-      ...(withTools ? { tools: WEB_TOOL_SCHEMAS as unknown as Record<string, unknown>[] } : {}),
+      ...(tools.length ? { tools } : {}),
     };
   }
 
@@ -278,15 +311,16 @@ export class ChatReplyService implements OnModuleDestroy {
    */
   async streamRounds(
     settings: ChatSettings, model: ResolvedModel, history: EngineChatMessage[], state: ReplyState, id: string, sink: ReplySink, signal: AbortSignal,
-    isPrivate = false,
+    isPrivate = false, creation: CreationRun | null = null,
   ): Promise<void> {
-    const toolsOn = settings.tools.web && model.caps.tools;
+    const web = settings.tools.web && model.caps.tools ? (WEB_TOOL_SCHEMAS as unknown as Record<string, unknown>[]) : [];
+    const offered = [...web, ...(creation?.schemas ?? [])];
     let messages = history;
     for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
       const calls: LlmToolCall[] = [];
       const before = state.content.length;
       if (round > 0 && state.content) this.append(state, id, sink, 'delta', '\n\n');
-      for await (const event of this.llm.chat(this.request(settings, model, messages, toolsOn && round < MAX_TOOL_ROUNDS, isPrivate), signal)) {
+      for await (const event of this.llm.chat(this.request(settings, model, messages, round < MAX_TOOL_ROUNDS ? offered : [], isPrivate), signal)) {
         if (event.type === 'loading') sink.emit('loading', { phase: event.phase, model_id: event.model_id, ...(event.elapsed_s !== undefined ? { elapsed_s: event.elapsed_s } : {}) });
         else if (event.type === 'delta') this.append(state, id, sink, 'delta', event.content);
         else if (event.type === 'reasoning') this.append(state, id, sink, 'reasoning', event.content);
@@ -297,7 +331,7 @@ export class ChatReplyService implements OnModuleDestroy {
         } else if (event.type === 'error') throw new ChatError(event.code, event.message);
       }
       if (!calls.length || round === MAX_TOOL_ROUNDS) return; // the last round offers no tool: a call it makes is ignored
-      messages = await this.runTools(messages, calls, state.content.slice(before), state, id, sink, signal);
+      messages = await this.runTools(messages, calls, state.content.slice(before), state, id, sink, signal, creation);
     }
   }
 
@@ -310,13 +344,16 @@ export class ChatReplyService implements OnModuleDestroy {
 
   private async runTools(
     messages: EngineChatMessage[], calls: LlmToolCall[], said: string, state: ReplyState, id: string, sink: ReplySink, signal: AbortSignal,
+    creation: CreationRun | null,
   ): Promise<EngineChatMessage[]> {
     const next: EngineChatMessage[] = [...messages, { role: 'assistant', content: said, tool_calls: calls as unknown as Record<string, unknown>[] }];
     for (const call of calls) {
-      const running = this.tools.begin(call);
+      const creating = creation !== null && isCreationTool(call.function.name);
+      const running = creating ? creation.begin(call) : this.tools.begin(call);
       state.toolRuns = [...state.toolRuns, running];
       sink.emit('tool', { id, run: running });
-      const outcome = await this.tools.run(call, signal);
+      const outcome = creating ? await creation.run(call) : await this.tools.run(call, signal);
+      if (creating) state.generations = [...creation.generations];
       state.toolRuns = state.toolRuns.map((r) => (r.id === call.id ? outcome.run : r));
       state.touch();
       sink.emit('tool', { id, run: outcome.run });

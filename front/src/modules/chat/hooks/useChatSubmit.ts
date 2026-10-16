@@ -15,6 +15,8 @@ import { attachmentRefs, MAX_CONTENT_CHARS } from '../lib/attachments'
 import { requestedContext } from '../lib/context'
 import { answerPaths, chatApi } from '../services/chatApi'
 import { startAnswer } from '../services/answerRunner'
+import { useCreationModels } from './useCreationModels'
+import { withCreation } from '../lib/creation'
 import { useChatDefaultsStore } from '../state/chatDefaultsStore'
 import { HOME_DRAFT, useChatDraftStore } from '../state/chatDraftStore'
 import type { ChatAttachment, ChatSettings, SendBody } from '../types'
@@ -25,13 +27,14 @@ import type { ChatAttachment, ChatSettings, SendBody } from '../types'
  * (`pending`) once it has loaded the conversation, so the stream lands in a cache that exists.
  */
 export function useChatSubmit(conversationId: string | null, settings: ChatSettings | null, model: ModelInfo | undefined) {
+  const creation = useCreationModels()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [creating, setCreating] = useState(false)
   const submit = async (text: string, attached: ChatAttachment[]): Promise<void> => {
     if (!model || !settings) return
     if (text.length > MAX_CONTENT_CHARS) return void toast.error(i18n.get('chat.error.tooLong', [MAX_CONTENT_CHARS]))
-    const body: SendBody = { content: text.trim(), attachments: attachmentRefs(attached), model_id: model.id }
+    const body: SendBody = { content: text.trim(), attachments: attachmentRefs(attached), model_id: model.id, ...withCreation(settings, creation) }
     const context = requestedContext(settings, model)
     if (conversationId) {
       startAnswer(queryClient, conversationId, { path: answerPaths.send(conversationId), body, draftKey: conversationId, modelId: model.id, requestedContext: context })

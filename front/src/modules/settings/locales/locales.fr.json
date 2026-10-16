@@ -58,5 +58,13 @@
   "settings.help.braveKey.body": "Identifiant de l'API Brave Search. Il est stocké chiffré sur cet ordinateur, sert uniquement à la recherche web du chat (les requêtes sortent alors de la machine vers Brave) et n'est jamais réaffiché.",
   "settings.help.braveKey.tip": "laissez vide pour utiliser DuckDuckGo.",
   "settings.help.localAi.title": "IA locale au lancement",
-  "settings.help.localAi.body": "Le moteur de chat (llama.cpp) et un petit modèle donnent le Chat, des mises à jour analysées avant installation et l'amélioration des prompts, le tout sur votre machine. Désactivé, l'invitation d'installation ne s'affiche plus ; vous pouvez toujours installer le moteur depuis la liste des modèles du Chat."
+  "settings.help.localAi.body": "Le moteur de chat (llama.cpp) et un petit modèle donnent le Chat, des mises à jour analysées avant installation et l'amélioration des prompts, le tout sur votre machine. Désactivé, l'invitation d'installation ne s'affiche plus ; vous pouvez toujours installer le moteur depuis la liste des modèles du Chat.",
+  "settings.chatVoice.title": "Voix par défaut du chat",
+  "settings.chatVoice.description": "Quand le chat crée un son et qu'aucune voix n'est nommée, un modèle qui en exige une parle avec celle-ci. Une voix nommée dans la demande l'emporte toujours.",
+  "settings.chatVoice.empty": "Aucune voix de la bibliothèque n'a d'échantillon : ajoutez-en une dans le studio audio pour la choisir ici.",
+  "settings.chatVoice.none": "Aucune (le chat demandera)",
+  "settings.chatVoice.aria": "Voix par défaut du chat",
+  "settings.help.chatVoice.title": "Voix par défaut du chat",
+  "settings.help.chatVoice.body": "Les outils de création du chat peuvent lire un texte à voix haute. Un modèle qui clone une voix en exige une : sans voix nommée dans la demande, le chat prend celle-ci, sinon il affiche une carte pour que vous la choisissiez. Les modèles qui ont leurs propres voix n'en ont pas besoin.",
+  "settings.help.chatVoice.tip": "une voix de la bibliothèque, avec un échantillon."
 }

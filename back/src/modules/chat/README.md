@@ -4,7 +4,7 @@
 
 Le **studio de chat** : conversations avec un modèle de langage local (llama.cpp, piloté par le moteur Python), sous forme d'un **arbre de
 messages** (répondre, modifier un message ou régénérer une réponse ajoute une branche, rien n'est écrasé), réponses **en flux** (SSE),
-**pièces jointes** (images pour les modèles de vision, fichiers texte), **outils web** (recherche et lecture de pages) pour les modèles qui
+**pièces jointes** (images pour les modèles de vision, fichiers texte), **outils web** (recherche et lecture de pages) et **outils de création** (image, vidéo, son lancés dans les studios) pour les modèles qui
 appellent des fonctions, titre automatique, export, recherche, et le bouton ✨ d'amélioration de prompt des trois autres studios.
 
 Les conversations sont celles de `studio-core` (`conversations`, `mode = 'chat'` : liste, titre, épingle, suppression et recherche de titre
@@ -15,8 +15,8 @@ aucune conversation : Nest lui envoie tout l'historique à chaque réponse. Modu
 
 | Type | Fichier | Description |
 |---|---|---|
-| Module | `ChatModule.ts` | Importe `CommonModule`, `MediaLibraryModule`, `StudioCoreModule`, `ModelCatalogModule`, `SettingsModule` ; déclare les deux entités, le contrôleur et les services ; exporte `ChatReplyService`, `EngineLlmClient`, `ChatModelService`, `WebToolsService` et `PromptEnhanceService` (le chat privé du module `private` les réutilise). |
-| Entité | `entities/ChatMessageEntity.ts` | Table `chat_messages` : arbre (`parent_id`), `role`, `content`, `reasoning`, `tool_runs`, `attachments`, `model_id`, `params`, `status`, `error`, `stats`, `created_at`. |
+| Module | `ChatModule.ts` | Importe `CommonModule`, `MediaLibraryModule`, `AudioStudioModule`, `StudioCoreModule`, `ModelCatalogModule`, `SettingsModule` ; déclare les deux entités, le contrôleur et les services ; exporte `ChatReplyService`, `EngineLlmClient`, `ChatModelService`, `WebToolsService` et `PromptEnhanceService` (le chat privé du module `private` les réutilise). |
+| Entité | `entities/ChatMessageEntity.ts` | Table `chat_messages` : arbre (`parent_id`), `role`, `content`, `reasoning`, `tool_runs`, `generations`, `attachments`, `model_id`, `params`, `status`, `error`, `stats`, `created_at`. |
 | Entité | `entities/ChatSettingsEntity.ts` | Table `chat_conversation_settings` : modèle, instruction système, échantillonnage, contexte, raisonnement, outils, `leaf_id` (feuille de la branche active). |
 | Contrôleur | `controllers/ChatController.ts` | `/api/chat/*` (ci-dessous). Administrateur seulement, JSON en clair (`NoTransportCrypt`). |
 | Flux | `controllers/SseStream.ts` | Réponse SSE : en-têtes envoyés avec le premier évènement, `: ping` toutes les 15 s, `signal` qui s'abat quand le client part, client qui ne lit plus (plus de 1 Mo en attente) coupé. `Cache-Control` au choix du constructeur (`no-cache, no-transform` ici, `no-store, no-transform` pour le chat privé). |
@@ -27,6 +27,7 @@ aucune conversation : Nest lui envoie tout l'historique à chaque réponse. Modu
 | Service | `services/ChatModelService.ts` | Quel modèle répond (demandé, sinon celui de la conversation, sinon le défaut du moteur), téléchargé, avec son moteur installé ; sinon une `ChatError` avec un texte qui dit quoi faire. |
 | Service | `services/ChatAttachmentService.ts` | Pièces jointes dans `<données>/uploads/` (`chat_<16 hex>.<ext>`), type reconnu par les octets, purge, balayage des envois jamais utilisés. |
 | Service | `services/WebToolsService.ts` | `web_search` (DuckDuckGo, ou Brave si une clé est saisie dans les réglages) et `fetch_url` (page publique en texte). |
+| Service | `services/CreationToolsService.ts` | Les outils de création : schémas `generate_image` / `generate_video` / `generate_audio` construits à chaque réponse d'après les modèles des studios et leurs capacités, exécution d'un appel (génération mise en file de `studio-core`), commandes `/image` `/video` `/audio`, carte de choix (`confirm`), nettoyage à la suppression d'un message. |
 | Service | `services/PromptEnhanceService.ts` | `POST /api/chat/enhance-prompt` : améliore un prompt d'image, de vidéo ou un texte à lire à voix haute. |
 | Service | `services/ChatBootstrap.ts` | Au démarrage : inscrit le chat au registre des modes de `studio-core`, termine les réponses restées `streaming`, balaie les envois orphelins. |
 | Pures | `services/chatValidation.ts`, `chatHistory.ts`, `chatExport.ts` | Validation de tout ce qui entre (listes blanches, bornes), historique envoyé au moteur, export Markdown / JSON. |
@@ -36,9 +37,9 @@ aucune conversation : Nest lui envoie tout l'historique à chaque réponse. Modu
 
 ## Dépendances
 
-- `studio-core` : `ConversationEntity`, `ConversationService`, `GenerationService.publishConversation`, `ConversationModeRegistry`, `EngineBusyGate`, `GenerationQueueService.occupied`. Pas l'inverse (voir le README de `studio-core`, « Modes qui gardent leurs messages ailleurs »).
+- `studio-core` : `ConversationEntity`, `ConversationService`, `GenerationService` (`publishConversation`, `create`, `remove` : les outils de création), `MessageService` (état et fichiers d'une génération), `ConversationModeRegistry`, `EngineBusyGate`, `GenerationQueueService.occupied`. Pas l'inverse (voir le README de `studio-core`, « Modes qui gardent leurs messages ailleurs »).
 - `engine` (global) : `EngineClient` (URL, jeton, `GET /engine/v1/llm/status`), `SseParser`, `EngineSchemas` (type du corps de `POST /engine/v1/llm/chat`, tiré de l'OpenAPI du moteur).
-- `model-catalog` : `ModelCatalogService.catalog()` (capacités `llm` : `tools`, `vision`…). `settings` : `SettingsService.braveApiKey()`. `media-library` : `uploadStorage`, `uploadsDir`, `newId`, `nowSeconds`.
+- `model-catalog` : `ModelCatalogService.catalog()` (capacités `llm` : `tools`, `vision`… ; `audio` et `video` : ce que chaque outil de création propose). `audio-studio` : `VoiceService` (voix nommées). `settings` : `SettingsService.braveApiKey()`, `chat_voice_id` (voix par défaut). `media-library` : `uploadStorage`, `uploadsDir`, `newId`, `nowSeconds`.
 - `common` : `throttledFetchJson` (tout appel sortant des outils web : espacement par source, reprise sur 429/5xx, ne lève jamais), `AdminOnlyInterceptor`, `NoTransportCrypt`.
 - Le moteur (`engine/app/llm.py`, `api/llm.py`) : `POST /engine/v1/llm/chat` (flux), `GET /engine/v1/llm/status`. Il refuse un chemin d'image hors du dossier de données.
 
@@ -51,9 +52,10 @@ Tous **administrateur** (le principal `local-trust` l'est). Erreurs de Nest `{ s
 | Méthode | Endpoint | Corps → Réponse |
 |---|---|---|
 | `GET` | `/api/chat/conversations/:id` | → `ChatConversation` : `{ conversation: ConversationSummary, settings, messages }` (`messages` = la branche active, racine → feuille) |
-| `PATCH` | `/api/chat/conversations/:id/settings` | partie de `{ model_id, system_prompt, params, context_size, reasoning, tools }` → `ChatSettings`. `params` : `temperature` 0–2, `top_p` 0–1, `top_k` 0–1000, `min_p` 0–1, `repeat_penalty` 0–2, `presence_penalty` et `frequency_penalty` −2–2, `max_tokens` 1–262144, `seed` 0–4294967295, `stop` (8 textes de 64 caractères) ; `context_size` `null` ou 256–1048576 ; `reasoning` `auto` `off` `low` `medium` `high` ; `tools` `{ web: boolean }`. `leaf_id` n'est pas modifiable ici |
-| `POST` | `/api/chat/conversations/:id/messages` | `{ content, attachments?: [{ name }], parent_id?, model_id? }` → **flux SSE**. `parent_id` absent : la feuille courante ; `null` : une nouvelle racine ; sinon un message **de réponse** (un message utilisateur est refusé en 422). `content` peut être vide s'il y a une pièce jointe |
+| `PATCH` | `/api/chat/conversations/:id/settings` | partie de `{ model_id, system_prompt, params, context_size, reasoning, tools }` → `ChatSettings`. `params` : `temperature` 0–2, `top_p` 0–1, `top_k` 0–1000, `min_p` 0–1, `repeat_penalty` 0–2, `presence_penalty` et `frequency_penalty` −2–2, `max_tokens` 1–262144, `seed` 0–4294967295, `stop` (8 textes de 64 caractères) ; `context_size` `null` ou 256–1048576 ; `reasoning` `auto` `off` `low` `medium` `high` ; `tools` `{ web?: boolean, creation?: boolean }` (fusionné avec l'existant ; `creation` est **actif par défaut**). `leaf_id` n'est pas modifiable ici |
+| `POST` | `/api/chat/conversations/:id/messages` | `{ content, attachments?: [{ name }], parent_id?, model_id?, creation_models? }` → **flux SSE**. `parent_id` absent : la feuille courante ; `null` : une nouvelle racine ; sinon un message **de réponse** (un message utilisateur est refusé en 422). `content` peut être vide s'il y a une pièce jointe. `creation_models` : `{ image?, video?, audio? }`, le modèle sélectionné de chaque studio (le navigateur le tient, Nest l'ignore sinon) : voir « Outils de création ». `regenerate` et `edit` le prennent aussi |
 | `POST` | `/api/chat/conversations/:id/messages/:mid/regenerate` | `{ model_id? }` (`mid` = réponse) → **flux SSE** : nouvelle réponse **sœur** de `mid`, d'un autre modèle si demandé (comparaison) ; l'ancienne reste |
+| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `{ seconds? }` ou `{ voice_id? }` → `ChatGeneration` : lance la génération d'une carte de choix (`pending`). **422** durée hors des bornes du modèle, voix disparue ou absente, génération qui n'attend plus de choix ; **404** message |
 | `POST` | `/api/chat/conversations/:id/messages/:mid/edit` | `{ content, attachments? }` (`mid` = message utilisateur) → **flux SSE** : nouveau message utilisateur **sœur** de `mid` et sa réponse. `attachments` omis : ceux de l'original restent ; `[]` : aucun |
 | `POST` | `/api/chat/conversations/:id/leaf` | `{ message_id }` → `ChatConversation` : la feuille devient le descendant le plus récent de ce message (changement de branche) |
 | `DELETE` | `/api/chat/conversations/:id/messages/:mid` | → `ChatConversation` : supprime le message et son sous-arbre, les fichiers joints que plus rien n'utilise ; la feuille passe à la branche sœur la plus récente, sinon au parent. **409** (`code: busy`) si une réponse de cette conversation est en cours |
@@ -133,11 +135,29 @@ Un outil en échec est un `ToolRun` en erreur dont le texte est renvoyé au mod�
 - Toute requête sortante passe par `throttledFetchJson` (espacement par source : 1,5 s DuckDuckGo, 1 s Brave, 0,5 s pages ; une reprise sur 429 / 5xx).
 - La vie privée : les requêtes de recherche **sortent de la machine**. Elles sont visibles dans le message (`tool_runs[].arguments`), et l'outil est désactivé par défaut (par conversation).
 
+## Outils de création (image, vidéo, audio)
+
+Actifs seulement si `settings.tools.creation` (par défaut) **et** que le modèle appelle des fonctions, et pour chaque studio dont le navigateur envoie un modèle (`creation_models`, lu de la sélection de chaque studio) **prêt** dans le catalogue : sans modèle prêt, l'outil n'est pas proposé.
+Les schémas sont **reconstruits à chaque réponse** d'après les capacités du modèle (jamais figés) ; ils passent avec les outils web dans la même boucle de 5 tours (`ChatReplyService.streamRounds`, paramètre `creation`).
+
+- `generate_image(prompt, aspect?)` : `aspect` parmi `1:1`, `16:9`, `9:16`, `4:3`, `3:4` ; le reste vient des paramètres par défaut du modèle.
+- `generate_video(prompt, seconds?)` : la description donne les bornes de **ce** modèle (`min_seconds`–`max_seconds`, défaut `default_seconds`). Sans `seconds`, **rien n'est lancé** : le message reçoit une génération `pending: 'duration'` (carte de choix, curseur borné par le modèle) et le modèle apprend qu'il n'a pas à relancer l'outil.
+- `generate_audio(text, …)` : n'expose que ce que le modèle accepte (`AudioCaps`) : `voice` (noms de la bibliothèque, si le modèle clone, et des voix prédéfinies du modèle, listés dans la description), `voice_description` si le modèle crée une voix d'après une description (`design`), `style` s'il prend une consigne (`instruct`), `language` s'il a plusieurs langues, `text` borné par `max_chars`. Les deux dernières vont dans `params.instruct` / `params.language`. Un modèle d'un autre `task` que `tts` (sons, musique : aucun au catalogue à ce jour) prend `description` (+ `seconds`) au lieu d'un texte et d'une voix ; un modèle de transcription (`stt`) n'a pas d'outil. La voix n'est exigée **que** si le modèle clone sans voix prédéfinie (`clone = required`) : voix nommée, sinon la **voix par défaut du chat** (`chat_voice_id`, réglage de l'application), sinon une carte de choix (`pending: 'voice'`). Une voix inconnue est une erreur renvoyée au modèle avec la liste des voix.
+
+Un appel crée la génération avec les paramètres par défaut du modèle via `GenerationService.create` : un prompt et sa réponse **rattachés à la conversation de chat** (lignes `messages` de `studio-core` : les fichiers appartiennent à la conversation, leur origine est « chat », la suppression de la conversation les emporte) et mis en file. L'outil rend la main **tout de suite** (« génération lancée ») : le modèle de chat tient la jauge, la file ne soumet le job qu'à sa libération. Un refus du moteur (422 du contrôle `jobs/check`) est une erreur lisible par le modèle, comme pour les outils web.
+Le modèle conclut en une phrase (il ne voit pas le résultat). La conversation reste « occupée » (`busy`) tant que la génération attend ou tourne : le chat ne répond pas avant sa fin.
+
+**Commandes** `/image …`, `/video [Ns] …`, `/audio [voix :] …` (début du message, sans pièce jointe, `tools.creation` actif) : reconnues **avant** le modèle, qui n'est pas chargé et ne tient pas la jauge ; réponse = une phrase fixe (« Génération lancée… »). Un nom avant les deux-points n'est pris pour une voix que s'il en désigne une du modèle ou de la bibliothèque. Sans modèle prêt dans le studio : erreur `no_model` sans rien créer ; texte vide : `invalid`.
+
+**Stockage** : `chat_messages.generations` (JSON, nullable) porte, par génération, `{ id, kind, model_id, message_id, prompt, params, pending? }`. Le **côté état** (`state`, `error`, `assets`) n'y est pas copié : `ChatStoreService` le lit chez `studio-core` à chaque lecture (`MessageService`, par `message_id`), donc une seule source ; `state: 'pending'` tant qu'une carte attend un choix, `cancelled` si le message du studio a disparu. Le front est prévenu par les événements `studio.*` déjà publiés par la file (`message.updated`, `job.image`) : voir le README du chat côté front. Supprimer un message du chat supprime ses générations (arrêt si elles tournent, fichiers purgés : `CreationToolsService.discard`).
+**Chat privé** : les outils de création y sont **éteints** (`creation: false` imposé par `parsePrivateChatBody`) : une génération de la session privée passe par `PrivateGenerationService` et sa mémoire, ce que le chat privé sans état ne tient pas encore.
+
 ## Entités
 
-- `ChatMessageEntity` (`chat_messages`) : `id`, `conversationId` (cascade), `parentId` (cascade), `role` (`user` | `assistant`), `content`, `reasoning`, `toolRuns` (JSON), `attachments` (JSON : `kind`, `name`, `original_name`, `mime`, `size`), `modelId`, `params` (JSON : échantillonnage et raisonnement du tour), `status` (`done` | `streaming` | `error` | `cancelled`), `error`, `stats` (JSON), `createdAt` (secondes, flottant). Index `(conversation_id, created_at)` et `(parent_id)`.
+- `ChatMessageEntity` (`chat_messages`) : `id`, `conversationId` (cascade), `parentId` (cascade), `role` (`user` | `assistant`), `content`, `reasoning`, `toolRuns` (JSON), `generations` (JSON, nullable : `StoredGeneration[]`), `attachments` (JSON : `kind`, `name`, `original_name`, `mime`, `size`), `modelId`, `params` (JSON : échantillonnage et raisonnement du tour), `status` (`done` | `streaming` | `error` | `cancelled`), `error`, `stats` (JSON), `createdAt` (secondes, flottant). Index `(conversation_id, created_at)` et `(parent_id)`.
 - `ChatSettingsEntity` (`chat_conversation_settings`) : `conversationId` (clé primaire, cascade), `modelId`, `systemPrompt`, `params` (JSON), `contextSize`, `reasoning`, `tools` (JSON), `leafId` (sans clé étrangère : une branche supprimée déplace la feuille dans le code). Créée au premier réglage ou à la première réponse.
-- Migration `1792058442183-ChatTables.ts` (colonnes portables : `jsonColumnType()`).
+- Migrations `1792058442183-ChatTables.ts` (colonnes portables : `jsonColumnType()`) et `1792070000000-ChatGenerations.ts` (`chat_messages.generations`, nullable).
+- `ChatSettingsEntity.tools` est un JSON : `creation` s'y ajoute sans migration (absent = actif).
 
 Pièces jointes : fichiers `chat_<16 hex>.<ext>` dans `<données>/uploads/` (le moteur les lit par chemin absolu, le navigateur voit les images par `/api/media/uploads/<nom>`) et une description `uploads/chat-meta/<nom>.json`.
 Un message modifié partage les fichiers de l'original : un fichier n'est supprimé que lorsqu'aucun message de la conversation ne l'utilise. Au démarrage, les envois vieux d'un jour et jamais utilisés sont supprimés.
@@ -149,6 +169,7 @@ Une réponse restée `streaming` (arrêt brutal) passe à `error` avec « Répon
 ## Points d'extension
 
 - Un nouvel outil : son schéma dans `WEB_TOOL_SCHEMAS` (`WebToolsService.ts`), son exécution dans `WebToolsService.run`, son nom dans `ToolRun.name` ; le moteur et le flux n'ont rien à savoir.
+- Un nouvel outil de création (ou le `task` d'un nouveau modèle audio, sons / musique) : son schéma dans `CreationToolsService.schema` / `audioSchema`, son exécution dans `fromArguments`, son nom dans `CREATION_TOOL_NAMES` et `ToolRun.name` ; les capacités viennent du catalogue, rien à changer dans le moteur ni le flux.
 - Un autre fournisseur de recherche : un analyseur dans `tools/webSearch.ts` et une branche de `WebToolsService.search`.
 - `WEB_TOOL_DEPS` (jeton de `WebToolsService`) remplace la lecture de la clé Brave, le téléchargement et les transports de recherche : c'est ce que les tests injectent.
 - Les instructions du bouton ✨ : `ENHANCE_INSTRUCTIONS` (`PromptEnhanceService.ts`).
@@ -166,12 +187,13 @@ npx jest --runInBand src/modules/chat/services/EngineLlmClient.spec.ts       # f
 npx jest --runInBand src/modules/chat/services/ChatAttachmentService.spec.ts # type par les octets, purge, balayage
 npx jest --runInBand src/modules/chat/services/ChatBootstrap.spec.ts        # branchement sur les conversations partagées, suppression, reprise
 npx jest --runInBand src/modules/chat/services/WebToolsService.spec.ts       # outils web avec faux fournisseurs
+npx jest --runInBand src/modules/chat/services/CreationToolsService.spec.ts  # outils de création : schémas selon les capacités, appels, commandes, cartes de choix, nettoyage
 npx jest --runInBand src/modules/chat/tools/ssrfGuard.spec.ts                # garde SSRF : adresses, URL, résolution, rebinding
 npx jest --runInBand src/modules/chat/tools/safeFetch.spec.ts                # redirections, adresse de la socket, types, taille
 npx jest --runInBand src/modules/chat/services/chatValidation.spec.ts        # toutes les validations
 ```
 
-Aussi : `chatHistory`, `chatExport`, `ChatModelService`, `PromptEnhanceService`, `tools/htmlText`, `tools/webSearch` (mêmes dossiers), `studio-core/services/EngineBusyGate.spec.ts` (jauge et file), `migrations/tests/migrations.spec.ts`.
+Aussi : `mappers/chatMapper.spec.ts` (état d'une génération), `studio-core/services/GenerationService.spec.ts` (une génération rattachée à une conversation de chat), `chatHistory`, `chatExport`, `ChatModelService`, `PromptEnhanceService`, `tools/htmlText`, `tools/webSearch` (mêmes dossiers), `studio-core/services/EngineBusyGate.spec.ts` (jauge et file), `migrations/tests/migrations.spec.ts`.
 
-**Non vérifié** : aucun vrai `llama-server`, aucun vrai modèle ni appel réseau réel n'a servi dans ces tests (la page DuckDuckGo servant de modèle à l'analyseur a été lue une fois à la main, le 2026-10-15) ; le comportement du flux derrière un proxy inverse n'est pas mesuré
+**Non vérifié** : aucun vrai `llama-server`, aucun vrai modèle d'image, de vidéo ou de son lancé par un outil (le catalogue, la file et le moteur sont des faux ; la régularité des petits modèles (1 à 4 B) à remplir les arguments des outils n'est pas mesurée : les commandes `/…` sont le recours fiable), ni le temps de rechargement du modèle de chat après une génération, aucun vrai modèle ni appel réseau réel n'a servi dans ces tests (la page DuckDuckGo servant de modèle à l'analyseur a été lue une fois à la main, le 2026-10-15) ; le comportement du flux derrière un proxy inverse n'est pas mesuré
 (les en-têtes sont ceux que le gabarit documente pour ses propres flux).

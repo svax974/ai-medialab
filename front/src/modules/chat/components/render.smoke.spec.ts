@@ -36,7 +36,7 @@ import { conversation, message } from '../lib/fixtures'
 import { useChatDefaultsStore, BASE_SETTINGS } from '../state/chatDefaultsStore'
 import { useChatDraftStore } from '../state/chatDraftStore'
 import { useChatLiveStore } from '../state/chatLiveStore'
-import type { ChatConversation } from '../types'
+import type { ChatConversation, ChatGeneration } from '../types'
 import { ChatErrorNotice } from './ChatErrorNotice'
 import { ChatHome } from './ChatHome'
 import { ChatComposer } from './ChatComposer'
@@ -45,6 +45,7 @@ import { ChatThread } from './ChatThread'
 import { CompareView } from './CompareView'
 import { ContextField } from './ContextField'
 import { ExportMenu } from './ExportMenu'
+import { Generations } from './GenerationCard'
 import { LlmStatusChip, LlmStatusView } from './LlmStatusChip'
 
 for (const dir of ['modules/chat', 'modules/studio-core', 'modules/studio-shell', 'modules/model-catalog', 'modules/engines', 'modules/hardware', 'modules/settings', 'modules_shared/common']) {
@@ -201,6 +202,33 @@ describe('chat screens render without error and without raw keys', () => {
     expect(html).toContain('Gemma 4 12B')
     expect(html).toContain('Affichée')
     noRawKeys(html)
+  })
+
+  it('shows the creation switch and its commands next to the web search, and hides them from a model without tools', () => {
+    const on = render(createElement(ChatComposer, { conversationId: 'c1' }), [qwen, gemma], primeConversation(conversation([user, answer])))
+    expect(on).toContain('aria-label="Outils de création"')
+    const off = render(createElement(ChatComposer, { conversationId: 'c1' }), [qwen, gemma], primeConversation(conversation([], { model_id: 'gemma' })))
+    expect(off).toContain('Outils de création indisponibles')
+    noRawKeys(on + off)
+  })
+
+  it('shows each state of a generation: a choice to make, waiting, running, a result, a failure, stopped', () => {
+    const generation = (extra: Partial<ChatGeneration>): ChatGeneration => ({ id: 'g1', kind: 'image', model_id: 'qwen', message_id: 'job1', prompt: 'un chat roux', params: {}, state: 'queued', error: null, assets: [], conversation_id: 'c1', ...extra })
+    const show = (...list: ChatGeneration[]) => render(createElement(Generations, { message: message('a9', { role: 'assistant', generations: list }) }))
+    const waiting = show(generation({}))
+    expect(waiting).toContain('Image · Qwen3 8B')
+    expect(waiting).toContain('En attente : la génération démarre dès que le moteur est libre.')
+    expect(waiting).toContain('Ouvrir dans le studio')
+    expect(show(generation({ state: 'running' }))).toContain('Génération en cours…')
+    expect(show(generation({ state: 'error', error: 'Mémoire insuffisante' }))).toContain('Mémoire insuffisante')
+    expect(show(generation({ state: 'cancelled' }))).toContain('Génération arrêtée.')
+    const asset = { id: 'a1', media: 'image', url: '/media/outputs/a1.png', thumb_url: '/media/thumbs/a1.webp' } as ChatGeneration['assets'][number]
+    expect(show(generation({ state: 'done', assets: [asset] }))).toContain('aria-label="Agrandir l&#x27;image"')
+    const video = show(generation({ kind: 'video', state: 'pending', pending: 'duration', message_id: null }))
+    expect(video).toContain('Quelle durée pour cette vidéo ?')
+    expect(video).toContain('Lancer la génération')
+    expect(show(generation({ kind: 'audio', state: 'pending', pending: 'voice', message_id: null }))).toContain('Ce modèle a besoin d&#x27;une voix')
+    noRawKeys(waiting + video)
   })
 
   it('offers the export of the conversation', () => {

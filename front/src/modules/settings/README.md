@@ -10,12 +10,12 @@ valeurs sont celles de `GET/PUT /api/settings` (back : `back/src/modules/setting
 
 ```
 settings/
-  index.ts                  exports : SettingsDialog, HfTokenField, BraveKeyField, useSettings, useSaveSettings, settingsApi, settingsKeys
+  index.ts                  exports : SettingsDialog, HfTokenField, BraveKeyField, ChatVoiceField, useSettings, useSaveSettings, settingsApi, settingsKeys
   types.ts                  Settings, SettingsPatch
   services/settingsApi.ts   GET/PUT /api/settings (studioRequest)
   hooks/useSettings.ts      useSettings(enabled) (requête), useSaveSettings(onSaved?) (mutation)
   lib/settingsConfig.ts     KEEP_ALIVE_OPTIONS, SHORTCUT_ROWS, SETTINGS_HELP, settingsKeys
-  components/               SettingsDialog, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField
+  components/               SettingsDialog, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField, ChatVoiceField
   locales/                  locales.fr.json, locales.en.json (clés settings.*)
 ```
 
@@ -33,6 +33,7 @@ Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouto
 - **IA locale au lancement** : interrupteur (`SwitchRow`) lié à `useLocalAiPromptStore.optOut` du module `engines` (navigateur, `cn-local-ai`) : activé, l'invitation d'installation de llama.cpp s'affiche à chaque lancement tant qu'il manque.
 - **Clé Brave Search** (`BraveKeyField`, facultative) : champ secret, enregistré par `PUT /api/settings { brave_api_key }` (`''` la retire) ; le serveur la stocke chiffrée et ne la renvoie jamais, seulement `has_brave_api_key`.
   Elle sert à la recherche web du chat (Brave au lieu de DuckDuckGo) : `back/src/modules/settings/README.md`, `back/src/modules/chat/README.md`.
+- **Voix par défaut du chat** (`ChatVoiceField`) : une voix de la bibliothèque **avec échantillon** (liste de `voices`), enregistrée par `PUT /api/settings { chat_voice_id }` (`''` : aucune). L'outil audio du chat la prend quand la demande n'en nomme pas et que le modèle en exige une ; sinon le chat affiche une carte de choix (`front/src/modules/chat/README.md`).
 
 ## Info-bulles
 

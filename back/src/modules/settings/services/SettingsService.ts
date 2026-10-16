@@ -87,6 +87,7 @@ export class SettingsService {
       variant: isStringMap(v.studio_variant) ? v.studio_variant : {},
       hf_token: this.moduleConfig.getDecryptedSecretValue(SETTINGS_MODULE_ID, TOKEN_KEY) ?? '',
       brave_api_key: this.moduleConfig.getDecryptedSecretValue(SETTINGS_MODULE_ID, BRAVE_KEY) ?? '',
+      chat_voice_id: typeof v.studio_chatVoiceId === 'string' ? v.studio_chatVoiceId : d.chat_voice_id,
     };
   }
 
@@ -98,7 +99,7 @@ export class SettingsService {
 
   /** The engine gets everything but the Brave key (it has no use for it). */
   private push(settings: StudioSettings): Promise<unknown> {
-    const { brave_api_key: _brave, ...forEngine } = settings;
+    const { brave_api_key: _brave, chat_voice_id: _voice, ...forEngine } = settings;
     return this.engine.put('/engine/v1/runtime/settings', { body: forEngine satisfies EngineSettings });
   }
 
@@ -109,6 +110,7 @@ export class SettingsService {
       studio_lowMemory: next.low_memory,
       studio_quantize: next.quantize,
       studio_variant: next.variant,
+      studio_chatVoiceId: next.chat_voice_id,
       // An empty secret is skipped by updateModuleConfig (it keeps the stored one): removal is written below.
       ...(next.hf_token ? { [TOKEN_KEY]: next.hf_token } : {}),
       ...(next.brave_api_key ? { [BRAVE_KEY]: next.brave_api_key } : {}),

@@ -10,8 +10,8 @@ import { LEGACY_SETTING_KEYS, mapLegacySettings } from './legacySettings';
 describe('studio settings', () => {
   it('declares every legacy setting once, with the secret token encrypted by the module config', () => {
     const byKey = new Map(settingsConfigSchema.fields.map((f) => [f.key, f]));
-    // The Brave Search key is newer than the legacy database: it is the only declared setting it never carried.
-    expect([...byKey.keys()].filter((key) => key !== 'studio_braveApiKey').sort()).toEqual(Object.values(LEGACY_SETTING_KEYS).sort());
+    // The Brave Search key and the chat's default voice are newer than the legacy database: the only declared settings it never carried.
+    expect([...byKey.keys()].filter((key) => key !== 'studio_braveApiKey' && key !== 'studio_chatVoiceId').sort()).toEqual(Object.values(LEGACY_SETTING_KEYS).sort());
     expect(byKey.get('studio_hfToken')?.type).toBe('secret');
     expect(byKey.get('studio_braveApiKey')?.type).toBe('secret');
     expect(byKey.get('studio_keepAliveMinutes')).toMatchObject({ type: 'number', defaultValue: 10 });

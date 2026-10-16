@@ -17,9 +17,9 @@ import { ChatReplyService } from '../services/ChatReplyService';
 import { ChatService } from '../services/ChatService';
 import { PromptEnhanceService } from '../services/PromptEnhanceService';
 import {
-  parseEditBody, parseEnhanceBody, parseExportFormat, parseId, parseLeafBody, parseRegenerateBody, parseSearchQuery, parseSendBody, parseSettingsPatch,
+  parseConfirmBody, parseEditBody, parseEnhanceBody, parseExportFormat, parseId, parseLeafBody, parseRegenerateBody, parseSearchQuery, parseSendBody, parseSettingsPatch,
 } from '../services/chatValidation';
-import { MAX_IMAGE_BYTES, type ChatAttachment, type ChatConversation, type ChatMessage, type ChatSettings } from '../types/chatTypes';
+import { MAX_IMAGE_BYTES, type ChatAttachment, type ChatConversation, type ChatGeneration, type ChatMessage, type ChatSettings } from '../types/chatTypes';
 import { SseStream } from './SseStream';
 
 /** `/api/chat/*`: the chat studio (conversations are the ones of `/api/conversations`, with `mode: 'chat'`). Admin only. */
@@ -103,8 +103,14 @@ export class ChatController {
 
   @Post('conversations/:id/messages/:mid/regenerate')
   async regenerate(@Param('id') id: string, @Param('mid') mid: string, @Body() body: unknown, @Res() res: Response): Promise<void> {
-    const { modelId } = parseRegenerateBody(body);
-    await this.stream(res, (sink) => this.replies.regenerate(parseId(id, 'id'), parseId(mid, 'mid'), modelId, sink));
+    const parsed = parseRegenerateBody(body);
+    await this.stream(res, (sink) => this.replies.regenerate(parseId(id, 'id'), parseId(mid, 'mid'), parsed, sink));
+  }
+
+  /** Starts a generation of the message that waited for a duration or a voice (the choice card). */
+  @Post('messages/:mid/generations/:gid/confirm')
+  confirmGeneration(@Param('mid') mid: string, @Param('gid') gid: string, @Body() body: unknown): Promise<ChatGeneration> {
+    return this.chat.confirmGeneration(parseId(mid, 'mid'), parseId(gid, 'gid'), parseConfirmBody(body));
   }
 
   @Post('conversations/:id/messages/:mid/edit')

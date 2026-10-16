@@ -32,8 +32,8 @@ Libellés : `back/src/locales/custom.fr.json` et `custom.en.json` (clés `custom
 
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/settings` | Admin | Réglages publics : `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`. Les secrets ne sont **jamais** renvoyés. |
-| `PUT` | `/api/settings` | Admin | Sous-ensemble des mêmes clés + `hf_token` et `brave_api_key` (texte de 512 caractères au plus ; `''` le retire). Renvoie l'état public. |
+| `GET` | `/api/settings` | Admin | Réglages publics : `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`, `chat_voice_id`. Les secrets ne sont **jamais** renvoyés. |
+| `PUT` | `/api/settings` | Admin | Sous-ensemble des mêmes clés + `hf_token` et `brave_api_key` (texte de 512 caractères au plus ; `''` le retire) ; `chat_voice_id` : id d'une voix de la bibliothèque (texte de 512 caractères au plus, `''` : aucune). Renvoie l'état public. |
 
 Erreurs de `PUT` : 422 si un type est faux (`keep_alive_minutes` entier de -1 à 1440, booléens, cartes `model_id -> entier|null` et
 `model_id -> texte`) ; 422 relayé du moteur (modèle ou quantification inconnus) ; 409 relayé du moteur (changer la
@@ -66,6 +66,7 @@ Aucune (table `config` de `common`).
 | `studio_variant` | `variant` | json (masqué) | `{}` | `model_id` vers variante de quantification (H4.2). |
 | `studio_hfToken` | `hf_token` | `secret` | vide | Jeton Hugging Face (modèles à accès restreint), chiffré. |
 | `studio_braveApiKey` | `brave_api_key` (pas d'ancienne clé) | `secret` | vide | Clé de l'API Brave Search pour l'outil de recherche web du chat (sans clé, DuckDuckGo) ; chiffrée. **Reste dans Nest** : elle n'est pas envoyée au moteur (`SettingsService.push` l'écarte, type `EngineSettings`), et `SettingsService.braveApiKey()` la donne au module `chat`. |
+| `studio_chatVoiceId` | `chat_voice_id` (pas d'ancienne clé) | `string` (masqué) | vide | Voix de la bibliothèque avec laquelle l'outil audio du chat parle quand aucune n'est nommée et que le modèle en exige une (`CreationToolsService`). **Reste dans Nest** : `SettingsService.push` l'écarte (type `EngineSettings`). Choisie dans le dialogue de réglages (`ChatVoiceField`). |
 
 Les valeurs restent lisibles et modifiables par les routes d'administration de `common` (`GET`/`PUT
 /api/v1/admin/module-configs/studio`) ; une modification faite par là n'est **pas** transmise au moteur avant le prochain

@@ -9,6 +9,7 @@ import { toast } from 'react-toastify'
 import { useActiveModel, useModels, type ModelInfo } from '@/modules/model-catalog'
 import { studioKeys } from '@/modules/studio-shell/lib/queryKeys'
 import { chatKeys } from '../lib/chatKeys'
+import { mergePatches, mergeSettings } from '../lib/settingsMerge'
 import { chatApi } from '../services/chatApi'
 import { useChatDefaultsStore } from '../state/chatDefaultsStore'
 import { useChatDraftStore } from '../state/chatDraftStore'
@@ -75,8 +76,8 @@ export function useChatSettings(id: string | null): { settings: ChatSettings | n
   const update = useCallback(
     (patch: ChatSettingsPatch) => {
       if (!id) return merge(patch)
-      queryClient.setQueryData<ChatConversation>(chatKeys.conversation(id), (c) => (c ? { ...c, settings: { ...c.settings, ...patch } } : c))
-      pending.current = { ...pending.current, ...patch }
+      queryClient.setQueryData<ChatConversation>(chatKeys.conversation(id), (c) => (c ? { ...c, settings: mergeSettings(c.settings, patch) } : c))
+      pending.current = mergePatches(pending.current, patch)
       clearTimeout(timer.current)
       timer.current = setTimeout(flush, SETTINGS_DELAY_MS)
     },

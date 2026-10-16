@@ -12,6 +12,8 @@ export interface Settings {
   has_hf_token: boolean
   /** A Brave Search key is saved (the chat's web search uses Brave instead of DuckDuckGo). Never returned itself. */
   has_brave_api_key: boolean
+  /** Id of the library voice the chat's audio tool speaks with when none is named; empty: none. */
+  chat_voice_id: string
   /** `model_id` -> quantization bits (edited by the models dialog). */
   quantize: Record<string, number | null>
   /** `model_id` -> chosen quantization (edited by the models dialog). */

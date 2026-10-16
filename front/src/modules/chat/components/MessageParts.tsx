@@ -10,6 +10,9 @@ import CheckRounded from '@mui/icons-material/CheckRounded'
 import ChevronLeftRounded from '@mui/icons-material/ChevronLeftRounded'
 import ChevronRightRounded from '@mui/icons-material/ChevronRightRounded'
 import ExpandMoreRounded from '@mui/icons-material/ExpandMoreRounded'
+import GraphicEqRounded from '@mui/icons-material/GraphicEqRounded'
+import ImageOutlined from '@mui/icons-material/ImageOutlined'
+import MovieOutlined from '@mui/icons-material/MovieOutlined'
 import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined'
@@ -59,10 +62,19 @@ export function ReasoningBlock({ text, thinking }: { text: string; thinking: boo
   )
 }
 
+const TOOL_ICONS: Record<ToolRun['name'], React.ReactNode> = {
+  web_search: <TravelExploreOutlined sx={{ fontSize: 14 }} />,
+  fetch_url: <ArticleOutlined sx={{ fontSize: 14 }} />,
+  generate_image: <ImageOutlined sx={{ fontSize: 14 }} />,
+  generate_video: <MovieOutlined sx={{ fontSize: 14 }} />,
+  generate_audio: <GraphicEqRounded sx={{ fontSize: 14 }} />,
+}
+
 function runLabel(run: ToolRun, t: ReturnType<typeof useT>): string {
   const args = run.arguments
   if (run.name === 'web_search') return t('chat.tool.search', [String(args['query'] ?? '')])
-  return t('chat.tool.fetch', [hostOf(String(args['url'] ?? ''))])
+  if (run.name === 'fetch_url') return t('chat.tool.fetch', [hostOf(String(args['url'] ?? ''))])
+  return t(`chat.tool.${run.name}`, [String(args['prompt'] ?? args['text'] ?? args['description'] ?? '')])
 }
 
 /** The tools an answer used: what was searched or fetched (the query that left the machine), the state and the sources. */
@@ -74,7 +86,7 @@ export function ToolRuns({ runs }: { runs: ToolRun[] }) {
       {runs.map((run) => (
         <Box key={run.id} sx={{ borderRadius: '12px', border: '1px solid var(--line)', backgroundColor: 'color-mix(in oklab, var(--surface) 70%, transparent)', px: 1.5, py: '6px', fontSize: 12.5, color: 'var(--ink-2)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            {run.name === 'web_search' ? <TravelExploreOutlined sx={{ fontSize: 14 }} /> : <ArticleOutlined sx={{ fontSize: 14 }} />}
+            {TOOL_ICONS[run.name]}
             <Box component="span" sx={{ minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>{runLabel(run, t)}</Box>
             {run.status === 'running' && <CircularProgress size={12} color="inherit" aria-label={t('chat.tool.running')} />}
             {run.status === 'done' && <CheckRounded sx={{ fontSize: 14, color: 'var(--ok)' }} />}

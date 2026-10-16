@@ -3,15 +3,16 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
 import { ConversationService, EngineBusyGate, type ConversationDto } from 'src/modules/studio-core';
 import { ChatAttachmentService } from './ChatAttachmentService';
 import { ChatReplyService } from './ChatReplyService';
 import { ChatStoreService } from './ChatStoreService';
+import { CreationToolsService } from './CreationToolsService';
 import { exportFileName, toJson, toMarkdown } from './chatExport';
-import type { ExportFormat } from './chatValidation';
-import type { ChatConversation, ChatMessage, ChatSettings, ChatSettingsPatch } from '../types/chatTypes';
+import type { ConfirmBody, ExportFormat } from './chatValidation';
+import type { ChatConversation, ChatGeneration, ChatMessage, ChatSettings, ChatSettingsPatch } from '../types/chatTypes';
 
 /** The routes of the chat that do not stream: reading a conversation, its settings, its branches, export, search. */
 @Injectable()
@@ -21,6 +22,7 @@ export class ChatService {
     private readonly conversations: ConversationService,
     private readonly attachments: ChatAttachmentService,
     private readonly replies: ChatReplyService,
+    private readonly creation: CreationToolsService,
     private readonly engine: EngineClient,
     private readonly gate: EngineBusyGate,
   ) {}
@@ -53,7 +55,16 @@ export class ChatService {
     }
     const removed = await this.store.deleteSubtree(conversationId, messageId);
     await this.attachments.purgeUnused(conversationId, removed.flatMap((m) => m.attachments ?? []));
+    await this.creation.discard(removed);
     return this.get(conversationId);
+  }
+
+  /** Starts a generation of a message that waited for a duration or a voice. */
+  async confirmGeneration(messageId: string, generationId: string, choice: ConfirmBody): Promise<ChatGeneration> {
+    const message = await this.store.getMessage(messageId);
+    if (!message) throw new NotFoundException('Message introuvable.');
+    await this.store.requireConversation(message.conversationId);
+    return this.creation.confirm(message.conversationId, messageId, generationId, choice);
   }
 
   /** The complete siblings of a message (a comparison of answers shows them side by side). */

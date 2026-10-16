@@ -3,8 +3,8 @@
 ## Rôle
 
 Le **mode Chat** : conversation avec un modèle de langage local (exécuté par llama.cpp côté moteur). L'accueil (`/chat`), le **fil** d'une conversation (`/c/:id` quand `mode = 'chat'`),
-le **composeur** (pièces jointes, modèle, instruction système et personas, réglages, recherche web, jauge de contexte, envoi / arrêt), le **rendu** des réponses (Markdown sûr, code coloré,
-réflexion du modèle, appels d'outils, statistiques), les **branches** (régénérer, modifier un message, comparer deux modèles), l'export, la recherche dans les messages et l'état du modèle
+le **composeur** (pièces jointes, modèle, instruction système et personas, réglages, recherche web, **outils de création** et leurs commandes `/…`, jauge de contexte, envoi / arrêt), le **rendu** des réponses (Markdown sûr, code coloré,
+réflexion du modèle, appels d'outils, **cartes de génération** (image, vidéo, son), statistiques), les **branches** (régénérer, modifier un message, comparer deux modèles), l'export, la recherche dans les messages et l'état du modèle
 en mémoire. Back : `back/src/modules/chat/README.md` (routes `/api/chat/*`, flux SSE) ; moteur : `engine/app/llm.py`, `engine/app/api/llm.py`. Les conversations (liste, titre, épingle, suppression)
 sont celles de `studio-core` avec `mode = 'chat'` ; les messages de chat sont dans les tables de `back/src/modules/chat` (arbre : `parent_id`).
 
@@ -13,7 +13,7 @@ sont celles de `studio-core` avec `mode = 'chat'` ; les messages de chat sont da
 ```
 chat/
   index.ts                          exports : ChatHome, ChatConversationView, LlmStatusChip, useLlmEvents, useChatSearch, chatApi, useChatLiveStore, types
-  types.ts                          ChatMessage, ChatSettings, ChatConversation, ToolRun, ChatStreamEvent, LlmStatus... (forme publique de Nest, snake_case)
+  types.ts                          ChatMessage, ChatGeneration, CreationModels, ChatSettings, ChatConversation, ToolRun, ChatStreamEvent, LlmStatus... (forme publique de Nest, snake_case)
   services/chatApi.ts               routes REST (studioRequest) ; `streamAnswer` : fetch + flux SSE (lecture par `readSse` du gabarit) ; chemins des trois façons de demander une réponse
   services/privateChatBackend.ts    le chat d'une **session privée** : la conversation (réglages et arbre de messages) tenue en mémoire de la page (`private/lib/privateChatMemory.ts`), jamais `localStorage` ni serveur ; `privateChatApi` répond à ce que `chatApi` lit/écrit, `streamPrivateAnswer` remplace `streamAnswer` (appelle `POST /api/private/chat`, mêmes évènements)
   lib/privateTree.ts                l'arbre de messages en mémoire (frères, branche active, dernière feuille, suppression d'un sous-arbre, historique envoyé au serveur, export) : pur, testé
@@ -24,9 +24,12 @@ chat/
   hooks/useChat.ts                  conversation (requête ; relue tant qu'un message reste `streaming` sans réponse lue ici), réglages (enregistrés 500 ms après la dernière modification), modèle de la conversation, recherche plein texte
   hooks/useSiblings.ts              lit les réponses sœurs jamais vues (`GET …/siblings`) pour que la comparaison survive à un rechargement ; hooks/useElapsedSeconds.ts : horloge d'une attente
   hooks/useChatActions.ts           régénérer (même modèle ou un autre), modifier, changer de branche, supprimer, arrêter
+  hooks/useCreationModels.ts        le modèle actif de chaque studio (image, vidéo, audio ; ceux qui sont prêts) : `creation_models` de chaque envoi, régénération et modification
+  hooks/useGenerationSync.ts        relit la conversation quand un évènement `studio.*` concerne le job d'une carte (état, fichiers, suppression), coalescé, jamais pendant qu'une réponse s'écrit
   hooks/useChatSubmit.ts            envoi du composeur ; depuis l'accueil : crée la conversation, lui donne les réglages de l'accueil, l'ouvre
   hooks/useAttachments.ts           pièces jointes : vérification, envoi (`/api/chat/attachments`), retrait
   hooks/useLlmEvents.ts             abonnement à `engine.llm.status` ; hooks/useThrottled.ts, hooks/useModelName.ts
+  lib/creation.ts                   commandes proposées après le `/`, état affiché d'une carte, `creation_models` d'une requête (`withCreation`), bornes du curseur de durée ; lib/generationEvents.ts : quels évènements du studio concernent les cartes ; lib/settingsMerge.ts : fusion des réglages (`tools` partiel)
   lib/sse.ts                        `toChatEvent` : bloc SSE -> évènement typé (un bloc illisible est ignoré)
   lib/streamReducer.ts              applique un évènement à la conversation en cache (pur) ; `placeMessage` : une branche nouvelle remplace la suite de l'ancien frère
   lib/branches.ts                   position parmi les frères (‹ 2/3 ›), réponses à comparer
@@ -36,7 +39,7 @@ chat/
   lib/math.ts                       `normalizeMath` : `\( \)`, `\[ \]` et `$x$` écrits `$$…$$` (jamais dans le code, même un bloc encore ouvert ; les montants restent du texte)
   lib/handoff.ts, selection.ts      réponse (ou sélection) -> prompt sans balisage Markdown ; texte sélectionné dans une réponse
   lib/enhance.ts                    codes d'échec de ✨ (409 `busy` / `no_model` / `no_engine`, sinon moteur), état du bouton, retour à l'original
-  components/                       ChatHome, ChatConversationView, ChatThread, UserMessageView, AssistantMessageView, AssistantBody, CompareView, MessageParts (BranchNav, ReasoningBlock, ToolRuns, StatsLine,
+  components/                       ChatHome, ChatConversationView, ChatThread, UserMessageView, AssistantMessageView, AssistantBody, CompareView, GenerationCard (+ Generations), GenerationChoice (DurationChoice, VoiceChoice), MessageParts (BranchNav, ReasoningBlock, ToolRuns, StatsLine,
                                     AttachmentList), Markdown (+ MarkdownRenderer, chargé à la demande, et MathMarkdownRenderer : KaTeX, chargé seulement si une réponse a une formule), SendToMenu, EnhancePromptButton, ChatComposer, ChatSettingsPopover, ContextField, SystemPromptPopover, ContextGauge, ChatStatusLine,
                                     ChatErrorNotice, ChatSuggestions, LlmStatusChip, ExportMenu, ChatSearchHits
   locales/                          locales.fr.json, locales.en.json (clés chat.*)
@@ -44,7 +47,7 @@ chat/
 
 Montage : `studio-shell/routes.tsx` (la route `/chat` est chargée à la demande : `pages/ChatHomePage.tsx`), `pages/ConversationPage.tsx` (rend `ChatConversationView`, chargé à la demande, quand la conversation est de mode chat),
 `StudioShell` (monte `useLlmEvents`), `ConversationList` (en mode chat, `ChatSearchHits` sous les titres). Le sélecteur de modèle est `StudioModelPicker` de `studio-core` (type `llm`), qui porte aussi le bouton « Nouveautés ».
-Les cartes de modèles de chat, la carte du moteur llama.cpp et la recherche Hugging Face `kind=llm` sont dans `model-catalog` et `engines` ; la clé Brave Search est dans `settings`.
+Les cartes de modèles de chat, la carte du moteur llama.cpp et la recherche Hugging Face `kind=llm` sont dans `model-catalog` et `engines` ; la clé Brave Search et la voix par défaut du chat sont dans `settings`.
 
 ## Services
 
@@ -62,6 +65,7 @@ Les cartes de modèles de chat, la carte du moteur llama.cpp et la recherche Hug
 | `GET` | `/api/chat/conversations/:id/export?format=md\|json` | export (téléchargement par lien) |
 | `GET` | `/api/chat/search?q=` | recherche plein texte dans les messages |
 | `GET` | `/api/chat/conversations/:id/messages/:mid/siblings` | `chatApi.siblings` : les sœurs complètes d'une réponse (comparaison après un rechargement) |
+| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `chatApi.confirmGeneration` : lance la génération d'une carte de choix (`{ seconds }` ou `{ voice_id }`) |
 | `POST` | `/api/chat/model/unload` | `chatApi.unloadModel` : décharge le modèle de chat (bouton ⏏ de l'indicateur d'état ; 409 `busy` pendant une réponse) |
 | `POST` | `/api/chat/enhance-prompt` | `chatApi.enhancePrompt` : amélioration d'un prompt de génération, bouton ✨ `EnhancePromptButton` des compositeurs image, audio et vidéo |
 
@@ -93,8 +97,11 @@ le serveur ajoute au refus (`code`) quand il en met un, sinon deviné d'après l
 - **✨ Améliorer le prompt.** `EnhancePromptButton` est monté dans les compositeurs image, audio et vidéo (import direct de ce fichier : le module `chat` n'importe jamais ces studios). Il réécrit le prompt avec le
   modèle de chat (une horloge s'affiche si le modèle doit se charger), garde l'original (« Rétablir » tant que le prompt est celui qui a été amélioré) et, en cas de refus, explique pourquoi (génération ou réponse en
   cours, aucun modèle de chat, moteur llama.cpp absent) avec le bouton qui ouvre les modèles ; désactivé tant qu'aucun modèle de chat n'est installé ; un résultat qui arrive après que l'utilisateur a retapé est ignoré.
+- **Outils de création.** Chaque envoi, régénération et modification porte `creation_models` (`useCreationModels` : le modèle **actif** de chaque studio, c'est-à-dire sa sélection, sinon le plus utilisé ou le défaut ; seulement s'il est prêt) quand l'interrupteur 🎨 de la conversation est allumé (`settings.tools.creation`, allumé par défaut ; grisé pour un modèle qui n'appelle pas d'outils ; absent d'une session privée, qui n'a pas ces outils). Le modèle de chat peut alors lancer une image, une vidéo ou un son ; `/image …`, `/video [Ns] …` et `/audio [voix :] …` le font **sans** le modèle de chat (aide sous le composeur dès qu'on tape `/`).
+  Chaque génération est une **carte** (`GenerationCard`) dans la réponse : attente du moteur (le job démarre quand la réponse du chat a rendu la mémoire), chargement puis progression (`useLiveStore`, bouton Annuler), puis le résultat (image : miniature qui ouvre la visionneuse commune ; vidéo et son : lecteur natif), ou l'échec ; « Ouvrir dans le studio » remet le prompt au compositeur de ce studio (`usePromptHandoffStore`). Les fichiers sont aussi dans la médiathèque (origine : la conversation de chat). Sans durée, une vidéo affiche une **carte de choix** (`DurationChoice` : curseur borné par le modèle, défaut pré-rempli) ; un modèle qui exige une voix sans en avoir reçu affiche `VoiceChoice` (liste des voix à échantillon) ; la génération part à la validation (`confirm`).
+  L'état et les fichiers d'une carte viennent du serveur (jamais copiés dans le cache du chat) : `useGenerationSync` relit la conversation sur les évènements `studio.*` de ses jobs.
 - **Brouillon.** Le texte non envoyé est gardé par conversation (`cn-chat-drafts`) ; il est vidé quand le serveur a enregistré le message. Les pièces jointes en cours ne sont pas gardées.
-- **Accueil.** Ses réglages (instruction système, paramètres, contexte, réflexion, recherche web) sont les réglages de départ des nouvelles conversations. Le premier envoi crée la conversation, lui applique ces réglages, l'ouvre ;
+- **Accueil.** Ses réglages (instruction système, paramètres, contexte, réflexion, recherche web, outils de création) sont les réglages de départ des nouvelles conversations. Le premier envoi crée la conversation, lui applique ces réglages, l'ouvre ;
   la page de la conversation prend l'envoi en charge (`pending`) une fois la conversation chargée, pour que le flux écrive dans un cache qui existe.
 - **Sûreté du Markdown.** Pas de HTML brut (react-markdown ne le rend pas), liens `http(s)` et `mailto` seulement, ouverts hors de l'application (`rel="noopener noreferrer nofollow"`), **images distantes bloquées** :
   un bouton « Charger l'image » affiche l'hôte. Le code est coloré par un sous-ensemble de highlight.js (22 langages). **Formules** : KaTeX (`remark-math` + `rehype-katex`, `trust` désactivé : ni lien ni image dans une formule ; une formule illisible s'affiche en couleur d'erreur sans casser la réponse),

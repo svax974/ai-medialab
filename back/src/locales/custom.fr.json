@@ -26,6 +26,8 @@
   "custom.settings.variant": "Variante par modèle",
   "custom.settings.hfToken": "Jeton Hugging Face",
   "custom.settings.hfToken.description": "Requis pour télécharger les modèles à accès restreint ; stocké chiffré.",
+  "custom.settings.chatVoiceId": "Voix par défaut du chat",
+  "custom.settings.chatVoiceId.description": "Voix avec laquelle l'outil audio du chat parle quand aucune n'est nommée (une voix de la bibliothèque).",
   "custom.settings.braveApiKey": "Clé Brave Search",
   "custom.settings.braveApiKey.description": "Clé d'API de Brave Search, pour la recherche web du chat (DuckDuckGo est utilisé sans clé) ; stockée chiffrée, jamais renvoyée au navigateur."
 }

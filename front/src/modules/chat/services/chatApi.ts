@@ -11,7 +11,7 @@ import { ChatError, codeOfStatus } from '../lib/errors'
 import { toChatEvent } from '../lib/sse'
 import { privateChats } from '@/modules/private/lib/privateChatMemory'
 import { privateChatApi, streamPrivateAnswer } from './privateChatBackend'
-import type { ChatAttachment, ChatConversation, ChatErrorCode, ChatMessage, ChatSearchHit, ChatSettings, ChatSettingsPatch, ChatStreamEvent, SendBody } from '../types'
+import type { ChatAttachment, ChatConversation, ChatErrorCode, ChatGeneration, ChatMessage, ChatSearchHit, ChatSettings, ChatSettingsPatch, ChatStreamEvent, SendBody } from '../types'
 
 const enc = encodeURIComponent
 const base = (id: string) => `/chat/conversations/${enc(id)}`
@@ -51,6 +51,10 @@ export const chatApi = {
   siblings(id: string, messageId: string): Promise<ChatMessage[]> {
     if (isPrivateMode()) return privateChatApi.siblings(id, messageId)
     return studioRequest<ChatMessage[]>('get', `${base(id)}/messages/${enc(messageId)}/siblings`)
+  },
+  /** Starts a generation of an answer that waited for a choice: the duration of a video, or the voice of an audio. */
+  confirmGeneration(messageId: string, generationId: string, choice: { seconds: number } | { voice_id: string }): Promise<ChatGeneration> {
+    return studioRequest<ChatGeneration>('post', `/chat/messages/${enc(messageId)}/generations/${enc(generationId)}/confirm`, choice)
   },
   /** Unloads the chat model from memory (409 `busy` while an answer is being written). */
   unloadModel(): Promise<{ ok: true }> {

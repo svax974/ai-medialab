@@ -11,6 +11,7 @@ import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useSaveSettings, useSettings } from '../hooks/useSettings'
 import { SETTINGS_HELP, SHORTCUT_ROWS } from '../lib/settingsConfig'
 import { BraveKeyField } from './BraveKeyField'
+import { ChatVoiceField } from './ChatVoiceField'
 import { HfTokenField } from './HfTokenField'
 import { KeepAliveControl } from './KeepAliveControl'
 import { SectionText, SectionTitle, SwitchRow } from './SettingsSection'
@@ -103,6 +104,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
             />
             <HfTokenField />
             <BraveKeyField />
+            <ChatVoiceField />
             <ShortcutList />
           </Box>
         )}

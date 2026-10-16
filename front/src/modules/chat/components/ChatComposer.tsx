@@ -7,6 +7,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, ButtonBase, CircularProgress } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
+import PaletteOutlined from '@mui/icons-material/PaletteOutlined'
 import StopRounded from '@mui/icons-material/StopRounded'
 import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined'
 import { confirm } from '@/modules_shared/common/components/ui/confirm'
@@ -20,6 +21,7 @@ import { LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { contextUsage, requestedContext } from '../lib/context'
+import { commandsFor } from '../lib/creation'
 import { estimateTokens } from '../lib/estimate'
 import { useAttachments } from '../hooks/useAttachments'
 import { useChatConversation, useChatModel, useChatSettings } from '../hooks/useChat'
@@ -49,6 +51,28 @@ function WebToggle({ active, available, brave, onToggle }: { active: boolean; av
     <TipIconButton labelId={available ? 'chat.web.tip' : 'chat.web.unavailable'} hintId={brave ? 'chat.web.hint.brave' : 'chat.web.hint.ddg'} tone="default" active={active && available} disabled={!available} onClick={onToggle}>
       <TravelExploreOutlined sx={{ fontSize: 16 }} />
     </TipIconButton>
+  )
+}
+
+function CreationToggle({ active, available, onToggle }: { active: boolean; available: boolean; onToggle: () => void }) {
+  return (
+    <TipIconButton labelId={available ? 'chat.creation.tip' : 'chat.creation.unavailable'} hintId="chat.creation.hint" tone="default" active={active && available} disabled={!available} onClick={onToggle}>
+      <PaletteOutlined sx={{ fontSize: 16 }} />
+    </TipIconButton>
+  )
+}
+
+/** The commands that start with what the draft says after its slash: a click writes the command into the draft. */
+function CommandHints({ draft, onPick }: { draft: string; onPick: (command: string) => void }) {
+  const t = useT()
+  const commands = commandsFor(draft)
+  if (commands.length === 0) return null
+  return (
+    <Box role="group" aria-label={t('chat.command.aria')} sx={{ display: 'grid', gap: '2px', px: 1.25, pb: '6px' }}>
+      {commands.map((name) => (
+        <ButtonBase key={name} onClick={() => onPick(`/${name} `)} sx={{ justifyContent: 'flex-start', borderRadius: '8px', px: 1, py: '4px', fontSize: 12, color: 'var(--muted)', textAlign: 'left', '&:hover': { backgroundColor: 'var(--surface-2)', color: 'var(--ink)' } }}>{t(`chat.command.${name}`)}</ButtonBase>
+      ))}
+    </Box>
   )
 }
 
@@ -155,6 +179,7 @@ export function ChatComposer({ conversationId, hero = false }: { conversationId:
         }}
         sx={{ display: 'block', width: '100%', resize: 'none', border: 0, background: 'transparent', px: 2.25, pb: 1, pt: 2, fontFamily: 'inherit', fontSize: 15.5, lineHeight: 1.6, color: 'var(--ink)', outline: 'none', '&::placeholder': { color: 'var(--faint)' } }}
       />
+      {settings.tools.creation && !isPrivateMode() && <CommandHints draft={text} onPick={(command) => { setText(key, command); textarea.current?.focus() }} />}
       {mediaBusy && <Box role="status" sx={{ px: 2.25, pb: '6px', fontSize: 12, color: 'var(--warn)' }}>{t('chat.composer.mediaBusy')}</Box>}
       {model.compatible && !model.ready && !(hero && welcomeShown) && <Box sx={{ mb: '6px' }}><SetupPrompt model={model} /></Box>}
       {model.gated && <Box sx={{ mx: 2, mb: '6px' }}><GatedNotice model={model} /></Box>}
@@ -167,6 +192,7 @@ export function ChatComposer({ conversationId, hero = false }: { conversationId:
         <SystemPromptPopover value={settings.system_prompt} onChange={(system_prompt) => update({ system_prompt })} />
         <ChatSettingsPopover settings={settings} model={model} status={status} onChange={update} />
         <WebToggle active={settings.tools.web} available={!!model.llm?.tools} brave={!!app?.has_brave_api_key} onToggle={() => void toggleWeb(settings.tools.web, (web) => update({ tools: { web } }))} />
+        {!isPrivateMode() && <CreationToggle active={settings.tools.creation} available={!!model.llm?.tools} onToggle={() => update({ tools: { creation: !settings.tools.creation } })} />}
         {usage && <ContextGauge usage={usage} draftTokens={draftTokens} />}
         <Box sx={{ flex: 1 }} />
         <Box component="span" sx={{ display: { xs: 'none', lg: 'inline' }, pr: '4px', fontSize: 11, color: 'var(--faint)' }}>{t('chat.send.newline')}</Box>

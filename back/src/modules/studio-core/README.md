@@ -156,6 +156,8 @@ Formes publiques (snake_case, champs absents à `null`) :
 
 Le chat (module `chat`) dépend de `studio-core`, jamais l'inverse. Il se branche par deux points d'extension, sans que ce module n'importe rien de lui :
 
+**Générations lancées depuis le chat** (outils de création) : `GenerationService.create({ conversationId })` accepte la conversation d'un **autre mode**, celle du chat : le prompt et sa génération y sont des lignes `messages` comme ailleurs (la file, les événements `studio.*`, les assets et leur purge sont ceux du studio), la conversation garde son titre et son mode. Le chat n'a donc rien à ajouter ici ; il lit l'état par `MessageService.get` et supprime par `GenerationService.remove` (`back/src/modules/chat/README.md`, « Outils de création »).
+
 - **`ConversationModeRegistry`** : au démarrage, `ChatBootstrap` y inscrit `{ mode: 'chat', stats, matching, beforeRemove }`. `ConversationService` lui demande
   `generation_count` (messages de la branche active) et `busy` d'une conversation de ce mode (`cover` reste `null`), les identifiants des conversations
   dont un message contient `q` (recherche de la liste, plafonnée à 500), et `GenerationService.removeConversation` appelle `beforeRemove` avant de

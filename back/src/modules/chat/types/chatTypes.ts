@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
-import type { ConversationDto } from 'src/modules/studio-core';
+import type { AssetDto } from 'src/modules/media-library';
+import type { ConversationDto, MessageStatus } from 'src/modules/studio-core';
 
 /** Public and internal shapes of the chat studio (module `chat`). Public ones are the contract with the front. */
 
@@ -25,11 +26,44 @@ export interface ChatAttachment {
 
 export interface ToolRun {
   id: string;
-  name: 'web_search' | 'fetch_url';
+  name: 'web_search' | 'fetch_url' | 'generate_image' | 'generate_video' | 'generate_audio';
   arguments: Record<string, unknown>;
   status: 'running' | 'done' | 'error';
   result_preview?: string;
   sources?: { title: string; url: string }[];
+}
+
+export type CreationKind = 'image' | 'video' | 'audio';
+/** What a generation of the chat waits for before it can start: a duration (video) or a voice (audio model that needs one). */
+export type GenerationPending = 'duration' | 'voice';
+
+/** A generation of a message as stored (column `generations`): the file and its state live in `studio-core`, read back by `message_id`. */
+export interface StoredGeneration {
+  id: string;
+  kind: CreationKind;
+  model_id: string;
+  /** The `studio-core` message that runs it; `null` while it waits for the user (`pending`). */
+  message_id: string | null;
+  /** What was asked (the text to generate / to read aloud). */
+  prompt: string;
+  params: Record<string, unknown>;
+  pending?: GenerationPending;
+}
+
+/** A generation as the browser sees it: the stored entry plus the live state and the produced files. */
+export interface ChatGeneration extends StoredGeneration {
+  state: 'pending' | MessageStatus;
+  error: string | null;
+  assets: AssetDto[];
+  /** Id of the studio conversation-less origin: the chat conversation that owns the files. */
+  conversation_id: string;
+}
+
+/** Models the studios have selected, sent with every message: the chat offers the creation tool of each. */
+export interface CreationModels {
+  image?: string;
+  video?: string;
+  audio?: string;
 }
 
 export interface ChatStats {
@@ -48,6 +82,7 @@ export interface ChatMessage {
   content: string;
   reasoning: string | null;
   tool_runs: ToolRun[];
+  generations: ChatGeneration[];
   attachments: ChatAttachment[];
   model_id: string | null;
   params: Record<string, unknown> | null;
@@ -80,12 +115,12 @@ export interface ChatSettings {
   params: ChatParams;
   context_size: number | null;
   reasoning: ChatReasoning;
-  tools: { web: boolean };
+  tools: { web: boolean; creation: boolean };
   /** Last message of the active branch. */
   leaf_id: string | null;
 }
 
-export type ChatSettingsPatch = Partial<Omit<ChatSettings, 'leaf_id'>>;
+export type ChatSettingsPatch = Partial<Omit<ChatSettings, 'leaf_id' | 'tools'>> & { tools?: Partial<ChatSettings['tools']> };
 
 export interface ChatConversation {
   conversation: ConversationDto;
@@ -116,7 +151,7 @@ export const DEFAULT_CHAT_SETTINGS: ChatSettings = {
   params: {},
   context_size: null,
   reasoning: 'auto',
-  tools: { web: false },
+  tools: { web: false, creation: true },
   leaf_id: null,
 };
 

@@ -6,6 +6,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { privacyStorage, registerPrivacyStore } from '@/modules/private/lib/privacyStorage'
+import { mergeSettings } from '../lib/settingsMerge'
 import type { ChatSettings, ChatSettingsPatch } from '../types'
 
 /** Settings a new conversation starts with. */
@@ -15,7 +16,7 @@ export const BASE_SETTINGS: ChatSettings = {
   params: {},
   context_size: null,
   reasoning: 'auto',
-  tools: { web: false },
+  tools: { web: false, creation: true },
   leaf_id: null,
 }
 
@@ -32,9 +33,17 @@ export const useChatDefaultsStore = create<ChatDefaultsState>()(
   persist(
     (set) => ({
       settings: BASE_SETTINGS,
-      merge: (patch) => set((state) => ({ settings: { ...state.settings, ...patch } })),
+      merge: (patch) => set((state) => ({ settings: mergeSettings(state.settings, patch) })),
     }),
-    { name: 'cn-chat-defaults', storage: privacyStorage(), merge: (saved, current) => ({ ...current, settings: { ...BASE_SETTINGS, ...((saved as Partial<ChatDefaultsState> | undefined)?.settings ?? {}) } }) },
+    {
+      name: 'cn-chat-defaults',
+      storage: privacyStorage(),
+      merge: (saved, current) => {
+        const stored = (saved as Partial<ChatDefaultsState> | undefined)?.settings
+        // Defaults saved before a tool existed lack its switch: the base value fills it.
+        return { ...current, settings: { ...BASE_SETTINGS, ...stored, tools: { ...BASE_SETTINGS.tools, ...stored?.tools } } }
+      },
+    },
   ),
 )
 

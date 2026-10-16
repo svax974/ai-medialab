@@ -45,6 +45,15 @@ describe('chatApi', () => {
     ])
   })
 
+  it('starts a generation that waited for a duration or a voice', async () => {
+    await chatApi.confirmGeneration('m 1', 'g1', { seconds: 4 })
+    await chatApi.confirmGeneration('m1', 'g2', { voice_id: 'v1' })
+    expect(studioRequest.mock.calls).toEqual([
+      ['post', '/chat/messages/m%201/generations/g1/confirm', { seconds: 4 }],
+      ['post', '/chat/messages/m1/generations/g2/confirm', { voice_id: 'v1' }],
+    ])
+  })
+
   it('uploads one file as a multipart form', async () => {
     await chatApi.upload(new File(['hi'], 'a.txt', { type: 'text/plain' }))
     const [path, form] = studioUpload.mock.calls[0] as unknown as [string, FormData]

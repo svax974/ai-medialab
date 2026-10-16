@@ -6,16 +6,16 @@
 import { describe, expect, it } from '@jest/globals';
 import { BadRequestException, UnprocessableEntityException } from '@nestjs/common';
 import {
-  parseEditBody, parseEnhanceBody, parseExportFormat, parseId, parseLeafBody, parseParams, parseRegenerateBody, parseSearchQuery, parseSendBody, parseSettingsPatch,
+  parseConfirmBody, parseCreationModels, parseEditBody, parseEnhanceBody, parseExportFormat, parseId, parseLeafBody, parseParams, parseRegenerateBody, parseSearchQuery, parseSendBody, parseSettingsPatch,
 } from './chatValidation';
 
 const name = 'chat_0123456789abcdef.png';
 
 describe('parseSendBody', () => {
   it('reads a message', () => {
-    expect(parseSendBody({ content: 'Bonjour' })).toEqual({ content: 'Bonjour', attachments: [], parentId: undefined, modelId: undefined });
+    expect(parseSendBody({ content: 'Bonjour' })).toEqual({ content: 'Bonjour', attachments: [], parentId: undefined, modelId: undefined, creationModels: undefined });
     expect(parseSendBody({ content: 'x', parent_id: null, model_id: 'llm-a', attachments: [{ name }, { name }] })).toEqual({
-      content: 'x', attachments: [name], parentId: null, modelId: 'llm-a',
+      content: 'x', attachments: [name], parentId: null, modelId: 'llm-a', creationModels: undefined,
     });
   });
 
@@ -98,12 +98,41 @@ describe('settings', () => {
 
   it.each([
     [{ model_id: '' }], [{ model_id: 4 }], [{ system_prompt: 'x'.repeat(20_001) }], [{ system_prompt: 3 }], [{ params: [] }], [{ context_size: 100 }], [{ context_size: 2_000_000 }],
-    [{ context_size: 1000.5 }], [{ reasoning: 'max' }], [{ tools: { web: 'yes' } }], [{ tools: null }], [null], ['x'],
+    [{ context_size: 1000.5 }], [{ reasoning: 'max' }], [{ tools: { web: 'yes' } }], [{ tools: { creation: 1 } }], [{ tools: { other: true } }], [{ tools: {} }], [{ tools: null }], [null], ['x'],
   ])('rejects %j', (body) => {
     expect(() => parseSettingsPatch(body)).toThrow(UnprocessableEntityException);
   });
 
   it('never lets leaf_id through', () => {
     expect(parseSettingsPatch({ leaf_id: 'abc', reasoning: 'off' })).toEqual({ reasoning: 'off' });
+  });
+});
+
+describe('creation_models and the choice of a generation', () => {
+  it('reads the model of each studio, nothing else', () => {
+    expect(parseCreationModels(undefined)).toBeUndefined();
+    expect(parseCreationModels(null)).toBeUndefined();
+    expect(parseCreationModels({ image: 'flux', audio: 'kokoro', junk: 'x' })).toEqual({ image: 'flux', audio: 'kokoro' });
+    expect(parseSendBody({ content: 'x', creation_models: { video: 'wan' } }).creationModels).toEqual({ video: 'wan' });
+    expect(parseRegenerateBody({ creation_models: { image: 'flux' } }).creationModels).toEqual({ image: 'flux' });
+    expect(parseEditBody({ content: 'x', creation_models: { image: 'flux' } }).creationModels).toEqual({ image: 'flux' });
+  });
+
+  it.each([['x'], [[]], [{ image: '' }], [{ image: 5 }], [{ video: 'm'.repeat(201) }]])('rejects creation_models %j (422)', (value) => {
+    expect(() => parseCreationModels(value)).toThrow(UnprocessableEntityException);
+  });
+
+  it('settings accept the creation switch alone or with the web one', () => {
+    expect(parseSettingsPatch({ tools: { creation: false } })).toEqual({ tools: { creation: false } });
+    expect(parseSettingsPatch({ tools: { web: true, creation: true } })).toEqual({ tools: { web: true, creation: true } });
+  });
+
+  it('the confirmation takes a duration or a voice', () => {
+    expect(parseConfirmBody({ seconds: 4 })).toEqual({ seconds: 4 });
+    expect(parseConfirmBody({ voice_id: 'abc123' })).toEqual({ voiceId: 'abc123' });
+    expect(() => parseConfirmBody({ seconds: 'x' })).toThrow(UnprocessableEntityException);
+    expect(() => parseConfirmBody({ seconds: 1000 })).toThrow(UnprocessableEntityException);
+    expect(() => parseConfirmBody({ voice_id: '../x' })).toThrow(UnprocessableEntityException);
+    expect(() => parseConfirmBody(null)).toThrow(UnprocessableEntityException);
   });
 });

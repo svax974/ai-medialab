@@ -58,5 +58,13 @@
   "settings.help.braveKey.body": "Identifier of the Brave Search API. It is stored encrypted on this computer, only used for the chat's web search (queries then leave the machine for Brave) and is never shown again.",
   "settings.help.braveKey.tip": "leave empty to use DuckDuckGo.",
   "settings.help.localAi.title": "Local AI at launch",
-  "settings.help.localAi.body": "The chat engine (llama.cpp) and a small model bring Chat, updates analysed before you install them and prompt improvement, all on your machine. Turned off, the install invitation no longer shows; you can still install the engine from the Chat model list."
+  "settings.help.localAi.body": "The chat engine (llama.cpp) and a small model bring Chat, updates analysed before you install them and prompt improvement, all on your machine. Turned off, the install invitation no longer shows; you can still install the engine from the Chat model list.",
+  "settings.chatVoice.title": "Chat default voice",
+  "settings.chatVoice.description": "When the chat creates a sound and no voice is named, a model that needs one speaks with this one. A voice named in the request always wins.",
+  "settings.chatVoice.empty": "No voice of the library has a sample: add one in the audio studio to pick it here.",
+  "settings.chatVoice.none": "None (the chat will ask)",
+  "settings.chatVoice.aria": "Chat default voice",
+  "settings.help.chatVoice.title": "Chat default voice",
+  "settings.help.chatVoice.body": "The chat's creation tools can read a text aloud. A model that clones a voice needs one: with no voice named in the request, the chat takes this one, otherwise it shows a card for you to pick it. Models with voices of their own need none.",
+  "settings.help.chatVoice.tip": "a voice of the library, with a sample."
 }

@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: StudioSettings = {
   variant: {},
   hf_token: '',
   brave_api_key: '',
+  chat_voice_id: '',
 };
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -39,7 +40,7 @@ function parseMap<T>(name: string, value: unknown, valid: (v: unknown) => v is T
 export function parseSettingsPatch(body: unknown): SettingsPatch {
   if (!isRecord(body)) return fail('Corps JSON attendu.');
   const patch: SettingsPatch = {};
-  const { keep_alive_minutes: keep, previews, low_memory: low, hf_token: token, brave_api_key: brave, quantize, variant } = body;
+  const { keep_alive_minutes: keep, previews, low_memory: low, hf_token: token, brave_api_key: brave, chat_voice_id: chatVoice, quantize, variant } = body;
   if (keep != null) {
     if (typeof keep !== 'number' || !Number.isInteger(keep) || keep < KEEP_ALIVE_MIN || keep > KEEP_ALIVE_MAX) {
       fail(`keep_alive_minutes : entier entre ${KEEP_ALIVE_MIN} et ${KEEP_ALIVE_MAX} attendu.`);
@@ -50,6 +51,7 @@ export function parseSettingsPatch(body: unknown): SettingsPatch {
   if (low != null) patch.low_memory = typeof low === 'boolean' ? low : fail('low_memory : booléen attendu.');
   if (token != null) patch.hf_token = typeof token === 'string' ? token.trim() : fail('hf_token : texte attendu.');
   if (brave != null) patch.brave_api_key = typeof brave === 'string' && brave.length <= MAX_KEY_LENGTH ? brave.trim() : fail(`brave_api_key : texte de ${MAX_KEY_LENGTH} caractères au plus attendu.`);
+  if (chatVoice != null) patch.chat_voice_id = typeof chatVoice === 'string' && chatVoice.length <= MAX_KEY_LENGTH ? chatVoice.trim() : fail(`chat_voice_id : texte de ${MAX_KEY_LENGTH} caractères au plus attendu.`);
   if (quantize != null) {
     patch.quantize = parseMap('quantize', quantize, (v): v is number | null => v === null || (typeof v === 'number' && Number.isInteger(v)), 'entier ou null');
   }

@@ -55,7 +55,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 - Conversations **en arbre** : navigateur de branches, modification d'un message (nouvelle branche), régénération, comparaison côte à côte de
   deux modèles (l'un après l'autre), suppression ; instruction système avec personas ; réglages (température, top-p, top-k, min-p,
   pénalités, longueur, graine, contexte, raisonnement) avec préréglages ; avis quand changer le contexte recharge le modèle ; pièces jointes
-  (images pour les modèles de vision, fichiers texte) ; recherche web optionnelle par conversation (DuckDuckGo, ou Brave avec une clé) ;
+  (images pour les modèles de vision, fichiers texte) ; recherche web optionnelle par conversation (DuckDuckGo, ou Brave avec une clé) ; **outils de création** (actifs par défaut) : le modèle de chat lance une image, une vidéo ou un son avec le modèle sélectionné de chaque studio (paramètres par défaut, ce que chaque modèle accepte seulement), le résultat s'affiche dans la réponse et dans la médiathèque, « Ouvrir dans le studio » ; cartes de choix (durée d'une vidéo, voix d'un modèle qui en exige une, voix par défaut du chat dans les réglages) ; commandes `/image`, `/video [5s]`, `/audio [voix :]` sans le modèle de chat (absents de la session privée) ;
   titre automatique ; export Markdown / JSON ; recherche plein texte ; brouillon par conversation ; indicateur du modèle chargé avec
   « Décharger ».
 - **Envoyer vers Image / Vidéo / Audio** depuis une réponse (sélection ou texte entier, sans balisage) et bouton **✨ Améliorer le prompt** dans
@@ -100,7 +100,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
   analysées, prompts améliorés, option du modèle conseillé.
 
 ### `settings` et `hardware`
-- Dialogue « Réglages » : délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face et clé Brave Search facultatifs, invitation « IA locale au lancement », rappel
+- Dialogue « Réglages » : délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face et clé Brave Search facultatifs, voix par défaut du chat, invitation « IA locale au lancement », rappel
   des raccourcis ; chaque réglage a une info-bulle. Carte « Cette machine » (puce ou GPU, mémoire, disque des modèles, GPU
   inutilisables).
 
@@ -109,7 +109,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 | Module | Construit |
 |---|---|
 | `engine` | Client HTTP typé du moteur (types générés depuis `engine/openapi.json`), relais du flux d'événements du moteur avec reconnexion, relais des médias `/api/media`, sonde de santé (`degraded` si le moteur ne répond pas) |
-| `studio-core` | Conversations et messages (modes image, audio, vidéo et chat), file FIFO des générations (une à la fois), machine d'état des messages, relance, annulation, suppression avec purge des fichiers, reprise au démarrage, événements `studio.*`, file publiée |
+| `studio-core` | Conversations et messages (modes image, audio, vidéo et chat ; une conversation de chat peut recevoir des générations : outils de création), file FIFO des générations (une à la fois), machine d'état des messages, relance, annulation, suppression avec purge des fichiers, reprise au démarrage, événements `studio.*`, file publiée |
 | `media-library` | Assets (envois et sorties), favoris, liste paginée, ingestion et purge des fichiers par le moteur, limite d'événement relevée à 256 Ko |
 | `audio-studio` | Voix (clone, design), clip de référence préparé par le moteur, transcription suggérée, voix passées aux jobs audio |
 | `settings` | Réglages du studio (configuration de module, jeton Hugging Face chiffré), poussés au moteur à chaque (re)connexion |

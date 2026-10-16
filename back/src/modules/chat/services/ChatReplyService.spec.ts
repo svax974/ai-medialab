@@ -61,6 +61,7 @@ describe('ChatReplyService', () => {
   let chatBodies: Json[];
   const published = jest.fn();
   const webTool = { begin: jest.fn(), run: jest.fn() };
+  const creation = { prepare: jest.fn(async (..._args: unknown[]): Promise<unknown> => null), runCommand: jest.fn(async (..._args: unknown[]): Promise<unknown> => null) };
 
   /** Each call of the chat route plays the next script (the last one repeats). */
   const play = (...list: object[][]) => {
@@ -99,10 +100,12 @@ describe('ChatReplyService', () => {
     published.mockClear();
     webTool.begin.mockReset();
     webTool.run.mockReset();
+    creation.prepare.mockReset().mockResolvedValue(null);
+    creation.runCommand.mockReset();
     const llm = new EngineLlmClient(new EngineClient(testConfig(engine.url)));
     service = new ChatReplyService(
       store, llm, { resolve: async () => { if (resolved instanceof ChatError) throw resolved; return resolved; } } as never,
-      new ChatAttachmentService(store), webTool as unknown as WebToolsService, services.conversations,
+      new ChatAttachmentService(store), webTool as unknown as WebToolsService, creation as never, services.conversations,
       { publishConversation: published } as never, { get occupied() { return occupied; } } as never, gate, {} as never,
     );
     conv = (await services.conversations.create({ mode: 'chat' })).id;
@@ -287,7 +290,7 @@ describe('ChatReplyService', () => {
     const answer = first.of('done')[0].message;
     play(reply('Autre réponse'));
     const sink = new Sink();
-    await service.regenerate(conv, answer.id, 'llm-b', sink);
+    await service.regenerate(conv, answer.id, { modelId: 'llm-b' }, sink);
     expect(sink.of('message')).toHaveLength(1);
     const added = sink.of('message')[0].message;
     expect(added).toMatchObject({ role: 'assistant', parent_id: answer.parent_id, sibling_ids: [answer.id, added.id], sibling_index: 1 });
@@ -318,7 +321,7 @@ describe('ChatReplyService', () => {
     await expect(service.send('nope', { content: 'x', attachments: [], parentId: undefined, modelId: undefined }, sink)).rejects.toBeInstanceOf(NotFoundException);
     await expect(service.send(conv, { content: 'x', attachments: [], parentId: user.id, modelId: undefined }, sink)).rejects.toBeInstanceOf(UnprocessableEntityException);
     await expect(service.send(conv, { content: 'x', attachments: [], parentId: 'ghost', modelId: undefined }, sink)).rejects.toBeInstanceOf(NotFoundException);
-    await expect(service.regenerate(conv, user.id, undefined, sink)).rejects.toBeInstanceOf(UnprocessableEntityException);
+    await expect(service.regenerate(conv, user.id, {}, sink)).rejects.toBeInstanceOf(UnprocessableEntityException);
     await expect(service.edit(conv, answer.id, { content: 'x', attachments: undefined }, sink)).rejects.toBeInstanceOf(UnprocessableEntityException);
     await expect(service.send(conv, { content: 'x', attachments: ['chat_00000000deadbeef.png'], parentId: undefined, modelId: undefined }, sink)).rejects.toBeInstanceOf(UnprocessableEntityException);
     expect(sink.events).toEqual([]);
@@ -431,7 +434,7 @@ describe('ChatReplyService', () => {
     });
 
     it.each([
-      ['a regeneration', (done: Json) => service.regenerate(conv, done.id, undefined, new Sink())],
+      ['a regeneration', (done: Json) => service.regenerate(conv, done.id, {}, new Sink())],
       ['an edit', (done: Json) => service.edit(conv, done.parent_id, { content: 'Corrigé', attachments: undefined }, new Sink())],
     ])('%s also takes the engine from a title in progress', async (_name, act) => {
       const { state } = slowTitle();
@@ -587,6 +590,82 @@ describe('ChatReplyService', () => {
       await service.send(conv, { content: 'Cherche', attachments: [], parentId: undefined, modelId: undefined }, sink);
       expect((await store.all(conv)).at(-1)).toMatchObject({ status: 'cancelled' });
       expect(gate.busy).toBe(false);
+    });
+  });
+
+  describe('creation tools', () => {
+    const stored = { id: 'g1', kind: 'image', model_id: 'flux', message_id: 'job1', prompt: 'un chat', params: {} };
+
+    it('offers the creation schemas next to the model, runs the call and stores the generation in the message', async () => {
+      const generations: object[] = [];
+      const run = {
+        schemas: [{ type: 'function', function: { name: 'generate_image' } }], generations,
+        begin: jest.fn((call: Json) => ({ id: call.id, name: 'generate_image', arguments: {}, status: 'running' })),
+        run: jest.fn(async (call: Json) => {
+          generations.push(stored);
+          return { run: { id: call.id, name: 'generate_image', arguments: {}, status: 'done' }, content: 'Génération lancée' };
+        }),
+      };
+      creation.prepare.mockResolvedValue(run);
+      play([toolCall('c1', 'generate_image', { prompt: 'un chat' }), { type: 'done', finish_reason: 'tool_calls' }], reply('Je la prépare.'));
+      const sink = await send('Dessine un chat', { creationModels: { image: 'flux' } });
+      expect(creation.prepare).toHaveBeenCalledWith(conv, { image: 'flux' });
+      expect((chatBodies[0].tools as { function: { name: string } }[]).map((t) => t.function.name)).toEqual(['generate_image']);
+      expect(run.run).toHaveBeenCalledTimes(1);
+      expect(webTool.run).not.toHaveBeenCalled();
+      expect(chatBodies[1].messages).toContainEqual({ role: 'tool', tool_call_id: 'c1', name: 'generate_image', content: 'Génération lancée' });
+      const done = sink.of('done')[0].message as Json;
+      expect(done.content).toBe('Je la prépare.');
+      expect(done.tool_runs).toMatchObject([{ id: 'c1', name: 'generate_image', status: 'done' }]);
+      const message = await dataSource.getRepository(ChatMessageEntity).findOneByOrFail({ id: done.id as string });
+      expect(message.generations).toEqual([stored]);
+    });
+
+    it('does not offer them when the conversation switched them off or the model cannot call functions', async () => {
+      await store.updateSettings(conv, { tools: { creation: false } });
+      await send('Dessine', { creationModels: { image: 'flux' } });
+      expect(creation.prepare).not.toHaveBeenCalled();
+      expect(chatBodies[0].tools).toBeUndefined();
+      await store.updateSettings(conv, { tools: { creation: true } });
+      resolved = model({ tools: false });
+      await send('Encore', { creationModels: { image: 'flux' } });
+      expect(creation.prepare).not.toHaveBeenCalled();
+    });
+
+    it('runs /image without the language model: nothing is asked of the engine, one fixed sentence answers', async () => {
+      creation.runCommand.mockResolvedValue(stored);
+      const sink = await send('/image un chat', { creationModels: { image: 'flux' } });
+      expect(creation.runCommand).toHaveBeenCalledWith(conv, { kind: 'image', text: 'un chat', seconds: null, voiceName: null }, { image: 'flux' });
+      expect(chatBodies).toHaveLength(0);
+      expect(gate.busy).toBe(false);
+      expect(sink.names()).toEqual(['message', 'message', 'done']);
+      const done = sink.of('done')[0].message as Json;
+      expect(done).toMatchObject({ role: 'assistant', status: 'done', model_id: null });
+      expect(done.content).toMatch(/^Génération lancée/);
+      const row = await dataSource.getRepository(ChatMessageEntity).findOneByOrFail({ id: done.id as string });
+      expect(row.generations).toEqual([stored]);
+      expect(await title()).toBe('/image un chat');
+    });
+
+    it('asks for the duration of a /video without one', async () => {
+      creation.runCommand.mockResolvedValue({ ...stored, kind: 'video', message_id: null, pending: 'duration' });
+      const sink = await send('/video une vague');
+      expect((sink.of('done')[0].message as Json).content).toBe('Choisissez la durée de la vidéo ci-dessous.');
+    });
+
+    it('refuses a command whose studio has no model, creating nothing', async () => {
+      creation.runCommand.mockRejectedValue(new ChatError('no_model', "Aucun modèle prêt n'est sélectionné dans le studio d'image."));
+      const sink = await send('/image un chat');
+      expect(sink.names()).toEqual(['error']);
+      expect(sink.of('error')[0]).toMatchObject({ code: 'no_model' });
+      expect(await dataSource.getRepository(ChatMessageEntity).count()).toBe(0);
+    });
+
+    it('treats /image as plain text when the creation tools are off', async () => {
+      await store.updateSettings(conv, { tools: { creation: false } });
+      await send('/image un chat');
+      expect(creation.runCommand).not.toHaveBeenCalled();
+      expect((chatBodies[0].messages as Json[])[0]).toMatchObject({ role: 'user', content: '/image un chat' });
     });
   });
 });

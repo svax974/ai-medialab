@@ -26,6 +26,8 @@
   "custom.settings.variant": "Variant per model",
   "custom.settings.hfToken": "Hugging Face token",
   "custom.settings.hfToken.description": "Required to download gated models; stored encrypted.",
+  "custom.settings.chatVoiceId": "Chat default voice",
+  "custom.settings.chatVoiceId.description": "Voice the chat's audio tool speaks with when none is named (a voice of the library).",
   "custom.settings.braveApiKey": "Brave Search key",
   "custom.settings.braveApiKey.description": "Brave Search API key for the chat's web search (DuckDuckGo is used without one); stored encrypted, never sent back to the browser."
 }

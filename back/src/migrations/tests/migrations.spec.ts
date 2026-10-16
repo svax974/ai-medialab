@@ -79,13 +79,16 @@ describe('TypeORM migrations on an empty in-memory SQLite database', () => {
       await dataSource.runMigrations();
       const tableNames = async (): Promise<string[]> =>
         (await dataSource.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")).map((r: { name: string }) => r.name);
-      await dataSource.undoLastMigration(); // the latest one only: the advisories go, the earlier schema stays
+      await dataSource.undoLastMigration(); // the latest one only: `generations` leaves the chat messages, the tables stay
+      const columns = async (): Promise<string[]> => (await dataSource.query('PRAGMA table_info(chat_messages)')).map((r: { name: string }) => r.name);
+      expect(await columns()).not.toContain('generations');
+      await dataSource.undoLastMigration(); // then the advisories
       const afterOne = await tableNames();
       expect(afterOne).not.toContain('update_advisories');
       expect(afterOne).toEqual(expect.arrayContaining(['conversations', 'messages', 'assets', 'chat_messages']));
       await dataSource.undoLastMigration(); // then the chat tables
       expect(await tableNames()).not.toContain('chat_messages');
-      for (let i = 2; i < loadMigrations().length; i++) await dataSource.undoLastMigration();
+      for (let i = 3; i < loadMigrations().length; i++) await dataSource.undoLastMigration();
       expect(await tableNames()).toEqual(['migrations']);
     } finally {
       await dataSource.destroy();

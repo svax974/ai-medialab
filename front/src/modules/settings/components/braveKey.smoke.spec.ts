@@ -32,7 +32,7 @@ for (const dir of ['modules/settings', 'modules_shared/common']) {
 
 function render(hasKey?: boolean): string {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } })
-  if (hasKey !== undefined) client.setQueryData(settingsKeys.settings, { keep_alive_minutes: 10, previews: true, low_memory: true, has_hf_token: false, has_brave_api_key: hasKey, quantize: {}, variant: {} })
+  if (hasKey !== undefined) client.setQueryData(settingsKeys.settings, { keep_alive_minutes: 10, previews: true, low_memory: true, has_hf_token: false, has_brave_api_key: hasKey, chat_voice_id: '', quantize: {}, variant: {} })
   return renderToString(createElement(QueryClientProvider, { client }, createElement(ThemeProvider, { theme: createChambreNoireTheme('dark') }, createElement(BraveKeyField)))).replace(/<!-- -->/g, '')
 }
 

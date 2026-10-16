@@ -61,11 +61,11 @@ describe('ChatStoreService', () => {
   });
 
   it('stores settings with defaults and updates them part by part', async () => {
-    expect(await store.getSettings(conv)).toEqual({ model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false }, leaf_id: null });
+    expect(await store.getSettings(conv)).toEqual({ model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false, creation: true }, leaf_id: null });
     await store.updateSettings(conv, { model_id: 'llm-a', params: { temperature: 0.5 } });
     await store.updateSettings(conv, { system_prompt: 'Sois bref.', tools: { web: true }, reasoning: 'low', context_size: 8192 });
     expect(await store.getSettings(conv)).toEqual({
-      model_id: 'llm-a', system_prompt: 'Sois bref.', params: { temperature: 0.5 }, context_size: 8192, reasoning: 'low', tools: { web: true }, leaf_id: null,
+      model_id: 'llm-a', system_prompt: 'Sois bref.', params: { temperature: 0.5 }, context_size: 8192, reasoning: 'low', tools: { web: true, creation: true }, leaf_id: null,
     });
     await store.updateSettings(conv, { model_id: null });
     expect((await store.getSettings(conv)).model_id).toBeNull();

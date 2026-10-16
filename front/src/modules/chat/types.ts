@@ -4,6 +4,7 @@
  */
 
 import type { ConversationSummary } from '@/modules/studio-shell/types'
+import type { Asset, MessageStatus } from '@/modules/studio-core/types'
 
 /** Public shapes of the Nest `chat` module (`back/src/modules/chat/README.md`): JSON in snake_case, times in epoch seconds. */
 export type ChatRole = 'user' | 'assistant'
@@ -24,12 +25,36 @@ export interface ChatAttachment {
 /** A tool call of an answer, as the interface shows it (the query really sent is in `arguments`). */
 export interface ToolRun {
   id: string
-  name: 'web_search' | 'fetch_url'
+  name: 'web_search' | 'fetch_url' | 'generate_image' | 'generate_video' | 'generate_audio'
   arguments: Record<string, unknown>
   status: 'running' | 'done' | 'error'
   result_preview?: string
   sources?: { title: string; url: string }[]
 }
+
+export type CreationKind = 'image' | 'video' | 'audio'
+
+/** A generation of an answer (the creation tools and the `/image`, `/video`, `/audio` commands): `studio-core` runs it, the answer shows it. */
+export interface ChatGeneration {
+  id: string
+  kind: CreationKind
+  model_id: string
+  /** The studio message that runs it; `null` while it waits for a choice (`pending`). */
+  message_id: string | null
+  /** What was asked: the prompt, or the text to read aloud. */
+  prompt: string
+  params: Record<string, unknown>
+  /** What the card asks the user: the duration of a video, or the voice of an audio. */
+  pending?: 'duration' | 'voice'
+  state: 'pending' | MessageStatus
+  error: string | null
+  assets: Asset[]
+  /** The chat conversation that owns the files. */
+  conversation_id: string
+}
+
+/** The model each studio uses, sent with every message so that the chat creates with the same ones. */
+export type CreationModels = Partial<Record<CreationKind, string>>
 
 export interface ChatStats {
   prompt_tokens: number
@@ -47,6 +72,7 @@ export interface ChatMessage {
   content: string
   reasoning: string | null
   tool_runs: ToolRun[]
+  generations: ChatGeneration[]
   attachments: ChatAttachment[]
   model_id: string | null
   params: Record<string, unknown> | null
@@ -81,13 +107,13 @@ export interface ChatSettings {
   context_size: number | null
   reasoning: ReasoningLevel
   /** Web search (DuckDuckGo, or Brave when a key is saved in the settings): the queries leave the machine. */
-  tools: { web: boolean }
+  tools: { web: boolean; creation: boolean }
   /** Last message of the active branch. */
   leaf_id: string | null
 }
 
 /** Settings a PATCH may change (the leaf moves through `/leaf`). */
-export type ChatSettingsPatch = Partial<Omit<ChatSettings, 'leaf_id'>>
+export type ChatSettingsPatch = Partial<Omit<ChatSettings, 'leaf_id' | 'tools'>> & { tools?: Partial<ChatSettings['tools']> }
 
 /** `GET /api/chat/conversations/:id`: the conversation, its settings and the messages of the active branch (root to leaf). */
 export interface ChatConversation {
@@ -123,6 +149,7 @@ export interface SendBody {
   /** Parent of the new message; absent: the current leaf; `null`: a new root. */
   parent_id?: string | null
   model_id?: string
+  creation_models?: CreationModels
 }
 
 /** The model state the engine reports (`engine.llm.status`). */
