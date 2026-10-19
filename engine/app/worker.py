@@ -37,6 +37,9 @@ def _exit_with_parent() -> None:
 
 
 def run_worker(model_id: str, quantize: int | None, options: dict, commands, events, cancel_event) -> None:
+    from . import audio_packs
+
+    audio_packs.activate_overlays()  # PyTorch, diffusers, MLX: installed on demand, visible to this process only
     from PIL import Image
 
     _exit_with_parent()

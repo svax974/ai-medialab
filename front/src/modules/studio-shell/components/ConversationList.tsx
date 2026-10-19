@@ -21,6 +21,7 @@ const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
   chat: 'studio.conversation.delete.media.chat',
+  diagram: 'studio.conversation.delete.media.diagram',
 }
 
 const EMPTY_KEYS: Record<StudioMode, string> = {
@@ -28,6 +29,7 @@ const EMPTY_KEYS: Record<StudioMode, string> = {
   audio: 'studio.list.empty.audio',
   video: 'studio.list.empty.video',
   chat: 'studio.list.empty.chat',
+  diagram: 'studio.list.empty.diagram',
 }
 
 function Note({ children }: { children: React.ReactNode }) {

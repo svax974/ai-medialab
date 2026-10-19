@@ -44,10 +44,10 @@ describe('llama.cpp card', () => {
     expect(html).not.toMatch(/engines\.[a-z]+\.[a-z]/)
   })
 
-  it('shows the device of an installed engine and a way to uninstall it', () => {
+  it('shows the device of an installed engine (uninstalling is now done from the components manager)', () => {
     const html = render(createElement(LlamacppCard, { system: system({ available: true, variant: 'metal' }) }))
     expect(html).toContain('Metal')
-    expect(html).toContain('Désinstaller')
+    expect(html).not.toContain('Désinstaller')
     expect(html).not.toContain('Installer ≈')
   })
 

@@ -1,0 +1,10 @@
+{
+  "updates.error.busyGeneration": "A generation is running: wait for it to finish before analysing the risks.",
+  "updates.error.busyReply": "A chat reply is running: wait for it to finish before analysing the risks.",
+  "updates.error.busyAnalysis": "An analysis is already running.",
+  "updates.error.adviceNotFound": "Advice not found.",
+  "updates.error.adviceNoVersion": "The engine answered an advice without a target version.",
+  "updates.error.bodyExpected": "A JSON body is expected.",
+  "updates.error.oneOf": "\"{0}\" must be one of: {1}",
+  "updates.error.idExpected": "\"id\" must be a model or engine id."
+}

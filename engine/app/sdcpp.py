@@ -148,5 +148,5 @@ def pick(vendors: list[str]) -> dict[str, Any]:
             return {"available": True, "variant": variant, "binary": str(binary), "devices": [d[1] for d in gpus],
                     "alternatives": [v for v in variants if v != variant]}
         tried.append(variant)
-    return {"available": False, "reason": "Aucun GPU exploitable par les builds présentes"
-            + (f" ({', '.join(tried)})" if tried else "") + " : pilote manquant ou GPU non pris en charge."}
+    tried_note = f" ({', '.join(tried)})" if tried else ""
+    return {"available": False, "reason": f"Aucun GPU exploitable par les builds présentes{tried_note} : pilote manquant ou GPU non pris en charge."}

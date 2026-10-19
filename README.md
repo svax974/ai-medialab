@@ -63,21 +63,37 @@ réels ne sont jamais lancés par les tests.
 
 ## Premier lancement : rien à chercher ni à compiler
 
-L'application vérifie elle-même ce qu'il faut pour générer, et propose d'installer tout ce qui manque, en un clic,
-avec progression, annulation et messages d'erreur lisibles :
+Rien n'est téléchargé avant que vous choisissiez un modèle. À la première sélection d'un modèle qui a besoin de quelque chose, une
+fenêtre de confirmation liste ce qui sera téléchargé, avec la taille de chaque ligne et le total : les **Données de base** (éléments
+partagés par plusieurs moteurs : PyTorch, FFmpeg), le **Moteur d'exécution** (stable-diffusion.cpp, llama.cpp, audio.cpp ou un pack
+Python) et le **Modèle**. À la validation tout s'installe d'une traite, avec une progression et une annulation (qui supprime ce qui
+n'est pas entièrement téléchargé). Ce qui est déjà installé n'est jamais retéléchargé : un composant commun est récupéré une seule
+fois, par le premier modèle qui en a besoin. Réglages > Moteurs et Réglages > Modèles montrent l'état de chaque élément et permettent
+de le supprimer (supprimer un moteur supprime aussi les modèles installés qui en dépendent, après confirmation nominative).
+Les éléments sont :
 
 - **Moteur GGUF** : si la build de stable-diffusion.cpp adaptée à votre GPU n'est pas présente, l'application la
   télécharge depuis la version officielle (CUDA sur NVIDIA, ROCm sur AMD, Metal sur Apple, Vulkan sinon ; ≈ 30 Mo à
   0,9 Go), vérifie sa somme SHA-256, l'installe dans `<données>/engines/` (sans droits administrateur) et contrôle
   qu'elle voit bien un GPU — sinon elle essaie la suivante (repli sur Vulkan).
+- **PyTorch + diffusers (et MLX sur Mac)** : ils ne sont pas dans l'installateur. Le pack « torch » (`audio_packs.PACKS['torch']`)
+  les installe au premier besoin dans `<données>/engines/runtime/torch/` : environnement Python bâti sur l'interpréteur
+  embarqué avec `uv` (embarqué lui aussi), wheels CUDA / ROCm / Metal choisies selon le GPU (≈ 1,7 Go sur Mac, ≈ 4,5 Go ailleurs).
+  Seul le worker de génération les charge ; le serveur ne les importe jamais. Les modèles GGUF (stable-diffusion.cpp) et le chat
+  (llama.cpp) fonctionnent sans ce pack.
+- **FFmpeg** : PyAV, nécessaire à tout modèle vidéo (lecture des vidéos envoyées, vignettes, écriture du MP4). Il n'est pas dans
+  l'installateur (sa roue PyPI embarque des bibliothèques GPL, voir `docs/components/ffmpeg.md`) : le pack « ffmpeg » le télécharge
+  sur votre machine avec le premier modèle vidéo (≈ 50 Mo).
 - **Modèle** : l'écran d'accueil recommande le modèle le plus adapté à la machine et l'installe avec le moteur
   (« Tout installer ») ; le sélecteur de modèle et la fenêtre « Modèles » proposent le téléchargement partout où un
   modèle manque.
 - **Espace disque et mémoire** : vérifiés avant tout téléchargement ; les modèles qui ne tiennent pas sont signalés
   avec la raison.
 
-Les versions packagées de l'application embarquent déjà les moteurs de leur profil ; l'installation à la demande
-sert aux versions de développement et en secours.
+Les profils par défaut des versions packagées n'embarquent que le strict nécessaire : l'interpréteur, les bibliothèques du
+serveur, `uv` et, pour stable-diffusion.cpp, Metal sur Mac ou Vulkan ailleurs (`scripts-local/publish.sh` écarte les variantes
+CUDA et ROCm, `DESKTOP_SKIP_SDCPP_VARIANTS`). Tout le reste se télécharge à la demande, au premier besoin d'un modèle. Les
+profils `win-cuda`, `win-rocm`, `linux-cuda`, `linux-rocm` et `mac-arm64-full` gardent PyTorch embarqué (hors ligne dès l'installation).
 
 ## Moteurs et modèles
 
@@ -333,8 +349,11 @@ Profils d'exécution (un installateur = un profil ; le build de PyTorch dépend 
 
 | Profil | Cible | État |
 |---|---|---|
-| `mac-arm64` | macOS Apple Silicon — Metal (MLX) et PyTorch/MPS | assemblé et testé avec l'ancienne coque ; **la chaîne de la coque du gabarit n'a pas été reconstruite** |
-| `win-cuda` | Windows + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
+| `mac-arm64` | macOS Apple Silicon, Metal : runtime léger (≈ 0,3 Go), PyTorch et MLX en pack à la demande | runtime construit et son démarrage vérifié (2026-10-16) ; pack « torch » réel **non installé ici** |
+| `mac-arm64-full` | macOS Apple Silicon — Metal (MLX) et PyTorch/MPS embarqués (≈ 1,5 Go) | assemblé et testé avec l'ancienne coque ; **la chaîne de la coque du gabarit n'a pas été reconstruite** |
+| `win-universal` | Windows, tous GPU : runtime léger, GGUF (CUDA, ROCm, Vulkan), PyTorch en pack | scripté, **non vérifié** |
+| `linux-universal` | Linux, tous GPU : même principe | scripté, **non vérifié** |
+| `win-cuda` | Windows + NVIDIA (CUDA 12.8), PyTorch embarqué | scripté, **non vérifié** |
 | `linux-cuda` | Linux + NVIDIA (CUDA 12.8) | scripté, **non vérifié** |
 | `linux-rocm` | Linux + AMD (ROCm 7.2) | scripté, **non vérifié** |
 | `win-rocm` | Windows + AMD Radeon (ROCm 7.2.1, préversion AMD) | scripté, **expérimental, non vérifié** |
@@ -349,14 +368,15 @@ cible macOS, autant par cible Windows ou Linux.
 ./scripts/app.sh                  # construit l'app pour cette machine et l'ouvre (--no-run, --no-build, --clean)
 ./scripts/bundle.sh               # paquets dans desktop/dist/ : .dmg + zip win-x64 + tar.gz linux-x64
 ./scripts/bundle.sh --targets darwin-arm64        # le .dmg seul
+./scripts/install.sh macos        # construit puis copie AI MediaLab.app dans /Applications
 ```
 
-Les deux scripts viennent du gabarit (`desktop/README.md`, section « Build and package scripts ») : build du back et du front,
+Ces scripts viennent du gabarit (`desktop/README.md`, section « Build and package scripts ») : build du back et du front,
 crochet du projet, assemblage (`scripts/desktop/build-desktop.mjs`), `tauri build`. `cd back && npm run desktop:build` =
 `app.sh --no-run`. Le crochet `scripts-local/desktop-prepare.sh <cible>` construit le moteur embarqué
 (`scripts-local/build_runtime.py`, dans `desktop/build/engine-bundle/` = `engine/`, `engine-runtime/{python,site-packages}`,
-`engines/sdcpp/<variante>`) avec le profil de la cible : `darwin-arm64` → `mac-arm64`, `win-x64` → `win-cuda`, `linux-x64` →
-`linux-cuda` ; `DESKTOP_PROFILE=win-rocm|linux-rocm` en choisit un autre. Il ne refait que la copie du code du moteur
+`engines/sdcpp/<variante>`) avec le profil de la cible : `darwin-arm64` → `mac-arm64`, `win-x64` → `win-universal`, `linux-x64` →
+`linux-universal` ; `DESKTOP_PROFILE=win-cuda|win-rocm|linux-cuda|linux-rocm|mac-arm64-full` en choisit un autre (PyTorch embarqué). Il ne refait que la copie du code du moteur
 (`--refresh-app`, quelques secondes) tant que le profil, `engine/pyproject.toml`, `engine/uv.lock` et `profiles.json` n'ont pas
 changé ; changer de profil (donc de cible) reconstruit tout.
 
@@ -365,6 +385,22 @@ Résultats : `app.sh` ouvre `desktop/src-tauri/target/release/bundle/macos/AI Me
 portables dans `desktop/dist/`. Windows depuis le Mac demande `brew install mingw-w64` ; Linux, Docker démarré ; sinon la cible est
 ignorée avec la raison. Les paquets Windows et Linux sont cross-construits et **non vérifiés** sur leur matériel. Le workflow
 `.github/workflows/build-desktop.yml` (jamais exécuté) fait la même chaîne sur chaque OS.
+
+### Publier une version
+
+```sh
+scripts-local/publish.sh                      # build mac + Windows, release GitHub v<version du projet> en pré-version
+scripts-local/publish.sh --targets darwin-arm64,win-x64,linux-x64 --version 0.1.0
+scripts-local/publish.sh --dry-run            # le plan seulement ; --no-upload (build seul), --skip-build (envoi seul)
+```
+
+Le script (projet, pas le gabarit : `scripts/` est le lien partagé) refuse un arbre modifié, un HEAD non poussé ou un tag existant.
+Chaque cible passe sous `docs/migration/tools/guarded_run.sh` (`GUARD_GB`, 5 par défaut). Allègements propres à la publication :
+variantes CUDA et ROCm de stable-diffusion.cpp non embarquées (`DESKTOP_SKIP_SDCPP_VARIANTS`, téléchargées au premier lancement) et
+dépendances de production du back sans code (`@base-org/account`, `stripe`, `typescript`) retirées de `node_modules` ensuite.
+GitHub refuse un fichier de plus de 2 Gio : un paquet plus gros est découpé en `<nom>.part-aa`, `.part-ab`… (`cat` pour le
+reconstituer, procédure dans les notes de la release). La release est créée en brouillon, remplie, puis publiée.
+Le tag `v*` déclenche aussi `.github/workflows/build-desktop.yml` (jamais exécuté).
 
 Itérer sans empaqueter : `cd back && npm run desktop:dev` (la racine du dépôt sert de ressources : `back/dist`, `front/dist`,
 `engine/.venv` créé par `uv sync`, Node du système ; `DESKTOP_RESOURCES`).

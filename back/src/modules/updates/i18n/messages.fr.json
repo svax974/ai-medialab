@@ -1,0 +1,10 @@
+{
+  "updates.error.busyGeneration": "Une génération est en cours : attendez sa fin avant d'analyser les risques.",
+  "updates.error.busyReply": "Une réponse du chat est en cours : attendez sa fin avant d'analyser les risques.",
+  "updates.error.busyAnalysis": "Une analyse est déjà en cours.",
+  "updates.error.adviceNotFound": "Avis introuvable.",
+  "updates.error.adviceNoVersion": "Le moteur a rendu un avis sans version cible.",
+  "updates.error.bodyExpected": "Un corps JSON est attendu.",
+  "updates.error.oneOf": "« {0} » doit valoir l'une de ces valeurs : {1}",
+  "updates.error.idExpected": "« id » doit être un identifiant de modèle ou de moteur."
+}

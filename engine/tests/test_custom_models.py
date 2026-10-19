@@ -3,6 +3,8 @@
 
 """Custom Hugging Face models: classification, recipes, precision (no network)."""
 
+from types import SimpleNamespace
+
 import pytest
 
 from app import hf_search
@@ -36,6 +38,32 @@ def test_classify_supported_formats():
     assert c("a/q", ["gguf", "base_model:quantized:Qwen/Qwen-Image-2.1"])[1]["template"] == "qwen-image-2.1-gguf"
     assert c("a/tts", ["safetensors", "qwen3_tts"])[0] == "qwen3-tts"
     assert c("a/faster-whisper-x", ["ctranslate2"])[0] == "whisper-ct2"
+
+
+def _gguf_variant_info(pipeline_tag, files):
+    return SimpleNamespace(gated=False, tags=["gguf", "base_model:quantized:Qwen/Qwen-Image-Edit-2511"],
+                           pipeline_tag=pipeline_tag, card_data=None,
+                           siblings=[SimpleNamespace(rfilename=n, size=s) for n, s in files.items()])
+
+
+@pytest.mark.parametrize("pipeline_tag", ["text-to-image", "image-to-image"])
+def test_inspect_accepts_editing_models_tagged_image_to_image(monkeypatch, pipeline_tag):
+    info = _gguf_variant_info(pipeline_tag, {"qwen-image-edit-2511-Q4_K_M.gguf": 1024**3})
+    monkeypatch.setattr(hf_search, "_api", lambda: SimpleNamespace(model_info=lambda repo, files_metadata=False: info))
+    monkeypatch.setattr(hf_search, "get_system", lambda: {"os": "Darwin", "arch": "arm64", "ram_gb": 36.0,
+                                                          "unusable_gpus": [], "accelerators": [], "engines": {}})
+    out = hf_search.inspect("unsloth/Qwen-Image-Edit-2511-GGUF")
+    assert out["family"] == "gguf-variant" and out["template"]["id"] == "qwen-image-edit-gguf"
+    assert [o["file"] for o in out["options"]] == ["qwen-image-edit-2511-Q4_K_M.gguf"]
+
+
+def test_inspect_rejects_a_component_repo(monkeypatch):
+    info = _gguf_variant_info("feature-extraction", {"qwen-image-edit-2511-Q4_K_M.gguf": 1024**3})
+    monkeypatch.setattr(hf_search, "_api", lambda: SimpleNamespace(model_info=lambda repo, files_metadata=False: info))
+    monkeypatch.setattr(hf_search, "get_system", lambda: {"os": "Darwin", "arch": "arm64", "ram_gb": 36.0,
+                                                          "unusable_gpus": [], "accelerators": [], "engines": {}})
+    with pytest.raises(hf_search.HubError, match="n'est pas un modèle de diffusion"):
+        hf_search.inspect("unsloth/Qwen-Image-Edit-2511-GGUF")
 
 
 @pytest.mark.parametrize("repo,tags", [
@@ -74,6 +102,32 @@ def test_remaining_download_counts_only_missing_sources(monkeypatch):
     monkeypatch.setattr(engines_base, "_source_status",
                         lambda src: {"state": "installed" if src.repo in shared else "missing", "size": 0})
     assert engines_base.remaining_download_gb(spec) == 5.57  # the shared encoder and VAE are already there
+
+
+def test_a_derived_variant_stays_installed_once_its_bf16_source_is_freed(monkeypatch):
+    from app.engines import base as engines_base
+    from app.engines.base import HfSource, ModelSpec, installation_status
+
+    bf16 = HfSource("org/model", ["*"], ["weights.safetensors"], 58.0)
+    derived = HfSource("org/model", kind="derived", local_dir="model/q4", check_files=["model.safetensors"], size_gb=16.0)
+    spec = ModelSpec(id="x", name="x", family="x", description="", engine="x:X", sources=[bf16, derived])
+
+    monkeypatch.setattr(engines_base, "_source_status", lambda src: {"state": "missing", "size": 0})
+    assert installation_status(spec) == {"state": "missing", "size_gb": 0.0, "need_gb": 74.0, "temp_gb": 58.0}
+
+    def bf16_only(src):
+        return {"state": "installed", "size": int(58 * 1024**3)} if src.kind == "hf" else {"state": "missing", "size": 0}
+
+    monkeypatch.setattr(engines_base, "_source_status", bf16_only)
+    st = installation_status(spec)
+    assert st["state"] == "partial" and st["need_gb"] == 16.0
+
+    def derived_only(src):  # the quantized checkpoint is produced, then the bf16 copy is freed
+        return {"state": "installed", "size": int(16 * 1024**3)} if src.kind == "derived" else {"state": "missing", "size": 0}
+
+    monkeypatch.setattr(engines_base, "_source_status", derived_only)
+    st = installation_status(spec)
+    assert st["state"] == "installed" and st["need_gb"] == 0.0
 
 
 def test_sd_diffusers_recipe():

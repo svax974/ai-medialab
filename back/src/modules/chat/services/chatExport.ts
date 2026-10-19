@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import type { ConversationDto } from 'src/modules/studio-core';
 import type { ChatMessage, ChatSettings } from '../types/chatTypes';
 
@@ -18,18 +19,18 @@ export function exportFileName(title: string, format: 'md' | 'json'): string {
 
 export function toMarkdown(conversation: ConversationDto, settings: ChatSettings, messages: ChatMessage[]): string {
   const lines = [`# ${conversation.title}`, ''];
-  if (settings.system_prompt.trim()) lines.push('> **Instruction système** : ' + settings.system_prompt.trim().replace(/\n/g, '\n> '), '');
+  if (settings.system_prompt.trim()) lines.push('> **' + tr('chat.export.systemPrompt') + '** : ' + settings.system_prompt.trim().replace(/\n/g, '\n> '), '');
   for (const m of messages) {
-    lines.push(`## ${m.role === 'user' ? 'Vous' : `Assistant${m.model_id ? ` (${m.model_id})` : ''}`} — ${stamp(m.created_at)}`, '');
-    for (const a of m.attachments) lines.push(`*Pièce jointe : ${a.original_name}*`, '');
-    if (m.reasoning) lines.push('<details><summary>Réflexion</summary>', '', m.reasoning.trim(), '', '</details>', '');
+    lines.push(`## ${m.role === 'user' ? tr('chat.export.you') : `${tr('chat.export.assistant')}${m.model_id ? ` (${m.model_id})` : ''}`} — ${stamp(m.created_at)}`, '');
+    for (const a of m.attachments) lines.push(`*${tr('chat.export.attachment', [a.original_name])}*`, '');
+    if (m.reasoning) lines.push(`<details><summary>${tr('chat.export.reasoning')}</summary>`, '', m.reasoning.trim(), '', '</details>', '');
     for (const run of m.tool_runs) {
-      lines.push(`*Outil ${run.name} : ${JSON.stringify(run.arguments)}${run.result_preview ? ` → ${run.result_preview}` : ''}*`);
+      lines.push(`*${tr('chat.export.tool', [run.name, JSON.stringify(run.arguments)])}${run.result_preview ? ` → ${run.result_preview}` : ''}*`);
       for (const s of run.sources ?? []) lines.push(`- [${s.title}](${s.url})`);
       lines.push('');
     }
     lines.push(m.content.trim(), '');
-    if (m.error) lines.push(`*Erreur : ${m.error}*`, '');
+    if (m.error) lines.push(`*${tr('chat.export.error', [m.error])}*`, '');
   }
   return lines.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }

@@ -54,6 +54,7 @@ from typing import Any, Awaitable, Callable
 
 from . import audiocpp, engine_install, llamacpp, runtime_settings, updates
 from .engines import MODELS, get_spec, selected_variants
+from .i18n import language
 from .engines import resolve as resolve_variant
 
 CONTEXT = 16384
@@ -410,9 +411,14 @@ EXTRACT_SYSTEM = (
     "Answer with JSON only: {\"findings\": [{\"source\": \"S3\", \"title\": short title, \"quote\": an excerpt COPIED WORD FOR "
     "WORD from that source, at most 300 characters, \"severity\": \"info\"|\"warning\"|\"critical\"}]}. Never write a quote that is "
     "not in the source; never invent anything. If there is no problem, answer {\"findings\": []}.")
-SUMMARY_SYSTEM = (
-    "Tu résumes en français, en deux ou trois phrases, les points ci-dessous qui concernent une mise à jour. Utilise UNIQUEMENT "
-    "ces points, sans rien ajouter, sans conseil d'installation et sans certitude : ce sont des signalements à vérifier.")
+SUMMARY_SYSTEM = {
+    "fr": "Tu résumes en français, en deux ou trois phrases, les points ci-dessous qui concernent une mise à jour. Utilise UNIQUEMENT "
+          "ces points, sans rien ajouter, sans conseil d'installation et sans certitude : ce sont des signalements à vérifier.",
+    "en": "You summarise in English, in two or three sentences, the points below that concern an update. Use ONLY these points, "
+          "add nothing, give no installation advice and no certainty: they are reports to check.",
+}
+EXTRACT_LANGUAGE = {"fr": " Write each \"title\" in French; keep each \"quote\" in its original language.",
+                    "en": " Write each \"title\" in English; keep each \"quote\" in its original language."}
 
 Llm = Callable[..., Awaitable[str]]
 
@@ -427,7 +433,7 @@ def template_summary(findings: list[dict[str, Any]], known: list[dict[str, Any]]
     points = [f["title"] for f in [*known, *findings]]
     if not points:
         return f"Aucun problème signalé dans les {consulted} source(s) consultée(s)."
-    return "Points signalés : " + " ; ".join(points[:4]) + ("…" if len(points) > 4 else ".")
+    return f"Points signalés : {' ; '.join(points[:4]) + ('…' if len(points) > 4 else '.')}"
 
 
 def pick_model() -> Any | None:
@@ -559,7 +565,7 @@ async def _extract(sources: list[Source], spec: Any, llm_call: Llm, row: dict[st
     if not sources:
         return [], 0
     what = f"{row['name']}, de {row['from'] or 'la version installée'} à {row['to']}" if kind == "engine" else row["name"]
-    messages = [{"role": "system", "content": EXTRACT_SYSTEM},
+    messages = [{"role": "system", "content": EXTRACT_SYSTEM + EXTRACT_LANGUAGE[language()]},
                 {"role": "user", "content": render_sources(sources, f"Update of {what}.")}]
     try:
         raw = await asyncio.wait_for(llm_call(spec, messages, max_tokens=1400,
@@ -577,7 +583,7 @@ async def _summarise(findings: list[dict[str, Any]], known: list[dict[str, Any]]
         return template_summary([], [], consulted)
     text = "\n".join(f"- {p['title']} : « {p['quote']} »" for p in points)
     try:
-        said = await asyncio.wait_for(llm_call(spec, [{"role": "system", "content": SUMMARY_SYSTEM}, {"role": "user", "content": text}],
+        said = await asyncio.wait_for(llm_call(spec, [{"role": "system", "content": SUMMARY_SYSTEM[language()]}, {"role": "user", "content": text}],
                                                max_tokens=220, temperature=0.2), LLM_TIMEOUT_S)
         return " ".join(said.split()) or template_summary(findings, known, consulted)
     except (AdvisorError, asyncio.TimeoutError):

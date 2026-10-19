@@ -10,7 +10,6 @@ import SystemUpdateAltRounded from '@mui/icons-material/SystemUpdateAltRounded'
 import TuneRounded from '@mui/icons-material/TuneRounded'
 import ViewInArOutlined from '@mui/icons-material/ViewInArOutlined'
 import { useThemeMode } from '@/modules_shared/common/components/ui/theme/ThemeModeProvider'
-import { SwitchLanguage } from '@/modules_shared/common/components/ui/languages/SwitchLanguage'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { EngineCard } from '@/modules/studio-core'
 import { PrivateToggle } from '@/modules/private'
@@ -63,7 +62,6 @@ export function SidebarFooter() {
         <Box sx={{ flex: 1 }}>
           <FooterButton icon={<TuneRounded sx={{ fontSize: 16 }} />} label={t('studio.footer.settings')} onClick={() => setSettingsOpen(true)} />
         </Box>
-        <SwitchLanguage />
         <TipIconButton
           labelId={isDark ? 'studio.footer.themeLight' : 'studio.footer.themeDark'}
           onClick={toggleMode}

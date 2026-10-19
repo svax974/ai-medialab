@@ -43,7 +43,7 @@ class ParamSpec:
 
 
 Backend = Literal["mlx", "torch", "sdcpp", "llamacpp", "pack", "demo"]
-Kind = Literal["image", "audio", "video", "llm"]
+Kind = Literal["image", "audio", "video", "llm", "diagram"]
 
 
 @dataclass
@@ -135,12 +135,15 @@ class LlmCaps:
 
 @dataclass
 class HfSource:
-    """A Hugging Face repo (or part of one) a model depends on."""
+    """A Hugging Face repo (or part of one) a model depends on, or a locally produced artifact (`kind="derived"`):
+    weights quantized once from such a repo and saved under `DERIVED_DIR`, never re-derived at load time."""
 
-    repo: str
+    repo: str  # for kind="derived": the upstream repo this was produced from (for display only)
     patterns: list[str] | None = None  # files to download (fnmatch); None = whole repo
     check_files: list[str] = field(default_factory=list)  # patterns that must match for the source to count as installed
     size_gb: float | None = None  # approximate size, for overall progress
+    kind: Literal["hf", "derived"] = "hf"
+    local_dir: str = ""  # kind="derived": path under DERIVED_DIR holding the produced checkpoint
 
 
 @dataclass
@@ -271,7 +274,39 @@ def _matches(rel: str, patterns: list[str]) -> bool:
     return any(fnmatch(rel, p) for p in patterns)
 
 
+def _scan_dir(root: Path, patterns: list[str] | None, check_files: list[str]) -> dict[str, Any]:
+    """How much of `check_files`/`patterns` is present directly under `root` (no snapshot indirection)."""
+    if not root.is_dir():
+        return {"ok": 0, "size": 0}
+    files = [p.relative_to(root).as_posix() for p in root.rglob("*") if p.is_file() or p.is_symlink()]
+    if check_files:
+        ok = sum(1 for pat in check_files if any(_matches(f, [pat]) for f in files))
+    else:
+        ok = 1 if any(f.endswith((".safetensors", ".gguf")) for f in files) else 0
+    size = 0
+    for p in root.rglob("*"):
+        rel = p.relative_to(root).as_posix()
+        if (patterns is None or _matches(rel, patterns)) and (p.is_file() or p.is_symlink()):
+            try:
+                size += p.stat().st_size
+            except OSError:
+                pass
+    return {"ok": ok, "size": size}
+
+
+def derived_dir(src: HfSource) -> Path:
+    from ..config import DERIVED_DIR
+
+    return DERIVED_DIR / src.local_dir
+
+
 def _source_status(src: HfSource) -> dict[str, Any]:
+    needed = len(src.check_files) or 1
+    if src.kind == "derived":
+        # A temp dir used while producing the checkpoint (atomic rename on success) never counts as installed.
+        scan = _scan_dir(derived_dir(src), src.patterns, src.check_files)
+        state = "installed" if scan["ok"] >= needed else "missing"
+        return {"state": state, "size": scan["size"]}
     root = repo_cache_dir(src.repo)
     snapshots = root / "snapshots"
     best: tuple[int, Path] | None = None
@@ -279,24 +314,12 @@ def _source_status(src: HfSource) -> dict[str, Any]:
         for snap in snapshots.iterdir():
             if not snap.is_dir():
                 continue
-            files = [p.relative_to(snap).as_posix() for p in snap.rglob("*") if p.is_file() or p.is_symlink()]
-            if src.check_files:
-                ok = sum(1 for pat in src.check_files if any(_matches(f, [pat]) for f in files))
-            else:
-                ok = 1 if any(f.endswith((".safetensors", ".gguf")) for f in files) else 0
-            if best is None or ok > best[0]:
-                best = (ok, snap)
-    needed = len(src.check_files) or 1
+            scan = _scan_dir(snap, None, src.check_files)
+            if best is None or scan["ok"] > best[0]:
+                best = (scan["ok"], snap)
     size = 0
     if best:
-        snap = best[1]
-        for p in snap.rglob("*"):
-            rel = p.relative_to(snap).as_posix()
-            if (src.patterns is None or _matches(rel, src.patterns)) and (p.is_file() or p.is_symlink()):
-                try:
-                    size += p.stat().st_size
-                except OSError:
-                    pass
+        size = _scan_dir(best[1], src.patterns, [])["size"]
     incomplete = (root / "blobs").is_dir() and any((root / "blobs").glob("*.incomplete"))
     if best and best[0] >= needed:
         state = "installed"  # leftover .incomplete files (cancelled downloads) don't matter
@@ -319,21 +342,32 @@ def installation_status(spec: ModelSpec) -> dict[str, Any]:
     state is "installed", "partial" (required files missing or download interrupted) or "missing".
     A multi-repo model is only "installed" when every repo is. `need_gb` is what is left to download: the sources not
     installed yet, less what a partial one already holds (a repo shared with another model counts only when missing).
+
+    A bf16 source that a `kind="derived"` sibling was produced from counts as satisfied once that derived output is
+    installed: the bf16 copy can then be freed (see `downloads.DownloadManager.free_bf16`) without the model
+    falling back to "partial" — only the derived checkpoint is required from then on.
     """
     sources = spec.all_sources()
     if not sources:
-        return {"state": "installed", "size_gb": 0.0, "need_gb": 0.0}
+        return {"state": "installed", "size_gb": 0.0, "need_gb": 0.0, "temp_gb": 0.0}
     parts = [_source_status(src) for src in sources]
+    satisfied_repos = {src.repo for src, p in zip(sources, parts) if src.kind == "derived" and p["state"] == "installed"}
+    effective = [{"state": "installed", "size": p["size"]} if src.kind == "hf" and src.repo in satisfied_repos else p
+                 for src, p in zip(sources, parts)]
     need = sum(max(0.0, (src.size_gb or 0) - p["size"] / 1024**3)
-               for src, p in zip(sources, parts) if p["state"] != "installed")
-    states = {p["state"] for p in parts}
+               for src, p in zip(sources, effective) if p["state"] != "installed")
+    # Part of `need` that is only a stepping stone (the bf16 source of a derived checkpoint, freeable afterwards).
+    temp = sum(max(0.0, (src.size_gb or 0) - p["size"] / 1024**3)
+               for src, p in zip(sources, effective) if p["state"] != "installed" and src.repo in {d.repo for d in sources if d.kind == "derived"} and src.kind == "hf")
+    states = {p["state"] for p in effective}
     if states == {"installed"}:
         state = "installed"
     elif states == {"missing"}:
         state = "missing"
     else:
         state = "partial"
-    return {"state": state, "size_gb": round(sum(p["size"] for p in parts) / 1024**3, 2), "need_gb": round(need, 2)}
+    return {"state": state, "size_gb": round(sum(p["size"] for p in parts) / 1024**3, 2), "need_gb": round(need, 2),
+            "temp_gb": round(temp, 2)}
 
 
 @dataclass

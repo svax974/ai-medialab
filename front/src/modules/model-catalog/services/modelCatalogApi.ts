@@ -24,6 +24,10 @@ export const modelCatalogApi = {
   deleteModel(modelId: string): Promise<{ freed_gb: number; also_affects: string[] }> {
     return studioRequest<{ freed_gb: number; also_affects: string[] }>('delete', `/models/${encodeURIComponent(modelId)}`)
   },
+  /** Deletes the full-precision source once a locally quantized variant is installed from it. */
+  freeBf16Source(modelId: string): Promise<{ freed_gb: number }> {
+    return studioRequest<{ freed_gb: number }>('delete', `/models/${encodeURIComponent(modelId)}/source/bf16`)
+  },
   addCustom(repo: string, option: string): Promise<{ model_id: string }> {
     return studioRequest<{ model_id: string }>('post', '/models/custom', { repo, option })
   },

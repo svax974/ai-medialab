@@ -3,9 +3,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable, Logger, OnModuleDestroy, UnprocessableEntityException } from '@nestjs/common';
 import {
-  ConversationService, DEFAULT_CHAT_TITLE, EngineBusyGate, GenerationQueueService, GenerationService, titleFromPrompt,
+  ConversationService, defaultChatTitle, EngineBusyGate, isDefaultChatTitle, GenerationQueueService, GenerationService, titleFromPrompt,
 } from 'src/modules/studio-core';
 import { StudioEvents } from 'src/modules/media-library';
 import { ChatMessageEntity } from '../entities/ChatMessageEntity';
@@ -39,9 +40,8 @@ const FLUSH_MS = 500;
 const TITLE_TIMEOUT_MS = 15_000;
 const TITLE_SYSTEM = 'Donne un titre très court (4 à 6 mots) à cette conversation, dans la langue de l\'utilisateur, sans guillemets ni point final. Réponds uniquement par le titre.';
 
-const BUSY_GENERATION = "Une génération d'image, d'audio ou de vidéo est en cours ou en attente : attendez sa fin ou annulez-la avant de discuter.";
-const BUSY_REPLY = 'Une réponse est déjà en cours de génération.';
-const GENERATION_STARTED = 'Génération lancée : le résultat apparaîtra ci-dessous dès que le modèle aura terminé.';
+const busyGeneration = (): string => tr('chat.error.busyGeneration');
+const busyReply = (): string => tr('chat.error.busyReply');
 
 /** Mutable state of one reply: what has been written, and the throttled write to the database. */
 export class ReplyState {
@@ -135,7 +135,7 @@ export class ChatReplyService implements OnModuleDestroy {
     const parentId = body.parentId === undefined ? settings.leaf_id : body.parentId;
     if (parentId) {
       const parent = await this.store.requireMessage(conversationId, parentId);
-      if (parent.role !== 'assistant') throw new UnprocessableEntityException('parent_id : une réponse du modèle est attendue.');
+      if (parent.role !== 'assistant') throw new UnprocessableEntityException(tr('chat.error.notAssistantParent'));
     }
     const attachments = await this.attachments.resolve(body.attachments);
     const command = settings.tools.creation && !attachments.length ? parseCommand(body.content) : null;
@@ -147,7 +147,7 @@ export class ChatReplyService implements OnModuleDestroy {
   async regenerate(conversationId: string, messageId: string, body: RegenerateBody, sink: ReplySink): Promise<void> {
     await this.store.requireConversation(conversationId);
     const answer = await this.store.requireMessage(conversationId, messageId);
-    if (answer.role !== 'assistant' || !answer.parentId) throw new UnprocessableEntityException('Seule une réponse du modèle peut être régénérée.');
+    if (answer.role !== 'assistant' || !answer.parentId) throw new UnprocessableEntityException(tr('chat.error.onlyAssistantRegenerate'));
     const user = await this.store.requireMessage(conversationId, answer.parentId);
     await this.run(conversationId, sink, body.modelId, { kind: 'answer', user }, body.creationModels);
   }
@@ -156,7 +156,7 @@ export class ChatReplyService implements OnModuleDestroy {
   async edit(conversationId: string, messageId: string, body: EditBody, sink: ReplySink): Promise<void> {
     await this.store.requireConversation(conversationId);
     const original = await this.store.requireMessage(conversationId, messageId);
-    if (original.role !== 'user') throw new UnprocessableEntityException('Seul un message utilisateur peut être modifié.');
+    if (original.role !== 'user') throw new UnprocessableEntityException(tr('chat.error.onlyUserEdit'));
     const attachments = body.attachments ? await this.attachments.resolve(body.attachments) : original.attachments;
     await this.run(conversationId, sink, undefined, { kind: 'new_user', parentId: original.parentId, content: body.content, attachments }, body.creationModels);
   }
@@ -168,7 +168,7 @@ export class ChatReplyService implements OnModuleDestroy {
   private async runCommand(
     conversationId: string, settings: ChatSettings, parentId: string | null, body: SendBody, command: CreationCommand, sink: ReplySink,
   ): Promise<void> {
-    if (this.runningIn(conversationId)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
+    if (this.runningIn(conversationId)) return this.refuse(sink, new ChatError('busy', busyReply()));
     let generation: StoredGeneration;
     try {
       generation = await this.creation.runCommand(conversationId, command, body.creationModels);
@@ -178,7 +178,7 @@ export class ChatReplyService implements OnModuleDestroy {
     }
     const plan: TurnPlan = { kind: 'new_user', parentId, content: body.content, attachments: [] };
     const turn = await this.open(conversationId, settings, null, plan, sink);
-    const content = generation.pending === 'duration' ? 'Choisissez la durée de la vidéo ci-dessous.' : GENERATION_STARTED;
+    const content = generation.pending === 'duration' ? tr('chat.reply.chooseDuration') : tr('chat.reply.generationStarted');
     await this.store.updateMessage(turn.assistant.id, { content, generations: [generation], status: 'done', error: null });
     sink.emit('done', { message: await this.store.toDto((await this.store.getMessage(turn.assistant.id)) as ChatMessageEntity) });
     void this.generations.publishConversation(conversationId);
@@ -189,9 +189,9 @@ export class ChatReplyService implements OnModuleDestroy {
   private async run(
     conversationId: string, sink: ReplySink, requestedModel: string | undefined, plan: TurnPlan, creationModels?: CreationModels,
   ): Promise<void> {
-    if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', BUSY_GENERATION));
+    if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', busyGeneration()));
     await this.gate.preempt(); // a title still being written gives the engine up: it never makes a request busy
-    if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
+    if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', busyReply()));
     let generating = false;
     try {
       const settings = await this.store.getSettings(conversationId);
@@ -232,8 +232,8 @@ export class ChatReplyService implements OnModuleDestroy {
   /** The first message names the conversation at once (the model may find a better title afterwards). */
   private async nameFromPrompt(conversationId: string, user: ChatMessageEntity, isFirst: boolean): Promise<boolean> {
     const summary = await this.conversations.getSummary(conversationId);
-    if (!isFirst || summary?.title !== DEFAULT_CHAT_TITLE) return false;
-    const text = user.content.trim() || user.attachments[0]?.original_name || DEFAULT_CHAT_TITLE;
+    if (!isFirst || !isDefaultChatTitle(summary?.title)) return false;
+    const text = user.content.trim() || user.attachments[0]?.original_name || defaultChatTitle();
     await this.conversations.update(conversationId, { title: titleFromPrompt(text) });
     return true;
   }
@@ -284,7 +284,7 @@ export class ChatReplyService implements OnModuleDestroy {
     const known = error instanceof ChatError;
     if (!known) this.logger.error(`chat reply failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
     const code = known ? error.code : 'upstream';
-    const message = known ? error.message : 'La réponse a échoué de façon inattendue.';
+    const message = known ? error.message : tr('chat.error.replyFailed');
     await state.flush({ status: 'error', stats: state.stats(), error: message }).catch(() => undefined);
     sink.emit('error', { code, message, id });
   }

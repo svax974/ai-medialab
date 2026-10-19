@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, OnModuleInit } from '@nestjs/common';
 import { EngineClient } from 'src/modules/engine';
 import {
@@ -16,8 +17,6 @@ import { PrivateSessionService } from './PrivateSessionService';
 
 /** Holds the engine while a private reply runs (a distinct owner from the private generations': see `EngineBusyGate`). */
 const GATE_OWNER = 'private-chat';
-const BUSY_GENERATION = "Une génération d'image, d'audio ou de vidéo est en cours ou en attente : attendez sa fin ou annulez-la avant de discuter.";
-const BUSY_REPLY = 'Une réponse est déjà en cours de génération.';
 
 /**
  * The chat of the private session, without a state: the browser sends the whole history with every request and the answer
@@ -50,15 +49,15 @@ export class PrivateChatService implements OnModuleInit {
 
   private requireSession(): void {
     this.session.touch();
-    if (!this.session.active) throw new ConflictException("Aucune session privée n'est ouverte.");
+    if (!this.session.active) throw new ConflictException(tr('private.error.noSession'));
   }
 
   /** One reply into `sink`. A refusal before the stream (no session) is an HTTP error; the others are `error` events. */
   async reply(body: PrivateChatBody, sink: ReplySink): Promise<void> {
     this.requireSession();
     const history = await this.history(body); // an attachment that is not in the session is a plain 422, before any stream
-    if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', BUSY_GENERATION));
-    if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', BUSY_REPLY));
+    if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', tr('private.chat.busyGeneration')));
+    if (!this.gate.tryAcquire(GATE_OWNER)) return this.refuse(sink, new ChatError('busy', tr('private.chat.busyReply')));
     const abort = new AbortController();
     const stop = () => abort.abort();
     sink.signal.addEventListener('abort', stop, { once: true });
@@ -111,7 +110,7 @@ export class PrivateChatService implements OnModuleInit {
     const known = error instanceof ChatError;
     sink.emit('error', {
       code: known ? error.code : 'upstream', ...(id ? { id } : {}),
-      message: known ? error.message : 'La réponse a échoué de façon inattendue.',
+      message: known ? error.message : tr('private.chat.unexpectedFailure'),
     });
   }
 

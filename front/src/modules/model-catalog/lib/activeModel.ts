@@ -9,6 +9,7 @@ import { isTranscription } from './catalogFormat'
 /** The server's default model id for a kind. */
 export function defaultModelId(catalog: ModelCatalog, kind: ModelKind): string | null {
   if (kind === 'llm') return catalog.llm?.default_model_id ?? null
+  if (kind === 'diagram') return catalog.diagram?.default_model_id ?? null
   return kind === 'audio' ? catalog.audio.default_model_id : kind === 'video' ? (catalog.video?.default_model_id ?? null) : catalog.default_model_id
 }
 
@@ -31,7 +32,8 @@ export function resolveActiveModel(catalog: ModelCatalog, kind: ModelKind, store
 
 /** The model to suggest on the welcome card: nothing is ready yet and the active model is the recommended one. */
 export function welcomeModel(catalog: ModelCatalog, kind: ModelKind, active: ModelInfo | undefined): ModelInfo | null {
-  const scope = kind === 'audio' ? catalog.audio : kind === 'video' ? catalog.video : kind === 'llm' ? catalog.llm : catalog
+  const scope = kind === 'audio' ? catalog.audio : kind === 'video' ? catalog.video : kind === 'llm' ? catalog.llm
+    : kind === 'diagram' ? catalog.diagram : catalog
   if (!scope || scope.ready || !active || active.id !== scope.recommended_model_id) return null
   return active
 }

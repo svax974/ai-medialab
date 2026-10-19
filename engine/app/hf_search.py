@@ -150,8 +150,9 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
         qs = [{**base, "filter": "gguf", "pipeline_tag": task} for task in sorted(LLM_TASKS)]
     elif kind == "image":
         qs = [{**base, "filter": f"diffusers:{p}", "pipeline_tag": "text-to-image"} for p in SD_PIPELINES]
-        qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": "text-to-image"}
-                for b in GGUF_TEMPLATES]
+        # Editing models (Qwen-Image-Edit) are tagged image-to-image on the hub, not text-to-image.
+        qs += [{**base, "filter": ["gguf", f"base_model:quantized:{b}"], "pipeline_tag": tag}
+               for b in GGUF_TEMPLATES for tag in ("text-to-image", "image-to-image")]
         qs.append({**base, "filter": f"base_model:adapter:{SDXL_BASE}"})
     elif kind == "video":
         qs = [{**base, "filter": f"diffusers:{p}"} for p in VIDEO_TEMPLATES]
@@ -318,7 +319,7 @@ def _inspect(repo: str) -> dict[str, Any]:
     if family == "gguf-variant":
         template = next(m for m in MODELS.values() if m.id == details["template"])
         out["template"] = {"id": template.id, "name": template.name}
-        if info.pipeline_tag != "text-to-image":
+        if info.pipeline_tag not in ("text-to-image", "image-to-image"):
             raise HubError("Ce dépôt n'est pas un modèle de diffusion (encodeur de texte ou autre composant).")
         ggufs = {f: n for f, n in files.items() if f.endswith(".gguf") and "mmproj" not in f.lower()}
         if not ggufs:
@@ -339,8 +340,8 @@ def _inspect(repo: str) -> dict[str, Any]:
             out["options"].append({"key": f, "label": f.rsplit("/", 1)[-1].removesuffix(".safetensors"), "precision": "LoRA",
                                    "file": f, "size_gb": _size_gb(n), "_r": {"file": f}})
         trigger = lora_trigger(getattr(info, "card_data", None))
-        out["notes"].append("Appliquée à Stable Diffusion XL (téléchargé une fois pour toutes les LoRA)"
-                            + (f" ; mots déclencheurs ajoutés au prompt : « {trigger} »." if trigger else "."))
+        out["notes"].append(f"Appliquée à Stable Diffusion XL (téléchargé une fois pour toutes les LoRA) ; mots déclencheurs ajoutés au prompt : « {trigger} »."
+                            if trigger else "Appliquée à Stable Diffusion XL (téléchargé une fois pour toutes les LoRA).")
         return out
 
     if family == "sd-diffusers":
@@ -424,9 +425,10 @@ def _inspect_llm(info: Any, files: dict[str, int], out: dict[str, Any]) -> dict[
                  "mmproj_gb": _size_gb(mm[1]) if mm else 0, "context_max": context}
         out["options"].append({"key": g["primary"], "label": g["label"], "precision": g["label"], "size_gb": _size_gb(total),
                                **extra, "_r": dict(extra)})
-    out["notes"].append("Exécuté par llama.cpp : appels de fonctions pris en charge"
-                        + (", lit les images (projecteur du dépôt)" if mm else "")
-                        + ". Les capacités exactes du modèle ne sont pas connues : le cache de contexte est estimé largement.")
+    out["notes"].append("Exécuté par llama.cpp : appels de fonctions pris en charge, lit les images (projecteur du dépôt). "
+                        "Les capacités exactes du modèle ne sont pas connues : le cache de contexte est estimé largement." if mm else
+                        "Exécuté par llama.cpp : appels de fonctions pris en charge. "
+                        "Les capacités exactes du modèle ne sont pas connues : le cache de contexte est estimé largement.")
     return out
 
 

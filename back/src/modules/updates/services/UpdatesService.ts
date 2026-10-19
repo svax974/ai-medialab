@@ -8,6 +8,7 @@ import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
 import { EngineBusyGate, GenerationQueueService } from 'src/modules/studio-core';
 import { UpdateAdvisoryService } from './UpdateAdvisoryService';
 import type { AdviseBody, EngineAdvice, UpdateAdvisory, UpdateStarted, UpdatesReport, UpdateTarget } from '../types/updatesTypes';
+import { tr } from 'src/modules/i18n';
 
 /** The check reads the Hugging Face and GitHub APIs for every installed model and engine. */
 const CHECK_MS = 120_000;
@@ -15,9 +16,6 @@ const CHECK_MS = 120_000;
 const ADVICE_MS = 360_000;
 /** Owner of the engine gauge (`EngineBusyGate`) while an analysis runs: the model of the adviser is in memory. */
 const GATE_OWNER = 'update-advice';
-const BUSY_GENERATION = 'Une génération est en cours : attendez sa fin avant d\'analyser les risques.';
-const BUSY_REPLY = 'Une réponse du chat est en cours : attendez sa fin avant d\'analyser les risques.';
-const BUSY_ANALYSIS = 'Une analyse est déjà en cours.';
 
 /**
  * Update checks, delegated to the Python engine (it knows what is installed and how to compare it). An update is the
@@ -56,9 +54,9 @@ export class UpdatesService {
    * nothing is blocked by it.
    */
   async advise(body: AdviseBody): Promise<UpdateAdvisory> {
-    if (this.queue.occupied) throw new ConflictException({ code: 'busy', message: BUSY_GENERATION });
+    if (this.queue.occupied) throw new ConflictException({ code: 'busy', message: tr('updates.error.busyGeneration') });
     if (!this.gate.tryAcquire(GATE_OWNER)) {
-      throw new ConflictException({ code: 'busy', message: this.gate.heldBy === GATE_OWNER ? BUSY_ANALYSIS : BUSY_REPLY });
+      throw new ConflictException({ code: 'busy', message: tr(this.gate.heldBy === GATE_OWNER ? 'updates.error.busyAnalysis' : 'updates.error.busyReply') });
     }
     try {
       const advice = await this.call<EngineAdvice>(() => this.engine.post('/engine/v1/updates/advice', { body, timeoutMs: ADVICE_MS }));

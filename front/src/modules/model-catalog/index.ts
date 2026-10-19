@@ -5,6 +5,8 @@
 
 export { ModelsDialog } from './components/ModelsDialog'
 export { ModelPicker } from './components/ModelPicker'
+export { VariantPicker } from './components/VariantPicker'
+export { ModelsManager } from './components/ModelsManager'
 export { WhatsNewButton } from './components/WhatsNewButton'
 export { GatedNotice, LicenseWarning, LlmBadges, VideoBadges } from './components/ModelBadges'
 export { Notice, Section, Tag } from './components/panels'

@@ -5,6 +5,7 @@
 
 import { readSse, SseParser } from '@/modules_shared/common/core/events'
 import { privateChats, registerPrivateCleanup, trackPrivateStream, type PrivateChat } from '@/modules/private/lib/privateChatMemory'
+import { languageHeaders } from '@/modules/studio-shell/lib/languageHeaders'
 import { StudioApiError, studioApiBase, studioRequest } from '@/modules/studio-shell/services/studioHttp'
 import type { ConversationSummary } from '@/modules/studio-shell/types'
 import { ChatError, codeOfStatus } from '../lib/errors'
@@ -334,14 +335,14 @@ async function read(chat: PrivateChat, turn: Turn, signal: AbortSignal, emit: Em
   let response: Response
   try {
     response = await fetch(`${studioApiBase()}/private/chat`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' }, body: JSON.stringify(payload), signal,
+      method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...languageHeaders() }, body: JSON.stringify(payload), signal,
     })
   } catch (error) {
     if (signal.aborted) return
     throw new ChatError((error as Error).message, 'upstream')
   }
   if (!response.ok) throw await refusal(response)
-  if (!response.body) throw new ChatError('No response body', 'upstream')
+  if (!response.body) throw new ChatError('', 'upstream')
   let accepted = false
   let finished = false
   try {
@@ -365,7 +366,7 @@ async function read(chat: PrivateChat, turn: Turn, signal: AbortSignal, emit: Em
     throw new ChatError((error as Error).message, 'closed')
   }
   if (!finished && !signal.aborted) {
-    if (accepted) apply(chat, turn.assistant.id, 'error', { code: 'closed', message: 'The answer stopped before its end.' }, emit)
-    else emit({ type: 'error', code: 'closed', message: 'The answer stopped before its end.' })
+    if (accepted) apply(chat, turn.assistant.id, 'error', { code: 'closed', message: '' }, emit)
+    else emit({ type: 'error', code: 'closed', message: '' })
   }
 }

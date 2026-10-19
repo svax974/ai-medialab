@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import type { AssetKind, AssetMedia } from 'src/modules/media-library';
 import type { ConversationMode, MessageRole, MessageStatus } from 'src/modules/studio-core';
 
@@ -11,9 +12,9 @@ export const PRIVATE_OWNER = 'private';
 /** Minutes without any request after which the session is erased (0 disables it). `PRIVATE_SESSION_TTL_MINUTES` overrides. */
 export const DEFAULT_TTL_MINUTES = 30;
 /** Title of a private conversation that has no prompt yet. */
-export const PRIVATE_DEFAULT_TITLE = 'Création privée';
+export const privateDefaultTitle = (): string => tr('private.title.defaultCreation');
 /** Title of a private chat conversation: it is never made from what was said (the browser holds the conversation). */
-export const PRIVATE_CHAT_TITLE = 'Conversation privée';
+export const privateChatTitle = (): string => tr('private.title.chat');
 
 /** An asset of the session: same fields as the stored one, held in memory only. */
 export interface PrivateAsset {

@@ -180,9 +180,26 @@ def fit_image(img: Image.Image, width: int, height: int) -> Image.Image:
     return ImageOps.fit(img, (width, height), Image.Resampling.LANCZOS)
 
 
+class FfmpegMissing(RuntimeError):
+    """PyAV is not installed: the "ffmpeg" pack (installed with the first video model) is missing."""
+
+
+def load_av():
+    """PyAV, from the "ffmpeg" pack: its add-on is put on this process's import path first (never bundled, see ffmpeg.md)."""
+    from . import audio_packs
+
+    audio_packs.activate_overlay("ffmpeg")
+    try:
+        import av
+    except ImportError:
+        raise FfmpegMissing("FFmpeg n'est pas installé : il se télécharge avec le premier modèle vidéo "
+                            "(Réglages > Moteurs).") from None
+    return av
+
+
 def probe_video(path: Path) -> dict:
     """Width, height, duration (s) and fps of a video file; raises on unreadable files."""
-    import av
+    av = load_av()
 
     with av.open(str(path)) as container:
         stream = next((s for s in container.streams if s.type == "video"), None)
@@ -202,7 +219,7 @@ def probe_video(path: Path) -> dict:
 
 def read_frames(path: Path, max_frames: int, size: tuple[int, int] | None = None) -> list[Image.Image]:
     """First `max_frames` frames as RGB images (fitted to `size` when given)."""
-    import av
+    av = load_av()
 
     frames: list[Image.Image] = []
     with av.open(str(path)) as container:
@@ -218,7 +235,7 @@ def read_frames(path: Path, max_frames: int, size: tuple[int, int] | None = None
 
 def read_video_with_audio(path: Path):
     """(frames uint8 [F, H, W, 3], audio float32 [channels, samples] or None, sample rate or None) of a video file."""
-    import av
+    av = load_av()
     import numpy as np
 
     with av.open(str(path)) as container:
@@ -268,7 +285,7 @@ def _h264_settings(name: str, width: int, height: int, fps: int) -> tuple[dict[s
 @functools.lru_cache(maxsize=32)
 def h264_encoder(width: int, height: int, fps: int) -> tuple[str, dict[str, str], int]:
     """First encoder of `H264_ENCODERS` this FFmpeg build has and that opens at this size: (name, options, bit rate)."""
-    import av
+    av = load_av()
 
     for name in H264_ENCODERS:
         options, bit_rate = _h264_settings(name, width, height, fps)
@@ -289,7 +306,7 @@ def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None
     encoder), as a web-friendly MP4.
 
     `frames`: uint8 array [F, H, W, 3]. `audio`: float array [channels, samples] in [-1, 1]."""
-    import av
+    av = load_av()
     import numpy as np
 
     frames = np.asarray(frames)

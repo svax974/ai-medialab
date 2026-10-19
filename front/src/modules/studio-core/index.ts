@@ -22,7 +22,7 @@ export { ASSET_DRAG_TYPE, dragHasAsset, parseDraggedAsset } from './lib/assetDra
 export { PARAM_HELP, paramHelp } from './lib/paramHelp'
 export { isFullReset, paramValues, toParamsSchema } from './lib/paramsSchema'
 export { messageRatio, ratioOf } from './lib/messageState'
-export { upsertMessage } from './lib/studioEvents'
+export { addOutput, upsertMessage } from './lib/studioEvents'
 export { messagesApi } from './services/messagesApi'
 export { useImageDraftStore } from './state/imageDraftStore'
 export { useLiveStore } from './state/liveStore'

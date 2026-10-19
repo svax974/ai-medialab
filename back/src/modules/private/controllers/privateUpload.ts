@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { diskStorage } from 'multer';
@@ -13,7 +14,7 @@ import { activeSessionId, sessionPath } from '../services/privateFiles';
 export const privateUploadStorage = diskStorage({
   destination: (_req, _file, done) => {
     const id = activeSessionId();
-    if (!id) return done(new ConflictException("Aucune session privée n'est ouverte."), '');
+    if (!id) return done(new ConflictException(tr('private.error.noSession')), '');
     done(null, join(sessionPath(id), 'tmp'));
   },
   filename: (_req, _file, done) => done(null, `tmp_${randomBytes(8).toString('hex')}`),

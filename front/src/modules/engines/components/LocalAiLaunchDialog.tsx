@@ -44,7 +44,8 @@ function Benefits() {
 
 function Sizes({ setup, withModel }: { setup: LocalAiSetup; withModel: boolean }) {
   const t = useT()
-  const model = setup.modelName ? ` · ${t('engines.localAi.launch.sizes.model', [setup.modelName, setup.modelSizeGb.toFixed(1)])}` : ''
+  const present = setup.modelSizeGb === 0
+  const model = setup.modelName ? ` · ${t(present ? 'engines.localAi.launch.sizes.modelPresent' : 'engines.localAi.launch.sizes.model', present ? [setup.modelName] : [setup.modelName, setup.modelSizeGb.toFixed(1)])}` : ''
   const free = setup.freeGb !== null ? ` · ${t('engines.localAi.launch.sizes.free', [setup.freeGb.toFixed(0)])}` : ''
   return (
     <Box component="p" sx={{ m: 0, mt: 2, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--faint)' }}>
@@ -66,7 +67,10 @@ function Choices({ setup, withModel, onWithModel, extra }: ChoicesProps) {
   const t = useT()
   return (
     <Box sx={{ mt: 1, display: 'grid' }}>
-      {!setup.modelInstalled && setup.modelName && (
+      {!setup.modelInstalled && setup.modelName && setup.modelSizeGb === 0 && (
+        <Box component="p" sx={{ m: 0, fontSize: 13, color: 'var(--muted)' }}>{t('engines.localAi.launch.modelPresent', [setup.modelName])}</Box>
+      )}
+      {!setup.modelInstalled && setup.modelName && setup.modelSizeGb > 0 && (
         <FormControlLabel
           control={<Checkbox size="small" checked={withModel} onChange={(_e, v) => onWithModel(v)} />}
           label={t('engines.localAi.launch.withModel', [setup.modelName, setup.modelSizeGb.toFixed(1)])}

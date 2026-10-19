@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { DataSource } from 'typeorm';
 import { buildServices } from 'src/testing/services';
 import { createTestDataSource } from 'src/testing/testDataSource';
-import { INTERRUPTED_MESSAGE } from './MessageService';
+import { interruptedMessage } from './MessageService';
 
 describe('conversation and message services', () => {
   let dataSource: DataSource;
@@ -85,7 +85,7 @@ describe('conversation and message services', () => {
       await s.messages.create({ id: mid, conversationId: id, role: 'assistant', status });
     }
     expect(await s.messages.failInterrupted()).toBe(3);
-    expect((await s.messages.get('r'))).toMatchObject({ status: 'error', error: INTERRUPTED_MESSAGE });
+    expect((await s.messages.get('r'))).toMatchObject({ status: 'error', error: interruptedMessage() });
     expect((await s.messages.get('d'))?.status).toBe('done');
     expect((await s.conversations.getSummary(id))?.busy).toBe(false);
   });

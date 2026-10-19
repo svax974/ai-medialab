@@ -21,10 +21,12 @@ describe('modelCatalogApi', () => {
     await modelCatalogApi.download('a b')
     await modelCatalogApi.cancelDownload('a b')
     await modelCatalogApi.deleteModel('a b')
+    await modelCatalogApi.freeBf16Source('a b')
     expect(studioRequest.mock.calls).toEqual([
       ['post', '/models/a%20b/download'],
       ['delete', '/models/a%20b/download'],
       ['delete', '/models/a%20b'],
+      ['delete', '/models/a%20b/source/bf16'],
     ])
   })
   it('adds and removes a custom model', async () => {

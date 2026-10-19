@@ -4,7 +4,7 @@
  */
 
 /** The studios an answer can be sent to as a prompt. */
-export const HANDOFF_TARGETS = ['image', 'video', 'audio'] as const
+export const HANDOFF_TARGETS = ['image', 'video', 'audio', 'diagram'] as const
 
 const FENCED = /^[ \t]*(```|~~~)[^\n]*\n([\s\S]*?)^[ \t]*\1[ \t]*$\n?/gm
 const OPEN_FENCE = /^[ \t]*(```|~~~)[^\n]*\n?/gm

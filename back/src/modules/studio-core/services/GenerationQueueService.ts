@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Observable, Subject, Subscription, filter } from 'rxjs';
 import { EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError } from 'src/modules/engine';
@@ -10,7 +11,7 @@ import { AssetEntity, AssetFileService, AssetService, StudioEvents, nowSeconds }
 import { MessageEntity, MessageStatus } from '../entities/MessageEntity';
 import { mergeProgress, outputToAssetInput, previewToProgress, toBrowserProgress, type ProgressState } from '../mappers/jobEventMapper';
 import {
-  ENGINE_UNREACHABLE, INTERRUPTED_BY_ENGINE, type EngineJobOutput, type EngineJobState, type JobEventData, type JobKind,
+  engineUnreachable, interruptedByEngine, type EngineJobOutput, type EngineJobState, type JobEventData, type JobKind,
   type QueueEntry,
 } from '../types/jobTypes';
 import { EngineBusyGate } from './EngineBusyGate';
@@ -144,7 +145,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     } catch (error) {
       if (error instanceof EngineError && error.status === 409) return false; // it just ended: its events are on the way
       if (error instanceof EngineError && error.status === 404) {
-        this.serial(() => this.endCurrent('error', INTERRUPTED_BY_ENGINE)); // the engine lost it (restart)
+        this.serial(() => this.endCurrent('error', interruptedByEngine())); // the engine lost it (restart)
         return true;
       }
       throw error;
@@ -201,7 +202,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   }
 
   private submitError(error: unknown): string {
-    if (error instanceof EngineUnavailableError) return ENGINE_UNREACHABLE;
+    if (error instanceof EngineUnavailableError) return engineUnreachable();
     if (error instanceof EngineError) return typeof error.detail === 'string' ? error.detail : error.message;
     return error instanceof Error ? error.message : String(error);
   }
@@ -225,7 +226,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       case 'job.cancelled':
         return this.endCurrent('cancelled', null);
       case 'job.failed':
-        return this.endCurrent('error', typeof data.error === 'string' ? data.error : 'Échec de la génération.');
+        return this.endCurrent('error', typeof data.error === 'string' ? data.error : tr('studioCore.job.generationFailed'));
       default:
     }
   }
@@ -309,7 +310,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     const record = await this.engine
       .get('/engine/v1/jobs/{job_id}', { params: { job_id: entry.messageId } })
       .catch((error: unknown) => (error instanceof EngineError && error.status === 404 ? null : Promise.reject(error)));
-    if (!record) return this.endCurrent('error', INTERRUPTED_BY_ENGINE);
+    if (!record) return this.endCurrent('error', interruptedByEngine());
     for (const output of record.outputs) await this.registerOutput(entry, output);
     const ended = this.endOf(record);
     if (ended) await this.endCurrent(ended.status, ended.error);
@@ -318,7 +319,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   private endOf(record: EngineJobState): { status: 'done' | 'error' | 'cancelled'; error: string | null } | null {
     if (record.state === 'done') return { status: 'done', error: null };
     if (record.state === 'cancelled') return { status: 'cancelled', error: null };
-    if (record.state === 'failed') return { status: 'error', error: record.error ?? 'Échec de la génération.' };
+    if (record.state === 'failed') return { status: 'error', error: record.error ?? tr('studioCore.job.generationFailed') };
     return null;
   }
 }

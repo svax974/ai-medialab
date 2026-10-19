@@ -1,0 +1,11 @@
+{
+  "settings.error.object": "{0} doit être un objet.",
+  "settings.error.entry": "{0}.{1} : {2} attendu.",
+  "settings.error.body": "Corps JSON attendu.",
+  "settings.error.keepAlive": "keep_alive_minutes : entier entre {0} et {1} attendu.",
+  "settings.error.boolean": "{0} : booléen attendu.",
+  "settings.error.text": "{0} : texte attendu.",
+  "settings.error.textMax": "{0} : texte de {1} caractères au plus attendu.",
+  "settings.what.integerOrNull": "entier ou null",
+  "settings.what.text": "texte"
+}

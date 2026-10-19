@@ -239,7 +239,7 @@ class TestEngines:
         assert (row["id"], row["state"], row["target"]) == ("audiocpp", "update", audiocpp.PINNED_TAG)
 
     def python_pack(self, tmp_path, monkeypatch, pack_hash):
-        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path})
+        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path})
         folder = tmp_path / "qwen3"
         python = audio_packs.venv_python("qwen3")
         python.parent.mkdir(parents=True)
@@ -256,7 +256,7 @@ class TestEngines:
         assert next(r for r in updates._pack_rows() if r["id"] == "qwen3")["state"] == "current"
 
     def test_a_pack_that_is_not_installed_is_not_listed(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path})
+        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path})
         assert updates._pack_rows() == []
 
     def test_engines_serve_the_kinds_of_their_models(self):

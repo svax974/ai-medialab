@@ -2,7 +2,9 @@
 
 ## Rôle
 
-Dialogue **Réglages** du studio (remplace le `ComingSoonDialog` de la coquille) : mémoire du modèle (délai de déchargement),
+Dialogue **Réglages** du studio (remplace le `ComingSoonDialog` de la coquille), en trois onglets : **Général** (`GeneralSettings`, ce qui suit),
+**Moteurs** (`ComponentsManager` du module `engines` : état des composants téléchargés, suppression) et **Modèles** (`ModelsManager` du module `model-catalog` :
+catalogue par catégorie, état, suppression). Seul l'onglet affiché est monté. Général : langue de l'interface, mémoire du modèle (délai de déchargement),
 aperçus, économie de mémoire, jeton Hugging Face facultatif et rappel des raccourcis. Chaque réglage a son `InfoTip`. Les
 valeurs sont celles de `GET/PUT /api/settings` (back : `back/src/modules/settings/README.md`). Tâche H4.1.
 
@@ -15,7 +17,7 @@ settings/
   services/settingsApi.ts   GET/PUT /api/settings (studioRequest)
   hooks/useSettings.ts      useSettings(enabled) (requête), useSaveSettings(onSaved?) (mutation)
   lib/settingsConfig.ts     KEEP_ALIVE_OPTIONS, SHORTCUT_ROWS, SETTINGS_HELP, settingsKeys
-  components/               SettingsDialog, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField, ChatVoiceField
+  components/               SettingsDialog (onglets), GeneralSettings, LanguageField, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField, ChatVoiceField
   locales/                  locales.fr.json, locales.en.json (clés settings.*)
 ```
 
@@ -30,6 +32,7 @@ Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouto
 - Jeton : champ à écriture seule ; le serveur ne dit que `has_hf_token` (« Un jeton est enregistré », bouton « Retirer »).
   Enregistrer ou retirer affiche un message de confirmation. `HfTokenField` est aussi monté par le dialogue des modèles (H4.2). `useSaveSettings` y sert aux choix de quantification (`quantize`) et de variante (`variant`).
 
+- **Langue** (`LanguageField`) : français ou anglais (`LANGUAGE_OPTIONS`), seul endroit où se change la langue (`localeService.ensureLangLoaded` puis `i18n.setLang`, choix mémorisé dans le navigateur ; `registerModuleLocales.ts` répercute `<html lang>` et l'en-tête `Accept-Language`). Sans choix mémorisé, `LocaleService` suit la langue du système (français, sinon anglais) : `front/src/config/config.ts` n'a donc pas de `localeDefault`.
 - **IA locale au lancement** : interrupteur (`SwitchRow`) lié à `useLocalAiPromptStore.optOut` du module `engines` (navigateur, `cn-local-ai`) : activé, l'invitation d'installation de llama.cpp s'affiche à chaque lancement tant qu'il manque.
 - **Clé Brave Search** (`BraveKeyField`, facultative) : champ secret, enregistré par `PUT /api/settings { brave_api_key }` (`''` la retire) ; le serveur la stocke chiffrée et ne la renvoie jamais, seulement `has_brave_api_key`.
   Elle sert à la recherche web du chat (Brave au lieu de DuckDuckGo) : `back/src/modules/settings/README.md`, `back/src/modules/chat/README.md`.

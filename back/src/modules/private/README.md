@@ -33,6 +33,10 @@ l'historique avec chaque requête à `POST /api/private/chat` ; Nest ne garde ni
 
 Aucune entité TypeORM, donc aucune migration.
 
+## Langue
+
+Les textes montrés à l'utilisateur (erreurs, titres par défaut, états d'échec) passent par `tr('private.…')` (`src/modules/i18n`) et suivent la langue de l'interface (en-tête `Accept-Language`). Dictionnaires : `private/i18n/messages.fr.json` et `messages.en.json` (parité contrôlée par `i18n/messages.spec.ts`).
+
 ## Dépendances
 
 - `chat` : `ChatReplyService` (`streamRounds`, `ReplyState`), `ChatModelService`, `PromptEnhanceService`, `buildHistory`, `SseStream`, `chatValidation`, `sniffImage` / `decodeText` / `cleanName`.

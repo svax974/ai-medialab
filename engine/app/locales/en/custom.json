@@ -1,0 +1,23 @@
+{
+  "Variante {} du dépôt {}, exécutée comme {} (mêmes encodeur de texte et VAE). Plus la quantification est basse, plus le fichier est léger et la qualité dégradée.": "{0} variant from the {1} repository, run as {2} (same text encoder and VAE). The lower the quantization, the lighter the file and the worse the quality.",
+  "voir le dépôt": "see the repository",
+  "Modèle Stable Diffusion {}du dépôt {} (format diffusers, PyTorch). Texte → image et image → image.": "Stable Diffusion {}model from the {} repository (diffusers format, PyTorch). Text → image and image → image.",
+  "Étapes": "Steps",
+  "25 à 35 étapes suffisent en général ; 1 à 8 pour les modèles « turbo » / « lightning ».": "25 to 35 steps are usually enough; 1 to 8 for \"turbo\" / \"lightning\" models.",
+  "Fidélité au prompt (5–8 conseillé ; 0–1 pour les modèles « turbo » / « lightning »).": "Prompt adherence (5–8 recommended; 0–1 for \"turbo\" / \"lightning\" models).",
+  "Part de l'image de départ transformée. Bas = proche de l'original.": "Share of the starting image that is transformed. Low = close to the original.",
+  "Ce que l'image doit éviter.": "What the image should avoid.",
+  "Prompt négatif": "Negative prompt",
+  "LoRA du dépôt {} appliquée à Stable Diffusion XL ; mots déclencheurs ajoutés au prompt : « {} ».": "LoRA from the {} repository applied to Stable Diffusion XL; trigger words added to the prompt: \"{}\".",
+  "LoRA du dépôt {} appliquée à Stable Diffusion XL.": "LoRA from the {} repository applied to Stable Diffusion XL.",
+  "Voix du modèle": "Model voice",
+  "Décrivez la voix : « femme de 30 ans, voix grave et rassurante »…": "Describe the voice: \"30-year-old woman, deep and reassuring voice\"…",
+  "Création de voix": "Voice design",
+  "Variante de Qwen3-TTS ({}) du dépôt {}.": "Qwen3-TTS variant ({}) from the {} repository.",
+  "Transcription (faster-whisper) du dépôt {}.": "Transcription (faster-whisper) from the {} repository.",
+  "Modèle du dépôt {} (format diffusers, PyTorch), exécuté avec les réglages de « {} ».": "Model from the {} repository (diffusers format, PyTorch), run with the settings of \"{}\".",
+  "≈ {} Go de poids ({}), {} Go à télécharger.": "≈ {} GB of weights ({}), {} GB to download.",
+  "Variante {} du dépôt {}, exécutée comme {} (mêmes encodeur de texte et VAE).": "{0} variant from the {1} repository, run as {2} (same text encoder and VAE).",
+  "Modèle de conversation du dépôt {} ({}), exécuté par llama.cpp. Ses capacités exactes ne sont pas connues : le cache de contexte est estimé largement.": "Chat model from the {} repository ({}), run by llama.cpp. Its exact capabilities are unknown: the context cache is generously estimated.",
+  "≈ {} Go de poids ({}) et ≈ {} Go de cache et de tampons.": "≈ {} GB of weights ({}) and ≈ {} GB of cache and buffers."
+}

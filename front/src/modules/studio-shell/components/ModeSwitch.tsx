@@ -16,7 +16,18 @@ const MODE_LABELS: Record<StudioMode, string> = {
   audio: 'studio.mode.audio',
   video: 'studio.mode.video',
   chat: 'studio.mode.chat',
+  diagram: 'studio.mode.diagram',
 }
+
+/**
+ * Five tabs share the sidebar (≈ 51 px each): icon above label, and no MUI `minWidth` (90 px), which pushed the last tab out of
+ * the clipped row.
+ */
+const TAB_SX = {
+  minWidth: 0,
+  px: 0.5,
+  '&.MuiTab-labelIcon': { flexDirection: 'column', gap: '2px', height: 44, minHeight: 44, fontSize: 12 },
+} as const
 
 /** Image / audio / video / chat switch: a segmented control whose pill slides (Tabs indicator, see the theme). */
 export function ModeSwitch() {
@@ -36,7 +47,7 @@ export function ModeSwitch() {
     <Box sx={{ px: 1.5, pb: 1.5, pt: '2px' }}>
       <Tabs value={mode} onChange={(_event, value: StudioMode) => go(value)} aria-label={t('studio.mode.aria')}>
         {STUDIO_MODES.map((id) => (
-          <Tab key={id} value={id} icon={<ModeIcon mode={id} />} iconPosition="start" label={t(MODE_LABELS[id])} />
+          <Tab key={id} value={id} icon={<ModeIcon mode={id} />} iconPosition="top" label={t(MODE_LABELS[id])} sx={TAB_SX} />
         ))}
       </Tabs>
     </Box>

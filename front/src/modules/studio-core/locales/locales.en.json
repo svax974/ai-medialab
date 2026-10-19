@@ -140,5 +140,12 @@
   "thread.viewer.size": "Size",
   "thread.viewer.steps": "Steps",
   "thread.viewer.strength": "Influence",
-  "thread.viewer.useAsReference": "Use as a reference"
+  "thread.viewer.useAsReference": "Use as a reference",
+  "thread.count.diagram": "{0} diagram(s)",
+  "thread.deleteGeneration.description.diagram": "The produced diagrams will be deleted.",
+  "thread.deleteGeneration.title.diagram": "Delete this diagram?",
+  "thread.deleteMessage.description.diagram": "The prompt and all the diagrams it produced will be deleted.",
+  "thread.empty.diagram": "Empty conversation. Describe a first diagram below.",
+  "thread.footer.delete.diagram": "Delete the diagram",
+  "thread.user.copy.diagram": "Copy the prompt"
 }

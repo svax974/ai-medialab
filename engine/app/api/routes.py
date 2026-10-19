@@ -24,6 +24,7 @@ from ..events import bus
 from ..jobs import jobs, load_settings
 from ..llamacpp import installer as llamacpp_installer
 from ..llm import llm
+from ..setup_runner import setup_runner
 from ..system import get_system
 
 # Mounted by main.py under `/engine/v1` with the `X-Engine-Token` check (NestJS is the only caller).
@@ -44,7 +45,7 @@ def system_info(refresh: bool = False) -> dict[str, Any]:
     engines["sdcpp"]["install"] = installer.public()  # live state, outside the detection cache
     engines["llamacpp"]["install"] = llamacpp_installer.public()
     packs = {
-        p.id: {"name": p.name, "size_mb": p.size_mb, "installed": audio_packs.is_installed(p.id),
+        p.id: {"name": p.name, "size_mb": audio_packs.size_of(p), "installed": audio_packs.is_installed(p.id),
                **{k: v for k, v in audio_packs.engine_info(p.id).items() if k in ("installable", "reason")}}
         for p in audio_packs.PACKS.values()
     }
@@ -74,7 +75,7 @@ async def uninstall_pack(pack_id: str) -> dict[str, Any]:
         raise HTTPException(404, "Pack inconnu.")
     if jobs.worker and jobs.worker.alive:
         spec = get_spec(jobs.worker.model_id)
-        if spec.options.get("pack") == pack_id:
+        if audio_packs.pack_of(spec) == pack_id:
             raise HTTPException(409, "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.")
     try:
         await asyncio.to_thread(pack_installer.uninstall, pack_id)  # only reply once everything is deleted
@@ -124,6 +125,19 @@ async def delete_model(model_id: str) -> dict[str, Any]:
     try:
         # Delete files off the event loop so the server stays responsive; reply only once the space is freed.
         result = await asyncio.to_thread(downloads.delete, model_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from None
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(409, str(exc)) from None
+    bus.publish("models.changed", {})
+    return result
+
+
+@router.delete("/models/{model_id}/source/bf16")
+async def free_bf16_source(model_id: str) -> dict[str, Any]:
+    """Delete the full-precision source once at least one locally quantized variant is installed from it."""
+    try:
+        result = await asyncio.to_thread(downloads.free_bf16, model_id)
     except KeyError as exc:
         raise HTTPException(404, str(exc)) from None
     except (ValueError, RuntimeError) as exc:
@@ -256,6 +270,7 @@ async def events(request: Request) -> StreamingResponse:
             yield f"event: pack.install\ndata: {json.dumps(pack_installer.public())}\n\n"
             yield f"event: llamacpp.install\ndata: {json.dumps(llamacpp_installer.public())}\n\n"
             yield f"event: llm.status\ndata: {json.dumps(llm.status())}\n\n"
+            yield f"event: setup.progress\ndata: {json.dumps(setup_runner.public())}\n\n"
             while True:
                 if await request.is_disconnected():
                     break

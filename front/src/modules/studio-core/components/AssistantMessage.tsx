@@ -8,6 +8,7 @@ import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { useModels } from '@/modules/model-catalog'
 import { Mark } from '@/modules/studio-shell/components/Mark'
 import { useT } from '@/modules/studio-shell/hooks/useT'
+import type { MessageKind } from '../hooks/useMessageActions'
 import { buildSlots, developingFilter, isActive, isFresh, messageRatio, progressFraction, tileLayout } from '../lib/messageState'
 import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import { useLiveStore } from '../state/liveStore'
@@ -15,6 +16,11 @@ import type { Message } from '../types'
 import { DevelopingTile, ImageTile } from './ImageTile'
 import { MessageFooter } from './MessageFooter'
 import { StatusLine } from './StatusLine'
+
+/** The model used tells the real kind (`video`/`audio`/`diagram` share this generic component with `image`, which
+ * stays the fallback: a deleted/unknown model, or a demo message with none, is drawn as an image generation). */
+const messageKind = (modelKind: string | undefined): MessageKind =>
+  modelKind === 'diagram' || modelKind === 'audio' || modelKind === 'video' ? modelKind : 'image'
 
 /** A generation: model and state, the grid of images (produced, developing, waiting), the error or cancellation, the actions. */
 export function AssistantMessage({ message }: { message: Message; siblings?: readonly Message[] }) {
@@ -59,7 +65,7 @@ export function AssistantMessage({ message }: { message: Message; siblings?: rea
         {message.status === 'cancelled' && message.outputs.length === 0 && (
           <Box sx={{ mt: '4px', fontSize: 13, fontStyle: 'italic', color: 'var(--faint)' }}>{t('thread.cancelled')}</Box>
         )}
-        <MessageFooter message={message} />
+        <MessageFooter message={message} kind={messageKind(model?.kind)} />
       </Box>
     </Box>
   )

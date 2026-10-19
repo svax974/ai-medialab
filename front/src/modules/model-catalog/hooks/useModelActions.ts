@@ -53,5 +53,16 @@ export function useModelActions(model: ModelInfo) {
     })
   }
 
-  return { busy, remove, retire }
+  const freeBf16 = async () => {
+    const bf16Gb = formatGb(model.variants.find((v) => v.key === 'bf16')?.installed_gb ?? 0, lang)
+    const ok = await confirm({ titleId: 'models.freeSource.title', messageId: 'models.freeSource.message', params: [model.name, bf16Gb], confirmLabelId: 'models.freeSource.confirm', danger: true })
+    if (!ok) return
+    await run(async () => {
+      const result = await modelCatalogApi.freeBf16Source(model.id)
+      await refresh()
+      toast.success(t('models.freeSource.done', [formatGb(result.freed_gb, lang)]))
+    })
+  }
+
+  return { busy, remove, retire, freeBf16 }
 }

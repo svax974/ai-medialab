@@ -1,0 +1,9 @@
+{
+  "Extrait trop court : il faut au moins une seconde de parole.": "Excerpt too short: at least one second of speech is needed.",
+  "Cette voix n'existe plus dans votre bibliothèque.": "This voice no longer exists in your library.",
+  "{} ne sait pas cloner une voix : choisissez un modèle de clonage ou l'une de ses voix intégrées.": "{} cannot clone a voice: choose a cloning model or one of its built-in voices.",
+  "Décrivez la voix à créer (âge, timbre, caractère…).": "Describe the voice to create (age, timbre, character…).",
+  "Voix décrite": "Described voice",
+  "Ce modèle clone une voix : choisissez ou enregistrez une voix de référence.": "This model clones a voice: choose or record a reference voice.",
+  "Aucune voix disponible pour cette langue avec ce modèle.": "No voice available for this language with this model."
+}

@@ -37,6 +37,11 @@ export class ModelCatalogService {
     return this.call(() => this.engine.delete('/engine/v1/models/{model_id}', { params: { model_id: modelId }, timeoutMs: SLOW_CALL_MS }));
   }
 
+  /** Deletes the full-precision source once a locally quantized variant is installed from it; answers `{ freed_gb }`. */
+  freeBf16Source(modelId: string): Promise<{ freed_gb: number }> {
+    return this.call(() => this.engine.delete('/engine/v1/models/{model_id}/source/bf16', { params: { model_id: modelId }, timeoutMs: SLOW_CALL_MS }));
+  }
+
   /** Adds a Hugging Face repository to the list; answers the new `model_id`. */
   addCustom(repo: string, option: string): Promise<{ model_id: string }> {
     return this.call(() => this.engine.post('/engine/v1/models/custom', { body: { repo, option }, timeoutMs: SLOW_CALL_MS }));

@@ -1,0 +1,3 @@
+{
+  "Mémoire insuffisante pour générer « {} » ici : même le plus court passage ({} images) a besoin d'environ {} Go (mesuré sur cette machine) et {} Go seulement sont disponibles en gardant la réserve du système. Fermez des applications gourmandes, puis relancez.": "Not enough memory to generate \"{}\" here: even the shortest pass ({} frames) needs about {} GB (measured on this machine) and only {} GB are available while keeping the system reserve. Close memory-hungry applications, then try again."
+}

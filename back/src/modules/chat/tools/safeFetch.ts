@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
+import { acceptLanguage } from './acceptLanguage';
 import * as http from 'http';
 import * as https from 'https';
 import type { IncomingMessage } from 'http';
@@ -43,24 +45,24 @@ export async function fetchPublicPage(rawUrl: string, options: SafeFetchOptions 
     const { res, socketAddress } = await requestOnce(url, options);
     if (socketAddress && !(options.isPublic ?? isPublicIp)(socketAddress)) {
       res.destroy();
-      throw new SsrfBlockedError('La connexion a abouti à une adresse privée : refusée.');
+      throw new SsrfBlockedError(tr('chat.ssrf.connectedPrivate'));
     }
     const status = res.statusCode ?? 0;
     const location = res.headers.location;
     if (status >= 300 && status < 400 && location) {
       res.resume();
-      if (hop === MAX_REDIRECTS) throw new Error(`Plus de ${MAX_REDIRECTS} redirections.`);
+      if (hop === MAX_REDIRECTS) throw new Error(tr('chat.fetch.tooManyRedirects', [MAX_REDIRECTS]));
       url = assertPublicUrl(new URL(location, url).toString());
       continue;
     }
     const contentType = String(res.headers['content-type'] ?? '');
     if (status >= 200 && status < 300 && contentType && !TEXT_TYPES.test(contentType)) {
       res.destroy();
-      throw new Error(`Type de contenu non pris en charge : ${contentType.split(';')[0]}.`);
+      throw new Error(tr('chat.fetch.unsupportedType', [contentType.split(';')[0]]));
     }
     return { url: url.toString(), status, contentType, body: await readBody(res, contentType) };
   }
-  throw new Error('Trop de redirections.');
+  throw new Error(tr('chat.fetch.redirectLoop'));
 }
 
 function requestOnce(url: URL, options: SafeFetchOptions): Promise<{ res: IncomingMessage; socketAddress: string | undefined }> {
@@ -71,7 +73,7 @@ function requestOnce(url: URL, options: SafeFetchOptions): Promise<{ res: Incomi
       {
         method: 'GET',
         lookup: (options.lookup ?? createSafeLookup()) as never,
-        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,text/plain,application/json;q=0.9,*/*;q=0.1', 'Accept-Language': 'fr,en;q=0.8', 'Accept-Encoding': 'identity' },
+        headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,text/plain,application/json;q=0.9,*/*;q=0.1', 'Accept-Language': acceptLanguage(), 'Accept-Encoding': 'identity' },
         signal: options.signal,
       },
       (res) => resolve({ res, socketAddress: res.socket?.remoteAddress }),

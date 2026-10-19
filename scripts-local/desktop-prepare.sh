@@ -4,7 +4,8 @@
 
 # Prepare hook of the desktop build, called by `scripts/app.sh` and `scripts/bundle.sh` (template, see
 # desktop/README.md): builds desktop/build/engine-bundle (embedded Python engine, copied by packaging.extraResources)
-# for the target given as $1. Profile per target below, DESKTOP_PROFILE overrides it (e.g. win-rocm, linux-rocm).
+# for the target given as $1. Profile per target below (light: PyTorch is installed by the app when needed),
+# DESKTOP_PROFILE overrides it (e.g. win-cuda, win-rocm, linux-rocm, mac-arm64-full: PyTorch embedded).
 # When the bundle already holds the same profile with the same dependencies, only the engine code is refreshed
 # (`--refresh-app`, seconds instead of minutes); DESKTOP_CLEAN=1 forces a full rebuild.
 set -eu
@@ -12,8 +13,8 @@ set -eu
 TARGET="${1:?usage: desktop-prepare.sh <target>}"
 case "${TARGET}" in
   darwin-arm64) DEFAULT=mac-arm64 ;;
-  win-x64) DEFAULT=win-cuda ;;
-  linux-x64) DEFAULT=linux-cuda ;;
+  win-x64) DEFAULT=win-universal ;;
+  linux-x64) DEFAULT=linux-universal ;;
   *) echo "desktop-prepare: no engine profile for ${TARGET} (desktop/runtime/profiles.json)" >&2; exit 1 ;;
 esac
 PROFILE="${DESKTOP_PROFILE:-${DEFAULT}}"

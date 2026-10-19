@@ -5,6 +5,7 @@
 
 import { BadGatewayException, HttpException } from '@nestjs/common';
 import { EngineError, EngineUnavailableError } from './EngineError';
+import { tr } from 'src/modules/i18n';
 
 /**
  * Maps an engine failure to the HTTP error a Nest route returns: the engine's own status and `detail` (a 409 "a
@@ -16,6 +17,6 @@ export function engineErrorToHttp(error: unknown): unknown {
     const detail = error.detail;
     return new HttpException(typeof detail === 'string' ? detail : (detail ?? error.message), error.status);
   }
-  if (error instanceof EngineUnavailableError) return new BadGatewayException('Engine unavailable');
+  if (error instanceof EngineUnavailableError) return new BadGatewayException(tr('engine.error.unavailable'));
   return error;
 }

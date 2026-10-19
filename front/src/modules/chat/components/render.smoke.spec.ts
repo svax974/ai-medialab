@@ -139,7 +139,7 @@ describe('chat screens render without error and without raw keys', () => {
     expect(html).toContain('2/3')
     expect(html).toContain('31.5 tok/s')
     expect(html).toContain('Qwen3 8B')
-    expect(html).toContain('Envoyer vers Image, Vidéo ou Audio') // the hand-off of an answer to another studio
+    expect(html).toContain('Envoyer vers Image, Vidéo, Audio ou Diagrammes') // the hand-off of an answer to another studio
     noRawKeys(html)
   })
 

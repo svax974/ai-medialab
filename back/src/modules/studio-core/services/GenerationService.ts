@@ -3,12 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
 import { AssetFileService, AssetService, StudioEvents, newId, nowSeconds } from 'src/modules/media-library';
 import { MessageDto } from '../dto/MessageDto';
 import type { CreateGenerationInput, EngineJobCheck, RetryInput } from '../types/jobTypes';
-import { DEFAULT_CONVERSATION_TITLE } from '../types/studioTypes';
+import { isDefaultConversationTitle } from '../types/studioTypes';
 import { ConversationService } from './ConversationService';
 import { GenerationQueueService } from './GenerationQueueService';
 import { seedsFor, titleFromPrompt } from './generationParams';
@@ -40,9 +41,9 @@ export class GenerationService {
    */
   async create(input: CreateGenerationInput): Promise<CreatedGeneration> {
     const prompt = input.prompt.trim();
-    if (!prompt) throw new UnprocessableEntityException('Le prompt est vide.');
+    if (!prompt) throw new UnprocessableEntityException(tr('studioCore.error.promptEmpty'));
     if (input.conversationId && !(await this.conversations.getSummary(input.conversationId))) {
-      throw new NotFoundException('Conversation introuvable.');
+      throw new NotFoundException(tr('studioCore.error.conversationNotFound'));
     }
     const media = await this.referenceMedia(input.referenceIds);
     const check = await this.check(input.modelId, media);
@@ -69,7 +70,7 @@ export class GenerationService {
   /** A new generation for the same prompt (other model or parameters allowed), queued behind the others. */
   async retry(messageId: string, input: RetryInput): Promise<MessageDto> {
     const original = await this.messages.get(messageId);
-    if (!original || original.role !== 'assistant') throw new NotFoundException('Génération introuvable.');
+    if (!original || original.role !== 'assistant') throw new NotFoundException(tr('studioCore.error.generationNotFound'));
     const params: Record<string, unknown> = { ...original.params, ...(input.params ?? {}) };
     const count = Number(params.count ?? 1) || 1;
     if (!input.keepSeed) params.seed = null;
@@ -88,14 +89,14 @@ export class GenerationService {
   }
 
   async cancel(messageId: string): Promise<{ ok: true }> {
-    if (!(await this.queue.cancel(messageId))) throw new ConflictException("Cette génération n'est plus en cours.");
+    if (!(await this.queue.cancel(messageId))) throw new ConflictException(tr('studioCore.error.generationNotRunning'));
     return { ok: true };
   }
 
   /** Deletes a message: a prompt takes the generations that answer it with it. Their assets and files go too. */
   async remove(messageId: string): Promise<{ ok: true; deleted: string[] }> {
     const message = await this.messages.get(messageId);
-    if (!message) throw new NotFoundException('Message introuvable.');
+    if (!message) throw new NotFoundException(tr('studioCore.error.messageNotFound'));
     const ids = message.role === 'user' ? [messageId, ...(await this.messages.childIds(messageId))] : [messageId];
     for (const id of ids) await this.queue.cancel(id);
     const assets = await this.messages.assetsOfMessages(ids);
@@ -128,7 +129,7 @@ export class GenerationService {
     }
     // First generation of a conversation created empty: title it from the prompt.
     const existing = await this.conversations.getSummary(input.conversationId);
-    if (existing?.title === DEFAULT_CONVERSATION_TITLE && !(await this.messages.hasMessages(input.conversationId))) {
+    if (isDefaultConversationTitle(existing?.title) && !(await this.messages.hasMessages(input.conversationId))) {
       await this.conversations.update(input.conversationId, { title: titleFromPrompt(prompt) });
     }
     return input.conversationId;
@@ -138,7 +139,7 @@ export class GenerationService {
     const media: string[] = [];
     for (const id of ids) {
       const asset = await this.assets.get(id);
-      if (!asset) throw new UnprocessableEntityException(`Image de référence introuvable : ${id}`);
+      if (!asset) throw new UnprocessableEntityException(tr('studioCore.error.referenceImageNotFound', [id]));
       media.push(asset.media);
     }
     return media;

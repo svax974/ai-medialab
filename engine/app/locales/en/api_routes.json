@@ -1,0 +1,8 @@
+{
+  "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.": "This engine is in use: unload the model first.",
+  "Aucun téléchargement en cours pour ce modèle.": "No download in progress for this model.",
+  "Ce modèle est chargé en mémoire : déchargez-le d'abord.": "This model is loaded in memory: unload it first.",
+  "Ce n'est pas un modèle ajouté depuis Hugging Face.": "This is not a model added from Hugging Face.",
+  "Une génération est en cours.": "A generation is in progress.",
+  "Une génération est en cours : attendez sa fin pour changer de quantification.": "A generation is in progress: wait for it to finish before changing the quantization."
+}

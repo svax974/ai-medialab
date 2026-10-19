@@ -26,7 +26,7 @@ const PYTHON = join(ENGINE_DIR, '.venv/bin/python');
 const TOKEN = 'e2e-token';
 const LAUNCHER = [
   'import app.main as m, uvicorn, sys',
-  'm.warm_up = lambda: None',
+  'm.warm_up = lambda *a, **k: None',
   "uvicorn.run(m.app, host='127.0.0.1', port=int(sys.argv[1]), log_level='warning')",
 ].join('; ');
 

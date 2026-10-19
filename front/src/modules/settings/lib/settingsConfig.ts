@@ -12,6 +12,12 @@ export const KEEP_ALIVE_OPTIONS = [
   { value: -1, labelId: 'settings.keepAlive.never' },
 ] as const
 
+/** Interface languages, named in their own language (never translated, so a lost user can still find theirs). */
+export const LANGUAGE_OPTIONS = [
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'English' },
+] as const
+
 /** Shortcut reminders (the keys are shown as in the old interface). `labelId` is a locale key. */
 export const SHORTCUT_ROWS = [
   { labelId: 'settings.shortcuts.generate', keys: '↵' },
@@ -31,6 +37,7 @@ export const settingsKeys = {
 
 /** Help of each setting (`Help` of `InfoTip`: locale keys). */
 export const SETTINGS_HELP = {
+  language: { titleId: 'settings.help.language.title', bodyId: 'settings.help.language.body', tipId: 'settings.help.language.tip' },
   keepAlive: { titleId: 'settings.help.keepAlive.title', bodyId: 'settings.help.keepAlive.body' },
   previews: { titleId: 'settings.help.previews.title', bodyId: 'settings.help.previews.body' },
   lowMemory: { titleId: 'settings.help.lowMemory.title', bodyId: 'settings.help.lowMemory.body', tipId: 'settings.help.lowMemory.tip' },

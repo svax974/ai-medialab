@@ -1,12 +1,12 @@
 # FFmpeg (via PyAV) : quel build, quelle licence ?
 
-*Dernière vérification contre les sources : 2026-10-13 (roue PyAV 19.0.1 macOS arm64 installée dans `engine/.venv`, pages
-amont citées plus bas).* Registre et procédure de revue : [README.md](README.md).
+*Dernière vérification contre les sources : 2026-10-17 (roue PyAV 19.0.1 macOS arm64 installée dans `engine/.venv`, pages
+amont citées plus bas ; le pack `ffmpeg` n'a pas été installé en vrai : seuls ses tests unitaires ont tourné).* Registre et procédure de revue : [README.md](README.md).
 
 ## Ce que l'application fait avec FFmpeg
 
-Aucun exécutable `ffmpeg` n'est appelé : tout passe par **PyAV** (`av`, dépendance de `engine/pyproject.toml`), dont les roues
-embarquent les bibliothèques FFmpeg (`libavcodec`, `libavformat`…) en bibliothèques partagées.
+Aucun exécutable `ffmpeg` n'est appelé : tout passe par **PyAV** (`av`, extra `ffmpeg` de `engine/pyproject.toml`, installé par le pack
+`ffmpeg` : voir la décision), dont les roues embarquent les bibliothèques FFmpeg (`libavcodec`, `libavformat`…) en bibliothèques partagées.
 
 | Usage | Où | Codecs |
 |---|---|---|
@@ -41,27 +41,32 @@ obligations sont plus lourdes que nécessaire, pour deux bibliothèques dont on 
 
 ## Décision
 
-1. **Encodeur H.264 choisi à l'exécution, sans dépendre de libx264.** `H264_ENCODERS` (`engine/app/media.py`, copie dans
+1. **PyAV n'est pas dans l'installateur.** Le pack `ffmpeg` (`PACKS['ffmpeg']`, `engine/app/audio_packs.py`, famille `runtime`, ≈ 50 Mo) installe
+   `av` sur la machine de l'utilisateur, depuis PyPI, avec le premier modèle vidéo (`engine/app/components.py` : tout modèle `kind == "video"`
+   l'exige). L'application ne redistribue donc pas la roue (ni x264/x265) : même position que pour les packs Kiwi-Edit et Bernini. Son
+   `site-packages` est ajouté à `sys.path` par `media.load_av` (serveur) et par `activate_overlays` (worker). Sans lui, l'envoi d'une vidéo
+   répond 409 avec un message qui renvoie à l'installation. Ce n'est pas un avis juridique ; les brevets H.264 / AAC ne sont pas traités.
+2. **Encodeur H.264 choisi à l'exécution, sans dépendre de libx264.** `H264_ENCODERS` (`engine/app/media.py`, copie dans
    `engine/video_runtime/common.py`) essaie, dans l'ordre, `h264_videotoolbox` (encodeur matériel d'Apple, bibliothèque système :
    compatible LGPL), `libopenh264` (OpenH264 de Cisco, BSD-2-Clause) puis `libx264` en dernier recours ; le premier qui s'ouvre à la
    taille demandée gagne. Débit : réglage dans `_h264_settings` (x264 garde son CRF). Vérifié sur Mac Apple Silicon avec la roue de
-   développement : VideoToolbox est retenu, le MP4 produit est en H.264.
-2. **Développement** : on garde la roue PyPI de PyAV. Rien n'est distribué, les obligations de la GPL ne s'appliquent pas.
-3. **Application de bureau distribuée** : embarquer un **FFmpeg LGPL en bibliothèques partagées** (sans `--enable-gpl`, sans
-   `--enable-nonfree`, sans x264 ni x265) et un PyAV compilé contre lui (`pip install av --no-binary av` avec `pkg-config`, voir la
-   [doc d'installation de PyAV](https://pyav.basswood.io/docs/stable/overview/installation.html) ; FFmpeg à la version majeure
-   attendue par le PyAV épinglé).
-   - **macOS (en premier)** : `--enable-videotoolbox --enable-audiotoolbox`, plus libopus, libvpx, libdav1d (BSD). Il n'existe pas
+   développement : VideoToolbox est retenu, le MP4 produit est en H.264. Sous Windows et Linux, `pyav-ffmpeg` liste x264 pour toutes les plateformes ; la présence d'un encodeur matériel ou d'OpenH264 dans ces roues n'est pas vérifiée, `libx264` sert alors.
+3. **Développement** : `uv sync --extra ffmpeg` (`scripts-local/dev-services.sh` le fait). Rien n'est distribué.
+4. **Option non retenue pour l'instant, un installateur hors ligne ou une licence LGPL stricte** : embarquer un **FFmpeg LGPL en
+   bibliothèques partagées** (sans `--enable-gpl`, sans `--enable-nonfree`, sans x264 ni x265) et un PyAV compilé contre lui
+   (`pip install av --no-binary av` avec `pkg-config`, voir la [doc d'installation de PyAV](https://pyav.basswood.io/docs/stable/overview/installation.html) ;
+   FFmpeg à la version majeure attendue par le PyAV épinglé).
+   - **macOS** : `--enable-videotoolbox --enable-audiotoolbox`, plus libopus, libvpx, libdav1d (BSD). Il n'existe pas
      de build LGPL macOS prêt à l'emploi chez [BtbN](https://github.com/BtbN/FFmpeg-Builds) (Windows et Linux seulement) : à
      compiler (script `scripts/build-deps` de PyAV adapté, ou configure à la main).
    - **Linux, Windows** : partir des variantes `lgpl-shared` de BtbN (sans x264/x265). Il faut un encodeur H.264 de la liste :
      `libopenh264` s'il est compilé dedans (à vérifier), sinon l'ajouter. Brevets : la licence de brevets de Cisco ne couvre que
      les binaires OpenH264 **téléchargés depuis Cisco**, pas une copie compilée et embarquée par nous. Sous Windows, `h264_mf`
      (Media Foundation) serait une alternative à ajouter à la liste, non testée.
-   - Tant que ce build n'existe pas, `scripts-local/build_runtime.py` (`report_ffmpeg_license`) **avertit** quand le runtime
-     assemblé contient libx264 / libx265 : un tel installateur ne se publie pas sans la source correspondante.
+   - `scripts-local/build_runtime.py` (`report_ffmpeg_license`) **avertit** quand le runtime assemblé contient libx264 / libx265 (un
+     profil qui réembarquerait `av`) : un tel installateur ne se publie pas sans la source correspondante.
 
-## Obligations une fois le build LGPL embarqué
+## Obligations si le build LGPL (option 4) est embarqué
 
 D'après la liste de [ffmpeg.org/legal.html](https://ffmpeg.org/legal.html) :
 
@@ -74,16 +79,14 @@ D'après la liste de [ffmpeg.org/legal.html](https://ffmpeg.org/legal.html) :
 
 Ce document n'a pas valeur de conseil juridique (brevets H.264 / AAC compris).
 
-## Prochaines étapes (non faites ici : téléchargements et compilation)
+## Prochaines étapes
 
-1. Produire le FFmpeg LGPL partagé macOS arm64, puis compiler PyAV contre lui ; vérifier `otool -L` (aucun x264/x265) et que
-   `h264_encoder` retient `h264_videotoolbox`.
-2. Brancher ce PyAV dans `scripts-local/build_runtime.py` / `desktop/runtime/profiles.json` à la place de la roue PyPI ;
-   `report_ffmpeg_license` doit alors annoncer un build LGPL.
-3. Joindre la source FFmpeg, la ligne `configure` et la notice LGPL aux livrables ; ajouter la mention dans « À propos ».
-4. Linux / Windows : même chose à partir de BtbN `lgpl-shared`, avec un encodeur H.264 de la liste.
+1. Installer le pack `ffmpeg` en vrai sur Mac, Windows et Linux (non fait) : vérifier que `av` se charge depuis l'overlay (bibliothèques
+   `av/.dylibs`, `av.libs` ou DLL à côté du module) dans le serveur et dans le worker, et que `h264_encoder` retient l'encodeur attendu.
+2. Mentionner FFmpeg et son téléchargement dans la fenêtre « À propos » et dans les notes de version.
+3. Si un installateur hors ligne ou une licence LGPL stricte devient nécessaire : option 4 ci-dessus (compiler FFmpeg LGPL et PyAV, source jointe).
 
 ## À vérifier à la revue
 
 - Le contenu de `av/.dylibs` (ou `av.libs`) après une montée de version de PyAV, et la ligne `configure` de `libavcodec`.
-- Si PyAV ou pyav-ffmpeg publient un jour une variante LGPL de leurs roues, elle remplacerait l'étape 1.
+- Si PyAV ou pyav-ffmpeg publient un jour une variante LGPL de leurs roues, le pack `ffmpeg` l'installerait à la place (changer `requirements`).

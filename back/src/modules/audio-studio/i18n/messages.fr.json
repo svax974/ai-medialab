@@ -1,0 +1,10 @@
+{
+  "audioStudio.error.booleanExpected": "{0} : booléen attendu.",
+  "audioStudio.error.jsonBodyExpected": "Corps JSON attendu.",
+  "audioStudio.error.noFileReceived": "Aucun fichier reçu (champ « file »).",
+  "audioStudio.error.takeNotFound": "Prise audio introuvable.",
+  "audioStudio.error.textExpected": "{0} : texte attendu.",
+  "audioStudio.error.voiceNotFound": "Voix introuvable.",
+  "audioStudio.voice.defaultSavedName": "Voix enregistrée",
+  "audioStudio.voice.defaultUploadedName": "Ma voix"
+}

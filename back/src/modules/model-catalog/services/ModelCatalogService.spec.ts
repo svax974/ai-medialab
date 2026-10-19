@@ -100,6 +100,12 @@ describe('model-catalog routes (fake engine)', () => {
     expect(last().url).toBe('/engine/v1/models/m/custom');
   });
 
+  it('frees the full-precision source of a model', async () => {
+    answer(200, { freed_gb: 58.0 });
+    await request(app.getHttpServer()).delete('/api/models/m/source/bf16').expect(200, { freed_gb: 58.0 });
+    expect(last()).toMatchObject({ method: 'DELETE', url: '/engine/v1/models/m/source/bf16' });
+  });
+
   it('adds a custom model (not read as a model id) with the default option', async () => {
     answer(200, { model_id: 'custom-1' });
     const res = await request(app.getHttpServer()).post('/api/models/custom').send({ repo: ' org/name ' }).expect(200);

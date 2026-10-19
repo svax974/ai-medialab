@@ -151,8 +151,8 @@ def _sdxl_lora(r: dict[str, Any]) -> ModelSpec:
     trigger = r.get("trigger") or ""
     return torch_models.sdxl_lora(
         id=r["id"], name=f"SDXL · {r['name']}", repo=r["repo"], file=r["file"], size_gb=float(r["size_gb"]),
-        description=f"LoRA du dépôt {r['repo']} appliquée à Stable Diffusion XL"
-                    + (f" ; mots déclencheurs ajoutés au prompt : « {trigger} »." if trigger else "."),
+        description=(f"LoRA du dépôt {r['repo']} appliquée à Stable Diffusion XL ; mots déclencheurs ajoutés au prompt : "
+                     f"« {trigger} »." if trigger else f"LoRA du dépôt {r['repo']} appliquée à Stable Diffusion XL."),
         license=r.get("license") or "voir le dépôt", trigger=trigger, tags=["Hugging Face"], custom=True,
     )
 
@@ -219,7 +219,7 @@ def _video_diffusers(r: dict[str, Any]) -> ModelSpec:
     spec.id, spec.custom, spec.precision = r["id"], True, r["precision"]
     spec.name = f"{base.family} · {r['name']}"
     spec.description = (f"Modèle du dépôt {r['repo']} (format diffusers, PyTorch), exécuté avec les réglages de "
-                        f"« {base.name} ». {base.description}")
+                        f"« {base.name} ».") + " " + base.description
     spec.hf_repo = r["repo"]
     spec.sources = [HfSource(r["repo"], files, [f for f in files if f.endswith(".safetensors")] + ["model_index.json"], size)]
     spec.download_size_gb = size
@@ -279,7 +279,7 @@ def _video_gguf(r: dict[str, Any]) -> ModelSpec:
     spec.id, spec.custom, spec.precision = r["id"], True, r["precision"]
     spec.name = f"{base.name} · {r['name']}"
     spec.description = (f"Variante {r['precision']} du dépôt {repo}, exécutée comme {base.name} (mêmes encodeur de texte "
-                        f"et VAE). {base.description}")
+                        f"et VAE).") + " " + base.description
     spec.license = r.get("license") or "voir le dépôt"
     spec.memory_hint = f"≈ {spec.weights_gb:.0f} Go de poids ({r['precision']})."
     spec.tags = [t for t in base.tags if t != "Apache 2.0"] + ["Hugging Face"]

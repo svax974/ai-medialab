@@ -1,0 +1,11 @@
+{
+  "Le moteur de chat (llama.cpp) installé ne démarre pas : réinstallez-le.": "The chat engine (llama.cpp) installed does not start: reinstall it.",
+  "Le moteur de chat (llama.cpp) n'est pas installé.": "The chat engine (llama.cpp) is not installed.",
+  "L'archive ne contient pas llama-server.": "The archive does not contain llama-server.",
+  "Pas de build « {} » de llama.cpp pour {} ({}).": "No llama.cpp build \"{}\" for {} ({}).",
+  "Téléchargement du moteur de chat ({})": "Downloading the chat engine ({})",
+  "{} : ne démarre pas ou ne voit aucun GPU (pilote manquant ?)": "{}: does not start or sees no GPU (missing driver?)",
+  "Aucune build de llama.cpp n'est utilisable ici.": "No llama.cpp build is usable here.",
+  "Aucune build de llama.cpp n'existe pour ce système.": "No llama.cpp build exists for this system.",
+  "Moteur de chat prêt.": "Chat engine ready."
+}

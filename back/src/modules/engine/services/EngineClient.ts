@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { uiLanguage } from 'src/modules/i18n';
 import { Inject, Injectable } from '@nestjs/common';
 import { ENGINE_CONFIG, ENGINE_TOKEN_HEADER, type EngineConfig } from '../engineConfig';
 import type { EnginePath, EngineRequestOptions, EngineResponse, HttpMethod } from '../types/engineTypes';
@@ -20,9 +21,11 @@ import { EngineError, EngineUnavailableError } from './EngineError';
 export class EngineClient {
   constructor(@Inject(ENGINE_CONFIG) private readonly config: EngineConfig) {}
 
-  /** Headers carrying the shared secret. */
+  /** Headers of every engine call: the shared secret and the language of the interface (the engine words its messages in it). */
   authHeaders(): Record<string, string> {
-    return this.config.token ? { [ENGINE_TOKEN_HEADER]: this.config.token } : {};
+    const headers: Record<string, string> = { 'Accept-Language': uiLanguage() };
+    if (this.config.token) headers[ENGINE_TOKEN_HEADER] = this.config.token;
+    return headers;
   }
 
   /** Absolute URL of an engine path (`{name}` placeholders filled from `params`, values encoded). */

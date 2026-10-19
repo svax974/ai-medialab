@@ -1,0 +1,6 @@
+{
+  "mediaLibrary.error.booleanExpected": "{0} : booléen attendu.",
+  "mediaLibrary.error.imageNotFound": "Image introuvable.",
+  "mediaLibrary.error.noFileReceivedMany": "Aucun fichier reçu (champ « files »).",
+  "mediaLibrary.error.textExpected": "{0} : texte attendu."
+}

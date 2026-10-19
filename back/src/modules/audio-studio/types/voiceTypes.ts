@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import type { VoiceKind } from '../entities/VoiceEntity';
 
 export const MAX_VOICE_NAME_LENGTH = 80;
@@ -31,8 +32,8 @@ export interface UpdateVoiceInput {
 }
 
 export const MAX_TRANSCRIPT_LENGTH = 600;
-export const DEFAULT_UPLOADED_VOICE_NAME = 'Ma voix';
-export const DEFAULT_SAVED_VOICE_NAME = 'Voix enregistrée';
+export const defaultUploadedVoiceName = (): string => tr('audioStudio.voice.defaultUploadedName');
+export const defaultSavedVoiceName = (): string => tr('audioStudio.voice.defaultSavedName');
 
 /** Fields of `POST /api/voices` (multipart) after validation. */
 export interface UploadVoiceInput {

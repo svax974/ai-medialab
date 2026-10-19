@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Box, Button, CircularProgress } from '@mui/material'
+import { Box, Button } from '@mui/material'
 import CloudDownloadOutlined from '@mui/icons-material/CloudDownloadOutlined'
-import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import { IndeterminateBar } from '@/modules_shared/common/components/ui/progress'
 import { type SystemInfo } from '@/modules/hardware'
 import { Notice, Section, type ModelInfo } from '@/modules/model-catalog'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { useCancelInstall, useInstallPack, useUninstallPack } from '../hooks/useEngineInstaller'
+import { useCancelInstall, useInstallPack } from '../hooks/useEngineInstaller'
 import { packDot, packRows, selectInstall, type PackRow } from '../lib/installState'
 import { useInstallStore } from '../state/installStore'
 import { InstallRow } from './InstallRow'
@@ -20,11 +19,9 @@ interface PackActionsProps {
   /** A pack installation is running (only one at a time), and whether it is this one. */
   running: boolean
   mine: boolean
-  removing: string | null
-  onUninstall: (id: string, name: string) => void
 }
 
-function PackActions({ row, running, mine, removing, onUninstall }: PackActionsProps) {
+function PackActions({ row, running, mine }: PackActionsProps) {
   const t = useT()
   const install = useInstallPack()
   const cancel = useCancelInstall('pack')
@@ -42,22 +39,14 @@ function PackActions({ row, running, mine, removing, onUninstall }: PackActionsP
       </Button>
     )
   }
-  if (row.installed && !running) {
-    return (
-      <Button variant="text" disabled={removing !== null} startIcon={removing === row.id ? <CircularProgress size={14} /> : <DeleteOutlineRounded />} onClick={() => onUninstall(row.id, row.name)}>
-        {t(removing === row.id ? 'engines.uninstalling' : 'engines.uninstall.button')}
-      </Button>
-    )
-  }
   return null
 }
 
-/** The audio or video engines (packs, isolated Python environments installed on demand): install, cancel, uninstall. */
+/** The audio or video engines (packs, isolated Python environments installed on demand): install and cancel. */
 export function PacksCard({ system, kind, models }: { system: SystemInfo; kind: 'audio' | 'video'; models: ModelInfo[] }) {
   const t = useT()
   const live = useInstallStore((s) => s.packInstall)
   const install = selectInstall(live, system.pack_install)
-  const { removing, uninstall } = useUninstallPack()
   const running = install.state === 'running'
   return (
     <Section title={t(kind === 'video' ? 'engines.video.title' : 'engines.audio.title')} hint={t('engines.packs.hint')}>
@@ -68,7 +57,7 @@ export function PacksCard({ system, kind, models }: { system: SystemInfo; kind: 
             dot={packDot(row)}
             name={row.name}
             remark={row.installed ? t('engines.pack.installed') : row.installable ? t('engines.pack.notInstalled', [row.sizeMb]) : (row.reason ?? t('engines.unavailable'))}
-            actions={<PackActions row={row} running={running} mine={running && install.pack === row.id} removing={removing} onUninstall={(id, name) => void uninstall(id, name)} />}
+            actions={<PackActions row={row} running={running} mine={running && install.pack === row.id} />}
           />
         ))}
       </Box>

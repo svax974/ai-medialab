@@ -1,0 +1,6 @@
+{
+  "Rapide et léger, bon en suivi d'instructions : le choix par défaut pour un organigramme ou un schéma simple.": "Fast and light, good at following instructions: the default choice for an organization chart or a simple diagram.",
+  "Un peu plus capable que le 4B, avec un mode de réflexion activable, pour des diagrammes avec plus de nœuds.": "Slightly more capable than the 4B, with a switchable thinking mode, for diagrams with more nodes.",
+  "Diagrammes plus complexes ou plus fidèles au prompt, au prix de plus de mémoire.": "More complex diagrams or closer adherence to the prompt, at the cost of more memory.",
+  "Le plus capable des quatre : pour des diagrammes riches en nœuds et relations, sur une machine avec beaucoup de mémoire.": "The most capable of the four: for diagrams rich in nodes and relations, on a machine with a lot of memory."
+}

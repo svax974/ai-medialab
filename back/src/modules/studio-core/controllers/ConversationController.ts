@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, UnprocessableEntityException, UseInterceptors } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { StudioEvents } from 'src/modules/media-library';
@@ -14,7 +15,7 @@ import { ConversationMode } from '../entities/ConversationEntity';
 import { ConversationService } from '../services/ConversationService';
 import { GenerationService } from '../services/GenerationService';
 
-const MODES: string[] = ['image', 'audio', 'video', 'chat'];
+const MODES: string[] = ['image', 'audio', 'video', 'chat', 'diagram'];
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** `/api/conversations*`: same URLs and shapes as the engine's legacy routes. Admin only. */
@@ -38,8 +39,8 @@ export class ConversationController {
   @HttpCode(200)
   async create(@Body() body: unknown): Promise<ConversationDetailDto> {
     const { title, mode } = isRecord(body) ? body : {};
-    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException('title : texte attendu.');
-    if (mode != null && typeof mode !== 'string') throw new UnprocessableEntityException('mode : texte attendu.');
+    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException(tr('studioCore.error.textExpected', ['title']));
+    if (mode != null && typeof mode !== 'string') throw new UnprocessableEntityException(tr('studioCore.error.textExpected', ['mode']));
     const created = await this.conversations.create({ title: (title as string | undefined) ?? undefined, mode: (mode as string | undefined) ?? undefined });
     await this.generations.publishConversation(created.id);
     return created;
@@ -48,17 +49,17 @@ export class ConversationController {
   @Get(':id')
   async get(@Param('id') id: string): Promise<ConversationDetailDto> {
     const conversation = await this.conversations.get(id);
-    if (!conversation) throw new NotFoundException('Conversation introuvable.');
+    if (!conversation) throw new NotFoundException(tr('studioCore.error.conversationNotFound'));
     return conversation;
   }
 
   @Patch(':id')
   async patch(@Param('id') id: string, @Body() body: unknown): Promise<ConversationDto> {
     const { title, pinned } = isRecord(body) ? body : {};
-    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException('title : texte attendu.');
-    if (pinned != null && typeof pinned !== 'boolean') throw new UnprocessableEntityException('pinned : booléen attendu.');
+    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException(tr('studioCore.error.textExpected', ['title']));
+    if (pinned != null && typeof pinned !== 'boolean') throw new UnprocessableEntityException(tr('studioCore.error.booleanExpected', ['pinned']));
     const summary = await this.conversations.update(id, { title: (title as string | undefined) ?? undefined, pinned: (pinned as boolean | undefined) ?? undefined });
-    if (!summary) throw new NotFoundException('Conversation introuvable.');
+    if (!summary) throw new NotFoundException(tr('studioCore.error.conversationNotFound'));
     this.events.publish('conversation.updated', summary);
     return summary;
   }

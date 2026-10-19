@@ -1,0 +1,6 @@
+{
+  "FFmpeg n'est pas installé : il se télécharge avec le premier modèle vidéo (Réglages > Moteurs).": "FFmpeg is not installed: it is downloaded with the first video model (Settings > Engines).",
+  "Aucune piste vidéo.": "No video track.",
+  "Vidéo vide ou illisible.": "Empty or unreadable video.",
+  "Aucun encodeur H.264 disponible dans cette version de FFmpeg.": "No H.264 encoder available in this FFmpeg version."
+}

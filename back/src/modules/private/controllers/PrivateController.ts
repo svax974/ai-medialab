@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import {
   Body, ConflictException, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Query,
   UnprocessableEntityException, UploadedFiles, UseInterceptors,
@@ -21,7 +22,7 @@ import { PrivateGenerationService, type CreatedPrivateGeneration } from '../serv
 import { PrivateSessionService } from '../services/PrivateSessionService';
 import { PrivateStore } from '../services/PrivateStore';
 import { PrivateUploadService } from '../services/PrivateUploadService';
-import { PRIVATE_CHAT_TITLE, PRIVATE_DEFAULT_TITLE, type PrivateSessionInfo } from '../types/privateTypes';
+import { privateChatTitle, privateDefaultTitle, type PrivateSessionInfo } from '../types/privateTypes';
 import { NoStoreInterceptor } from './NoStoreInterceptor';
 import { privateUploadStorage } from './privateUpload';
 
@@ -88,11 +89,11 @@ export class PrivateController {
   create(@Body() body: unknown): ConversationDetailDto {
     this.requireSession();
     const { title, mode } = isRecord(body) ? body : {};
-    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException('title : texte attendu.');
-    if (mode != null && !MODES.includes(mode as PrivateMode)) throw new UnprocessableEntityException('mode : image, audio, video ou chat attendu.');
+    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException(tr('private.error.textExpected', ['title']));
+    if (mode != null && !MODES.includes(mode as PrivateMode)) throw new UnprocessableEntityException(tr('private.error.modeExpected'));
     const chosen = (mode as PrivateMode | undefined) ?? 'image';
     const conversation = this.store.createConversation({
-      title: (title as string | undefined)?.trim() || (chosen === 'chat' ? PRIVATE_CHAT_TITLE : PRIVATE_DEFAULT_TITLE), mode: chosen,
+      title: (title as string | undefined)?.trim() || (chosen === 'chat' ? privateChatTitle() : privateDefaultTitle()), mode: chosen,
     });
     this.events.changed('conversation', { conversation_id: conversation.id });
     return this.store.detail(conversation.id) as ConversationDetailDto;
@@ -102,7 +103,7 @@ export class PrivateController {
   get(@Param('id') id: string): ConversationDetailDto {
     this.requireSession();
     const detail = this.store.detail(id);
-    if (!detail) throw new NotFoundException('Conversation introuvable.');
+    if (!detail) throw new NotFoundException(tr('private.error.conversationNotFound'));
     return detail;
   }
 
@@ -110,10 +111,10 @@ export class PrivateController {
   patch(@Param('id') id: string, @Body() body: unknown): ConversationDto {
     this.requireSession();
     const { title, pinned, message_count: count } = isRecord(body) ? body : {};
-    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException('title : texte attendu.');
-    if (pinned != null && typeof pinned !== 'boolean') throw new UnprocessableEntityException('pinned : booléen attendu.');
+    if (title != null && typeof title !== 'string') throw new UnprocessableEntityException(tr('private.error.textExpected', ['title']));
+    if (pinned != null && typeof pinned !== 'boolean') throw new UnprocessableEntityException(tr('private.error.booleanExpected', ['pinned']));
     if (count != null && (typeof count !== 'number' || !Number.isInteger(count) || count < 0 || count > 100_000)) {
-      throw new UnprocessableEntityException('message_count : entier de 0 à 100000 attendu.');
+      throw new UnprocessableEntityException(tr('private.error.messageCountRange'));
     }
     const updated = this.store.updateConversation(id, {
       ...(typeof title === 'string' ? { title: title.trim().slice(0, MAX_TITLE_LENGTH) } : {}),
@@ -121,7 +122,7 @@ export class PrivateController {
       ...(typeof count === 'number' ? { messageCount: count } : {}),
     });
     if (updated && typeof count === 'number') this.store.touch(id); // a chat that grew moves up the list
-    if (!updated) throw new NotFoundException('Conversation introuvable.');
+    if (!updated) throw new NotFoundException(tr('private.error.conversationNotFound'));
     this.events.changed('conversation', { conversation_id: id });
     return this.store.summary(id) as ConversationDto;
   }
@@ -167,7 +168,7 @@ export class PrivateController {
   @HttpCode(200)
   @UseInterceptors(FilesInterceptor('files', MAX_FILES, { storage: privateUploadStorage, limits: { fileSize: MAX_UPLOAD_BYTES } }))
   async upload(@UploadedFiles() files: Express.Multer.File[] = []): Promise<AssetDto[]> {
-    if (!files.length) throw new UnprocessableEntityException('Aucun fichier reçu (champ « files »).');
+    if (!files.length) throw new UnprocessableEntityException(tr('private.error.noFileReceivedMany'));
     const created: AssetDto[] = [];
     for (const file of files) {
       created.push(await this.uploads.ingest({ path: file.path, originalName: decodeUploadName(file.originalname), mimeType: file.mimetype }));
@@ -178,9 +179,9 @@ export class PrivateController {
   @Patch('assets/:id')
   patchAsset(@Param('id') id: string, @Body() body: { favorite?: unknown }): AssetDto {
     this.requireSession();
-    if (body?.favorite != null && typeof body.favorite !== 'boolean') throw new UnprocessableEntityException('favorite : booléen attendu.');
+    if (body?.favorite != null && typeof body.favorite !== 'boolean') throw new UnprocessableEntityException(tr('private.error.booleanExpected', ['favorite']));
     const asset = body?.favorite == null ? this.store.getAsset(id) : this.store.setFavorite(id, body.favorite as boolean);
-    if (!asset) throw new NotFoundException('Image introuvable.');
+    if (!asset) throw new NotFoundException(tr('private.error.imageNotFound'));
     return this.store.assetDto(asset);
   }
 
@@ -188,7 +189,7 @@ export class PrivateController {
   async removeAsset(@Param('id') id: string): Promise<{ ok: true }> {
     this.requireSession();
     const asset = this.store.removeAsset(id);
-    if (!asset) throw new NotFoundException('Image introuvable.');
+    if (!asset) throw new NotFoundException(tr('private.error.imageNotFound'));
     await this.generations.eraseFiles([asset]);
     this.events.changed('message', asset.conversationId ? { conversation_id: asset.conversationId } : {});
     return { ok: true };
@@ -196,6 +197,6 @@ export class PrivateController {
 
   private requireSession(): void {
     this.session.touch();
-    if (!this.session.active) throw new ConflictException("Aucune session privée n'est ouverte.");
+    if (!this.session.active) throw new ConflictException(tr('private.error.noSession'));
   }
 }

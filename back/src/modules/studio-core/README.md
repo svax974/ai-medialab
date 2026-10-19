@@ -40,6 +40,11 @@ navigateur, reprise au démarrage. Le moteur ne connaît pas les conversations :
 
 Tests : voir « Tests » plus bas.
 
+## Langue
+
+Les textes montrés à l'utilisateur (erreurs, titres par défaut, états d'échec) passent par `tr('studioCore.…')` (`src/modules/i18n`) et suivent la langue de l'interface (en-tête `Accept-Language`). Dictionnaires : `studio-core/i18n/messages.fr.json` et `messages.en.json` (parité contrôlée par `i18n/messages.spec.ts`).
+Les textes enregistrés (échec d'un message, titre par défaut d'une conversation) le sont dans la langue du moment ; `isDefaultConversationTitle` / `isDefaultChatTitle` reconnaissent le titre par défaut dans les deux langues.
+
 ## Dépendances
 
 - `audio-studio` (`VoiceService`, pour les `voices` des jobs audio) ; `media-library` (`AssetEntity`, `AssetService`, `AssetFileService`, `StudioEvents`, `toAssetDto`, `newId`, `nowSeconds`, dossiers de données). Pas l'inverse.

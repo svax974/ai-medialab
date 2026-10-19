@@ -1,0 +1,6 @@
+{
+  "Mémoire insuffisante pour charger « {} » maintenant : {} Go libres, il en faut ≈ {} ({} Go de poids et {} Go de réserve pour le système). Fermez des applications gourmandes, puis relancez.": "Not enough memory to load \"{}\" now: {} GB free, ≈ {} needed ({} GB of weights and {} GB of reserve for the system). Close memory-hungry applications, then try again.",
+  "la mémoire de la machine allait manquer ({} Go libres, réserve de {} Go)": "the machine was about to run out of memory ({} GB free, {} GB reserve)",
+  "macOS signale une pression mémoire critique": "macOS reports critical memory pressure",
+  "Arrêté par la protection mémoire : {}. Le modèle a été déchargé pour protéger la machine. Essayez une définition plus petite, moins d'images à la fois, une quantification plus forte, ou fermez des applications gourmandes.": "Stopped by the memory guard: {}. The model was unloaded to protect the machine. Try a smaller size, fewer images at once, a stronger quantization, or close memory-hungry applications."
+}

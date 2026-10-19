@@ -30,12 +30,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .config import AUDIO_PACKS_DIR, AUDIO_RUNTIME_DIR, ROOT_DIR, VIDEO_PACKS_DIR, VIDEO_RUNTIME_DIR
+from .config import AUDIO_PACKS_DIR, AUDIO_RUNTIME_DIR, ROOT_DIR, RUNTIME_PACKS_DIR, VIDEO_PACKS_DIR, VIDEO_RUNTIME_DIR
 from .events import bus
 
 PYTHON_VERSION = "3.12"  # default; kokoro needs < 3.13, qwen-tts, pocket-tts and chatterbox are fine on 3.12
 
-FAMILY_DIRS = {"audio": AUDIO_PACKS_DIR, "video": VIDEO_PACKS_DIR}
+FAMILY_DIRS = {"audio": AUDIO_PACKS_DIR, "video": VIDEO_PACKS_DIR, "runtime": RUNTIME_PACKS_DIR}
 FAMILY_RUNTIMES = {"audio": AUDIO_RUNTIME_DIR, "video": VIDEO_RUNTIME_DIR}
 
 
@@ -81,9 +81,49 @@ class PackDef:
     shims: tuple[str, ...] = ()
     # Name of the prebuilt native runtime this pack installs instead of a Python environment ("" = Python pack).
     native: str = ""
+    # Add-on of the main runtime ("runtime" family): the venv is built on the server's own interpreter and its site-packages
+    # joins the import path of the image worker (`activate_overlays`), so the models run in-process there, not in a pack worker.
+    overlay: bool = False
+    # Download size on Apple Silicon when it differs from `size_mb` (0 = same).
+    size_mb_apple: int = 0
+    # Installing or removing this add-on changes what the PyTorch probe finds (see `system.reprobe`).
+    reprobe: bool = False
 
 
 PACKS: dict[str, PackDef] = {
+    # PyTorch + diffusers (and mflux on Apple Silicon) for the image and video models of the main runtime. Not bundled with the
+    # app: installed at first need. Versions follow engine/pyproject.toml, extras `torch` and `mlx`.
+    "torch": PackDef(
+        id="torch",
+        name="PyTorch + diffusers (images et vidéos)",
+        family="runtime",
+        overlay=True,
+        reprobe=True,
+        torch_packages=("torch>=2.4,<3", "torchvision"),
+        requirements=("diffusers>=0.41", "gguf>=0.10", "transformers>=5.17", "accelerate>=1.0", "peft>=0.17",
+                      "sentencepiece", "protobuf", "safetensors"),
+        apple_requirements=("mflux==0.20.0",),
+        imports=("torch", "torchvision", "diffusers", "transformers", "gguf"),
+        size_mb=4500,
+        size_mb_apple=1700,
+        engine="PyTorch + diffusers",
+        contents="PyTorch, diffusers et transformers (et MLX sur Mac), pour les modèles d'image et de vidéo qui en ont besoin.",
+    ),
+    # PyAV (FFmpeg) for every video model: reading uploaded videos, thumbnails, writing the MP4. Not bundled: the PyPI wheel carries
+    # GPL libraries (x264, x265), so the app never redistributes it, the user's machine downloads it (docs/components/ffmpeg.md).
+    # Version follows engine/pyproject.toml, extra `ffmpeg`.
+    "ffmpeg": PackDef(
+        id="ffmpeg",
+        name="FFmpeg (lecture et écriture des vidéos)",
+        family="runtime",
+        overlay=True,
+        torch_packages=(),
+        requirements=("av>=14",),
+        imports=("av",),
+        size_mb=50,
+        engine="FFmpeg (PyAV)",
+        contents="PyAV et les bibliothèques FFmpeg, pour lire les vidéos importées, créer les vignettes et écrire les clips en MP4.",
+    ),
     "speech": PackDef(
         id="speech",
         name="Voix légères (Kokoro, Pocket TTS, Whisper)",
@@ -169,11 +209,29 @@ PACKS: dict[str, PackDef] = {
 
 
 def python_of(pack: PackDef) -> str:
+    if pack.overlay:  # built on the server's own interpreter: its compiled modules must match
+        return f"{sys.version_info.major}.{sys.version_info.minor}"
     return pack.python or PYTHON_VERSION
 
 
 def is_apple_silicon() -> bool:
     return sys.platform == "darwin" and platform.machine() == "arm64"
+
+
+def size_of(pack: PackDef) -> int:
+    """Download size announced to the user, in MB."""
+    return pack.size_mb_apple if pack.size_mb_apple and is_apple_silicon() else pack.size_mb
+
+
+# Model backend -> pack whose installation it needs (add-ons of the main runtime).
+OVERLAY_BACKENDS = {"torch": "torch", "mlx": "torch"}
+
+
+def pack_of(spec: Any) -> str | None:
+    """Pack a model needs: its own (backend "pack"), or the add-on of the main runtime (torch, mlx)."""
+    if spec.backend == "pack":
+        return spec.options.get("pack")
+    return OVERLAY_BACKENDS.get(spec.backend)
 
 
 def requirements_for(pack: PackDef) -> tuple[str, ...]:
@@ -205,6 +263,8 @@ def pack_env(pack_id: str) -> dict[str, str]:
     if pack:
         paths += [str(runtime_dir(pack_id) / "shims" / name) for name in pack.shims]
     env = {"PYTHONPATH": os.pathsep.join(paths)} if paths else {}
+    if pack and pack.overlay:  # the server's own packages must not shadow the venv's
+        env["PYTHONPATH"] = ""
     if pack and pack.native == "audiocpp":
         from . import audiocpp
 
@@ -221,6 +281,40 @@ def venv_python(pack_id: str) -> Path:
         return Path(sys.executable)
     base = pack_dir(pack_id) / "venv"
     return base / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+
+
+def overlay_site(pack_id: str) -> Path | None:
+    """site-packages of an installed add-on's venv, None when it is not there."""
+    base = pack_dir(pack_id) / "venv"
+    found = sorted(base.glob("Lib/site-packages")) + sorted(base.glob("lib/python*/site-packages"))
+    return found[0] if found else None
+
+
+def overlay_paths() -> list[str]:
+    """Import paths of the installed add-ons of the main runtime."""
+    paths = []
+    for pack in PACKS.values():
+        site = overlay_site(pack.id) if pack.overlay and is_installed(pack.id) else None
+        if site:
+            paths.append(str(site))
+    return paths
+
+
+def activate_overlays() -> None:
+    """Puts the installed add-ons first on this process's import path: called by the image worker before it loads a model."""
+    for path in reversed(overlay_paths()):
+        if path not in sys.path:
+            sys.path.insert(0, path)
+
+
+def activate_overlay(pack_id: str) -> bool:
+    """Same for one add-on, in any process (the server uses it for FFmpeg only: it never imports PyTorch). False when absent."""
+    site = overlay_site(pack_id) if is_installed(pack_id) else None
+    if not site:
+        return False
+    if str(site) not in sys.path:
+        sys.path.insert(0, str(site))
+    return True
 
 
 def runtime_dir(pack_id: str | None = None) -> Path:
@@ -287,6 +381,8 @@ def torch_acceleration(system: dict[str, Any]) -> bool:
 
 def unsupported_reason(pack: PackDef, system: dict[str, Any]) -> str | None:
     """Why this machine cannot run the pack at all (French), or None."""
+    if pack.overlay and pack.torch_packages:
+        return None if torch_acceleration(system) else "Aucun GPU exploitable par PyTorch (NVIDIA, AMD sous Linux ou Apple Silicon)."
     if pack.gpu != "cuda":
         return None
     vendors = _gpu_vendors(system)
@@ -295,8 +391,10 @@ def unsupported_reason(pack: PackDef, system: dict[str, Any]) -> str | None:
     return pack.gpu_reason or "Ce moteur demande une carte graphique NVIDIA (CUDA)."
 
 
-def engine_info(pack_id: str) -> dict[str, Any]:
-    """Same shape as the engines in `system.py`, so the catalog handles them alike."""
+def engine_info(pack_id: str, system: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Same shape as the engines in `system.py`, so the catalog handles them alike.
+
+    `system`: the hardware, when the caller is building it (`system._compute` cannot call `get_system` again)."""
     pack = PACKS.get(pack_id)
     if not pack:
         return {"available": False, "reason": f"Pack audio inconnu : {pack_id}"}
@@ -304,7 +402,7 @@ def engine_info(pack_id: str) -> dict[str, Any]:
         return {"available": True, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents, "pack_engine": pack.engine}
     from .system import get_system
 
-    blocked = unsupported_reason(pack, get_system())
+    blocked = unsupported_reason(pack, system or get_system())
     if blocked:  # listed with its description, but no install is offered
         return {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents,
                 "pack_engine": pack.engine, "reason": blocked}
@@ -312,7 +410,7 @@ def engine_info(pack_id: str) -> dict[str, Any]:
     info: dict[str, Any] = {"available": False, "pack": pack_id, "pack_name": pack.name, "pack_contents": pack.contents, "pack_engine": pack.engine,
                             "reason": f"Le moteur « {pack.name} » n'est pas installé."}
     if ok:
-        info.update(installable=True, install_size_mb=pack.size_mb)
+        info.update(installable=True, install_size_mb=size_of(pack))
     else:
         info["reason"] = why
     return info
@@ -330,6 +428,13 @@ def _torch_index(accelerators: list[dict[str, Any]], rocm: str = "rocm6.4") -> s
     if sys.platform == "win32":
         return "https://download.pytorch.org/whl/cpu"
     return None
+
+
+def _reprobe() -> None:
+    """An add-on of the main runtime appeared or went away: the hardware report must probe PyTorch again."""
+    from . import system
+
+    system.reprobe()
 
 
 class PackInstallCancelled(Exception):
@@ -374,12 +479,12 @@ class PackInstaller:
         if not ok:
             raise RuntimeError(why)
         free_mb = system["disk"]["free_gb"] * 1024
-        need_mb = pack.size_mb * 2 + 500  # download + unpacked install
+        need_mb = size_of(pack) * 2 + 500  # download + unpacked install
         if free_mb < need_mb:
             raise RuntimeError(f"Espace disque insuffisant : ≈ {need_mb} Mo nécessaires, {int(free_mb)} Mo libres.")
         self._cancel.clear()
         self._set(state="running", pack=pack_id, name=pack.name, message="Préparation…", error=None,
-                  started_at=time.time(), size_mb=pack.size_mb)
+                  started_at=time.time(), size_mb=size_of(pack))
         accelerators = system["accelerators"]
         if pack.gpu or pack.native:  # the pack brings its own runtime: use the GPU the OS sees even if the main one can't
             accelerators = accelerators + system.get("unusable_gpus", [])
@@ -468,16 +573,20 @@ class PackInstaller:
             target.mkdir(parents=True, exist_ok=True)
             uv = find_uv()
             if uv:
-                self._exec([uv, "venv", "--python", python_of(pack), str(venv)], "Création de l'environnement Python…")
+                self._exec([uv, "venv", "--python", sys.executable if pack.overlay else python_of(pack), str(venv)],
+                           "Création de l'environnement Python…")
                 install = [uv, "pip", "install", "--python", str(venv_python(pack.id))]
             else:
                 self._exec([sys.executable, "-m", "venv", str(venv)], "Création de l'environnement Python…")
                 install = [str(venv_python(pack.id)), "-m", "pip", "install", "--disable-pip-version-check"]
 
             index = _torch_index(accelerators, pack.rocm)
-            if index and pack.torch_packages:
-                self._exec([*install, *pack.torch_packages, "--index-url", index],
-                           f"Installation de PyTorch ({'GPU' if 'cu' in index or 'rocm' in index else 'CPU'})…")
+            if pack.torch_packages:
+                # No GPU-specific index (macOS, or Linux/Windows without a supported accelerator): plain PyPI wheels
+                # still work (Metal on macOS, CPU elsewhere) — only the `--index-url` flag is conditional, never the
+                # install itself, or `torch_packages` (e.g. torchvision) silently never gets installed at all.
+                cmd = [*install, *pack.torch_packages, *(["--index-url", index] if index else [])]
+                self._exec(cmd, f"Installation de PyTorch ({'GPU' if index and ('cu' in index or 'rocm' in index) else 'CPU'})…")
             self._exec([*install, *requirements_for(pack)], f"Installation des bibliothèques ({pack.name})…")
             if pack.archives:
                 shutil.rmtree(code_dir(pack.id), ignore_errors=True)
@@ -490,15 +599,23 @@ class PackInstaller:
             (target / "ready.json").write_text(json.dumps(
                 {"hash": _requirements_hash(pack), "installed_at": time.time(), "python": python_of(pack)}))
             self._set(state="done", message="Installé", detail="")
+            if pack.reprobe:
+                _reprobe()
             bus.publish("models.changed", {})
         except PackInstallCancelled:
-            shutil.rmtree(venv, ignore_errors=True)
+            self._discard(pack)
             self._set(state="cancelled", message="Annulé", detail="")
         except Exception as exc:  # noqa: BLE001
-            shutil.rmtree(venv, ignore_errors=True)
+            self._discard(pack)
             self._set(state="error", error=str(exc), message="Échec de l'installation", detail="")
         finally:
             self._proc = None
+
+    @staticmethod
+    def _discard(pack: PackDef) -> None:
+        """Removes what a cancelled or failed install left: the environment and the extracted source code."""
+        shutil.rmtree(pack_dir(pack.id) / "venv", ignore_errors=True)
+        shutil.rmtree(code_dir(pack.id), ignore_errors=True)
 
     def uninstall(self, pack_id: str) -> None:
         if self.running and self.state.get("pack") == pack_id:
@@ -509,6 +626,8 @@ class PackInstaller:
 
             shutil.rmtree(audiocpp.install_root(), ignore_errors=True)
         shutil.rmtree(pack_dir(pack_id), ignore_errors=True)  # blocking; the caller publishes `models.changed`
+        if pack and pack.reprobe:
+            _reprobe()
 
 
 installer = PackInstaller()

@@ -13,6 +13,7 @@
     "@tanstack/react-query": "^5.104.1",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.47",
+    "mermaid": "^11.4.1",
     "rehype-highlight": "^7.0.2",
     "rehype-katex": "^7.0.1",
     "remark-gfm": "^4.0.1",

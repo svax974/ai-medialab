@@ -1,0 +1,4 @@
+{
+  "Mémoire insuffisante : {}. Essayez une quantification plus forte ou une taille plus petite.": "Not enough memory: {}. Try a stronger quantization or a smaller size.",
+  "Le GPU a expiré, généralement parce que la mémoire est saturée (swap). Fermez des applications gourmandes, activez l'économie de mémoire ou réduisez la taille, puis réessayez.": "The GPU timed out, usually because memory is saturated (swap). Close memory-hungry applications, enable memory saving or reduce the size, then try again."
+}

@@ -17,8 +17,8 @@ export ENGINE_TOKEN
 export IMAGEGEN_DATA_DIR="${APP_DATA_DIR:-$ROOT/data}"
 
 command -v uv >/dev/null 2>&1 || { echo "uv est requis : https://docs.astral.sh/uv/" >&2; exit 1; }
-EXTRAS="--extra torch"
-[ "$(uname -s)-$(uname -m)" = "Darwin-arm64" ] && EXTRAS="--extra mlx --extra torch"
+EXTRAS="--extra torch --extra ffmpeg"
+[ "$(uname -s)-$(uname -m)" = "Darwin-arm64" ] && EXTRAS="--extra mlx --extra torch --extra ffmpeg"
 (cd "$ROOT/engine" && uv sync --quiet $EXTRAS)
 
 RELOAD=""

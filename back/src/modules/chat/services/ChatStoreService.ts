@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -65,7 +66,7 @@ export class ChatStoreService {
   /** The conversation row; 404 when it does not exist or is not a chat conversation. */
   async requireConversation(id: string): Promise<ConversationEntity> {
     const conversation = await this.conversations.findOneBy({ id });
-    if (!conversation || conversation.mode !== 'chat') throw new NotFoundException('Conversation introuvable.');
+    if (!conversation || conversation.mode !== 'chat') throw new NotFoundException(tr('chat.error.conversationNotFound'));
     return conversation;
   }
 
@@ -128,7 +129,7 @@ export class ChatStoreService {
   /** A message of this conversation; 404 otherwise (an id of another conversation never matches). */
   async requireMessage(conversationId: string, id: string): Promise<ChatMessageEntity> {
     const message = await this.messages.findOneBy({ id, conversationId });
-    if (!message) throw new NotFoundException('Message introuvable.');
+    if (!message) throw new NotFoundException(tr('chat.error.messageNotFound'));
     return message;
   }
 
@@ -164,7 +165,7 @@ export class ChatStoreService {
   async siblings(conversationId: string, messageId: string): Promise<ChatMessage[]> {
     const all = await this.all(conversationId);
     const target = all.find((m) => m.id === messageId);
-    if (!target) throw new NotFoundException('Message introuvable.');
+    if (!target) throw new NotFoundException(tr('chat.error.messageNotFound'));
     const groups = siblingGroups(all);
     const ids = groups.get(`${target.parentId ?? ''}|${target.role}`) ?? [target.id];
     const byId = new Map(all.map((m) => [m.id, m]));
@@ -192,7 +193,7 @@ export class ChatStoreService {
   async deleteSubtree(conversationId: string, messageId: string): Promise<ChatMessageEntity[]> {
     const all = await this.all(conversationId);
     const target = all.find((m) => m.id === messageId);
-    if (!target) throw new NotFoundException('Message introuvable.');
+    if (!target) throw new NotFoundException(tr('chat.error.messageNotFound'));
     const doomed = descendantsOf(all, messageId);
     const gone = new Set(doomed.map((m) => m.id));
     const leaf = (await this.getSettings(conversationId)).leaf_id;
@@ -210,7 +211,7 @@ export class ChatStoreService {
   async failInterrupted(): Promise<number> {
     const stuck = await this.messages.find({ where: { status: 'streaming' }, select: ['id'] });
     if (!stuck.length) return 0;
-    await this.messages.update({ id: In(stuck.map((m) => m.id)) }, { status: 'error', error: "Réponse interrompue par l'arrêt de l'application." });
+    await this.messages.update({ id: In(stuck.map((m) => m.id)) }, { status: 'error', error: tr('chat.error.interruptedByShutdown') });
     return stuck.length;
   }
 

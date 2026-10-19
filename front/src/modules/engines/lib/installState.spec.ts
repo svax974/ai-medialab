@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ModelInfo } from '@/modules/model-catalog'
-import { engineDot, engineRows, nextSetupStep, packDot, packRows, parseInstallState, relevantInstall, selectInstall, setupPlan } from './installState'
+import { engineDot, engineRows, packDot, packRows, parseInstallState, selectInstall, setupPlan } from './installState'
 
 describe('selectInstall', () => {
   it('uses the live state once something happened, else the one read with the system', () => {
@@ -26,10 +26,14 @@ describe('engineRows', () => {
     expect(rows.map((r) => r.id)).toEqual(['sdcpp', 'torch'])
     expect(rows[0]).toMatchObject({ available: true, installable: false, variant: 'vulkan' })
   })
-  it('flags only the missing stable-diffusion.cpp as installable', () => {
-    const rows = engineRows({ sdcpp: { available: false, installable: true, install_size_mb: 120 }, torch: { available: false, installable: true, reason: 'GPU absent' } })
-    expect(rows.find((r) => r.id === 'sdcpp')).toMatchObject({ installable: true, installSizeMb: 120 })
-    expect(rows.find((r) => r.id === 'torch')?.installable).toBe(false)
+  it('flags a missing engine the app can install, with the pack that brings it', () => {
+    const rows = engineRows({ sdcpp: { available: false, installable: true, install_size_mb: 120 }, torch: { available: false, installable: true, pack: 'torch', install_size_mb: 4500 } })
+    expect(rows.find((r) => r.id === 'sdcpp')).toMatchObject({ installable: true, installSizeMb: 120, pack: undefined })
+    expect(rows.find((r) => r.id === 'torch')).toMatchObject({ installable: true, installSizeMb: 4500, pack: 'torch' })
+  })
+  it('does not offer an install the engine refused (no usable GPU)', () => {
+    const rows = engineRows({ torch: { available: false, reason: 'Aucun GPU exploitable par PyTorch' } })
+    expect(rows[0]).toMatchObject({ installable: false, reason: 'Aucun GPU exploitable par PyTorch' })
   })
   it('hides the engines that cannot exist on this machine (Mac only)', () => {
     const rows = engineRows({ sdcpp: { available: true }, mlx: { available: false, reason: 'Réservé aux Mac Apple Silicon' } })
@@ -69,30 +73,5 @@ describe('setupPlan', () => {
   it('lists the engine and the remaining model download', () => {
     expect(setupPlan(model({ needs_engine_install: true, install: 'partial' }))).toEqual({ needEngine: true, needModel: true, engineMb: 120, modelGb: 4 })
     expect(setupPlan(model({ install: 'missing', installed_gb: 0 }))).toMatchObject({ needEngine: false, needModel: true, modelGb: 5 })
-  })
-})
-
-describe('relevantInstall and nextSetupStep', () => {
-  it('follows the pack installer while it works or when it is the only one that did', () => {
-    const sd = { state: 'done' as const }
-    expect(relevantInstall(sd, { state: 'running' })).toEqual({ state: 'running' })
-    expect(relevantInstall({ state: 'idle' }, { state: 'done' })).toEqual({ state: 'done' })
-    expect(relevantInstall(sd, { state: 'idle' })).toBe(sd)
-  })
-  it('follows llama.cpp (the chat engine) while it installs, or when it is the only installer that did', () => {
-    const idle = { state: 'idle' as const }
-    expect(relevantInstall(idle, idle, { state: 'running' })).toEqual({ state: 'running' })
-    expect(relevantInstall({ state: 'done' }, idle, { state: 'running' })).toEqual({ state: 'running' })
-    expect(relevantInstall(idle, idle, { state: 'done' })).toEqual({ state: 'done' })
-    expect(relevantInstall(idle, idle, { state: 'error' })).toEqual({ state: 'error' })
-    expect(relevantInstall({ state: 'done' }, idle, idle)).toEqual({ state: 'done' }) // without llama.cpp nothing changes
-  })
-  it('waits while installing, gives up on error or cancel, downloads once done', () => {
-    expect(nextSetupStep(null, 'done')).toBe('wait')
-    expect(nextSetupStep('m', 'idle')).toBe('wait')
-    expect(nextSetupStep('m', 'running')).toBe('wait')
-    expect(nextSetupStep('m', 'error')).toBe('abort')
-    expect(nextSetupStep('m', 'cancelled')).toBe('abort')
-    expect(nextSetupStep('m', 'done')).toBe('download')
   })
 })

@@ -1,0 +1,4 @@
+{
+  "Édition d'images par instruction (« mets-lui un chapeau ») et composition de plusieurs images de référence (personnes, objets, décors).": "Image editing by instruction (\"give him a hat\") and composition of several reference images (people, objects, scenes).",
+  "Modèle 20B : une première quantification télécharge temporairement le modèle complet (~58 Go), supprimable ensuite (seule la version quantifiée choisie est alors conservée).": "20B model: a first quantization temporarily downloads the full model (~58 GB), which can be deleted afterwards (only the chosen quantized version is then kept)."
+}

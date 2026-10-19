@@ -1,0 +1,6 @@
+{
+  "modelCatalog.error.string": "« {0} » doit être un texte.",
+  "modelCatalog.error.oneOf": "« {0} » doit valoir l'une de ces valeurs : {1}",
+  "modelCatalog.error.integer": "« {0} » doit être un entier de {1} à {2}.",
+  "modelCatalog.error.boolean": "« {0} » doit valoir true ou false."
+}

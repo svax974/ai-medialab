@@ -1,0 +1,21 @@
+{
+  "PyTorch n'est pas installé dans ce runtime.": "PyTorch is not installed in this runtime.",
+  "La sonde PyTorch a échoué.": "The PyTorch probe failed.",
+  "PyTorch est absent du runtime.": "PyTorch is missing from the runtime.",
+  "Ce runtime embarque PyTorch sans CUDA : utilisez la version « NVIDIA » de l'application.": "This runtime ships PyTorch without CUDA: use the \"NVIDIA\" version of the application.",
+  "Ce runtime embarque PyTorch sans ROCm : utilisez la version « AMD » de l'application (RDNA 3/4 sur Windows ; Linux/ROCm pour les autres cartes).": "This runtime ships PyTorch without ROCm: use the \"AMD\" version of the application (RDNA 3/4 on Windows; Linux/ROCm for other cards).",
+  "MLX nécessite un Mac Apple Silicon.": "MLX requires an Apple Silicon Mac.",
+  "Détection de PyTorch en cours…": "Detecting PyTorch…",
+  "Aucun GPU exploitable par PyTorch (CUDA, ROCm ou Metal).": "No GPU usable by PyTorch (CUDA, ROCm or Metal).",
+  "Aucun GPU détecté : tout ou partie du modèle tourne sur le processeur (plus lent).": "No GPU detected: all or part of the model runs on the CPU (slower).",
+  "{} Go de VRAM < {} Go : tout ou partie du modèle tourne sur le processeur (plus lent).": "{} GB of VRAM < {} GB: all or part of the model runs on the CPU (slower).",
+  "{} Go de VRAM et {} Go de RAM ne suffisent pas ({} Go nécessaires).": "{} GB of VRAM and {} GB of RAM are not enough ({} GB needed).",
+  "≈ {} Go de mémoire nécessaires, {} Go disponibles.": "≈ {} GB of memory needed, {} GB available.",
+  "Aucun GPU compatible détecté.": "No compatible GPU detected.",
+  "{} Go de VRAM < {} Go de poids : une partie reste en RAM (plus lent).": "{} GB of VRAM < {} GB of weights: part stays in RAM (slower).",
+  "{} Go de VRAM + {} Go de RAM ne suffisent pas ({} Go de poids).": "{} GB of VRAM + {} GB of RAM are not enough ({} GB of weights).",
+  "Il faut ≈ {} Go de mémoire unifiée en pleine précision ({} Go ici). Préférez la variante MLX quantifiée.": "Needs ≈ {} GB of unified memory at full precision ({} GB here). Prefer the quantized MLX variant.",
+  "{} Go de VRAM < {} Go : les composants passent un à un sur le GPU (plus lent).": "{} GB of VRAM < {} GB: the components move to the GPU one by one (slower).",
+  "VRAM très limitée : déchargement couche par couche, génération très lente.": "Very limited VRAM: layer-by-layer offloading, very slow generation.",
+  "{} Go de VRAM et {} Go de RAM ne suffisent pas pour ce modèle ({} Go).": "{} GB of VRAM and {} GB of RAM are not enough for this model ({} GB)."
+}

@@ -9,6 +9,8 @@ import asyncio
 import json
 from typing import Any
 
+from .i18n import localize
+
 
 class EventBus:
     def __init__(self) -> None:
@@ -23,7 +25,7 @@ class EventBus:
         self._subscribers.discard(q)
 
     def publish(self, event_type: str, data: dict[str, Any]) -> None:
-        payload = f"event: {event_type}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
+        payload = f"event: {event_type}\ndata: {json.dumps(localize(data), ensure_ascii=False)}\n\n"
         for q in list(self._subscribers):
             try:
                 q.put_nowait(payload)

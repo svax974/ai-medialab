@@ -1,0 +1,9 @@
+{
+  "diagrams.error.noFile": "Aucun fichier reçu (champ « file »).",
+  "diagrams.error.busyGeneration": "Une génération est en cours ou en attente : attendez sa fin.",
+  "diagrams.error.busyModel": "Le modèle de langage est occupé : attendez sa fin.",
+  "diagrams.error.emptyPrompt": "Le prompt est vide.",
+  "diagrams.error.conversationNotFound": "Conversation introuvable.",
+  "diagrams.error.notFound": "Génération de diagramme introuvable.",
+  "diagrams.error.badJson": "Le modèle n'a pas renvoyé de JSON exploitable : réessayez, ou choisissez un modèle plus capable."
+}

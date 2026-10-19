@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { resolve } from 'path';
 import { unlink } from 'fs/promises';
@@ -32,7 +33,7 @@ export class PrivateUploadService {
     this.session.touch();
     if (!this.session.active) {
       await unlink(file.path).catch(() => undefined);
-      throw new ConflictException("Aucune session privée n'est ouverte.");
+      throw new ConflictException(tr('private.error.noSession'));
     }
     const id = newId();
     try {

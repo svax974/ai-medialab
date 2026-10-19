@@ -1,0 +1,13 @@
+{
+  "Il faut ≈ {} Go de mémoire ({} Go ici).": "Needs ≈ {} GB of memory ({} GB here).",
+  "Aucun GPU exploitable par PyTorch ici (CUDA, ROCm sous Linux ou Metal) : ce modèle tournera sur le processeur, très lentement.": "No GPU usable by PyTorch here (CUDA, ROCm on Linux or Metal): this model will run on the CPU, very slowly.",
+  "Alternative qui utilise votre GPU : « {} ».": "Alternative that uses your GPU: \"{}\".",
+  "Il faut ≈ {} Go de mémoire vive ({} Go ici).": "Needs ≈ {} GB of RAM ({} GB here).",
+  "Il faut ≈ {} Go de mémoire vidéo ({} Go ici).": "Needs ≈ {} GB of video memory ({} GB here).",
+  "Mémoire de la carte graphique non détectée : vérifiez qu'elle atteint ≈ {} Go.": "Graphics card memory not detected: check that it reaches ≈ {} GB.",
+  "Environnement Python isolé avec {}": "Isolated Python environment with {}",
+  "Programme autonome : {}": "Standalone program: {}",
+  "environnement Python isolé avec {}": "isolated Python environment with {}",
+  "Petit programme autonome qui exécute les modèles GGUF, sans Python{}. Il est téléchargé une seule fois et sert à tous les modèles GGUF.": "Small standalone program that runs GGUF models, without Python{}. It is downloaded once and serves all GGUF models.",
+  "Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python{}. Il est téléchargé une seule fois et sert à tous les modèles de chat.": "Small standalone program that runs conversation models (GGUF), without Python{}. It is downloaded once and serves all chat models."
+}

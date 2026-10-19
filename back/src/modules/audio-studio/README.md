@@ -29,6 +29,10 @@ messages audio sont des messages ordinaires de `studio-core` (conversations de m
 Tests : `controllers/VoiceController.spec.ts` (routes sur un faux moteur HTTP : formes, erreurs, événements, fichiers),
 `services/VoiceService.spec.ts`, `services/voiceParams.spec.ts` ; parité avec le moteur : `legacy-import/publicShapes.spec.ts`.
 
+## Langue
+
+Les textes montrés à l'utilisateur (erreurs, titres par défaut, états d'échec) passent par `tr('audioStudio.…')` (`src/modules/i18n`) et suivent la langue de l'interface (en-tête `Accept-Language`). Dictionnaires : `audio-studio/i18n/messages.fr.json` et `messages.en.json` (parité contrôlée par `i18n/messages.spec.ts`).
+
 ## Dépendances
 
 - `media-library` (`AssetService`, `StudioEvents`, `uploadStorage`, `newId`, dossiers de données) ; `engine` (`EngineClient`,

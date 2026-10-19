@@ -5,6 +5,7 @@
 
 import { UnprocessableEntityException } from '@nestjs/common';
 import type { PublicSettings, SettingsPatch, StudioSettings } from '../types/settingsTypes';
+import { tr } from 'src/modules/i18n';
 
 export const KEEP_ALIVE_MIN = -1;
 export const KEEP_ALIVE_MAX = 1440;
@@ -28,8 +29,8 @@ function fail(message: string): never {
 }
 
 function parseMap<T>(name: string, value: unknown, valid: (v: unknown) => v is T, what: string): Record<string, T> {
-  if (!isRecord(value)) return fail(`${name} doit être un objet.`);
-  for (const [key, item] of Object.entries(value)) if (!valid(item)) fail(`${name}.${key} : ${what} attendu.`);
+  if (!isRecord(value)) return fail(tr('settings.error.object', [name]));
+  for (const [key, item] of Object.entries(value)) if (!valid(item)) fail(tr('settings.error.entry', [name, key, what]));
   return value as Record<string, T>;
 }
 
@@ -38,24 +39,24 @@ function parseMap<T>(name: string, value: unknown, valid: (v: unknown) => v is T
  * did); a wrong type is a 422. The engine does the model-aware checks (known model, supported quantization).
  */
 export function parseSettingsPatch(body: unknown): SettingsPatch {
-  if (!isRecord(body)) return fail('Corps JSON attendu.');
+  if (!isRecord(body)) return fail(tr('settings.error.body'));
   const patch: SettingsPatch = {};
   const { keep_alive_minutes: keep, previews, low_memory: low, hf_token: token, brave_api_key: brave, chat_voice_id: chatVoice, quantize, variant } = body;
   if (keep != null) {
     if (typeof keep !== 'number' || !Number.isInteger(keep) || keep < KEEP_ALIVE_MIN || keep > KEEP_ALIVE_MAX) {
-      fail(`keep_alive_minutes : entier entre ${KEEP_ALIVE_MIN} et ${KEEP_ALIVE_MAX} attendu.`);
+      fail(tr('settings.error.keepAlive', [KEEP_ALIVE_MIN, KEEP_ALIVE_MAX]));
     }
     patch.keep_alive_minutes = keep as number;
   }
-  if (previews != null) patch.previews = typeof previews === 'boolean' ? previews : fail('previews : booléen attendu.');
-  if (low != null) patch.low_memory = typeof low === 'boolean' ? low : fail('low_memory : booléen attendu.');
-  if (token != null) patch.hf_token = typeof token === 'string' ? token.trim() : fail('hf_token : texte attendu.');
-  if (brave != null) patch.brave_api_key = typeof brave === 'string' && brave.length <= MAX_KEY_LENGTH ? brave.trim() : fail(`brave_api_key : texte de ${MAX_KEY_LENGTH} caractères au plus attendu.`);
-  if (chatVoice != null) patch.chat_voice_id = typeof chatVoice === 'string' && chatVoice.length <= MAX_KEY_LENGTH ? chatVoice.trim() : fail(`chat_voice_id : texte de ${MAX_KEY_LENGTH} caractères au plus attendu.`);
+  if (previews != null) patch.previews = typeof previews === 'boolean' ? previews : fail(tr('settings.error.boolean', ['previews']));
+  if (low != null) patch.low_memory = typeof low === 'boolean' ? low : fail(tr('settings.error.boolean', ['low_memory']));
+  if (token != null) patch.hf_token = typeof token === 'string' ? token.trim() : fail(tr('settings.error.text', ['hf_token']));
+  if (brave != null) patch.brave_api_key = typeof brave === 'string' && brave.length <= MAX_KEY_LENGTH ? brave.trim() : fail(tr('settings.error.textMax', ['brave_api_key', MAX_KEY_LENGTH]));
+  if (chatVoice != null) patch.chat_voice_id = typeof chatVoice === 'string' && chatVoice.length <= MAX_KEY_LENGTH ? chatVoice.trim() : fail(tr('settings.error.textMax', ['chat_voice_id', MAX_KEY_LENGTH]));
   if (quantize != null) {
-    patch.quantize = parseMap('quantize', quantize, (v): v is number | null => v === null || (typeof v === 'number' && Number.isInteger(v)), 'entier ou null');
+    patch.quantize = parseMap('quantize', quantize, (v): v is number | null => v === null || (typeof v === 'number' && Number.isInteger(v)), tr('settings.what.integerOrNull'));
   }
-  if (variant != null) patch.variant = parseMap('variant', variant, (v): v is string => typeof v === 'string', 'texte');
+  if (variant != null) patch.variant = parseMap('variant', variant, (v): v is string => typeof v === 'string', tr('settings.what.text'));
   return patch;
 }
 

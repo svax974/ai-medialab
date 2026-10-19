@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
 import { ConversationService, EngineBusyGate, type ConversationDto } from 'src/modules/studio-core';
@@ -51,7 +52,7 @@ export class ChatService {
     await this.store.requireConversation(conversationId);
     await this.store.requireMessage(conversationId, messageId);
     if (this.replies.runningIn(conversationId)) {
-      throw new ConflictException({ statusCode: 409, message: 'Une réponse est en cours : attendez sa fin avant de supprimer.', code: 'busy' });
+      throw new ConflictException({ statusCode: 409, message: tr('chat.error.busyDelete'), code: 'busy' });
     }
     const removed = await this.store.deleteSubtree(conversationId, messageId);
     await this.attachments.purgeUnused(conversationId, removed.flatMap((m) => m.attachments ?? []));
@@ -62,7 +63,7 @@ export class ChatService {
   /** Starts a generation of a message that waited for a duration or a voice. */
   async confirmGeneration(messageId: string, generationId: string, choice: ConfirmBody): Promise<ChatGeneration> {
     const message = await this.store.getMessage(messageId);
-    if (!message) throw new NotFoundException('Message introuvable.');
+    if (!message) throw new NotFoundException(tr('chat.error.messageNotFound'));
     await this.store.requireConversation(message.conversationId);
     return this.creation.confirm(message.conversationId, messageId, generationId, choice);
   }
@@ -76,7 +77,7 @@ export class ChatService {
   /** Unloads the chat model from memory; refused (409 `busy`) while a reply or a prompt improvement holds the engine. */
   async unloadModel(): Promise<{ ok: true }> {
     if (this.gate.busy) {
-      throw new ConflictException({ statusCode: 409, message: 'Une réponse est en cours : attendez sa fin avant de décharger le modèle.', code: 'busy' });
+      throw new ConflictException({ statusCode: 409, message: tr('chat.error.busyUnload'), code: 'busy' });
     }
     try {
       await this.engine.post('/engine/v1/llm/unload');

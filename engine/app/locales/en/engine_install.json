@@ -1,0 +1,13 @@
+{
+  "Adresse de téléchargement inattendue : {}": "Unexpected download address: {}",
+  "Archive refusée : chemin hors du dossier cible ({})": "Archive rejected: path outside the target folder ({})",
+  "Archive refusée : entrée non ordinaire ({})": "Archive rejected: non-regular entry ({})",
+  "Pas de build « {} » pour {}.": "No \"{}\" build for {}.",
+  "Téléchargement du moteur ({})": "Downloading the engine ({})",
+  "Aucune build de stable-diffusion.cpp n'existe pour ce système.": "No stable-diffusion.cpp build exists for this system.",
+  "Vérification du GPU…": "Checking the GPU…",
+  "Moteur prêt.": "Engine ready.",
+  "Aucune build n'a trouvé de GPU exploitable.": "No build found a usable GPU.",
+  "Installez ou mettez à jour le pilote de votre carte graphique (Vulkan).": "Install or update your graphics card driver (Vulkan).",
+  "Installation annulée.": "Installation cancelled."
+}

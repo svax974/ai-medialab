@@ -6,7 +6,7 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
 /** The studio a conversation belongs to (`mode` of the legacy database, added after the first release). */
-export type ConversationMode = 'image' | 'audio' | 'video' | 'chat';
+export type ConversationMode = 'image' | 'audio' | 'video' | 'chat' | 'diagram';
 
 /** A thread of generations. Timestamps are epoch seconds (floats), as in the legacy database. */
 @Entity({ name: 'conversations' })

@@ -64,6 +64,21 @@ describe('chat models (kind llm)', () => {
   })
 })
 
+describe('diagram models (kind diagram, nested like llm)', () => {
+  const withDiagrams = (over: Partial<ModelCatalog> = {}) =>
+    catalog({ models: [m('d1', 'diagram'), m('d2', 'diagram'), m('i1', 'image')], diagram: { default_model_id: 'd2', recommended_model_id: 'd1', ready: false }, ...over })
+  it('uses the diagram summary default, then the first diagram model, never mixing kinds', () => {
+    expect(resolveActiveModel(withDiagrams(), 'diagram', null)?.id).toBe('d2')
+    expect(resolveActiveModel(withDiagrams({ diagram: undefined }), 'diagram', null)?.id).toBe('d1')
+    expect(resolveActiveModel(withDiagrams(), 'image', null)?.id).toBe('i1')
+  })
+  it('proposes the recommended diagram model while none is ready', () => {
+    const c = withDiagrams()
+    expect(welcomeModel(c, 'diagram', c.models[0])?.id).toBe('d1')
+    expect(welcomeModel(withDiagrams({ diagram: { default_model_id: 'd2', recommended_model_id: 'd1', ready: true } }), 'diagram', c.models[0])).toBeNull()
+  })
+})
+
 describe('welcomeModel', () => {
   it('proposes the recommended model while nothing is ready', () => {
     const c = catalog()

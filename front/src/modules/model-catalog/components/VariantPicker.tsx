@@ -30,7 +30,7 @@ const chipSx = (selected: boolean) => ({
   '&:disabled': { opacity: 0.6, cursor: 'default' },
 })
 
-/** Quantization choice: only the selected one is downloaded, no extra copies. Saved as the `variant` setting. */
+/** Quantization choice: downloading one keeps it installed; the setting only picks which is used to generate. */
 export function VariantPicker({ model, disabled }: { model: ModelInfo; disabled?: boolean }) {
   const t = useT()
   const lang = useLang()
@@ -54,7 +54,7 @@ export function VariantPicker({ model, disabled }: { model: ModelInfo; disabled?
             disabled={save.isPending || disabled}
             aria-pressed={v.selected}
             onClick={() => !v.selected && save.mutate({ variant: { [model.id]: v.key } })}
-            title={v.install === 'installed' ? t('models.variant.installed') : t('models.variant.toDownload', [formatGb(v.need_gb, lang)])}
+            title={v.install === 'installed' ? t('models.variant.installed') : v.temp_gb > 0 ? t('models.variant.toDownloadTemp', [formatGb(v.need_gb, lang), formatGb(v.temp_gb, lang), formatGb(v.size_gb, lang)]) : t('models.variant.toDownload', [formatGb(v.need_gb, lang)])}
             sx={chipSx(v.selected)}
           >
             {v.install === 'installed' && <CheckRounded sx={{ fontSize: 12, color: 'var(--ok)' }} />}

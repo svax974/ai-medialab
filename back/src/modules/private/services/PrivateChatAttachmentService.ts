@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { open, readFile, rename, stat, unlink } from 'fs/promises';
@@ -34,7 +35,7 @@ export class PrivateChatAttachmentService {
 
   private folder(): string {
     this.session.touch();
-    if (!this.session.active) throw new ConflictException("Aucune session privée n'est ouverte.");
+    if (!this.session.active) throw new ConflictException(tr('private.error.noSession'));
     return join(sessionPath(this.session.sessionId), 'inputs');
   }
 
@@ -54,12 +55,12 @@ export class PrivateChatAttachmentService {
       const size = (await stat(file.path)).size;
       let stored: StoredAttachment;
       if (image) {
-        if (size > MAX_IMAGE_BYTES) throw new UnprocessableEntityException('Image trop lourde (10 Mo au plus).');
+        if (size > MAX_IMAGE_BYTES) throw new UnprocessableEntityException(tr('private.error.imageTooLarge'));
         stored = { kind: 'image', name: this.newName(image), original_name: original, mime: IMAGE_TYPES[image], size };
       } else {
-        if (size > MAX_TEXT_BYTES) throw new UnprocessableEntityException('Fichier texte trop lourd (1 Mo au plus).');
+        if (size > MAX_TEXT_BYTES) throw new UnprocessableEntityException(tr('private.error.textTooLarge'));
         if (decodeText(await readFile(file.path)) === null) {
-          throw new UnprocessableEntityException('Type de fichier non pris en charge : images (png, jpeg, webp, gif) et fichiers texte seulement.');
+          throw new UnprocessableEntityException(tr('private.error.unsupportedFileType'));
         }
         stored = { kind: 'text', name: this.newName(textExtension(original)), original_name: original, mime: 'text/plain', size };
       }
@@ -76,7 +77,7 @@ export class PrivateChatAttachmentService {
     const out: StoredAttachment[] = [];
     for (const ref of refs) {
       const size = await stat(this.pathOf(ref.name)).then((s) => (s.isFile() ? s.size : null), () => null);
-      if (size === null) throw new UnprocessableEntityException(`Pièce jointe introuvable : ${ref.name}.`);
+      if (size === null) throw new UnprocessableEntityException(tr('private.error.attachmentNotFound', [ref.name]));
       const mime = IMAGE_TYPES[ref.name.split('.').pop() as keyof typeof IMAGE_TYPES];
       out.push({ kind: mime ? 'image' : 'text', name: ref.name, original_name: ref.originalName, mime: mime ?? 'text/plain', size });
     }
@@ -85,7 +86,7 @@ export class PrivateChatAttachmentService {
 
   /** Absolute path of an attachment of the session (what the engine reads for an image). */
   pathOf(name: string): string {
-    if (!ATTACHMENT_NAME.test(name)) throw new Error('Nom de pièce jointe invalide.');
+    if (!ATTACHMENT_NAME.test(name)) throw new Error(tr('private.error.attachmentNameInvalid'));
     return join(this.folder(), name);
   }
 
@@ -95,7 +96,7 @@ export class PrivateChatAttachmentService {
 
   /** Removes one attachment the user took off before sending (the rest goes with the session). */
   async remove(name: string): Promise<void> {
-    if (!ATTACHMENT_NAME.test(name)) throw new UnprocessableEntityException('Nom de pièce jointe invalide.');
+    if (!ATTACHMENT_NAME.test(name)) throw new UnprocessableEntityException(tr('private.error.attachmentNameInvalid'));
     await unlink(join(this.folder(), name)).catch(() => undefined);
   }
 

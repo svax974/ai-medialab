@@ -18,6 +18,7 @@ import { useModelActions } from '../hooks/useModelActions'
 import { GatedNotice, LicenseWarning, LlmBadges, VideoBadges } from './ModelBadges'
 import { ModelActions } from './ModelActions'
 import { ModelHeader } from './ModelHeader'
+import { TempDownloadNote } from './TempDownloadNote'
 import { Notice, Tag } from './panels'
 import { VariantPicker } from './VariantPicker'
 
@@ -107,6 +108,7 @@ export function ModelCard({ model: m, system, onSetup, onUse }: ModelCardProps) 
       <Box component="p" sx={{ m: 0, mt: '6px', fontSize: 13, lineHeight: 1.6, color: 'var(--muted)' }}>
         {m.description}
       </Box>
+      <TempDownloadNote model={m} />
       {m.kind === 'video' && (
         <Box sx={{ mt: 1 }}>
           <VideoBadges model={m} />

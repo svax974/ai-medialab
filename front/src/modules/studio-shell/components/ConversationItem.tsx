@@ -25,18 +25,21 @@ const META_KEYS: Record<StudioMode, string> = {
   audio: 'studio.conversation.meta.audio',
   video: 'studio.conversation.meta.video',
   chat: 'studio.conversation.meta.chat',
+  diagram: 'studio.conversation.meta.diagram',
 }
 const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
   image: 'studio.conversation.delete.media.image',
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
   chat: 'studio.conversation.delete.media.chat',
+  diagram: 'studio.conversation.delete.media.diagram',
 }
 const DELETE_MESSAGE_KEYS: Record<StudioMode, string> = {
   image: 'studio.conversation.delete.message',
   audio: 'studio.conversation.delete.message',
   video: 'studio.conversation.delete.message',
   chat: 'studio.conversation.delete.message.chat',
+  diagram: 'studio.conversation.delete.message',
 }
 
 /** Thumbnail: the cover, else the mode's icon on the tray gradient; a breathing dot while a job is running. */

@@ -1,0 +1,7 @@
+{
+  "Texte → image de haute qualité, excellent rendu du texte dans l'image ; rapide sur Mac. Une image jointe sert seulement de point de départ (img2img) : pour éditer avec une ou plusieurs références, utilisez la version GGUF.": "High-quality text → image, excellent text rendering in the image; fast on Mac. An attached image only serves as a starting point (img2img): to edit with one or more references, use the GGUF version.",
+  "Plus d'étapes = plus de détails, plus lent.": "More steps = more detail, slower.",
+  "Part de l'image de départ conservée (img2img). Haut = proche de l'original.": "Share of the starting image kept (img2img). High = close to the original.",
+  "Actif seulement avec un prompt négatif (CFG réel). 1 = désactivé (recommandé).": "Only active with a negative prompt (true CFG). 1 = disabled (recommended).",
+  "Poids quantifiés (transformeur et encodeur de texte) : ≈ 10 Go en 4 bits.": "Quantized weights (transformer and text encoder): ≈ 10 GB in 4-bit."
+}

@@ -3,7 +3,8 @@
 *Dernière vérification : 2026-10-13, contre les index de wheels de pytorch.org, la documentation PyTorch et AMD.*
 Registre et procédure de revue : [README.md](README.md).
 
-Les packs audio PyTorch (Qwen3-TTS, Kokoro, Pocket TTS, Whisper) installent leur **propre** PyTorch (`_torch_index` dans
+Les packs audio PyTorch (Qwen3-TTS, Kokoro, Pocket TTS, Whisper) et le pack « torch » du moteur principal (images et vidéos, installé à la
+demande) installent leur **propre** PyTorch (`_torch_index` dans
 `engine/app/audio_packs.py`). La règle « ce GPU est-il utilisable ? » est `torch_acceleration()` dans le même fichier ; le
 marqueur « lent · processeur » du catalogue (`_degraded` dans `engine/app/catalog.py`) en découle.
 

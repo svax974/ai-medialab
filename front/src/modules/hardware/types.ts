@@ -53,6 +53,8 @@ export interface EngineInfo {
   installable?: boolean
   install_variant?: string
   install_size_mb?: number
+  /** Pack that installs this engine (PyTorch, MLX): installed through the pack routes. */
+  pack?: string
   install?: EngineInstallState
 }
 

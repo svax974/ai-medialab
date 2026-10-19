@@ -14,7 +14,7 @@ import type { ConversationDetail, Message } from '../types'
 const showError = (error: Error) => void toast.error(error.message)
 
 /** Kind of creation, for the texts of the confirmation. */
-export type MessageKind = 'image' | 'audio' | 'video'
+export type MessageKind = 'image' | 'audio' | 'video' | 'diagram'
 
 /**
  * Actions on the messages of a conversation: new variants (new seeds) and same-seed retry, cancel, delete (with

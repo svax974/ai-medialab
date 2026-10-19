@@ -26,7 +26,7 @@ from ..job_checks import MAX_COUNT, check_generation
 from ..job_plans import JobRequest
 from ..jobs import jobs
 from ..llm import llm
-from ..media import VIDEO_EXTENSIONS, is_video_upload, make_thumb, probe_video, save_upload, video_thumb
+from ..media import VIDEO_EXTENSIONS, FfmpegMissing, is_video_upload, make_thumb, probe_video, save_upload, video_thumb
 from ..private_session import inside, session_dir, subfolder
 
 jobs_router = APIRouter(tags=["jobs"])
@@ -254,6 +254,9 @@ def _ingest_video(source: Path, asset_id: str, name: str, uploads: Path | None =
     try:
         info = probe_video(target)
         thumb = video_thumb(target, asset_id, thumbs)
+    except FfmpegMissing as exc:
+        target.unlink(missing_ok=True)
+        raise HTTPException(409, str(exc)) from None
     except Exception:
         target.unlink(missing_ok=True)
         raise HTTPException(422, f"Vidéo illisible : {name}") from None

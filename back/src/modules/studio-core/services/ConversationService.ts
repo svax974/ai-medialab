@@ -15,8 +15,8 @@ import { ConversationStats, toConversationDetailDto, toConversationDto } from '.
 import {
   BUSY_STATUSES,
   CreateConversationInput,
-  DEFAULT_CHAT_TITLE,
-  DEFAULT_CONVERSATION_TITLE,
+  defaultChatTitle,
+  defaultConversationTitle,
   ListConversationsQuery,
   MAX_TITLE_LENGTH,
   UpdateConversationInput,
@@ -68,9 +68,9 @@ export class ConversationService {
     const conversation = await this.conversations.save(
       this.conversations.create({
         id: newId(),
-        title: input.title?.trim() || (input.mode === 'chat' ? DEFAULT_CHAT_TITLE : DEFAULT_CONVERSATION_TITLE),
+        title: input.title?.trim() || (input.mode === 'chat' ? defaultChatTitle() : defaultConversationTitle()),
         pinned: false,
-        mode: input.mode === 'audio' || input.mode === 'video' || input.mode === 'chat' ? (input.mode as ConversationMode) : 'image',
+        mode: input.mode === 'audio' || input.mode === 'video' || input.mode === 'chat' || input.mode === 'diagram' ? (input.mode as ConversationMode) : 'image',
         createdAt: now,
         updatedAt: now,
       }),

@@ -109,6 +109,36 @@ describe('engines routes (fake engine)', () => {
     expect(refused.body.message).toMatch(/déchargez le modèle/);
   });
 
+  it('lists the components (asking for the disk usage only on request) and removes one', async () => {
+    answer(200, { components: [{ id: 'ffmpeg', kind: 'base', installed: true }] });
+    await request(app.getHttpServer()).get('/api/engines/components').expect(200, [{ id: 'ffmpeg', kind: 'base', installed: true }]);
+    expect(last()).toMatchObject({ method: 'GET', url: '/engine/v1/components?disk=false' });
+    await request(app.getHttpServer()).get('/api/engines/components?disk=true').expect(200);
+    expect(last().url).toBe('/engine/v1/components?disk=true');
+    answer(200, { ok: true, removed_models: [{ id: 'm1', name: 'M1', kind: 'video' }] });
+    const res = await request(app.getHttpServer()).delete('/api/engines/components/ffmpeg').expect(200);
+    expect(res.body.removed_models).toHaveLength(1);
+    expect(last()).toMatchObject({ method: 'DELETE', url: '/engine/v1/components/ffmpeg' });
+    answer(409, { detail: "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord." });
+    await request(app.getHttpServer()).delete('/api/engines/components/sdcpp').expect(409);
+  });
+
+  it('plans, starts and cancels the setup of a model, and reads the current run', async () => {
+    answer(200, { model_id: 'wan', steps: [], ready: true, total_mb: 0, blocked: null });
+    await request(app.getHttpServer()).get('/api/engines/setup/plan/wan').expect(200);
+    expect(last()).toMatchObject({ method: 'GET', url: '/engine/v1/models/wan/setup-plan' });
+    answer(200, { state: 'running', model_id: 'wan' });
+    await request(app.getHttpServer()).post('/api/engines/setup/wan').expect(200, { state: 'running', model_id: 'wan' });
+    expect(last()).toMatchObject({ method: 'POST', url: '/engine/v1/setup/wan' });
+    await request(app.getHttpServer()).get('/api/engines/setup').expect(200);
+    expect(last()).toMatchObject({ method: 'GET', url: '/engine/v1/setup' });
+    answer(200, { ok: true });
+    await request(app.getHttpServer()).delete('/api/engines/setup').expect(200, { ok: true });
+    expect(last()).toMatchObject({ method: 'DELETE', url: '/engine/v1/setup' });
+    answer(409, { detail: 'Une autre installation est déjà en cours.' });
+    await request(app.getHttpServer()).post('/api/engines/setup/other').expect(409);
+  });
+
   it('answers 502 when the engine is unreachable', async () => {
     const down = new EnginesService(new EngineClient(testConfig('http://127.0.0.1:1')));
     await expect(down.installSdcpp()).rejects.toMatchObject({ status: 502 });

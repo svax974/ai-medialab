@@ -82,16 +82,31 @@ function MainActions({ model: m, freeGb, download, loaded, actions, onSetup, onU
   )
 }
 
+/** Whether at least one locally quantized variant is installed while the full-precision ("bf16") source it was
+ * produced from is still on disk: freeing it is then safe (see `models.freeSource.*`). */
+function freeableBf16(m: ModelInfo) {
+  const bf16 = m.variants.find((v) => v.key === 'bf16')
+  const hasDerived = m.variants.some((v) => v.key !== 'bf16' && v.install === 'installed')
+  return bf16?.install === 'installed' && hasDerived ? bf16 : null
+}
+
 /** Action row of a model card (see `MainActions`), "remove from the list" for custom models, precision for MLX. */
 export function ModelActions(props: ModelActionsProps) {
   const t = useT()
+  const lang = useLang()
   const { model: m, download, loaded, actions } = props
+  const bf16 = !download && !actions.busy ? freeableBf16(m) : null
   return (
     <Box sx={{ mt: 1.5, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
       <MainActions {...props} />
       {m.custom && !download && !actions.busy && (
         <Button variant="text" onClick={() => void actions.retire()} disabled={loaded} startIcon={<DeleteOutlineRounded />}>
           {t('models.retire.button')}
+        </Button>
+      )}
+      {bf16 && (
+        <Button variant="text" onClick={() => void actions.freeBf16()} startIcon={<DeleteOutlineRounded />}>
+          {t('models.freeSource.button')} <Box component="span" sx={MONO_SMALL}>{t('models.approxGb', [formatGb(bf16.installed_gb, lang)])}</Box>
         </Button>
       )}
       {m.install === 'installed' && !actions.busy && m.backend === 'mlx' && m.quantize_options.length > 0 && <QuantizeControl model={m} />}

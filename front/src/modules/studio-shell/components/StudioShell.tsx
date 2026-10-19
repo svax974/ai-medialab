@@ -14,7 +14,7 @@ import { useModeSync } from '../hooks/useModeSync'
 import { useT } from '../hooks/useT'
 import { useShortcuts } from '../hooks/useShortcuts'
 import { useStudioStore } from '../state/studioStore'
-import { EnginesPanel, LocalAiLaunchDialog, startSetup, useEnginesSync } from '@/modules/engines'
+import { EnginesPanel, LocalAiLaunchDialog, SetupDialog, startSetup, useEnginesSync } from '@/modules/engines'
 import { ModelsDialog, useDownloadEvents } from '@/modules/model-catalog'
 import { SettingsDialog } from '@/modules/settings'
 import { useLlmEvents } from '@/modules/chat/hooks/useLlmEvents'
@@ -71,10 +71,11 @@ export function StudioShell({ children }: { children: ReactNode }) {
         {children}
       </Box>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <SetupDialog />
       <ModelsDialog
         open={modelsOpen}
         onClose={() => setModelsOpen(false)}
-        onSetup={(model) => void startSetup(model)}
+        onSetup={(model) => startSetup(model)}
         renderEngines={(kind, models) => <EnginesPanel kind={kind} models={models} />}
       />
       <UpdatesDialog />

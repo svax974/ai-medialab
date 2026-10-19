@@ -1,0 +1,14 @@
+{
+  "Le job {} est déjà en file ou en cours.": "Job {} is already queued or running.",
+  "Erreur interne : le job s'est arrêté sans résultat.": "Internal error: the job stopped without a result.",
+  "Le moteur « {} » n'est pas installé. Ouvrez Modèles pour l'installer.": "The \"{}\" engine is not installed. Open Models to install it.",
+  "Ouvrez Modèles pour l'installer.": "Open Models to install it.",
+  "Le modèle « {} » n'est pas (entièrement) téléchargé. Ouvrez Réglages → Modèles pour le télécharger.": "The \"{}\" model is not (fully) downloaded. Open Settings → Models to download it.",
+  "Mémoire insuffisante ? Essayez un modèle plus léger.": "Not enough memory? Try a lighter model.",
+  "Mémoire insuffisante ? Essayez une variante plus légère ou une durée/définition plus faible.": "Not enough memory? Try a lighter variant or a shorter duration/lower resolution.",
+  "Mémoire insuffisante ? Essayez une quantification plus forte ou une taille plus petite.": "Not enough memory? Try a stronger quantization or a smaller size.",
+  "Le processus du modèle s'est arrêté (code {}). {}": "The model process stopped (code {}). {}",
+  "Une réponse de chat est en cours : relancez la génération quand elle est terminée.": "A chat reply is in progress: restart the generation when it has finished.",
+  "Le processus de chargement s'est arrêté (code {}).": "The loading process stopped (code {}).",
+  "Échec du chargement du modèle : {}": "Model loading failed: {}"
+}

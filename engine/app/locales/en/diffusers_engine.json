@@ -1,0 +1,5 @@
+{
+  "Aucun GPU exploitable par PyTorch (CUDA, ROCm ou Metal) : la génération sur CPU est impraticable pour ce modèle.": "No GPU usable by PyTorch (CUDA, ROCm or Metal): CPU generation is impractical for this model.",
+  "Ce modèle ne tient pas sur cette machine. {}": "This model does not fit on this machine. {}",
+  "Le moteur PyTorch n'a pas la bibliothèque « peft » nécessaire aux LoRA : mettez l'application à jour.": "The PyTorch engine lacks the \"peft\" library needed for LoRAs: update the application."
+}

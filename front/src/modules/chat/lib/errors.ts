@@ -41,8 +41,11 @@ export class ChatError extends Error {
   }
 }
 
-/** The code a refusal before the stream maps to (409: busy or missing model; 404: missing conversation; others: invalid). */
+/**
+ * The code a refusal before the stream maps to (409: busy or missing model; 404: missing conversation; others: invalid), when the
+ * server did not name one. The message is in the language of the interface, so the patterns know both.
+ */
 export function codeOfStatus(status: number, message: string): ChatErrorCode {
-  if (status === 409) return /moteur|llama/i.test(message) ? 'no_engine' : /mod[eè]le/i.test(message) ? 'no_model' : 'busy'
+  if (status === 409) return /moteur|engine|llama/i.test(message) ? 'no_engine' : /mod[eè]le|model/i.test(message) ? 'no_model' : 'busy'
   return status >= 500 || status === 0 ? 'upstream' : 'invalid'
 }

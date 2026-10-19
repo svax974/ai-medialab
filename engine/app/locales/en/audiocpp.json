@@ -1,0 +1,9 @@
+{
+  "Pas de build « {} » d'audio.cpp pour {} ({}).": "No \"{}\" build of audio.cpp for {} ({}).",
+  "Téléchargement du moteur audio ({})": "Downloading the audio engine ({})",
+  "Aucune somme de contrôle publiée pour {} : fichier refusé.": "No checksum published for {}: file rejected.",
+  "Somme de contrôle invalide pour {} : fichier refusé.": "Invalid checksum for {}: file rejected.",
+  "Aucune build d'audio.cpp n'est utilisable ici.": "No audio.cpp build is usable here.",
+  "Le moteur audio.cpp n'est pas installé (Modèles → Moteurs).": "The audio.cpp engine is not installed (Models → Engines).",
+  "audio.cpp a échoué (code {}) : {}": "audio.cpp failed (code {}): {}"
+}

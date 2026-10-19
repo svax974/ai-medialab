@@ -8,6 +8,7 @@ import { STUDIO_ROUTES, type StudioRouteDef } from './lib/routes'
 import { AudioHomePage } from './pages/AudioHomePage'
 import { AudioLibraryPage } from './pages/AudioLibraryPage'
 import { ComingSoonPage } from './pages/ComingSoonPage'
+import { DiagramHomePage } from './pages/DiagramHomePage'
 import { GalleryPage } from './pages/GalleryPage'
 import { ConversationPage } from './pages/ConversationPage'
 import { HomePage } from './pages/HomePage'
@@ -25,6 +26,7 @@ function pageOf(route: StudioRouteDef) {
   if (route.name === 'audio-library') return <AudioLibraryPage />
   if (route.name === 'video-home') return <VideoHomePage />
   if (route.name === 'video-library') return <VideoLibraryPage />
+  if (route.name === 'diagram-home') return <DiagramHomePage />
   return <ComingSoonPage titleKey={route.titleKey} />
 }
 

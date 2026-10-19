@@ -4,7 +4,7 @@
  */
 
 /** What a model produces: pictures, speech/transcription, clips, or text (chat, run by llama.cpp). */
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm'
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram'
 export type InstallState = 'installed' | 'partial' | 'missing'
 export type ReferenceMode = 'none' | 'init' | 'multi' | 'face'
 
@@ -102,6 +102,8 @@ export interface ModelVariant {
   installed_gb: number
   /** Remaining download needed to use this quantization. */
   need_gb: number
+  /** Part of `need_gb` that is temporary: the full-precision source, freed once the quantized checkpoint is produced. */
+  temp_gb: number
   selected: boolean
 }
 
@@ -155,6 +157,8 @@ export interface ModelInfo {
   }
   install: InstallState
   installed_gb: number
+  /** Temporary part of the remaining download (see `ModelVariant.temp_gb`). */
+  temp_download_gb: number
   download: DownloadProgress | null
   /** Ready to generate: installed, engine available and compatible. */
   ready: boolean
@@ -180,6 +184,7 @@ export interface ModelCatalog extends KindSummary {
   audio: KindSummary
   video: KindSummary
   llm?: KindSummary
+  diagram?: KindSummary
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {})

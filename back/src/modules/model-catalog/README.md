@@ -35,10 +35,11 @@ images et s'il appelle des fonctions.
 
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/models` | Admin | Catalogue : `models[]` (installation, compatibilité, plan mémoire, variantes, téléchargement en cours) + résumés `default_model_id`, `recommended_model_id`, `ready` (image au niveau supérieur, `audio` et `video` imbriqués). |
+| `GET` | `/api/models` | Admin | Catalogue : `models[]` (installation, compatibilité, plan mémoire, variantes, téléchargement en cours) + résumés `default_model_id`, `recommended_model_id`, `ready` (image au niveau supérieur, `audio`, `video`, `llm` et `diagram` imbriqués). |
 | `POST` | `/api/models/:id/download` | Admin | Démarre le téléchargement (200, `DownloadProgress`) ; 404 modèle inconnu, 409 refus du moteur (déjà en cours, pas de place...). |
 | `DELETE` | `/api/models/:id/download` | Admin | Annule ; 409 si rien n'est en cours. |
-| `DELETE` | `/api/models/:id` | Admin | Supprime les fichiers (réponse une fois l'espace libéré) : `{ freed_gb, also_affects }` ; 409 si le modèle est chargé. Délai 120 s. |
+| `DELETE` | `/api/models/:id` | Admin | Supprime les fichiers (réponse une fois l'espace libéré) : `{ freed_gb, also_affects }` ; 409 si le modèle est chargé. Délai 120 s. Pour une variante quantifiée localement (MLX, ex. Qwen Image Edit), ne supprime que le résultat quantifié : la copie complète (bf16) dont elle a été produite n'est jamais supprimée par cette route (voir la route suivante). |
+| `DELETE` | `/api/models/:id/source/bf16` | Admin | Libère la copie complète (bf16) d'un modèle MLX quantifié en local, une fois qu'au moins une variante quantifiée est installée : `{ freed_gb }` ; 404 modèle inconnu, 409 si aucune variante quantifiée n'est installée (sinon le modèle deviendrait inutilisable) ou si le modèle est chargé. Délai 120 s. |
 | `POST` | `/api/models/custom` | Admin | Ajoute un dépôt Hugging Face : corps `{ repo, option? }` (`option` : `default`), réponse `{ model_id }` ; 400 sans `repo` ; 422 relayé si le dépôt est inutilisable. |
 | `DELETE` | `/api/models/:id/custom` | Admin | Retire un modèle ajouté et ses fichiers : `{ freed_gb }` ; 404 si ce n'est pas un modèle personnalisé, 409 s'il est chargé. |
 | `GET` | `/api/hf/search?kind=&q=` | Admin | `{ results: HubResult[] }` (formats exécutables seulement, tenue en mémoire par machine, `precisions` : quantifications lues dans la liste des fichiers, sans requête de plus ; tailles exactes : `inspect`) ; 502 si Hugging Face est injoignable. `kind` : `image` (défaut), `audio`, `video`, `llm` (modèles de chat GGUF, famille `llm-gguf`) ; toute autre valeur : 400 (liste blanche `HUB_SEARCH_KINDS`, rien n'atteint le moteur). |
@@ -88,3 +89,5 @@ Contrôleur et service sur le faux moteur HTTP (`engine/testing/fakeEngine.ts`) 
 téléchargement (URL encodée), refus 409/422 relayés avec leur message, ordre des routes (`models/custom`), recherche et inspection,
 moteur injoignable (502), « Nouveautés » (valeurs par défaut, paramètres relayés, 11 valeurs refusées en 400 avant le moteur, administrateur
 requis, refus du moteur relayé).
+
+**Langue.** Les erreurs de validation des paramètres suivent la langue de l'interface : `i18n/messages.{fr,en}.json`, lus par `tr()`.

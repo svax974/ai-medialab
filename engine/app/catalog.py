@@ -12,6 +12,7 @@ from . import audio_packs
 from .downloads import downloads
 from .engines import MODELS, resolve, selected_variants
 from .engines.base import with_variant
+from .i18n import translate
 from .jobs import load_settings
 from .system import get_system, memory_plan
 
@@ -26,6 +27,8 @@ VIDEO_STARTER_ORDER = ["wan-2.2-ti2v-5b-gguf", "wan-2.2-ti2v-5b", "cogvideox-2b"
 # Chat: Qwen3 4B Instruct (2.3 GB, Apache 2.0, good in French), then the small Gemma 4 (reads images), Qwen3 8B (thinks)
 # and the lightest model.
 LLM_STARTER_ORDER = ["llm-qwen3-4b-instruct-2507", "llm-gemma-4-e4b", "llm-qwen3-8b", "llm-lfm2.5-1.2b"]
+# Diagrams: same preference as chat (these are the same GGUF files, see engines/diagram_models.py).
+DIAGRAM_STARTER_ORDER = ["diagram-qwen3-4b-instruct-2507", "diagram-qwen3-8b", "diagram-gemma-4-12b", "diagram-gpt-oss-20b"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
@@ -101,28 +104,31 @@ def _engine_name(spec, engine: dict[str, Any]) -> str:
             "mlx": "MLX (Apple Silicon)"}.get(spec.backend, "")
 
 
+
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
     """Plain-language description of what installing brings (UI text)."""
+    if spec.backend in audio_packs.OVERLAY_BACKENDS:
+        return f"Environnement Python isolé avec {translate(engine.get('pack_contents') or '')}".rstrip()
     if spec.backend == "pack":
         pack = audio_packs.PACKS.get(engine.get("pack") or "")
         if pack and pack.native:  # prebuilt binaries: nothing Python to install
-            return f"Programme autonome : {engine.get('pack_contents') or ''}".rstrip()
-        return f"environnement Python isolé avec {engine.get('pack_contents') or ''}".rstrip()
+            return f"Programme autonome : {translate(engine.get('pack_contents') or '')}".rstrip()
+        return f"environnement Python isolé avec {translate(engine.get('pack_contents') or '')}".rstrip()
     if spec.backend == "sdcpp":
         dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
-        return ("Petit programme autonome qui exécute les modèles GGUF, sans Python"
-                + (f" ({dev})" if dev else "") + ". Il est téléchargé une seule fois et sert à tous les modèles GGUF.")
+        where = f" ({dev})" if dev else ""
+        return f"Petit programme autonome qui exécute les modèles GGUF, sans Python{where}. Il est téléchargé une seule fois et sert à tous les modèles GGUF."
     if spec.backend == "llamacpp":
         dev = _SDCPP_DEVICE.get(engine.get("install_variant") or engine.get("variant") or "", "")
-        return ("Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python"
-                + (f" ({dev})" if dev else "") + ". Il est téléchargé une seule fois et sert à tous les modèles de chat.")
+        where = f" ({dev})" if dev else ""
+        return f"Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python{where}. Il est téléchargé une seule fois et sert à tous les modèles de chat."
     return ""
 
 
 def _variant_info(base, v, selected: str) -> dict[str, Any]:
     st = downloads.status(with_variant(base, v.key))
     return {"key": v.key, "label": v.label, "size_gb": v.size_gb, "install": st["state"], "installed_gb": st["size_gb"],
-            "need_gb": round(max(0.0, v.size_gb - st["size_gb"]), 2), "selected": v.key == selected}
+            "need_gb": st["need_gb"], "temp_gb": st.get("temp_gb", 0.0), "selected": v.key == selected}
 
 
 def engine_for(backend: str, pack: str | None, system: dict[str, Any]) -> dict[str, Any]:
@@ -192,13 +198,14 @@ def describe_models() -> dict[str, Any]:
             engine_reason=engine.get("reason") if not engine.get("installable") else None,
             needs_engine_install=bool(engine.get("installable") and not engine["available"]),
             engine_install_size_mb=engine.get("install_size_mb"),
-            engine_pack=spec.options.get("pack") if spec.backend == "pack" else None,
+            engine_pack=audio_packs.pack_of(spec),
             engine_name=_engine_name(spec, engine),
             engine_detail=_engine_detail(spec, engine),
             compatible=compatible,
             plan=plan,
             install=status["state"],
             installed_gb=status["size_gb"],
+            temp_download_gb=status.get("temp_gb", 0.0),
             download=job.public() if job and job.state in ("running", "error") else None,
             ready=bool(compatible and engine["available"] and status["state"] == "installed"),
             # Kept for older UI code: "downloaded" means installed.
@@ -223,4 +230,5 @@ def describe_models() -> dict[str, Any]:
     audio = pick("audio", AUDIO_STARTER_ORDER)
     video = pick("video", VIDEO_STARTER_ORDER)
     llm = pick("llm", LLM_STARTER_ORDER)
-    return {"models": models, **image, "audio": audio, "video": video, "llm": llm}
+    diagram = pick("diagram", DIAGRAM_STARTER_ORDER)
+    return {"models": models, **image, "audio": audio, "video": video, "llm": llm, "diagram": diagram}

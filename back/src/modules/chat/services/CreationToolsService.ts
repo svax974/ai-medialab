@@ -7,6 +7,7 @@
  * Licensed under the MIT License. See LICENSE in the project root.
  */
 
+import { tr } from 'src/modules/i18n';
 import { HttpException, Injectable } from '@nestjs/common';
 import { VoiceService, type VoiceDto } from 'src/modules/audio-studio';
 import { newId } from 'src/modules/media-library';
@@ -164,7 +165,7 @@ export class CreationToolsService {
         const kind = KIND_OF[call.function.name as CreationToolName];
         const info = infos.get(kind);
         const run = this.begin(call);
-        if (!info) return this.failed(run, "Cet outil n'est pas disponible : aucun modèle prêt n'est sélectionné dans ce studio.");
+        if (!info) return this.failed(run, tr('chat.creation.unavailable'));
         try {
           const outcome = await this.fromArguments(conversationId, kind, info, run.arguments, library);
           generations.push(outcome.generation);
@@ -178,9 +179,9 @@ export class CreationToolsService {
 
   /** `/image`, `/video` and `/audio` typed by the user: starts the generation without the language model. */
   async runCommand(conversationId: string, command: CreationCommand, models: CreationModels | undefined): Promise<StoredGeneration> {
-    if (!command.text) throw new ChatError('invalid', `Après /${command.kind}, écrivez ce qu'il faut créer.`);
+    if (!command.text) throw new ChatError('invalid', tr('chat.creation.commandEmpty', [command.kind]));
     const info = (await this.readyModels(models ?? {})).get(command.kind);
-    if (!info) throw new ChatError('no_model', `Aucun modèle prêt n'est sélectionné dans le studio ${studioName(command.kind)}.`);
+    if (!info) throw new ChatError('no_model', noReadyModel(command.kind));
     const library = await this.voices.list();
     try {
       if (command.kind === 'image') return (await this.imageGeneration(conversationId, info, command.text, {})).generation;
@@ -198,17 +199,17 @@ export class CreationToolsService {
   async confirm(conversationId: string, messageId: string, generationId: string, choice: { seconds?: number; voiceId?: string }): Promise<ChatGeneration> {
     const message = await this.store.requireMessage(conversationId, messageId);
     const stored = (message.generations ?? []).find((g) => g.id === generationId);
-    if (!stored?.pending) throw new ChatError('invalid', "Cette génération n'attend plus de choix.");
+    if (!stored?.pending) throw new ChatError('invalid', tr('chat.creation.noLongerWaiting'));
     const info = (await this.catalog.catalog()).models.find((m) => m.id === stored.model_id);
-    if (!info?.ready) throw new ChatError('no_model', "Le modèle de cette génération n'est plus prêt.");
+    if (!info?.ready) throw new ChatError('no_model', tr('chat.creation.modelNotReady'));
     const params = { ...stored.params };
     if (stored.pending === 'duration') {
       const { min, max } = videoBounds(info);
       const seconds = choice.seconds;
-      if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < min || seconds > max) throw new ChatError('invalid', `seconds : un nombre entre ${min} et ${max} est attendu.`);
+      if (typeof seconds !== 'number' || !Number.isFinite(seconds) || seconds < min || seconds > max) throw new ChatError('invalid', tr('chat.creation.secondsRange', [min, max]));
       params.seconds = seconds;
     } else {
-      if (!choice.voiceId) throw new ChatError('invalid', 'voice_id : une voix est attendue.');
+      if (!choice.voiceId) throw new ChatError('invalid', tr('chat.creation.voiceExpected'));
       params.voice = await this.voiceRef(choice.voiceId, info);
     }
     const started = await this.start(conversationId, stored.kind, info, stored.prompt, params);
@@ -298,7 +299,7 @@ export class CreationToolsService {
   private async fromArguments(conversationId: string, kind: CreationKind, info: ModelInfo, args: Args, library: VoiceDto[]): Promise<Outcome> {
     if (kind === 'audio') return this.audioGeneration(conversationId, info, args, library);
     const prompt = str(args.prompt);
-    if (!prompt) throw new Error('Le prompt est vide.');
+    if (!prompt) throw new Error(tr('chat.creation.emptyPrompt'));
     if (kind === 'image') return this.imageGeneration(conversationId, info, prompt, args);
     return this.videoGeneration(conversationId, info, prompt, typeof args.seconds === 'number' ? args.seconds : null);
   }
@@ -314,16 +315,16 @@ export class CreationToolsService {
       return this.waiting('video', info, prompt, {}, 'duration', "La durée n'est pas précisée : une carte de choix est affichée à l'utilisateur, qui lancera la génération lui-même. Ne relance pas l'outil.");
     }
     const { min, max } = videoBounds(info);
-    if (seconds < min || seconds > max) throw new Error(`La durée doit être comprise entre ${min} et ${max} secondes.`);
+    if (seconds < min || seconds > max) throw new Error(tr('chat.creation.durationRange', [min, max]));
     return this.started(conversationId, 'video', info, prompt, { seconds });
   }
 
   private async audioGeneration(conversationId: string, info: ModelInfo, args: Args, library: VoiceDto[]): Promise<Outcome> {
     const caps = audioCaps(info);
     const text = caps.task === 'tts' ? str(args.text) : str(args.description);
-    if (!text) throw new Error(caps.task === 'tts' ? 'Le texte est vide.' : 'La description est vide.');
+    if (!text) throw new Error(caps.task === 'tts' ? tr('chat.creation.emptyText') : tr('chat.creation.emptyDescription'));
     if (caps.task !== 'tts') return this.started(conversationId, 'audio', info, text, typeof args.seconds === 'number' ? { seconds: args.seconds } : {});
-    if (text.length > caps.maxChars) throw new Error(`Le texte fait ${text.length} caractères : ce modèle en lit ${caps.maxChars} au plus. Raccourcis-le.`);
+    if (text.length > caps.maxChars) throw new Error(tr('chat.creation.textTooLong', [text.length, caps.maxChars]));
     const params: Args = {};
     const language = str(args.language);
     if (language && caps.languages.some((l) => l.code === language)) params.language = language;
@@ -332,7 +333,7 @@ export class CreationToolsService {
     const named = str(args.voice);
     if (named) {
       const voice = this.findVoice(named, info, library);
-      if (!voice) throw new Error(`Voix inconnue : « ${named} ». Voix disponibles : ${this.voiceNames(caps, library).join(', ') || 'aucune'}.`);
+      if (!voice) throw new Error(tr('chat.creation.unknownVoice', [named, this.voiceNames(caps, library).join(', ') || tr('chat.creation.noVoice')]));
       params.voice = voice;
       return this.started(conversationId, 'audio', info, text, params);
     }
@@ -362,7 +363,7 @@ export class CreationToolsService {
   private async voiceRef(id: string, info: ModelInfo): Promise<{ source: 'library' | 'preset'; id: string }> {
     const caps = audioCaps(info);
     if (caps.voices.some((v) => v.id === id)) return { source: 'preset', id };
-    if (!(await this.voices.get(id))) throw new ChatError('invalid', "Cette voix n'existe plus.");
+    if (!(await this.voices.get(id))) throw new ChatError('invalid', tr('chat.creation.voiceGone'));
     return { source: 'library', id };
   }
 
@@ -371,12 +372,12 @@ export class CreationToolsService {
   private async started(conversationId: string, kind: CreationKind, info: ModelInfo, prompt: string, params: Args): Promise<Outcome> {
     const messageId = await this.start(conversationId, kind, info, prompt, params);
     const generation: StoredGeneration = { id: newId(), kind, model_id: info.id, message_id: messageId, prompt, params };
-    return { generation, preview: `${info.name} : génération lancée`, content: `${LAUNCHED} Réponds par une courte phrase qui annonce ${KIND_WORD[kind]} en cours de création ; tu ne la vois pas, ne la décris pas.` };
+    return { generation, preview: tr('chat.creation.launched', [info.name]), content: `${LAUNCHED} Réponds par une courte phrase qui annonce ${KIND_WORD[kind]} en cours de création ; tu ne la vois pas, ne la décris pas.` };
   }
 
   private waiting(kind: CreationKind, info: ModelInfo, prompt: string, params: Args, pending: 'duration' | 'voice', content: string): Outcome {
     const generation: StoredGeneration = { id: newId(), kind, model_id: info.id, message_id: null, prompt, params, pending };
-    return { generation, preview: pending === 'duration' ? 'Durée à choisir' : 'Voix à choisir', content };
+    return { generation, preview: pending === 'duration' ? tr('chat.creation.chooseDuration') : tr('chat.creation.chooseVoice'), content };
   }
 
   /** Queues the generation in `studio-core` and returns the id of its message. The queue starts it once the chat gives the engine back. */
@@ -392,7 +393,7 @@ interface Outcome {
   content: string;
 }
 
-const studioName = (kind: CreationKind): string => ({ image: "d'image", video: 'vidéo', audio: 'audio' })[kind];
+const noReadyModel = (kind: CreationKind): string => ({ image: tr('chat.creation.noReadyModel.image'), video: tr('chat.creation.noReadyModel.video'), audio: tr('chat.creation.noReadyModel.audio') })[kind];
 
 function str(value: unknown): string {
   return typeof value === 'string' ? value.trim().slice(0, MAX_PROMPT_CHARS) : '';
@@ -403,7 +404,7 @@ function errorText(error: unknown): string {
     const body = error.getResponse();
     return typeof body === 'string' ? body : isRecord(body) && typeof body.message === 'string' ? body.message : error.message;
   }
-  return error instanceof Error ? error.message : 'Échec.';
+  return error instanceof Error ? error.message : tr('chat.web.failed');
 }
 
 /** The arguments the model sent, bounded: what the message shows of the call. */

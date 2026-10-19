@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import {
   Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, UnprocessableEntityException,
   UploadedFiles, UseInterceptors,
@@ -38,7 +39,7 @@ export class AssetController {
   @HttpCode(200)
   @UseInterceptors(FilesInterceptor('files', MAX_FILES_PER_UPLOAD, { storage: uploadStorage, limits: { fileSize: MAX_UPLOAD_BYTES } }))
   async upload(@UploadedFiles() files: Express.Multer.File[] = []): Promise<AssetDto[]> {
-    if (!files.length) throw new UnprocessableEntityException('Aucun fichier reçu (champ « files »).');
+    if (!files.length) throw new UnprocessableEntityException(tr('mediaLibrary.error.noFileReceivedMany'));
     const created: AssetDto[] = [];
     for (const file of files) {
       created.push(await this.files.ingest({ path: file.path, originalName: decodeUploadName(file.originalname), mimeType: file.mimetype }));
@@ -67,9 +68,9 @@ export class AssetController {
 
   @Patch(':id')
   async patch(@Param('id') id: string, @Body() body: { favorite?: unknown }): Promise<AssetDto> {
-    if (body?.favorite != null && typeof body.favorite !== 'boolean') throw new UnprocessableEntityException('favorite : booléen attendu.');
+    if (body?.favorite != null && typeof body.favorite !== 'boolean') throw new UnprocessableEntityException(tr('mediaLibrary.error.booleanExpected', ['favorite']));
     const asset = body?.favorite == null ? await this.assets.get(id) : await this.assets.setFavorite(id, body.favorite as boolean);
-    if (!asset) throw new NotFoundException('Image introuvable.');
+    if (!asset) throw new NotFoundException(tr('mediaLibrary.error.imageNotFound'));
     this.events.publish('asset.updated', asset);
     return asset;
   }
@@ -77,7 +78,7 @@ export class AssetController {
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<{ ok: true }> {
     const asset = await this.assets.remove(id);
-    if (!asset) throw new NotFoundException('Image introuvable.');
+    if (!asset) throw new NotFoundException(tr('mediaLibrary.error.imageNotFound'));
     await this.files.removeFiles([asset]);
     this.events.publish('asset.deleted', { id, message_id: asset.messageId, conversation_id: asset.conversationId });
     return { ok: true };

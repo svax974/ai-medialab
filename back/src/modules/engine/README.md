@@ -99,9 +99,10 @@ test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json`
 | `engine.download.progress` | `download.progress` | `DownloadProgress` : `model_id`, `state` (`running`, `done`, `error`, `cancelled`), `done`, `total` (octets), `rate` (octets/s), `eta` (s ou `null`), `error` | au plus toutes les 0,4 s pendant un téléchargement, puis à la fin ; rejoué à chaque connexion pour les téléchargements en cours |
 | `engine.engine.install` | `engine.install` | `EngineInstallState` (stable-diffusion.cpp) : `state` (`idle`, `running`, `done`, `error`, `cancelled`), `variant`, `done`, `total` (octets), `message`, `error` | toutes les 0,4 s pendant l'installation ; l'état courant est rejoué à chaque connexion |
 | `engine.pack.install` | `pack.install` | `PackInstallState` (audio/vidéo) : `state`, `pack`, `name`, `message`, `detail`, `started_at` (s epoch), `size_mb`, `error` | à chaque étape de l'installation d'un pack (pas de pourcentage) ; rejoué à chaque connexion |
+| `engine.setup.progress` | `setup.progress` | `SetupState` : `state`, `model_id`, `steps[]` (`kind` base/engine/model, `state`), `current`, `message`, `detail`, `done`, `total`, `rate`, `eta`, `error` | pendant l'installation de ce qu'un modèle demande (une exécution : données de base, moteur, modèle) ; l'état courant est rejoué à chaque connexion |
 | `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, le moteur du chat) : même forme que `engine.engine.install` | pendant l'installation ; l'état courant est rejoué à chaque connexion |
 | `engine.llm.status` | `llm.status` | `LlmStatus` : `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | à chaque changement d'état du modèle de chat ; rejoué à chaque connexion |
-| `engine.models.changed` | `models.changed` | `{}` | fin d'un téléchargement, d'une suppression, d'un ajout ou retrait de modèle personnalisé, d'une (dés)installation de pack ou de moteur : le catalogue et `/api/system` sont à relire |
+| `engine.models.changed` | `models.changed` | `{}` | fin de la sonde PyTorch du démarrage, d'un téléchargement, d'une suppression, d'un ajout ou retrait de modèle personnalisé, d'une (dés)installation de pack ou de moteur : le catalogue et `/api/system` sont à relire |
 
 Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`. Le relais est générique : tout événement du moteur
 (donc `llamacpp.install` et `llm.status`) arrive au navigateur sans code propre au module `chat`.
@@ -196,3 +197,5 @@ npx jest --runInBand src/modules/engine/services/EngineClient.spec.ts      # ide
 
 Fichiers : `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHealthContributor,engineHttpError,EngineMedia,sseParser}.spec.ts`
 (faux moteur HTTP local, `testing/fakeEngine.ts`), `generated/engineApi.contract.spec.ts` (types à jour).
+
+**Langue.** Le client envoie `Accept-Language` au moteur, qui rédige ses messages dans cette langue ; le texte « moteur indisponible » du back est dans `i18n/messages.{fr,en}.json` (`tr()`).

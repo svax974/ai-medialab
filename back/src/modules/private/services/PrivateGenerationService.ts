@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit, UnprocessableEntityException } from '@nestjs/common';
 import { Subscription, filter } from 'rxjs';
 import { join } from 'path';
@@ -10,7 +11,7 @@ import { VoiceService } from 'src/modules/audio-studio';
 import { EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError, engineErrorToHttp } from 'src/modules/engine';
 import { StudioEvents, nowSeconds } from 'src/modules/media-library';
 import {
-  ENGINE_UNREACHABLE, EngineBusyGate, GenerationQueueService, INTERRUPTED_BY_ENGINE, jobVoices, libraryVoiceIds, mergeProgress,
+  engineUnreachable, EngineBusyGate, GenerationQueueService, interruptedByEngine, jobVoices, libraryVoiceIds, mergeProgress,
   previewToProgress, seedsFor, titleFromPrompt, toBrowserProgress,
   type CreateGenerationInput, type EngineJobCheck, type EngineJobOutput, type EngineJobSubmit, type JobEventData, type JobKind,
   type MessageDto, type RetryInput,
@@ -103,8 +104,8 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
   async create(input: CreateGenerationInput): Promise<CreatedPrivateGeneration> {
     this.requireSession();
     const prompt = input.prompt.trim();
-    if (!prompt) throw new UnprocessableEntityException('Le prompt est vide.');
-    if (input.conversationId && !this.store.getConversation(input.conversationId)) throw new NotFoundException('Conversation introuvable.');
+    if (!prompt) throw new UnprocessableEntityException(tr('private.error.promptEmpty'));
+    if (input.conversationId && !this.store.getConversation(input.conversationId)) throw new NotFoundException(tr('private.error.conversationNotFound'));
     const media = input.referenceIds.map((id) => this.requireAsset(id).media);
     const check = await this.check(input.modelId, media);
     const count = Math.min(input.count, check.max_count);
@@ -128,7 +129,7 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
   async retry(messageId: string, input: RetryInput): Promise<MessageDto> {
     this.requireSession();
     const original = this.store.getMessage(messageId);
-    if (!original || original.role !== 'assistant') throw new NotFoundException('Génération introuvable.');
+    if (!original || original.role !== 'assistant') throw new NotFoundException(tr('private.error.generationNotFound'));
     const params: Record<string, unknown> = { ...original.params, ...(input.params ?? {}) };
     const count = Number(params.count ?? 1) || 1;
     if (!input.keepSeed) params.seed = null;
@@ -147,7 +148,7 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
 
   async cancel(messageId: string): Promise<{ ok: true }> {
     this.requireSession();
-    if (!(await this.stop(messageId))) throw new ConflictException("Cette génération n'est plus en cours.");
+    if (!(await this.stop(messageId))) throw new ConflictException(tr('private.error.generationNotRunning'));
     return { ok: true };
   }
 
@@ -155,7 +156,7 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
   async remove(messageId: string): Promise<{ ok: true; deleted: string[] }> {
     this.requireSession();
     const message = this.store.getMessage(messageId);
-    if (!message) throw new NotFoundException('Message introuvable.');
+    if (!message) throw new NotFoundException(tr('private.error.messageNotFound'));
     const ids = message.role === 'user' ? [messageId, ...this.store.childIds(messageId)] : [messageId];
     for (const id of ids) await this.stop(id);
     await this.eraseFiles(this.store.removeMessages(ids));
@@ -272,7 +273,7 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
       case 'job.cancelled':
         return this.endCurrent('cancelled', null);
       case 'job.failed':
-        return this.endCurrent('error', typeof data.error === 'string' ? data.error : 'Échec de la génération.');
+        return this.endCurrent('error', typeof data.error === 'string' ? data.error : tr('studioCore.job.generationFailed'));
       default:
     }
   }
@@ -325,7 +326,7 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
     if (!entry?.submitted) return;
     try {
       const { jobs } = await this.engine.get('/engine/v1/jobs');
-      if (!jobs.some((j) => j.job_id === entry.messageId)) await this.endCurrent('error', INTERRUPTED_BY_ENGINE);
+      if (!jobs.some((j) => j.job_id === entry.messageId)) await this.endCurrent('error', interruptedByEngine());
     } catch {
       // unreachable engine: the next reconnection tries again
     }
@@ -351,12 +352,12 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
 
   private requireSession(): void {
     this.session.touch();
-    if (!this.session.active) throw new ConflictException("Aucune session privée n'est ouverte.");
+    if (!this.session.active) throw new ConflictException(tr('private.error.noSession'));
   }
 
   private requireAsset(id: string): PrivateAsset {
     const asset = this.store.getAsset(id);
-    if (!asset) throw new UnprocessableEntityException(`Image de référence introuvable : ${id}`);
+    if (!asset) throw new UnprocessableEntityException(tr('private.error.referenceImageNotFound', [id]));
     return asset;
   }
 
@@ -372,9 +373,9 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
 
   /** An error as a message to show: only what we wrote ourselves, never a text the engine echoed back from the request. */
   private safeMessage(error: unknown): string {
-    if (error instanceof EngineUnavailableError) return ENGINE_UNREACHABLE;
+    if (error instanceof EngineUnavailableError) return engineUnreachable();
     if (error instanceof EngineError && error.status === 409 && typeof error.detail === 'string') return error.detail;
-    return 'Le moteur a refusé la génération.';
+    return tr('private.error.engineRefused');
   }
 
   /** Runs `task` after the previous one: events and submissions never interleave. Errors are swallowed (no content in logs). */

@@ -17,7 +17,8 @@ from typing import Any
 
 from . import runtime_settings
 from .engines import MODELS, all_specs, get_spec
-from .engines.base import HfSource, ModelSpec, _matches, _source_status, hf_hub_dir, installation_status, repo_cache_dir
+from .engines.base import (HfSource, ModelSpec, _matches, _source_status, derived_dir, hf_hub_dir, installation_status,
+                           repo_cache_dir)
 from .events import bus
 from .system import get_system
 
@@ -90,7 +91,7 @@ class DownloadManager:
 
         self.invalidate()
         status = self.status(spec)
-        need_gb = need_gb if need_gb is not None else max(0.0, (spec.download_size_gb or 0) - status["size_gb"])
+        need_gb = need_gb if need_gb is not None else status["need_gb"]
         free_gb = get_system()["disk"]["free_gb"]
         if need_gb and free_gb < need_gb + 1:
             raise RuntimeError(
@@ -117,7 +118,11 @@ class DownloadManager:
         return True
 
     def delete(self, model_id: str) -> dict[str, Any]:
-        """Delete the model files. Blocking, run it in a thread; the caller publishes `models.changed`."""
+        """Delete the model files. Blocking, run it in a thread; the caller publishes `models.changed`.
+
+        A derived variant (locally quantized-and-saved) never deletes the bf16 source it was produced from this
+        way: only its own checkpoint is removed, so another quantization level can still be produced from it
+        without a redownload. Freeing the bf16 copy itself is the separate `free_bf16` action."""
         spec = get_spec(model_id)
         sources = spec.all_sources()
         if not sources:
@@ -125,15 +130,37 @@ class DownloadManager:
         job = self.jobs.get(model_id)
         if job and job.state == "running":
             raise RuntimeError("Un téléchargement est en cours pour ce modèle.")
+        targets = [s for s in sources if s.kind == "derived"] or sources
         freed = 0
-        for src in sources:
+        for src in targets:
             freed += _delete_source(src, keep=[s2 for m in all_specs() if m.id != spec.id for s2 in m.all_sources()
-                                               if s2.repo == src.repo])
+                                               if s2.kind == "hf" and s2.repo == src.repo])
         self.invalidate()
-        mine = {(s.repo, p) for s in sources for p in (s.patterns or ["*"])}
+        mine = {(s.repo, p) for s in targets if s.kind == "hf" for p in (s.patterns or ["*"])}
         shared = [m.id for m in all_specs() if m.id != spec.id
-                  and any((s.repo, p) in mine for s in m.all_sources() for p in (s.patterns or ["*"]))]
+                  and any((s.repo, p) in mine for s in m.all_sources() if s.kind == "hf" for p in (s.patterns or ["*"]))]
         return {"freed_gb": round(freed / 1024**3, 2), "also_affects": shared}
+
+    def free_bf16(self, model_id: str) -> dict[str, Any]:
+        """Delete the full-precision source once at least one locally quantized variant is installed from it."""
+        spec = get_spec(model_id)
+        bf16_sources = [s for s in spec.all_sources() if s.kind == "hf"]
+        derived_sources = [s for s in spec.all_sources() if s.kind == "derived"]
+        if not derived_sources:
+            raise ValueError("Ce modèle n'a pas de version quantifiée : rien à libérer.")
+        if not any(_source_status(s)["state"] == "installed" for s in derived_sources):
+            raise RuntimeError("Aucune version quantifiée installée pour ce modèle : la copie complète reste nécessaire.")
+        if not bf16_sources:
+            raise ValueError("Ce modèle n'a pas de copie pleine précision.")
+        job = self.jobs.get(model_id)
+        if job and job.state == "running":
+            raise RuntimeError("Un téléchargement est en cours pour ce modèle.")
+        freed = 0
+        for src in bf16_sources:
+            freed += _delete_source(src, keep=[s2 for m in all_specs() if m.id != spec.id for s2 in m.all_sources()
+                                               if s2.kind == "hf" and s2.repo == src.repo])
+        self.invalidate()
+        return {"freed_gb": round(freed / 1024**3, 2)}
 
     async def _run(self, job: DownloadJob, spec: ModelSpec, refresh: bool = False) -> None:
         """Download each repo in turn, with progress accumulated across all of them. `refresh` also visits the repos that
@@ -156,8 +183,10 @@ class DownloadManager:
                 known[i] = st["size"]
                 done_before += st["size"]
                 continue
+            module, argv = ("app.quantize_worker", [spec.id]) if src.kind == "derived" else \
+                ("app.download_worker", [src.repo, json.dumps(src.patterns)])
             proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "app.download_worker", src.repo, json.dumps(src.patterns),
+                sys.executable, "-m", module, *argv,
                 cwd=str(BACKEND_DIR), env=env,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
             )
@@ -199,6 +228,8 @@ class DownloadManager:
             job.state = "done"
             job.done = job.total = done_before or job.total
             for src in sources:
+                if src.kind == "derived":
+                    continue  # produced by an atomic rename: no .incomplete markers, no HF revisions to prune
                 self._clean_incomplete(src.repo)
                 if refresh:  # the replaced files of the old revision are dead weight now
                     from .updates import prune_replaced
@@ -247,7 +278,18 @@ def _delete_source(src: HfSource, keep: list[HfSource]) -> int:
     the data no link points to must be removed afterwards.
 
     Models can share a repo (e.g. a text encoder). Then only files no other model needs are removed;
-    with no other model on the repo, the whole repo goes."""
+    with no other model on the repo, the whole repo goes.
+
+    A derived source (`kind="derived"`) is a locally produced checkpoint under `DERIVED_DIR`: never shared,
+    simply removed outright."""
+    if src.kind == "derived":
+        root = derived_dir(src)
+        if not root.is_dir():
+            return 0
+        freed = sum(p.stat().st_size for p in root.rglob("*") if p.is_file() and not p.is_symlink())
+        shutil.rmtree(root, ignore_errors=True)
+        return freed
+
     import shutil
 
     hub = hf_hub_dir().resolve()

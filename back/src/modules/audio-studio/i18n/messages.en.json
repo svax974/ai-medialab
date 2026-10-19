@@ -1,0 +1,10 @@
+{
+  "audioStudio.error.booleanExpected": "{0}: boolean expected.",
+  "audioStudio.error.jsonBodyExpected": "JSON body expected.",
+  "audioStudio.error.noFileReceived": "No file received (field \"file\").",
+  "audioStudio.error.takeNotFound": "Audio take not found.",
+  "audioStudio.error.textExpected": "{0}: text expected.",
+  "audioStudio.error.voiceNotFound": "Voice not found.",
+  "audioStudio.voice.defaultSavedName": "Saved voice",
+  "audioStudio.voice.defaultUploadedName": "My voice"
+}

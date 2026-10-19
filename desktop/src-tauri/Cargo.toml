@@ -6,7 +6,7 @@
 # Licensed under the MIT License. See LICENSE in the project root.
 
 [package]
-name = "ai-medialab"
+name = "desktop-shell"
 version = "0.1.0"
 description = "AI MediaLab: desktop shell (Tauri) around the NestJS back and the Python engine sidecar"
 edition = "2021"

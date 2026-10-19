@@ -1,0 +1,18 @@
+{
+  "réponse du modèle : liste « findings » absente": "réponse du modèle : liste « findings » absente",
+  "budget horaire d'appels à l'API GitHub atteint": "hourly GitHub API call budget reached",
+  "Derniers commits des fichiers modifiés ({})": "Latest commits of the modified files ({})",
+  "Fiche du modèle, lignes modifiées ({})": "Model card, modified lines ({})",
+  "Fiche du modèle ({})": "Model card ({})",
+  "Tu résumes en français, en deux ou trois phrases, les points ci-dessous qui concernent une mise à jour. Utilise UNIQUEMENT ces points, sans rien ajouter, sans conseil d'installation et sans certitude : ce sont des signalements à vérifier.": "Tu résumes en français, en deux ou trois phrases, les points ci-dessous qui concernent une mise à jour. Utilise UNIQUEMENT ces points, sans rien ajouter, sans conseil d'installation et sans certitude : ce sont des signalements à vérifier.",
+  "Aucun problème signalé dans les {} source(s) consultée(s).": "No problem reported in the {} source(s) consulted.",
+  "Points signalés : {}": "Points reported: {}",
+  "Pas d'analyse pour ce composant (aucun dépôt public à lire).": "No analysis for this component (no public repository to read).",
+  "Aucune mise à jour à analyser pour ce moteur.": "No update to analyse for this engine.",
+  "Aucune mise à jour à analyser pour ce modèle.": "No update to analyse for this model.",
+  "Le moteur de chat (llama.cpp) n'est pas installé : installez-le pour analyser les risques.": "The chat engine (llama.cpp) is not installed: install it to analyse the risks.",
+  "Aucun modèle de chat n'est installé : installez-en un (le conseiller recommandé fait 2,3 Go).": "No chat model is installed: install one (the recommended adviser is 2.3 GB).",
+  "Impossible de lire les sources (réseau ou limite de l'API GitHub) : réessayez plus tard.": "Unable to read the sources (network or GitHub API limit): try again later.",
+  "{}, de {} à {}": "{}, de {} à {}",
+  "Le modèle n'a pas rendu de réponse exploitable : réessayez, ou choisissez un modèle plus capable.": "The model did not return a usable answer: try again, or choose a more capable model."
+}

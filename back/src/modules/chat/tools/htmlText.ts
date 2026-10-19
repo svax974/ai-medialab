@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
+
 /** Text extraction from HTML for the model: nothing is rendered or executed, tags are dropped. */
 
 const NAMED: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', ndash: '–', mdash: '—', hellip: '…', laquo: '«', raquo: '»', eacute: 'é', egrave: 'è', agrave: 'à', ccedil: 'ç' };
@@ -39,5 +41,5 @@ export function htmlToText(html: string, maxChars: number): { text: string; trun
     .replace(/<\/(td|th)\s*>/gi, ' ')
     .replace(/<li\b[^>]*>/gi, '\n- ');
   const text = collapse(decodeEntities(stripTags(body)));
-  return text.length > maxChars ? { text: `${text.slice(0, maxChars)}\n[… texte coupé]`, truncated: true } : { text, truncated: false };
+  return text.length > maxChars ? { text: `${text.slice(0, maxChars)}\n${tr('chat.htmlText.cut')}`, truncated: true } : { text, truncated: false };
 }

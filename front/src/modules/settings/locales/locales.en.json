@@ -66,5 +66,13 @@
   "settings.chatVoice.aria": "Chat default voice",
   "settings.help.chatVoice.title": "Chat default voice",
   "settings.help.chatVoice.body": "The chat's creation tools can read a text aloud. A model that clones a voice needs one: with no voice named in the request, the chat takes this one, otherwise it shows a card for you to pick it. Models with voices of their own need none.",
-  "settings.help.chatVoice.tip": "a voice of the library, with a sample."
+  "settings.help.chatVoice.tip": "a voice of the library, with a sample.",
+  "settings.tabs.general": "General",
+  "settings.tabs.engines": "Engines",
+  "settings.tabs.models": "Models",
+  "settings.language.title": "Language",
+  "settings.language.description": "Interface language. On first launch the system language is used (French, otherwise English).",
+  "settings.help.language.title": "Interface language",
+  "settings.help.language.body": "French or English. The change is immediate and remembered in this browser. Until you choose, the app follows the system language: French if it is French, English otherwise.",
+  "settings.help.language.tip": "the same choice is available from the globe button in the sidebar."
 }

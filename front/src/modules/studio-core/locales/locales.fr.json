@@ -140,5 +140,12 @@
   "thread.viewer.size": "Taille",
   "thread.viewer.steps": "Étapes",
   "thread.viewer.strength": "Influence",
-  "thread.viewer.useAsReference": "Utiliser comme référence"
+  "thread.viewer.useAsReference": "Utiliser comme référence",
+  "thread.count.diagram": "{0} diagramme(s)",
+  "thread.deleteGeneration.description.diagram": "Les diagrammes produits seront supprimés.",
+  "thread.deleteGeneration.title.diagram": "Supprimer ce diagramme ?",
+  "thread.deleteMessage.description.diagram": "Le prompt et tous les diagrammes qui en découlent seront supprimés.",
+  "thread.empty.diagram": "Conversation vide. Décrivez un premier diagramme ci-dessous.",
+  "thread.footer.delete.diagram": "Supprimer le diagramme",
+  "thread.user.copy.diagram": "Copier le prompt"
 }

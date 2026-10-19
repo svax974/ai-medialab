@@ -10,7 +10,7 @@ import { modelCatalogApi, useDownloadStore, useModels } from '@/modules/model-ca
 import { deriveLocalAi, pickAdvisor, type LocalAiView } from '../lib/localAi'
 import { enginesApi } from '../services/enginesApi'
 import { useInstallStore } from '../state/installStore'
-import { startSetup } from './useModelSetup'
+import { useSetupStore } from '../state/setupStore'
 
 export interface LocalAiSetup extends LocalAiView {
   /**
@@ -26,14 +26,15 @@ export interface LocalAiSetup extends LocalAiView {
 /**
  * The local AI setup (llama.cpp + a small chat model) as one reusable flow: what is missing, how big it is, whether the disk can hold
  * it, the progress, errors, start and cancel. Used by the update adviser's invite and by any screen that needs a local model.
- * Mounted anywhere under the studio shell (it relies on `useEnginesSync`, which mounts once there and downloads the model after the engine).
+ * Mounted anywhere under the studio shell (it relies on `useEnginesSync`, which mounts once there).
  */
 export function useLocalAiSetup(): LocalAiSetup {
   const catalog = useModels().data
   const system = useSystemInfo().data
   const downloads = useDownloadStore((s) => s.downloads)
   const engineInstall = useInstallStore((s) => s.llamacppInstall)
-  const pendingModelId = useInstallStore((s) => s.pendingModelId)
+  const run = useSetupStore((s) => s.run)
+  const pendingModelId = run.state === 'running' ? run.model_id : null // between the engine install and the download that follows
   const info = system?.engines['llamacpp']
   const view = deriveLocalAi({
     models: catalog?.models, recommendedId: catalog?.llm?.recommended_model_id, engineInstalled: info ? info.available : undefined,
@@ -43,7 +44,14 @@ export function useLocalAiSetup(): LocalAiSetup {
 
   const start = useCallback(async ({ withModel = true }: { withModel?: boolean } = {}) => {
     if (!['needs-setup', 'error'].includes(view.state) || !advisor) return
-    if (withModel && !view.modelInstalled) return startSetup(advisor)
+    if (withModel && !view.modelInstalled) {
+      try {
+        useSetupStore.getState().setRun(await enginesApi.startSetup(advisor.id)) // its own dialog already showed the sizes
+      } catch (error) {
+        toast.error((error as Error).message)
+      }
+      return
+    }
     if (view.engineInstalled) return
     try {
       useInstallStore.getState().setLlamacppInstall(await enginesApi.installLlamacpp())
@@ -53,9 +61,9 @@ export function useLocalAiSetup(): LocalAiSetup {
   }, [view.state, view.modelInstalled, view.engineInstalled, advisor])
 
   const cancel = useCallback(async () => {
-    useInstallStore.getState().setPending(null)
     try {
-      if (view.progress?.step === 'engine') await enginesApi.cancelLlamacppInstall()
+      if (useSetupStore.getState().run.state === 'running') await enginesApi.cancelSetup()
+      else if (view.progress?.step === 'engine') await enginesApi.cancelLlamacppInstall()
       else if (advisor) await modelCatalogApi.cancelDownload(advisor.id)
     } catch {
       // nothing is running any more: the installer answers 409

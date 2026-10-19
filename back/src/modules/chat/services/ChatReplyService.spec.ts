@@ -13,7 +13,7 @@ import { join } from 'path';
 import { DataSource } from 'typeorm';
 import { EngineClient } from 'src/modules/engine';
 import { startFakeEngine, testConfig, type FakeEngine } from 'src/modules/engine/testing/fakeEngine';
-import { ConversationEntity, DEFAULT_CHAT_TITLE, EngineBusyGate } from 'src/modules/studio-core';
+import { ConversationEntity, defaultChatTitle, EngineBusyGate } from 'src/modules/studio-core';
 import { buildServices } from 'src/testing/services';
 import { createTestDataSource } from 'src/testing/testDataSource';
 import { ChatMessageEntity } from '../entities/ChatMessageEntity';
@@ -310,7 +310,7 @@ describe('ChatReplyService', () => {
     expect(edited).toMatchObject({ role: 'user', content: 'Question corrigée', parent_id: null, sibling_ids: [user.id, edited.id], sibling_index: 1 });
     expect((await store.branch(conv)).messages.map((m) => m.content)).toEqual(['Question corrigée', 'Réponse 2']);
     expect((await store.all(conv)).map((m) => m.content)).toEqual(['Question', 'Bonjour', 'Question corrigée', 'Réponse 2']);
-    expect(await title()).not.toBe(DEFAULT_CHAT_TITLE);
+    expect(await title()).not.toBe(defaultChatTitle());
     expect(chatBodies.every((b) => !JSON.stringify(b).includes('"Question",'))).toBe(true);
   });
 

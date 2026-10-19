@@ -83,3 +83,5 @@ Contrôleur et service sur le faux moteur HTTP : refus sans administrateur, rapp
 (release testée et `latest` sans mélange, avis périmé, élément à jour, empreinte d'un modèle), drapeau `stale` de la liste. `UpdatesService.spec.ts`, section
 « advice » : l'avis demandé est enregistré et rendu, corps validé (huit corps refusés en 400), refus pendant une génération ou une réponse du chat, refus du
 moteur relayés avec leur `code` et jauge toujours rendue, une seule analyse à la fois. `UpdatesModule.spec.ts` : câblage du conteneur.
+
+**Langue.** Erreurs, conflits (`busy`) et validations des corps suivent la langue de l'interface : `i18n/messages.{fr,en}.json`, lus par `tr()`. Le texte d'un avis est celui rendu par le moteur au moment de l'analyse et est conservé tel quel en base (il ne change pas de langue ensuite) ; le moteur n'a pas encore de paramètre de langue pour l'adviser.

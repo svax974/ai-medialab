@@ -4,7 +4,10 @@
 """Detects the hardware and available inference engines (Metal, NVIDIA/CUDA, AMD/ROCm).
 
 The PyTorch probe runs in a subprocess: importing torch takes seconds and hundreds of MB, which we
-don't want to pay for (or keep) in the server process.
+don't want to pay for (or keep) in the server process. It runs once per process (the runtime does not change) in the
+background: until it ends, `get_system()` answers at once with the rest (memory, disk, Apple Silicon or the GPUs the OS
+sees, llama.cpp, stable-diffusion.cpp), `torch.pending` true and the torch engine unavailable; the end of the probe drops
+the cache and calls the callback given to `warm_up` (the server publishes `models.changed`).
 """
 
 from __future__ import annotations
@@ -17,7 +20,7 @@ import shutil
 import subprocess
 import sys
 import threading
-from typing import Any
+from typing import Any, Callable
 
 import psutil
 
@@ -47,8 +50,13 @@ except Exception as exc:
 print("@@PROBE@@" + json.dumps(out))
 """
 
+_PENDING_TORCH: dict[str, Any] = {"torch": None, "pending": True}
+
 _lock = threading.Lock()
 _cache: dict[str, Any] | None = None
+_torch_info: dict[str, Any] | None = None  # result of the probe, None until it ends
+_probe_started = False
+_on_probe_done: Callable[[], None] | None = None
 
 
 def hf_cache_dir() -> str:
@@ -66,14 +74,28 @@ def _run(cmd: list[str], timeout: float = 6) -> str | None:
 
 
 def _probe_torch() -> dict[str, Any]:
-    if importlib.util.find_spec("torch") is None:
+    from . import audio_packs
+
+    overlays = audio_packs.overlay_paths()
+    if not overlays and importlib.util.find_spec("torch") is None:
         return {"torch": None, "error": "PyTorch n'est pas installé dans ce runtime."}
-    out = _run([sys.executable, "-c", _TORCH_PROBE], timeout=90)
+    # The add-on's packages are put first on the import path of the probe process only: the server never imports torch.
+    out = _run([sys.executable, "-c", f"import sys; sys.path[:0] = {overlays!r}\n{_TORCH_PROBE}"], timeout=90)
     if out:
         for line in out.splitlines():
             if line.startswith("@@PROBE@@"):
                 return json.loads(line[len("@@PROBE@@"):])
     return {"torch": None, "error": "La sonde PyTorch a échoué."}
+
+
+def reprobe() -> None:
+    """Probes PyTorch again (an add-on of the runtime was installed or removed); the hardware report is rebuilt after it."""
+    global _probe_started, _torch_info, _cache
+    with _lock:
+        _probe_started = False
+        _torch_info = None
+        _cache = None
+    _start_probe()
 
 
 def _gpu_names_fallback() -> list[dict[str, Any]]:
@@ -104,13 +126,12 @@ def _gpu_names_fallback() -> list[dict[str, Any]]:
     return found
 
 
-def _compute() -> dict[str, Any]:
+def _compute(torch_info: dict[str, Any]) -> dict[str, Any]:
     vm = psutil.virtual_memory()
     system = platform.system()
     arch = platform.machine()
     apple = system == "Darwin" and arch == "arm64"
 
-    torch_info = _probe_torch()
     accelerators: list[dict[str, Any]] = []
     if torch_info.get("cuda"):
         hip = bool(torch_info.get("hip"))
@@ -144,9 +165,10 @@ def _compute() -> dict[str, Any]:
             accelerators.append({"vendor": g["vendor"], "backend": "vulkan", "name": g["name"],
                                  "memory_gb": g.get("memory_gb"), "unified": False})
 
+    hardware = {"os": system, "accelerators": accelerators, "unusable_gpus": unusable}
     engines = {
-        "mlx": _engine_mlx(apple),
-        "torch": _engine_torch(torch_info, accelerators),
+        "mlx": _engine_mlx(apple, hardware),
+        "torch": _engine_torch(torch_info, accelerators, hardware),
         "sdcpp": _engine_sdcpp(accelerators),
         "llamacpp": _engine_llamacpp(accelerators),
     }
@@ -163,7 +185,8 @@ def _compute() -> dict[str, Any]:
         "accelerators": accelerators,
         "unusable_gpus": unusable,
         "engines": engines,
-        "torch": {k: torch_info.get(k) for k in ("torch", "cuda_version", "hip", "diffusers")},
+        "torch": {**{k: torch_info.get(k) for k in ("torch", "cuda_version", "hip", "diffusers")},
+                  "pending": bool(torch_info.get("pending"))},
         "paths": {"data": str(DATA_DIR), "models": cache},
         "python": sys.version.split()[0],
     }
@@ -182,19 +205,28 @@ def _why_unusable(vendor: str, torch_info: dict[str, Any]) -> str:
     return "Ce runtime embarque PyTorch sans ROCm : utilisez la version « AMD » de l'application (RDNA 3/4 sur Windows ; Linux/ROCm pour les autres cartes)."
 
 
-def _engine_mlx(apple: bool) -> dict[str, Any]:
+def _engine_mlx(apple: bool, hardware: dict[str, Any]) -> dict[str, Any]:
+    """MLX comes with the add-on of the runtime (mflux), or with the runtime itself in development."""
+    from . import audio_packs
+
     if not apple:
         return {"available": False, "reason": "MLX nécessite un Mac Apple Silicon."}
-    if importlib.util.find_spec("mflux") is None:
-        return {"available": False, "reason": "mflux n'est pas installé dans ce runtime."}
-    return {"available": True, "device": "metal"}
+    if audio_packs.is_installed("torch") or importlib.util.find_spec("mflux") is not None:
+        return {"available": True, "device": "metal"}
+    return audio_packs.engine_info("torch", hardware)
 
 
-def _engine_torch(info: dict[str, Any], accelerators: list[dict[str, Any]]) -> dict[str, Any]:
+def _engine_torch(info: dict[str, Any], accelerators: list[dict[str, Any]], hardware: dict[str, Any]) -> dict[str, Any]:
+    from . import audio_packs
+
+    if info.get("pending"):
+        return {"available": False, "pending": True, "reason": "Détection de PyTorch en cours…"}
     if info.get("torch") is None:
+        if not audio_packs.is_installed("torch"):  # absent from the runtime: the app can install it
+            return audio_packs.engine_info("torch", hardware)
         return {"available": False, "reason": info.get("error") or "PyTorch est absent."}
     if info.get("diffusers") is None:
-        return {"available": False, "reason": "diffusers est absent : " + str(info.get("diffusers_error", ""))}
+        return {"available": False, "reason": f"diffusers est absent : {info.get('diffusers_error', '')}"}
     for a in accelerators:
         if a["backend"] in ("cuda", "rocm"):
             return {"available": True, "device": "cuda", "backend": a["backend"]}
@@ -232,10 +264,13 @@ def _engine_llamacpp(accelerators: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def get_system(refresh: bool = False) -> dict[str, Any]:
+    """Hardware and engines; never waits for the PyTorch probe (see the module docstring). `refresh`: detect again
+    (an engine was installed); the probe result is kept."""
     global _cache
+    _start_probe()
     with _lock:
         if _cache is None or refresh:
-            _cache = _compute()
+            _cache = _compute(_torch_info or _PENDING_TORCH)
         info = dict(_cache)
     # These change constantly, so they're never cached.
     info["ram_free_gb"] = round(psutil.virtual_memory().available / 1024**3, 1)
@@ -251,9 +286,31 @@ def _disk_info(path: str) -> dict[str, Any]:
     return {"free_gb": round(usage.free / 1024**3, 1), "total_gb": round(usage.total / 1024**3, 1)}
 
 
-def warm_up() -> None:
-    """Run detection in the background at server startup."""
-    threading.Thread(target=get_system, daemon=True, name="system-probe").start()
+def _start_probe() -> None:
+    global _probe_started
+    with _lock:
+        if _probe_started:
+            return
+        _probe_started = True
+    threading.Thread(target=_finish_probe, daemon=True, name="torch-probe").start()
+
+
+def _finish_probe() -> None:
+    global _torch_info, _cache
+    info = _probe_torch()
+    with _lock:
+        _torch_info = info
+        _cache = None
+        callback = _on_probe_done
+    if callback is not None:
+        callback()
+
+
+def warm_up(on_probe_done: Callable[[], None] | None = None) -> None:
+    """Start the PyTorch probe at server startup; `on_probe_done` is called from its thread once it ended."""
+    global _on_probe_done
+    _on_probe_done = on_probe_done
+    _start_probe()
 
 
 def _llamacpp_plan(need_gb: float, system: dict[str, Any], accel: dict[str, Any] | None) -> dict[str, Any]:
@@ -269,9 +326,9 @@ def _llamacpp_plan(need_gb: float, system: dict[str, Any], accel: dict[str, Any]
     if accel is not None and (vram is None or vram >= need_gb * 1.1):
         return {"fits": True, "strategy": "full", "note": ""}
     if ram + (vram or 0) >= need_gb * 1.3:
-        where = "Aucun GPU détecté" if accel is None else f"{vram:.0f} Go de VRAM < {need_gb:.0f} Go"
-        return {"fits": True, "strategy": "model_offload",
-                "note": f"{where} : tout ou partie du modèle tourne sur le processeur (plus lent)."}
+        note = ("Aucun GPU détecté : tout ou partie du modèle tourne sur le processeur (plus lent)." if accel is None else
+                f"{vram:.0f} Go de VRAM < {need_gb:.0f} Go : tout ou partie du modèle tourne sur le processeur (plus lent).")
+        return {"fits": True, "strategy": "model_offload", "note": note}
     return {"fits": False, "strategy": "none",
             "note": f"{(vram or 0):.0f} Go de VRAM et {ram:.0f} Go de RAM ne suffisent pas ({need_gb:.0f} Go nécessaires)."}
 

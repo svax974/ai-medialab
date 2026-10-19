@@ -427,6 +427,14 @@ class TestMemoryRules:
         with pytest.raises(ValueError, match="modèle de chat"):
             check_generation("llm-qwen3-8b", [])
 
+    def test_a_diagram_model_cannot_be_used_as_a_media_generator(self):
+        """Diagram models have no `engine` class to load (see `engines/diagram_models.py`): retrying/cancelling a
+        diagram message must never reach the media job queue, which would crash the worker trying to resolve it."""
+        from app.job_checks import check_generation
+
+        with pytest.raises(ValueError, match="modèle de diagramme"):
+            check_generation("diagram-qwen3-4b-instruct-2507", [])
+
 
 class TestCancellation:
     def test_leaving_the_stream_stops_the_generation_and_keeps_the_model_ready(self, env):

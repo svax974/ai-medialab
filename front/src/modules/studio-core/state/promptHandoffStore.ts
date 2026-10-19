@@ -7,7 +7,7 @@ import { create } from 'zustand'
 import { registerPrivateCleanup } from '@/modules/private/lib/privateChatMemory'
 
 /** The studios that take a text from another one (the chat's "use as prompt"). */
-export type HandoffTarget = 'image' | 'video' | 'audio'
+export type HandoffTarget = 'image' | 'video' | 'audio' | 'diagram'
 
 /** A text waiting for the composer of `target` (memory only: never written to the browser's storage). */
 export interface PendingHandoff {

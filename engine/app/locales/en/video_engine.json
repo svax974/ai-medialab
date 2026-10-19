@@ -1,0 +1,4 @@
+{
+  "Ce modèle quantifié a un composant de {} Go, trop gros pour {} Go de VRAM (le déchargement couche par couche n'est pas compatible avec les poids quantifiés).": "This quantized model has a {} GB component, too large for {} GB of VRAM (layer-by-layer offloading is not compatible with quantized weights).",
+  "Aucun GPU exploitable par PyTorch (CUDA, ROCm ou Metal) : la génération de vidéo sur processeur est impraticable.": "No GPU usable by PyTorch (CUDA, ROCm or Metal): video generation on the CPU is impractical."
+}

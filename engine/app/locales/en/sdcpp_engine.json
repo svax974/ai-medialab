@@ -1,0 +1,6 @@
+{
+  "Fichier du modèle introuvable : {}/{} — téléchargez le modèle.": "Model file not found: {}/{} — download the model.",
+  "Mémoire insuffisante pour cette vidéo. Réduisez la définition ou la durée, choisissez une quantification plus légère, ou fermez d'autres applications. ({})": "Not enough memory for this video. Lower the resolution or the duration, choose a lighter quantization, or close other applications. ({})",
+  "Mémoire GPU insuffisante pour ce modèle à cette taille. Réduisez la définition ou choisissez une quantification plus légère. ({})": "Not enough GPU memory for this model at this size. Lower the resolution or choose a lighter quantization. ({})",
+  "sd-cli s'est arrêté (code {}, build {}).\n{}": "sd-cli stopped (code {}, build {}).\n{}"
+}

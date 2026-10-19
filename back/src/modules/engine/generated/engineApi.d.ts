@@ -4,6 +4,46 @@
  */
 
 export interface paths {
+    "/engine/v1/components": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Components
+         * @description Every component with its state and the installed models that need it. `disk`: also measure the space it takes.
+         */
+        get: operations["list_components_engine_v1_components_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/components/{component_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Uninstall Component
+         * @description Removes a component and the installed models that need it (409 while it is in use or installing).
+         */
+        delete: operations["uninstall_component_engine_v1_components__component_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/engine/unload": {
         parameters: {
             query?: never;
@@ -534,6 +574,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/models/{model_id}/setup-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup Plan */
+        get: operations["setup_plan_engine_v1_models__model_id__setup_plan_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/models/{model_id}/source/bf16": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Free Bf16 Source
+         * @description Delete the full-precision source once at least one locally quantized variant is installed from it.
+         */
+        delete: operations["free_bf16_source_engine_v1_models__model_id__source_bf16_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/runtime/settings": {
         parameters: {
             query?: never;
@@ -551,6 +628,47 @@ export interface paths {
          */
         put: operations["push_settings_engine_v1_runtime_settings_put"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Setup State */
+        get: operations["setup_state_engine_v1_setup_get"];
+        put?: never;
+        post?: never;
+        /**
+         * Cancel Setup
+         * @description Stops the current step (its partial files are removed); steps already finished stay installed.
+         */
+        delete: operations["cancel_setup_engine_v1_setup_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/setup/{model_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Setup
+         * @description Installs what the model lacks (base data, engine, model files); progress through the `setup.progress` event.
+         */
+        post: operations["start_setup_engine_v1_setup__model_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -862,6 +980,43 @@ export interface components {
              */
             type: "text" | "image_url";
         };
+        /** ComponentInfo */
+        ComponentInfo: {
+            /** Blocked */
+            blocked?: string | null;
+            /** Contents */
+            contents: string;
+            /**
+             * Dependants
+             * @default []
+             */
+            dependants: components["schemas"]["ModelRef"][];
+            /**
+             * Disk Mb
+             * @default 0
+             */
+            disk_mb: number;
+            /** Id */
+            id: string;
+            /** Installed */
+            installed: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "base" | "engine";
+            /** Name */
+            name: string;
+            /** Removable */
+            removable: boolean;
+            /** Size Mb */
+            size_mb: number;
+        };
+        /** ComponentList */
+        ComponentList: {
+            /** Components */
+            components: components["schemas"]["ComponentInfo"][];
+        };
         /** CustomModelBody */
         CustomModelBody: {
             /**
@@ -1099,6 +1254,15 @@ export interface components {
             /** Vision */
             vision?: boolean | null;
         };
+        /** ModelRef */
+        ModelRef: {
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Name */
+            name: string;
+        };
         /** PurgeBody */
         PurgeBody: {
             /** Files */
@@ -1172,6 +1336,114 @@ export interface components {
             top_k?: number | null;
             /** Top P */
             top_p?: number | null;
+        };
+        /** SetupPlan */
+        SetupPlan: {
+            /** Blocked */
+            blocked?: string | null;
+            /** Model Id */
+            model_id: string;
+            /** Ready */
+            ready: boolean;
+            /** Steps */
+            steps: components["schemas"]["SetupStepPlan"][];
+            /** Total Mb */
+            total_mb: number;
+        };
+        /** SetupState */
+        SetupState: {
+            /**
+             * Current
+             * @default -1
+             */
+            current: number;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /**
+             * Done
+             * @default 0
+             */
+            done: number;
+            /** Error */
+            error?: string | null;
+            /** Eta */
+            eta?: number | null;
+            /**
+             * Message
+             * @default
+             */
+            message: string;
+            /** Model Id */
+            model_id?: string | null;
+            /** Model Name */
+            model_name?: string | null;
+            /**
+             * Rate
+             * @default 0
+             */
+            rate: number;
+            /** Started At */
+            started_at?: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "idle" | "running" | "done" | "error" | "cancelled";
+            /**
+             * Steps
+             * @default []
+             */
+            steps: components["schemas"]["SetupStep"][];
+            /**
+             * Total
+             * @default 0
+             */
+            total: number;
+            /**
+             * Total Mb
+             * @default 0
+             */
+            total_mb: number;
+        };
+        /** SetupStep */
+        SetupStep: {
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "base" | "engine" | "model";
+            /** Name */
+            name: string;
+            /** Size Mb */
+            size_mb: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "pending" | "running" | "done" | "error" | "cancelled";
+        };
+        /** SetupStepPlan */
+        SetupStepPlan: {
+            /** Blocked */
+            blocked?: string | null;
+            /** Id */
+            id: string;
+            /** Installed */
+            installed: boolean;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "base" | "engine" | "model";
+            /** Name */
+            name: string;
+            /** Size Mb */
+            size_mb: number;
         };
         /** TokenCount */
         TokenCount: {
@@ -1295,6 +1567,13 @@ export interface components {
             /** Results */
             results: components["schemas"]["TrendingEntry"][];
         };
+        /** UninstallResult */
+        UninstallResult: {
+            /** Ok */
+            ok: boolean;
+            /** Removed Models */
+            removed_models: components["schemas"]["ModelRef"][];
+        };
         /** ValidationError */
         ValidationError: {
             /** Context */
@@ -1342,6 +1621,68 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_components_engine_v1_components_get: {
+        parameters: {
+            query?: {
+                disk?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComponentList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    uninstall_component_engine_v1_components__component_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                component_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UninstallResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     unload_engine_engine_v1_engine_unload_post: {
         parameters: {
             query?: never;
@@ -2263,6 +2604,70 @@ export interface operations {
             };
         };
     };
+    setup_plan_engine_v1_models__model_id__setup_plan_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    free_bf16_source_engine_v1_models__model_id__source_bf16_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     push_settings_engine_v1_runtime_settings_put: {
         parameters: {
             query?: never;
@@ -2285,6 +2690,79 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setup_state_engine_v1_setup_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
+                };
+            };
+        };
+    };
+    cancel_setup_engine_v1_setup_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
+    start_setup_engine_v1_setup__model_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                model_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SetupState"];
                 };
             };
             /** @description Validation Error */

@@ -8,6 +8,7 @@ import { Box, Menu, MenuItem } from '@mui/material'
 import GraphicEqRounded from '@mui/icons-material/GraphicEqRounded'
 import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import MovieOutlined from '@mui/icons-material/MovieOutlined'
+import SchemaOutlined from '@mui/icons-material/SchemaOutlined'
 import SendRounded from '@mui/icons-material/SendRounded'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
@@ -23,6 +24,7 @@ const ICONS: Record<HandoffTarget, React.ReactNode> = {
   image: <ImageOutlined fontSize="small" />,
   video: <MovieOutlined fontSize="small" />,
   audio: <GraphicEqRounded fontSize="small" />,
+  diagram: <SchemaOutlined fontSize="small" />,
 }
 
 /**

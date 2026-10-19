@@ -1,0 +1,4 @@
+{
+  "Impossible de joindre Hugging Face : vérifiez la connexion Internet.": "Cannot reach Hugging Face: check the Internet connection.",
+  "Accès refusé : ce modèle est à accès restreint. Acceptez sa licence sur la page Hugging Face du dépôt (avec le compte du jeton), puis renseignez le jeton dans Réglages → Modèles.": "Access denied: this model has restricted access. Accept its license on the repository's Hugging Face page (with the token's account), then enter the token in Settings → Models."
+}

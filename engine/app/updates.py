@@ -321,10 +321,10 @@ def _pack_rows() -> list[dict[str, Any]]:
         except (OSError, ValueError):
             continue
         outdated = ready.get("hash") != audio_packs._requirements_hash(pack)
-        rows.append({"id": pack.id, "name": pack.name, "kinds": _kinds(lambda s, p=pack.id: s.options.get("pack") == p),
+        rows.append({"id": pack.id, "name": pack.name, "kinds": _kinds(lambda s, p=pack.id: audio_packs.pack_of(s) == p),
                      "state": "update" if outdated else "current", "installed": time.strftime("%Y-%m-%d", time.localtime(
                          ready.get("installed_at") or 0)) if ready.get("installed_at") else "?",
-                     "target": None, "upstream": None, "latest": None, "rollback": False, "variant": None, "size_mb": pack.size_mb, "reason": "recipe",
+                     "target": None, "upstream": None, "latest": None, "rollback": False, "variant": None, "size_mb": audio_packs.size_of(pack), "reason": "recipe",
                      "advice": None})
     return rows
 

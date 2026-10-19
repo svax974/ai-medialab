@@ -1,0 +1,12 @@
+{
+  "Ce modèle est à accès restreint : acceptez sa licence sur la page Hugging Face du dépôt, puis renseignez votre jeton d'accès dans Réglages → Modèles.": "This model has restricted access: accept its license on the repository's Hugging Face page, then enter your access token in Settings → Models.",
+  "Ce modèle n'a rien à télécharger.": "This model has nothing to download.",
+  "Un autre téléchargement est déjà en cours.": "Another download is already in progress.",
+  "Espace disque insuffisant : il faut environ {} Go et {} Go sont libres ({}).": "Not enough disk space: about {} GB needed and {} GB free ({}).",
+  "Ce modèle n'a rien à supprimer.": "This model has nothing to delete.",
+  "Un téléchargement est en cours pour ce modèle.": "A download is in progress for this model.",
+  "Ce modèle n'a pas de version quantifiée : rien à libérer.": "This model has no quantized version: nothing to free.",
+  "Aucune version quantifiée installée pour ce modèle : la copie complète reste nécessaire.": "No quantized version installed for this model: the full copy is still needed.",
+  "Ce modèle n'a pas de copie pleine précision.": "This model has no full-precision copy.",
+  "Le téléchargement s'est arrêté (code {}).": "The download stopped (code {})."
+}

@@ -16,8 +16,10 @@ import { sharedPlugins, sharedPluginModules } from 'src/modules_shared/plugins.g
 import { EngineModule } from 'src/modules/engine/EngineModule';
 import { EnginesModule } from 'src/modules/engines';
 import { HardwareModule } from 'src/modules/hardware';
+import { I18nModule } from 'src/modules/i18n';
 import { AudioStudioModule } from 'src/modules/audio-studio';
 import { ChatModule } from 'src/modules/chat';
+import { DiagramsModule } from 'src/modules/diagrams';
 import { LegacyImportModule } from 'src/modules/legacy-import';
 import { MediaLibraryModule } from 'src/modules/media-library';
 import { ModelCatalogModule } from 'src/modules/model-catalog';
@@ -48,11 +50,13 @@ if (authPlugins.length > 1) {
     CommonModule,
     AuthCoreModule.forRoot(authPlugins[0]?.auth),
     ...sharedPluginModules,
+    I18nModule,
     EngineModule,
     MediaLibraryModule,
     StudioCoreModule,
     AudioStudioModule,
     ChatModule,
+    DiagramsModule,
     PrivateModule,
     SettingsModule,
     HardwareModule,

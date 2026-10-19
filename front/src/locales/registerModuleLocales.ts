@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import axios from 'axios'
 import { i18n } from '@/modules_shared/common/core/i18n/I18n'
 import { mergeLocaleFiles, type LocaleFiles } from './mergeLocaleFiles'
 
@@ -18,3 +19,16 @@ const files: LocaleFiles = {
 }
 
 i18n.add(mergeLocaleFiles(files))
+
+/**
+ * Keeps the interface language where the rest of the app reads it, from boot and on every switch: `<html lang>` (screen
+ * readers, hyphenation, spell-check) and the `Accept-Language` header of every request (axios, used by `HttpService`), which
+ * is how Nest and the engine write their messages in the language of the interface. `fetch` calls use `languageHeaders()`.
+ */
+const syncLanguage = (lang: string | undefined): void => {
+  if (!lang) return
+  document.documentElement.lang = lang
+  axios.defaults.headers.common['Accept-Language'] = lang
+}
+syncLanguage(i18n.getLang())
+i18n.addEventListener('languageChanged', (payload: { lang?: string } | string) => syncLanguage(typeof payload === 'string' ? payload : payload?.lang))

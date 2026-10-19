@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import {
   Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Res, UnprocessableEntityException, UploadedFile, UseInterceptors,
 } from '@nestjs/common';
@@ -51,7 +52,7 @@ export class ChatController {
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', { storage: uploadStorage, limits: { fileSize: MAX_IMAGE_BYTES, files: 1 } }))
   upload(@UploadedFile() file?: Express.Multer.File): Promise<ChatAttachment> {
-    if (!file) throw new UnprocessableEntityException('Aucun fichier reçu (champ « file »).');
+    if (!file) throw new UnprocessableEntityException(tr('chat.error.noFile'));
     return this.attachments.accept(file);
   }
 
@@ -126,7 +127,7 @@ export class ChatController {
       await run(sink);
     } catch (error) {
       if (!sink.started) throw error; // nothing sent yet: Nest answers with the HTTP error
-      sink.emit('error', { code: 'upstream', message: 'La réponse a échoué de façon inattendue.' });
+      sink.emit('error', { code: 'upstream', message: tr('chat.error.replyFailed') });
     } finally {
       sink.end();
     }

@@ -1,0 +1,11 @@
+{
+  "settings.error.object": "{0} must be an object.",
+  "settings.error.entry": "{0}.{1}: {2} expected.",
+  "settings.error.body": "A JSON body is expected.",
+  "settings.error.keepAlive": "keep_alive_minutes: an integer between {0} and {1} is expected.",
+  "settings.error.boolean": "{0}: a boolean is expected.",
+  "settings.error.text": "{0}: a text is expected.",
+  "settings.error.textMax": "{0}: a text of at most {1} characters is expected.",
+  "settings.what.integerOrNull": "an integer or null",
+  "settings.what.text": "a text"
+}

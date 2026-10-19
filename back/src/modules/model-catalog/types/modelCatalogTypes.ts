@@ -5,7 +5,7 @@
 
 /** Shapes relayed from the engine (`engine/app/catalog.py`, `downloads.py`, `hf_search.py`). The engine owns them. */
 
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm';
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram';
 /** Kinds `GET /api/hf/search` accepts (the kinds of the catalog: nothing else reaches the engine). */
 export const HUB_SEARCH_KINDS: readonly ModelKind[] = ['image', 'audio', 'video', 'llm'];
 export type InstallState = 'installed' | 'partial' | 'missing';
@@ -29,6 +29,8 @@ export interface ModelVariant {
   install: InstallState;
   installed_gb: number;
   need_gb: number;
+  /** Part of `need_gb` that is temporary: the full-precision source, freed once the quantized checkpoint is produced. */
+  temp_gb: number;
   selected: boolean;
 }
 
@@ -82,6 +84,8 @@ export interface ModelInfo {
   };
   install: InstallState;
   installed_gb: number;
+  /** Temporary part of the remaining download (see `ModelVariant.temp_gb`). */
+  temp_download_gb: number;
   download: DownloadProgress | null;
   ready: boolean;
   custom: boolean;
@@ -102,6 +106,7 @@ export interface ModelCatalog extends KindSummary {
   audio: KindSummary;
   video: KindSummary;
   llm: KindSummary;
+  diagram: KindSummary;
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {});

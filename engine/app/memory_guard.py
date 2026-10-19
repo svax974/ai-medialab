@@ -26,6 +26,8 @@ from typing import Callable
 
 import psutil
 
+from .i18n import translate
+
 GIB = 1024**3
 POLL_SECONDS = 0.2
 # The worker tree's memory is summed less often (it walks every child process).
@@ -167,7 +169,7 @@ class MemoryWatchdog:
             return None
         why = (f"la mémoire de la machine allait manquer ({fmt_gb(free)} Go libres, réserve de {fmt_gb(self.reserve)} Go)"
                if free < self.reserve else "macOS signale une pression mémoire critique")
-        reason = (f"Arrêté par la protection mémoire : {why}. Le modèle a été déchargé pour protéger la machine. "
+        reason = (f"Arrêté par la protection mémoire : {translate(why)}. Le modèle a été déchargé pour protéger la machine. "
                   "Essayez une définition plus petite, moins d'images à la fois, une quantification plus forte, ou "
                   "fermez des applications gourmandes.")
         with self._lock:

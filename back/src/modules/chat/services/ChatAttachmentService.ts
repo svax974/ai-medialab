@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable, Logger, UnprocessableEntityException } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { mkdir, open, readFile, readdir, rename, stat, unlink, writeFile } from 'fs/promises';
@@ -75,12 +76,12 @@ export class ChatAttachmentService {
       const size = (await stat(file.path)).size;
       let stored: StoredAttachment;
       if (image) {
-        if (size > MAX_IMAGE_BYTES) throw new UnprocessableEntityException('Image trop lourde (10 Mo au plus).');
+        if (size > MAX_IMAGE_BYTES) throw new UnprocessableEntityException(tr('chat.error.imageTooBig'));
         stored = { kind: 'image', name: this.newName(image), original_name: original, mime: IMAGE_TYPES[image], size };
       } else {
-        if (size > MAX_TEXT_BYTES) throw new UnprocessableEntityException('Fichier texte trop lourd (1 Mo au plus).');
+        if (size > MAX_TEXT_BYTES) throw new UnprocessableEntityException(tr('chat.error.textTooBig'));
         if (decodeText(await readFile(file.path)) === null) {
-          throw new UnprocessableEntityException('Type de fichier non pris en charge : images (png, jpeg, webp, gif) et fichiers texte seulement.');
+          throw new UnprocessableEntityException(tr('chat.error.unsupportedFile'));
         }
         stored = { kind: 'text', name: this.newName(textExtension(original)), original_name: original, mime: 'text/plain', size };
       }
@@ -100,14 +101,14 @@ export class ChatAttachmentService {
       const meta = await this.readMeta(name);
       if (meta) out.push(meta);
       else if (await this.exists(name)) out.push(await this.describe(name));
-      else throw new UnprocessableEntityException(`Pièce jointe introuvable : ${name}.`);
+      else throw new UnprocessableEntityException(tr('chat.error.attachmentNotFound', [name]));
     }
     return out;
   }
 
   /** Absolute path of a stored attachment (what the engine reads for an image). */
   pathOf(name: string): string {
-    if (!ATTACHMENT_NAME.test(name)) throw new Error('Nom de pièce jointe invalide.');
+    if (!ATTACHMENT_NAME.test(name)) throw new Error(tr('chat.error.attachmentNameInvalid'));
     return join(uploadsDir(), name);
   }
 

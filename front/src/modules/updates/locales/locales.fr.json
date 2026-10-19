@@ -74,6 +74,7 @@
   "updates.advice.invite.body": "Un petit modèle de chat local lit les notes de version et les discussions publiques, et signale les problèmes connus (régressions, plantages). Rien de ce que vous écrivez ou générez n'est envoyé. L'avis est consultatif : il ne bloque jamais une mise à jour.",
   "updates.advice.invite.button": "Installer le conseiller (≈ {0})",
   "updates.advice.invite.parts": "moteur ≈ {0} Mo + modèle « {2} » ≈ {1}",
+  "updates.advice.invite.partsPresent": "moteur ≈ {0} Mo ; modèle « {2} » déjà présent",
   "updates.advice.confirm.title": "Mise à jour déconseillée par l'analyse",
   "updates.advice.confirm.message": "L'analyse automatique a relevé des problèmes : {0}. C'est un avis à vérifier, pas une interdiction. Installer quand même ?",
   "updates.advice.confirm.ok": "Installer quand même",

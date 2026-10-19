@@ -18,10 +18,12 @@ dependencies = [
     "numpy>=2.0",
     "soundfile>=0.12",  # read/write voice references and audio output
     "starlette>=0.39",  # HTTP Range on static files (video seeking)
-    "av>=14",  # PyAV: decode uploaded videos, encode generated ones (H.264 + AAC); bundles FFmpeg, license: docs/components/ffmpeg.md
 ]
 
 [project.optional-dependencies]
+# PyAV (FFmpeg): decode uploaded videos, encode generated ones (H.264 + AAC). Not in the installer: the "ffmpeg" pack
+# (engine/app/audio_packs.py) downloads it on the user's machine, license: docs/components/ffmpeg.md. Keep both in sync.
+ffmpeg = ["av>=14"]
 # Native Metal engine (Apple Silicon): mflux / MLX.
 mlx = ["mflux==0.20.0; sys_platform == 'darwin' and platform_machine == 'arm64'"]
 # PyTorch + diffusers engine: NVIDIA (CUDA), AMD (ROCm), Apple (MPS). The torch build is picked by the

@@ -8,9 +8,9 @@ import { afterEach, beforeEach, describe, expect, it } from '@jest/globals';
 import { DataSource } from 'typeorm';
 import { createTestDataSource } from 'src/testing/testDataSource';
 import { QueueController } from '../controllers/QueueController';
-import { INTERRUPTED_BY_ENGINE } from '../types/jobTypes';
+import { interruptedByEngine } from '../types/jobTypes';
 import { buildStudio, engineDown, engineError, type Studio } from 'src/testing/studioHarness';
-import { INTERRUPTED_MESSAGE } from './MessageService';
+import { interruptedMessage } from './MessageService';
 
 const OUTPUT = {
   index: 0, media: 'image', asset_id: 'asset-1', path: '/data/outputs/a1_0.png', filename: 'a1_0.png', thumb: 'asset-1.webp',
@@ -240,7 +240,7 @@ describe('GenerationQueueService', () => {
       const other = buildStudio(dataSource);
       await other.queue.onApplicationBootstrap();
       other.queue.onModuleDestroy();
-      expect(await s.messages.get('old1')).toMatchObject({ status: 'error', error: INTERRUPTED_MESSAGE });
+      expect(await s.messages.get('old1')).toMatchObject({ status: 'error', error: interruptedMessage() });
       expect(await status('old2')).toBe('error');
       expect(await status('ok')).toBe('done');
     });
@@ -251,7 +251,7 @@ describe('GenerationQueueService', () => {
       s.engine.on('GET /engine/v1/jobs/{job_id}', () => { throw engineError(404, 'Job inconnu.'); });
       s.relay.linkChanges$.next(true);
       await s.queue.idle();
-      expect(await s.messages.get('a1')).toMatchObject({ status: 'error', error: INTERRUPTED_BY_ENGINE });
+      expect(await s.messages.get('a1')).toMatchObject({ status: 'error', error: interruptedByEngine() });
       expect(s.engine.submitted()).toEqual(['a1', 'a2']);
     });
 

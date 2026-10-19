@@ -29,7 +29,7 @@ export function LocalAiInvite({ setup }: { setup: LocalAiSetup }) {
               {t(state === 'error' ? 'updates.retry' : 'updates.advice.invite.button', [formatGb(setup.neededGb)])}
             </Button>
             <Box component="span" sx={{ fontSize: 11.5, color: 'var(--faint)' }}>
-              {t('updates.advice.invite.parts', [String(setup.engineSizeMb), formatGb(setup.modelSizeGb), setup.modelName ?? ''])}
+              {t(setup.modelSizeGb === 0 ? 'updates.advice.invite.partsPresent' : 'updates.advice.invite.parts', [String(setup.engineSizeMb), formatGb(setup.modelSizeGb), setup.modelName ?? ''])}
             </Box>
           </Box>
         )}

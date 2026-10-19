@@ -18,7 +18,7 @@ export const Configuration: { [id: string]: string | number | boolean } = {
   apiUrl: '/api',
   // Locale configuration (remote by default)
   localesLanguages: 'fr,en',
-  localeDefault: 'fr',
+  // No `localeDefault`: without a stored choice, LocaleService follows the system language (fr, else en).
   localesCategories: 'common,custom',
   localesLocation: 'remote',
   // Only read by the user module (ignored when "user" is not listed in shared-modules.json).

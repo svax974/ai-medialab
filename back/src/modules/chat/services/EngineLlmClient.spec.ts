@@ -148,4 +148,13 @@ describe('refusalFromHttp', () => {
     expect(refusalFromHttp(409, '').code).toBe('busy');
     expect(refusalFromHttp(503, '').code).toBe('upstream');
   });
+
+  it('tells the missing engine and the missing model from the engine detail, in either language', () => {
+    for (const detail of ["Le moteur de chat (llama.cpp) n'est pas installé : ouvrez Modèles pour l'installer.", 'The chat engine (llama.cpp) is not installed: open Models to install it.']) {
+      expect(refusalFromHttp(409, detail).code).toBe('no_engine');
+    }
+    for (const detail of ['Le modèle « X » n\'est pas (entièrement) téléchargé.', 'The model "X" is not (fully) downloaded.', 'Files of "X" not found: download the model.']) {
+      expect(refusalFromHttp(409, detail).code).toBe('no_model');
+    }
+  });
 });

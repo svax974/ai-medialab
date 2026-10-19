@@ -1,0 +1,9 @@
+{
+  "{} : en dehors du dossier de données.": "{}: outside the data folder.",
+  "output_dir : en dehors de la session privée.": "output_dir: outside the private session.",
+  "{} est un modèle {}, pas {}.": "{} is a {} model, not {}.",
+  "Une réponse de chat est en cours : attendez sa fin avant de lancer une génération.": "A chat reply is in progress: wait for it to finish before starting a generation.",
+  "{} résultats au plus par job.": "At most {} results per job.",
+  "Ce job n'est plus en cours.": "This job is no longer running.",
+  "Vidéo illisible : {}": "Unreadable video: {}"
+}

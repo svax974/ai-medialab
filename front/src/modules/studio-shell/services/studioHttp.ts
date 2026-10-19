@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { i18n } from '@/modules_shared/common/core/i18n/I18n'
 import { httpService } from '@/modules_shared/common/core/http/HttpService'
 import { configurationService } from '@/modules_shared/common/services/ConfigurationService'
 import { EMPTY_ASSET_PAGE, isLibraryListing, isPersistingRequest, privatePath } from '@/modules/private/lib/privateRouting'
@@ -42,7 +43,7 @@ async function privateRefusal(): Promise<never> {
 type Payload = { message?: string; statusCode?: number; code?: string } | null
 
 function toError(payload: Payload): StudioApiError {
-  return new StudioApiError(payload?.message ?? 'Request failed', payload?.statusCode ?? 0, typeof payload?.code === 'string' ? payload.code : undefined)
+  return new StudioApiError(payload?.message ?? i18n.get('studio.error.requestFailed'), payload?.statusCode ?? 0, typeof payload?.code === 'string' ? payload.code : undefined)
 }
 
 /**

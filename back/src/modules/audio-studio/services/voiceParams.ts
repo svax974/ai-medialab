@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { UnprocessableEntityException } from '@nestjs/common';
 import type {
   TranscribeVoiceInput, UpdateVoiceInput, UploadVoiceInput, VoiceFromAssetInput,
@@ -17,7 +18,7 @@ function fail(message: string): never {
 function optionalText(body: Record<string, unknown>, key: string): string | undefined {
   const value = body[key];
   if (value == null) return undefined;
-  if (typeof value !== 'string') return fail(`${key} : texte attendu.`);
+  if (typeof value !== 'string') return fail(tr('audioStudio.error.textExpected', [key]));
   return value;
 }
 
@@ -35,8 +36,8 @@ export function parseUploadVoice(body: unknown): UploadVoiceInput {
 
 /** Body of `POST /api/voices/from-asset`: `asset_id` required, the rest falls back on the take's own metadata. */
 export function parseVoiceFromAsset(body: unknown): VoiceFromAssetInput {
-  if (!isRecord(body)) return fail('Corps JSON attendu.');
-  if (typeof body.asset_id !== 'string' || !body.asset_id) return fail('asset_id : texte attendu.');
+  if (!isRecord(body)) return fail(tr('audioStudio.error.jsonBodyExpected'));
+  if (typeof body.asset_id !== 'string' || !body.asset_id) return fail(tr('audioStudio.error.textExpected', ['asset_id']));
   return {
     assetId: body.asset_id,
     name: optionalText(body, 'name') ?? '',
@@ -49,7 +50,7 @@ export function parseVoiceFromAsset(body: unknown): VoiceFromAssetInput {
 
 /** Body of `PATCH /api/voices/:id`: only the fields that are present change (an empty transcript clears it). */
 export function parseUpdateVoice(body: unknown): UpdateVoiceInput {
-  if (!isRecord(body)) return fail('Corps JSON attendu.');
+  if (!isRecord(body)) return fail(tr('audioStudio.error.jsonBodyExpected'));
   const input: UpdateVoiceInput = {};
   for (const key of ['name', 'transcript', 'description', 'language'] as const) {
     const value = optionalText(body, key);

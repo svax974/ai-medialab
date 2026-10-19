@@ -14,9 +14,9 @@ n'existe pas ; une nouvelle annexe s'y ajoute avec son chemin (règle « un fait
 | `FEATURES.md` | Inventaire de ce qui est construit, par module (et ce qui ne l'est pas) |
 | `ARCHITECTURE.md` (ce fichier) | Processus, contrat Nest ↔ moteur, flux d'événements, données et migrations, bureau, mémoire au repos, plan du moteur |
 | `CLAUDE.md` | Règles de travail du projet : gabarit importé, mémoire unifiée (critique), notes de développement |
-| `back/src/modules/<module>/README.md` | Contrat d'un module serveur : rôle, fichiers, endpoints exhaustifs, entités, tests. Modules : `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `private`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/modules/<module>/README.md` | Contrat d'un module serveur : rôle, fichiers, endpoints exhaustifs, entités, tests. Modules : `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | Migrations TypeORM de la base de Nest : usage, génération, vérification |
-| `front/src/modules/<module>/README.md` | Contrat d'un module d'interface : composants, hooks, locales, parité avec l'ancienne interface. Modules : `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
+| `front/src/modules/<module>/README.md` | Contrat d'un module d'interface : composants, hooks, locales, parité avec l'ancienne interface. Modules : `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | Thème « chambre noire » : jetons, surcharges MUI |
 | `desktop/README.md` | Coquille de bureau (Tauri) : configuration, lancement, empaquetage, signature, CI |
 | `engine/openapi.json` | Contrat de l'API interne du moteur (**généré** : `scripts-local/export_engine_openapi.py`) |
@@ -166,6 +166,22 @@ processus, y compris le worker de génération. Procédure de construction, prof
 `scripts-local/desktop-prepare.sh` (appelé par `scripts/app.sh` et `scripts/bundle.sh`), qui lance `scripts-local/build_runtime.py`
 avec le profil de la cible (profils : `desktop/runtime/profiles.json`).
 
+**PyTorch hors de l'installateur.** Les profils par défaut ne contiennent ni PyTorch, ni diffusers, ni mflux : le moteur démarre et
+répond sans eux (sonde `system._probe_torch` en sous-processus, qui les ignore s'ils manquent). Le pack « torch »
+(`engine/app/audio_packs.py`, famille `runtime`) les installe à la demande dans `<données>/engines/runtime/torch/venv`, un venv bâti
+sur l'interpréteur embarqué avec le `uv` embarqué. Son `site-packages` n'est ajouté à `sys.path` que par le worker de génération
+(`activate_overlays`, appelé au début de `worker.run_worker`) et par la sonde : le serveur ne les importe jamais. Les modèles de
+backend `torch` et `mlx` désignent ce pack (`audio_packs.pack_of`) et l'interface propose son installation comme celle d'un moteur.
+
+**Composants et installation d'un modèle.** Tout ce que l'application télécharge hors des modèles est un *composant* (`engine/app/components.py`),
+à deux niveaux : les *données de base*, partagées par plusieurs moteurs (le pack `torch`, le pack `ffmpeg` : PyAV, jamais embarqué à cause de sa
+licence, voir `docs/components/ffmpeg.md`), et les *moteurs d'exécution* (stable-diffusion.cpp, llama.cpp, audio.cpp, les packs Python).
+`components_of(spec)` donne ceux qu'un modèle exige (FFmpeg pour toute vidéo). `setup_runner.py` calcule le plan (`GET /setup-plan` : seulement ce
+qui manque, donc rien n'est retéléchargé) et l'exécute avec les installateurs existants, un à la fois, sous un seul état publié par
+`setup.progress` ; l'annulation arrête l'étape courante, dont l'installateur supprime les fichiers partiels. Supprimer un composant supprime aussi
+les modèles installés qui en dépendent (`components.uninstall`). Le serveur n'importe `av` que paresseusement, après avoir ajouté l'add-on FFmpeg
+à son `sys.path` (`media.load_av`) ; sans lui, l'envoi d'une vidéo répond 409 avec le message d'installation.
+
 État de vérification : la chaîne de construction de la coquille a été écrite et testée par morceaux, **aucune application n'a été
 assemblée ni lancée de bout en bout** avec la coquille du gabarit (voir le suivi de la migration, `docs/migration/README.md`).
 
@@ -187,6 +203,14 @@ reste celui des studios : le module `chat` n'appelle jamais le moteur pour cela,
 mémoire (un seul modèle en mémoire). L'état et les fichiers d'une carte sont lus chez `studio-core` à chaque lecture (une source), le navigateur est
 prévenu par les événements `studio.*` ; le modèle de chaque studio est celui que le navigateur a sélectionné (Nest ne le connaît pas : il
 l'envoie avec chaque message). Le moteur n'a rien de nouveau. Détail et limites (session privée) : `back/src/modules/chat/README.md`, « Outils de création ».
+
+## Langue de l'interface
+
+Deux langues, `fr` et `en`. **Le front en est le propriétaire** : le choix (Réglages > Général) est mémorisé dans le navigateur ; sans choix, `LocaleService` prend la langue du système (français, sinon anglais). Chaque changement met `<html lang>` et l'en-tête `Accept-Language` des requêtes à jour (`front/src/locales/registerModuleLocales.ts`, `languageHeaders()` pour les `fetch`).
+
+- **Nest** lit `Accept-Language` (`back/src/modules/i18n/`) et retient la dernière langue vue : l'application est mono-utilisateur, une seule valeur sert aussi ce qui tourne hors requête (file de générations). Ses messages passent par `tr('module.clé', [valeurs])` ; les dictionnaires sont `back/src/modules/<module>/i18n/messages.{fr,en}.json`, vérifiés (parité, clés utilisées) par `messages.spec.ts`. Un texte **enregistré** (échec d'une génération, titre par défaut) garde la langue de son écriture.
+- **Le moteur** reçoit la même langue (`EngineClient.authHeaders()`). Ses textes restent écrits en français dans le code ; chaque réponse JSON, détail d'erreur et événement est traduit à la sortie par `engine/app/i18n.py` à partir de `engine/app/locales/en/*.json` (texte français → anglais, `{}` pour une valeur). Un texte ajouté au code n'a besoin que de son entrée anglaise : `engine/tests/test_i18n.py` échoue sinon (scanneur `engine/tests/i18n_scan.py`, qui liste les textes manquants).
+- Les textes envoyés **à un modèle** (invites) ne sont pas traduits ; ceux dont la réponse s'affiche à l'utilisateur demandent la langue de l'interface. La réponse du chat suit la langue du message de l'utilisateur.
 
 ## Mémoire au repos
 

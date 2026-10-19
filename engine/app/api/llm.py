@@ -30,6 +30,7 @@ from pydantic import BaseModel, Field
 
 from .. import llamacpp
 from ..events import bus
+from ..i18n import localize
 from ..llm import LlmError, llm
 
 llm_router = APIRouter(prefix="/llm", tags=["llm"])
@@ -103,7 +104,9 @@ class TokenCount(BaseModel):
 
 
 def sse(event: dict[str, Any]) -> str:
-    return f"event: {event['type']}\ndata: {json.dumps(event, ensure_ascii=False)}\n\n"
+    """One server-sent event; only the errors carry a text of ours (the others are the model's own words)."""
+    data = localize(event) if event["type"] == "error" else event
+    return f"event: {event['type']}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
 @llm_router.get("/status", response_model=LlmStatus)

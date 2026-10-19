@@ -25,6 +25,7 @@ import ChevronLeftRoundedIcon from '@mui/icons-material/ChevronLeftRounded';
 import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
 import { NavLink } from 'react-router-dom';
 import { I18nLabel } from '@/modules_shared/common/components/ui/label/I18nLabel';
+import { DonateButton } from '@/modules_shared/common/components/ui/DonateButton';
 import { appPlugins } from '@/plugins';
 import { appAdminMenu, appNavMenu } from '@/config/navigation';
 import { mergeMenuSections, resolveMenu } from '@/modules_shared/common/plugins/menus';
@@ -111,7 +112,10 @@ export const AppSidebar = ({ open, onToggle, layout }: AppSidebarProps) => {
           <SidebarSection key={section.id} section={section} open={open} />
         ))}
       </List>
-      <Box sx={{ mt: 'auto', display: 'flex', justifyContent: open ? 'flex-end' : 'center', p: 1 }}>
+      <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'center', px: 1, pb: 1 }}>
+        <DonateButton compact={!open} size="small" fullWidth={open} />
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: open ? 'flex-end' : 'center', p: 1 }}>
         <Tooltip title={<I18nLabel id={open ? 'common.nav.sidebar.collapse' : 'common.nav.sidebar.expand'} />} placement="right">
           <IconButton size="small" onClick={onToggle}>
             {open ? <ChevronLeftRoundedIcon fontSize="small" /> : <ChevronRightRoundedIcon fontSize="small" />}

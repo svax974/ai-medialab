@@ -54,6 +54,7 @@ describe('homePathForMode', () => {
     expect(homePathForMode('audio')).toBe('/audio')
     expect(homePathForMode('video')).toBe('/video')
     expect(homePathForMode('chat')).toBe('/chat')
-    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat' })
+    expect(homePathForMode('diagram')).toBe('/diagrammes')
+    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes' })
   })
 })

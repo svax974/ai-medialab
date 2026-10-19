@@ -34,7 +34,8 @@ model-catalog/
   lib/modelHelp.ts, modelCatalogKeys.ts
   state/downloadStore.ts         progression en direct par modèle (Zustand)
   state/modelSelectionStore.ts   modèle choisi par type (persisté sous `cn-models`)
-  components/                    ModelsDialog, ModelCard, ModelHeader, ModelActions, VariantPicker, QuantizeControl, HubSearch,
+  lib/modelsView.ts              `groupModelsByKind` (chat, audio, image, vidéo ; installés d'abord), `onDisk` (pur, testé)
+  components/                    ModelsDialog, ModelsManager (onglet Modèles des Réglages : état et suppression par catégorie), ModelCard, ModelHeader, ModelActions, TempDownloadNote (téléchargement temporaire d'un modèle quantifié localement : total, part temporaire, taille sur disque), VariantPicker, QuantizeControl, HubSearch,
                                  ModelPicker, ModelBadges (VideoBadges, LlmBadges, LicenseWarning, GatedNotice, HelpTag), panels (Section, Tag, Notice),
                                  WhatsNewButton, WhatsNewDialog, WhatsNewRow
   locales/                       locales.fr.json, locales.en.json (clés models.*)
@@ -57,6 +58,14 @@ la recherche Hugging Face passe `kind=llm` ; le catalogue porte un bloc `llm` (`
 (un état enregistré avant son existence n'en a pas : lue comme « aucune »). Le mode courant donne le type de l'onglet initial par `modelKindOfMode` (le chat → `llm`). L'usage (`useModelUsage`) ne compte que les générations
 de médias : les modèles de chat ne sont pas classés par usage.
 
+## Modèles de diagramme (`kind: 'diagram'`)
+
+Cinquième type, pour l'onglet Diagrammes (module `diagram-studio`) : les **mêmes** modèles de langage GGUF que `kind: 'llm'`
+(mêmes fichiers, aucun téléchargement dupliqué — voir `engine/app/engines/diagram_models.py`), sous un bloc `diagram` séparé
+du catalogue (`default_model_id`, `recommended_model_id`, `ready`), un onglet « Modèles de diagramme » dédié. Contrairement
+à `llm`, pas de recherche Hugging Face ni de bouton « Nouveautés » pour ce type (`HubSearch`/`WhatsNewButton` rendent `null`
+pour `kind === 'diagram'`) : ce sont les mêmes modèles que le Chat, pas une famille Hugging Face à part.
+
 ## Comportement
 
 - **Ouverture** : bouton « Modèles » de la barre latérale (`modelsOpen`) ; onglet initial = mode courant. « Chercher un modèle sur
@@ -69,7 +78,11 @@ de médias : les modèles de chat ne sont pas classés par usage.
 - **Carte d'un modèle** : voir la liste de parité ci-dessous. Le bouton suit l'état : suppression en cours, annuler (téléchargement
   en cours), installer le moteur (+ modèle), utiliser / supprimer (installé), compléter / télécharger.
 - **Quantification et précision** : enregistrées comme réglages `variant` et `quantize` (`useSaveSettings` du module `settings`, qui
-  invalide le catalogue) ; seule la variante choisie est téléchargée.
+  invalide le catalogue) ; télécharger une variante ne supprime pas les autres déjà installées (le réglage ne fait que choisir
+  celle utilisée pour générer). Certains modèles MLX (ex. Qwen Image Edit) quantifient en local une seule fois à l'installation
+  d'une variante (jamais relancé à chaque chargement) : la copie complète non quantifiée, nécessaire pour produire ces variantes,
+  peut ensuite être libérée via `ModelActions` (bouton « Libérer la copie complète », visible dès qu'une variante quantifiée est
+  installée) — `DELETE /api/models/:id/source/bf16`, voir `back/src/modules/model-catalog/README.md`.
 - **Utiliser** : mémorise le modèle du type (`modelSelectionStore`), va à l'accueil du mode et ferme le dialogue. Les composeurs
   lisent `useActiveModel(kind)` (choix mémorisé, sinon le modèle installé le plus utilisé, sinon défaut du serveur, sinon premier du type ; jamais un modèle de transcription).
 - **Recherche Hugging Face** : saisie temporisée 350 ms, résultats gardés 60 s, détail d'un dépôt gardé 5 min, aucun nouvel essai.

@@ -41,6 +41,7 @@ import tarfile
 import tempfile
 import tomllib
 import urllib.request
+import zipfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -136,6 +137,32 @@ def download_verified(url: str, sums_url: str, filename: str, dest_dir: Path) ->
     return path
 
 
+# uv, put next to the interpreter: the app installs its add-on packs with it (engine/app/audio_packs.py: find_uv).
+UV_TRIPLES = {"macos": "aarch64-apple-darwin", "windows": "x86_64-pc-windows-msvc", "linux": "x86_64-unknown-linux-gnu"}
+
+
+def bundle_uv(py: Path, profile: dict, cache: Path) -> None:
+    """Copies uv (same version as the host's, SHA-256 checked against the release's own file) beside the interpreter."""
+    version = subprocess.run(["uv", "--version"], capture_output=True, text=True, check=True).stdout.split()[1]
+    triple = UV_TRIPLES[profile["os"]]
+    windows = profile["os"] == "windows"
+    filename = f"uv-{triple}.{'zip' if windows else 'tar.gz'}"
+    base = f"https://github.com/astral-sh/uv/releases/download/{version}"
+    log(f"uv {version} ({triple}) à côté de l'interpréteur…")
+    archive = download_verified(f"{base}/{filename}", f"{base}/{filename}.sha256", filename, cache / "uv" / version / triple)
+    name = "uv.exe" if windows else "uv"
+    dest = py.parent / name
+    if windows:
+        with zipfile.ZipFile(archive) as zf:
+            dest.write_bytes(zf.read(name))
+    else:
+        with tarfile.open(archive) as tf:
+            member = next(m for m in tf.getmembers() if m.isfile() and m.name.rsplit("/", 1)[-1] == "uv")
+            dest.write_bytes(tf.extractfile(member).read())  # type: ignore[union-attr]
+    dest.chmod(0o755)
+    print(f"  {dest.relative_to(py.parents[2])} : {human(dest.stat().st_size)}")
+
+
 def install_python_cross(target_os: str, version: str, cache: Path, out: Path) -> Path:
     if version != PBS_VERSION[: len(version)]:
         sys.exit(f"Cross-construction : Python {version} non épinglé (disponible : {PBS_VERSION}).")
@@ -180,6 +207,9 @@ def copy_engines(out: Path, profile: dict, build: Path) -> None:
     Not in the repo: they are downloaded from the official release (SHA-256 checked,
     see scripts-local/fetch_sdcpp.py). For a cross-build they go to a build cache."""
     variants = profile.get("sdcpp_variants", [])
+    # Variants the app downloads itself at first launch (README, « Premier lancement »): left out of a release bundle.
+    skipped = {v for v in os.environ.get("DESKTOP_SKIP_SDCPP_VARIANTS", "").split(",") if v}
+    variants = [v for v in variants if v not in skipped]
     (out / "engines").mkdir(parents=True, exist_ok=True)  # the shell always declares this resource folder
     if not variants:
         return
@@ -299,7 +329,8 @@ def static_check(out: Path, profile: dict) -> None:
         rt / "python" / py_rel(profile["os"]),
         out / "engine" / "app" / "main.py",
         site / "fastapi" / "__init__.py", site / "uvicorn" / "__init__.py", site / "PIL" / "__init__.py",
-        site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py", site / "av" / "__init__.py",
+        site / "huggingface_hub" / "__init__.py", site / "psutil" / "__init__.py",
+        rt / "python" / ("uv.exe" if windows else "bin/uv"),
     ]
     if "torch" in profile["extras"]:
         required += [site / "torch" / "__init__.py", site / "diffusers" / "__init__.py", site / "transformers" / "__init__.py"]
@@ -314,6 +345,9 @@ def static_check(out: Path, profile: dict) -> None:
     foreign = [p for p in site.rglob("*") if p.is_file() and not p.is_symlink() and is_macho(p)][:3]
     if foreign:
         sys.exit("Binaires étrangers à la cible : " + ", ".join(str(p) for p in foreign))
+    if "torch" not in profile["extras"]:
+        print("  fichiers clés présents (sans PyTorch : pack « torch » installé par l'application)")
+        return
     cuda = sorted(p.name for p in (site / "torch" / "lib").glob("cudart64_*.dll")) if windows else sorted(
         str(p.relative_to(site)) for p in site.glob("nvidia/cuda_runtime/lib/libcudart.so*"))
     print("  fichiers clés présents ; runtime CUDA :", cuda or "—")
@@ -358,7 +392,7 @@ def smoke_test(py: Path, runtime: Path, out: Path, profile: dict) -> None:
     }
     env.pop("VIRTUAL_ENV", None)
     code = (
-        "import app.main, uvicorn, fastapi, PIL, huggingface_hub, psutil, av;"
+        "import app.main, uvicorn, fastapi, PIL, huggingface_hub, psutil;"
         "print('backend importé');"
         + ("import mlx.core, mflux;print('mlx', mlx.core.__version__ if hasattr(mlx.core,'__version__') else 'ok');" if "mlx" in profile["extras"] else "")
         + ("import torch, diffusers, transformers, gguf;print('torch', torch.__version__, 'diffusers', diffusers.__version__);" if "torch" in profile["extras"] else "")
@@ -421,6 +455,7 @@ def main() -> None:
     py = install_python(profile["python"], build / "python-cache", out, profile["os"])
     prune_stdlib(out / "engine-runtime" / "python", profile["python"], profile["os"])
     site = install_dependencies(py, profile, out, build, cross)
+    bundle_uv(py, profile, build / "uv-cache")
     prune_site_packages(site)
     report_ffmpeg_license(site)
     compile_bytecode(host_python(profile["python"]) if cross else py, site, out / "engine")

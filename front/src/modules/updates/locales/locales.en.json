@@ -74,6 +74,7 @@
   "updates.advice.invite.body": "A small local chat model reads the release notes and public discussions and reports known problems (regressions, crashes). Nothing you write or generate is sent. The advice is informative: it never blocks an update.",
   "updates.advice.invite.button": "Install the adviser (≈ {0})",
   "updates.advice.invite.parts": "engine ≈ {0} MB + model “{2}” ≈ {1}",
+  "updates.advice.invite.partsPresent": "engine ≈ {0} MB; model “{2}” already on this machine",
   "updates.advice.confirm.title": "Update discouraged by the analysis",
   "updates.advice.confirm.message": "The automatic analysis found problems: {0}. It is advice to check, not a ban. Install anyway?",
   "updates.advice.confirm.ok": "Install anyway",

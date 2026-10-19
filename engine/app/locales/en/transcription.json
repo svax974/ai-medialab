@@ -1,0 +1,5 @@
+{
+  "Aucun modèle de transcription n'est téléchargé : installez « Whisper Small » ou « Qwen3-ASR » (Modèles → Audio).": "No transcription model is downloaded: install \"Whisper Small\" or \"Qwen3-ASR\" (Models → Audio).",
+  "Le moteur « {} » n'est pas installé (Modèles → Moteurs).": "The engine \"{}\" is not installed (Models → Engines).",
+  "Modèle de transcription introuvable sur le disque.": "Transcription model not found on disk."
+}

@@ -10,6 +10,7 @@ import { newId, nowSeconds } from 'src/modules/media-library';
 import { UpdateAdvisoryEntity } from '../entities/UpdateAdvisoryEntity';
 import { toAdvisoryDto } from '../mappers/advisoryMapper';
 import type { EngineAdvice, EngineUpdate, ModelUpdate, UpdateAdvisory, UpdateItemKind, UpdatesReport } from '../types/updatesTypes';
+import { tr } from 'src/modules/i18n';
 
 /** Advice kept per item (engine or model): the five most recent, whatever version they are about. */
 export const ADVISORY_HISTORY = 5;
@@ -32,7 +33,7 @@ export class UpdateAdvisoryService {
 
   /** Stores what the engine answered and keeps the history of the item bounded. */
   async save(advice: EngineAdvice): Promise<UpdateAdvisory> {
-    if (!advice.to_version) throw new BadGatewayException('The engine answered an advice without a target version.');
+    if (!advice.to_version) throw new BadGatewayException(tr('updates.error.adviceNoVersion'));
     const row = await this.rows.save(
       this.rows.create({
         id: newId(),
@@ -61,7 +62,7 @@ export class UpdateAdvisoryService {
 
   async remove(id: string): Promise<void> {
     const found = await this.rows.delete({ id });
-    if (!found.affected) throw new NotFoundException('Avis introuvable.');
+    if (!found.affected) throw new NotFoundException(tr('updates.error.adviceNotFound'));
   }
 
   /**

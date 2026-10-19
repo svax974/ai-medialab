@@ -1,0 +1,22 @@
+{
+  "studioCore.error.booleanExpected": "{0} : booléen attendu.",
+  "studioCore.error.conversationNotFound": "Conversation introuvable.",
+  "studioCore.error.countRange": "count : entier entre 1 et {0} attendu.",
+  "studioCore.error.generationNotFound": "Génération introuvable.",
+  "studioCore.error.generationNotRunning": "Cette génération n'est plus en cours.",
+  "studioCore.error.jsonBodyExpected": "Corps JSON attendu.",
+  "studioCore.error.messageNotFound": "Message introuvable.",
+  "studioCore.error.objectExpected": "{0} : objet attendu.",
+  "studioCore.error.promptEmpty": "Le prompt est vide.",
+  "studioCore.error.promptLength": "prompt : texte de 1 à {0} caractères attendu.",
+  "studioCore.error.referenceIdsList": "reference_ids : liste de textes attendue.",
+  "studioCore.error.referenceImageNotFound": "Image de référence introuvable : {0}",
+  "studioCore.error.seedInteger": "seed : entier attendu.",
+  "studioCore.error.textExpected": "{0} : texte attendu.",
+  "studioCore.job.engineUnreachable": "Le moteur est injoignable.",
+  "studioCore.job.generationFailed": "Échec de la génération.",
+  "studioCore.job.interruptedByEngine": "Le moteur s'est arrêté pendant la génération.",
+  "studioCore.job.interruptedByServer": "Interrompu par l'arrêt du serveur",
+  "studioCore.title.defaultChat": "Nouvelle conversation",
+  "studioCore.title.defaultConversation": "Nouvelle création"
+}

@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { lookup as dnsLookup } from 'dns';
 import { isIP } from 'net';
 import type { LookupAddress } from 'dns';
@@ -114,19 +115,19 @@ export function assertPublicUrl(raw: string): URL {
   try {
     url = new URL(raw);
   } catch {
-    throw new SsrfBlockedError('Adresse invalide.');
+    throw new SsrfBlockedError(tr('chat.ssrf.invalid'));
   }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new SsrfBlockedError('Seules les adresses http et https sont permises.');
-  if (url.username || url.password) throw new SsrfBlockedError("Les adresses avec identifiants ne sont pas permises.");
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new SsrfBlockedError(tr('chat.ssrf.protocol'));
+  if (url.username || url.password) throw new SsrfBlockedError(tr('chat.ssrf.credentials'));
   const port = url.port ? Number(url.port) : url.protocol === 'https:' ? 443 : 80;
-  if (!ALLOWED_PORTS.has(port)) throw new SsrfBlockedError(`Port ${port} non permis (80, 443, 8080 et 8443 seulement).`);
+  if (!ALLOWED_PORTS.has(port)) throw new SsrfBlockedError(tr('chat.ssrf.port', [port]));
   const host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase().replace(/\.$/, '');
   if (isIP(host)) {
-    if (!isPublicIp(host)) throw new SsrfBlockedError('Adresse privée, locale ou réservée refusée.');
+    if (!isPublicIp(host)) throw new SsrfBlockedError(tr('chat.ssrf.privateAddress'));
     return url;
   }
   if (!host.includes('.') || BLOCKED_NAMES.has(host) || BLOCKED_SUFFIXES.some((s) => host.endsWith(s))) {
-    throw new SsrfBlockedError('Nom de machine local refusé.');
+    throw new SsrfBlockedError(tr('chat.ssrf.localHost'));
   }
   return url;
 }
@@ -148,9 +149,9 @@ export function createSafeLookup(resolver: Resolver = systemResolver) {
     const done = (typeof options === 'function' ? options : callback) as LookupCallback;
     resolver(hostname, { all: true, verbatim: true, family: opts.family })
       .then((addresses) => {
-        if (!addresses.length) throw Object.assign(new Error(`${hostname} : aucune adresse.`), { code: 'ENOTFOUND' });
+        if (!addresses.length) throw Object.assign(new Error(tr('chat.ssrf.noAddress', [hostname])), { code: 'ENOTFOUND' });
         const blocked = addresses.find((a) => !isPublicIp(a.address));
-        if (blocked) throw Object.assign(new SsrfBlockedError(`${hostname} pointe vers une adresse privée ou locale.`), { code: 'ESSRF' });
+        if (blocked) throw Object.assign(new SsrfBlockedError(tr('chat.ssrf.resolvesPrivate', [hostname])), { code: 'ESSRF' });
         if (opts.all) done(null, addresses);
         else done(null, addresses[0].address, addresses[0].family);
       })

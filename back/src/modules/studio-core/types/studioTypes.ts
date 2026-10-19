@@ -3,12 +3,20 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import type { ConversationMode } from '../entities/ConversationEntity';
 import type { MessageRole, MessageStatus } from '../entities/MessageEntity';
 
-export const DEFAULT_CONVERSATION_TITLE = 'Nouvelle création';
+/** Default titles are stored as written: `DEFAULT_*` is the French value (kept for code that compares), `isDefault*Title` accepts both languages. */
+export const DEFAULT_CONVERSATION_TITLE = tr('studioCore.title.defaultConversation', [], 'fr');
+export const defaultConversationTitle = (): string => tr('studioCore.title.defaultConversation');
+export const isDefaultConversationTitle = (title: unknown): boolean =>
+  title === tr('studioCore.title.defaultConversation', [], 'fr') || title === tr('studioCore.title.defaultConversation', [], 'en');
 /** Title of a conversation of the chat studio until its first exchange names it. */
-export const DEFAULT_CHAT_TITLE = 'Nouvelle conversation';
+export const DEFAULT_CHAT_TITLE = tr('studioCore.title.defaultChat', [], 'fr');
+export const defaultChatTitle = (): string => tr('studioCore.title.defaultChat');
+export const isDefaultChatTitle = (title: unknown): boolean =>
+  title === tr('studioCore.title.defaultChat', [], 'fr') || title === tr('studioCore.title.defaultChat', [], 'en');
 export const MAX_TITLE_LENGTH = 200;
 /** Statuses of a generation that is still going (the legacy `busy` flag and the interruption sweep). */
 export const BUSY_STATUSES: MessageStatus[] = ['queued', 'loading', 'running'];

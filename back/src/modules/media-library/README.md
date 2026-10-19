@@ -37,6 +37,10 @@ Les tests : `services/AssetService.spec.ts` (service, mappeur, galerie), `servic
 dossiers, éditeur d'événements) ; la parité avec le moteur est vérifiée par `legacy-import/publicShapes.spec.ts` et, pour les routes,
 `studio-core/controllers/studioRoutes.spec.ts`.
 
+## Langue
+
+Les textes montrés à l'utilisateur (erreurs, titres par défaut, états d'échec) passent par `tr('mediaLibrary.…')` (`src/modules/i18n`) et suivent la langue de l'interface (en-tête `Accept-Language`). Dictionnaires : `media-library/i18n/messages.fr.json` et `messages.en.json` (parité contrôlée par `i18n/messages.spec.ts`).
+
 ## Dépendances
 
 - `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`).

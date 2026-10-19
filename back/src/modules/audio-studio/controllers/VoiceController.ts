@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import {
   Body, Controller, Delete, Get, HttpCode, NotFoundException, Param, Patch, Post, UnprocessableEntityException,
   UploadedFile, UseInterceptors,
@@ -20,7 +21,6 @@ import { parseTranscribeVoice, parseUpdateVoice, parseUploadVoice, parseVoiceFro
 
 /** A voice sample is a short clip: 100 MB is far more than a 30 s recording of any format. */
 const MAX_VOICE_UPLOAD_BYTES = 100 * 1024 * 1024;
-const NOT_FOUND = 'Voix introuvable.';
 
 /** `/api/voices`: same URLs and shapes as the engine's legacy routes (library, upload, from a take, edit, delete, transcribe). Admin only. */
 @ApiExcludeController()
@@ -42,7 +42,7 @@ export class VoiceController {
   @HttpCode(200)
   @UseInterceptors(FileInterceptor('file', { storage: uploadStorage, limits: { fileSize: MAX_VOICE_UPLOAD_BYTES } }))
   create(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: unknown): Promise<VoiceDto> {
-    if (!file) throw new UnprocessableEntityException('Aucun fichier reçu (champ « file »).');
+    if (!file) throw new UnprocessableEntityException(tr('audioStudio.error.noFileReceived'));
     const input = parseUploadVoice(body);
     return this.files.createFromUpload({ path: file.path, originalName: decodeUploadName(file.originalname), mimeType: file.mimetype }, input);
   }
@@ -56,13 +56,13 @@ export class VoiceController {
   @Patch(':id')
   async patch(@Param('id') id: string, @Body() body: unknown): Promise<VoiceDto> {
     const voice = await this.files.update(id, parseUpdateVoice(body));
-    if (!voice) throw new NotFoundException(NOT_FOUND);
+    if (!voice) throw new NotFoundException(tr('audioStudio.error.voiceNotFound'));
     return voice;
   }
 
   @Delete(':id')
   async remove(@Param('id') id: string): Promise<{ ok: true }> {
-    if (!(await this.files.remove(id))) throw new NotFoundException(NOT_FOUND);
+    if (!(await this.files.remove(id))) throw new NotFoundException(tr('audioStudio.error.voiceNotFound'));
     return { ok: true };
   }
 

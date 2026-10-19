@@ -35,6 +35,19 @@ describe('AssetFileService, asset purge and data folder', () => {
       expect(s.engine.calls[0].options?.body).toMatchObject({ source_path: join(uploadsDir(), 'tmp_x'), original_name: 'clip.mp4', content_type: 'video/mp4' });
     });
 
+    it('stores a generated asset (kind, message link, extra meta) when asked', async () => {
+      const c = await s.conversations.create({ mode: 'diagram' });
+      await s.messages.create({ id: 'u', conversationId: c.id, role: 'user', referenceIds: [] });
+      s.engine.on('POST /engine/v1/media/ingest', (call) => ({
+        media: 'image', filename: `${call.options?.body?.asset_id}.png`, thumb: 't.webp', width: 800, height: 600, meta: {},
+      }));
+      const asset = await s.files.ingest(
+        { path: join(uploadsDir(), 'tmp_x'), originalName: 'diagram.png', mimeType: 'image/png' },
+        { kind: 'generated', messageId: 'u', conversationId: c.id, meta: { mermaid_source: 'flowchart TD\nA-->B', diagram_type: 'flowchart' } },
+      );
+      expect(asset).toMatchObject({ kind: 'generated', message_id: 'u', conversation_id: c.id, meta: { mermaid_source: 'flowchart TD\nA-->B', diagram_type: 'flowchart' } });
+    });
+
     it('relays the engine refusal (422 unreadable file) and removes the raw file', async () => {
       const raw = join(mkdtempSync(join(tmpdir(), 'raw-')), 'tmp_bad');
       writeFileSync(raw, 'x');

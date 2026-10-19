@@ -3,14 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Box, Button, CircularProgress } from '@mui/material'
+import { Box, Button } from '@mui/material'
 import CloudDownloadOutlined from '@mui/icons-material/CloudDownloadOutlined'
-import DeleteOutlineRounded from '@mui/icons-material/DeleteOutlineRounded'
 import { ProgressBar } from '@/modules_shared/common/components/ui/progress'
 import { type SystemInfo } from '@/modules/hardware'
 import { Notice, Section } from '@/modules/model-catalog'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import { useCancelInstall, useInstallLlamacpp, useUninstallLlamacpp } from '../hooks/useEngineInstaller'
+import { useCancelInstall, useInstallLlamacpp } from '../hooks/useEngineInstaller'
 import { selectInstall } from '../lib/installState'
 import { useInstallStore } from '../state/installStore'
 import { InstallRow } from './InstallRow'
@@ -25,7 +24,6 @@ export function LlamacppCard({ system }: { system: SystemInfo }) {
   const install = selectInstall(live, info?.install)
   const start = useInstallLlamacpp()
   const cancel = useCancelInstall('llamacpp')
-  const { removing, uninstall } = useUninstallLlamacpp()
   if (!info) return null
   const running = install.state === 'running'
   const installable = !info.available && !!info.installable
@@ -42,8 +40,6 @@ export function LlamacppCard({ system }: { system: SystemInfo }) {
             <Button variant="outlined" onClick={() => cancel.mutate()}>{t('engines.cancel')}</Button>
           ) : installable ? (
             <Button variant="contained" startIcon={<CloudDownloadOutlined />} disabled={start.isPending} onClick={() => start.mutate()}>{t('engines.install', [info.install_size_mb ?? 0])}</Button>
-          ) : info.available ? (
-            <Button variant="text" disabled={removing} startIcon={removing ? <CircularProgress size={14} /> : <DeleteOutlineRounded />} onClick={() => void uninstall()}>{t(removing ? 'engines.uninstalling' : 'engines.uninstall.button')}</Button>
           ) : undefined
         }
       />

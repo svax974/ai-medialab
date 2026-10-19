@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
+import { acceptLanguage } from '../tools/acceptLanguage';
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { throttledFetchJson } from 'src/modules_shared/common/utils/throttledFetch';
 import { SettingsService } from 'src/modules/settings';
@@ -97,11 +99,11 @@ export class WebToolsService {
     try {
       if (call.function.name === 'web_search') return await this.search(run, signal);
       if (call.function.name === 'fetch_url') return await this.fetch(run, signal);
-      return this.failed(run, `Outil inconnu : ${call.function.name}.`);
+      return this.failed(run, tr('chat.web.unknownTool', [call.function.name]));
     } catch (error) {
       if (signal?.aborted) throw error;
       this.logger.warn(`tool ${call.function.name} failed: ${error instanceof Error ? error.message : String(error)}`);
-      return this.failed(run, error instanceof SsrfBlockedError ? `Adresse refusée : ${error.message}` : error instanceof Error ? error.message : 'Échec.');
+      return this.failed(run, error instanceof SsrfBlockedError ? tr('chat.web.addressRefused', [error.message]) : error instanceof Error ? error.message : tr('chat.web.failed'));
     }
   }
 
@@ -126,17 +128,17 @@ export class WebToolsService {
 
   private async search(run: ToolRun, signal?: AbortSignal): Promise<ToolOutcome> {
     const query = typeof run.arguments.query === 'string' ? run.arguments.query.trim() : '';
-    if (!query) return this.failed(run, 'La requête de recherche est vide.');
+    if (!query) return this.failed(run, tr('chat.web.emptyQuery'));
     const raw = Number(run.arguments.count);
     const count = Number.isInteger(raw) ? Math.min(10, Math.max(1, raw)) : 5;
     const key = await this.deps.braveKey();
     const provider = key ? 'Brave' : 'DuckDuckGo';
     const hits = key ? await this.brave(query, count, key) : await this.duck(query, count);
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    if (hits === null) return this.failed({ ...run, arguments: { query, count } }, `${provider} n'a pas répondu (limite de débit, blocage ou réseau) : réessayez plus tard.`);
+    if (hits === null) return this.failed({ ...run, arguments: { query, count } }, tr('chat.web.noAnswer', [provider]));
     const lines = hits.map((h, i) => `${i + 1}. ${h.title}\n   ${h.url}\n   ${h.snippet}`.trimEnd());
     return {
-      run: { ...run, arguments: { query, count }, status: 'done', result_preview: `${provider} : ${hits.length} résultat${hits.length > 1 ? 's' : ''}`, sources: hits.map((h) => ({ title: h.title, url: h.url })) },
+      run: { ...run, arguments: { query, count }, status: 'done', result_preview: hits.length > 1 ? tr('chat.web.results.many', [provider, hits.length]) : tr('chat.web.results.one', [provider, hits.length]), sources: hits.map((h) => ({ title: h.title, url: h.url })) },
       content: hits.length ? lines.join('\n') : 'Aucun résultat.',
     };
   }
@@ -176,14 +178,14 @@ export class WebToolsService {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     if (!result.data) {
       if (failure instanceof Error) throw failure;
-      return this.failed(run, `La page a répondu ${result.status || 'rien'} : lecture impossible.`);
+      return this.failed(run, tr('chat.web.pageStatus', [result.status || tr('chat.web.nothing')]));
     }
     const page = result.data;
     const html = /html|xml/i.test(page.contentType) || /^\s*</.test(page.body);
     const { text, truncated } = html ? htmlToText(page.body, MAX_PAGE_CHARS) : { text: page.body.slice(0, MAX_PAGE_CHARS), truncated: page.body.length > MAX_PAGE_CHARS };
     const title = html ? titleOf(page.body) : '';
     return {
-      run: { ...run, status: 'done', result_preview: `${title || page.url} — ${text.length} caractères${truncated ? ' (coupé)' : ''}`, sources: [{ title: title || page.url, url: page.url }] },
+      run: { ...run, status: 'done', result_preview: truncated ? tr('chat.web.pagePreviewCut', [title || page.url, text.length]) : tr('chat.web.pagePreview', [title || page.url, text.length]), sources: [{ title: title || page.url, url: page.url }] },
       content: `Page : ${page.url}\n${title ? `Titre : ${title}\n` : ''}\n${text}`,
     };
   }
@@ -193,7 +195,7 @@ function duckTransport(query: string) {
   return async (url: string, signal: AbortSignal) => {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT, 'Accept-Language': 'fr,en;q=0.8' },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': USER_AGENT, 'Accept-Language': acceptLanguage() },
       body: new URLSearchParams({ q: query, kl: 'wt-wt' }).toString(),
       signal,
     });

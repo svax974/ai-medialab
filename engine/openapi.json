@@ -431,6 +431,93 @@
         "title": "ChatPart",
         "type": "object"
       },
+      "ComponentInfo": {
+        "properties": {
+          "blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
+          "contents": {
+            "title": "Contents",
+            "type": "string"
+          },
+          "dependants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ModelRef"
+            },
+            "title": "Dependants",
+            "type": "array"
+          },
+          "disk_mb": {
+            "default": 0,
+            "title": "Disk Mb",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "base",
+              "engine"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "removable": {
+            "title": "Removable",
+            "type": "boolean"
+          },
+          "size_mb": {
+            "title": "Size Mb",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "contents",
+          "installed",
+          "removable",
+          "size_mb"
+        ],
+        "title": "ComponentInfo",
+        "type": "object"
+      },
+      "ComponentList": {
+        "properties": {
+          "components": {
+            "items": {
+              "$ref": "#/components/schemas/ComponentInfo"
+            },
+            "title": "Components",
+            "type": "array"
+          }
+        },
+        "required": [
+          "components"
+        ],
+        "title": "ComponentList",
+        "type": "object"
+      },
       "CustomModelBody": {
         "properties": {
           "option": {
@@ -1044,6 +1131,29 @@
         "title": "LlmStatus",
         "type": "object"
       },
+      "ModelRef": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind"
+        ],
+        "title": "ModelRef",
+        "type": "object"
+      },
       "PurgeBody": {
         "properties": {
           "files": {
@@ -1278,6 +1388,260 @@
           }
         },
         "title": "SamplingParams",
+        "type": "object"
+      },
+      "SetupPlan": {
+        "properties": {
+          "blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/SetupStepPlan"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "total_mb": {
+            "title": "Total Mb",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_id",
+          "steps",
+          "ready",
+          "total_mb"
+        ],
+        "title": "SetupPlan",
+        "type": "object"
+      },
+      "SetupState": {
+        "properties": {
+          "current": {
+            "default": -1,
+            "title": "Current",
+            "type": "integer"
+          },
+          "detail": {
+            "default": "",
+            "title": "Detail",
+            "type": "string"
+          },
+          "done": {
+            "default": 0,
+            "title": "Done",
+            "type": "integer"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "eta": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta"
+          },
+          "message": {
+            "default": "",
+            "title": "Message",
+            "type": "string"
+          },
+          "model_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Id"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "rate": {
+            "default": 0,
+            "title": "Rate",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "state": {
+            "enum": [
+              "idle",
+              "running",
+              "done",
+              "error",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "steps": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SetupStep"
+            },
+            "title": "Steps",
+            "type": "array"
+          },
+          "total": {
+            "default": 0,
+            "title": "Total",
+            "type": "integer"
+          },
+          "total_mb": {
+            "default": 0,
+            "title": "Total Mb",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "state"
+        ],
+        "title": "SetupState",
+        "type": "object"
+      },
+      "SetupStep": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "base",
+              "engine",
+              "model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_mb": {
+            "title": "Size Mb",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "pending",
+              "running",
+              "done",
+              "error",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "size_mb",
+          "state"
+        ],
+        "title": "SetupStep",
+        "type": "object"
+      },
+      "SetupStepPlan": {
+        "properties": {
+          "blocked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "installed": {
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "base",
+              "engine",
+              "model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size_mb": {
+            "title": "Size Mb",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name",
+          "installed",
+          "size_mb"
+        ],
+        "title": "SetupStepPlan",
         "type": "object"
       },
       "TokenCount": {
@@ -1656,6 +2020,27 @@
         "title": "TrendingResponse",
         "type": "object"
       },
+      "UninstallResult": {
+        "properties": {
+          "ok": {
+            "title": "Ok",
+            "type": "boolean"
+          },
+          "removed_models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelRef"
+            },
+            "title": "Removed Models",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ok",
+          "removed_models"
+        ],
+        "title": "UninstallResult",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -1754,6 +2139,93 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/engine/v1/components": {
+      "get": {
+        "description": "Every component with its state and the installed models that need it. `disk`: also measure the space it takes.",
+        "operationId": "list_components_engine_v1_components_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "disk",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Disk",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ComponentList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Components",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/engine/v1/components/{component_id}": {
+      "delete": {
+        "description": "Removes a component and the installed models that need it (409 while it is in use or installing).",
+        "operationId": "uninstall_component_engine_v1_components__component_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "component_id",
+            "required": true,
+            "schema": {
+              "title": "Component Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UninstallResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Uninstall Component",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
     "/engine/v1/engine/unload": {
       "post": {
         "operationId": "unload_engine_engine_v1_engine_unload_post",
@@ -2897,6 +3369,90 @@
         "summary": "Download Model"
       }
     },
+    "/engine/v1/models/{model_id}/setup-plan": {
+      "get": {
+        "operationId": "setup_plan_engine_v1_models__model_id__setup_plan_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup Plan",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/engine/v1/models/{model_id}/source/bf16": {
+      "delete": {
+        "description": "Delete the full-precision source once at least one locally quantized variant is installed from it.",
+        "operationId": "free_bf16_source_engine_v1_models__model_id__source_bf16_delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Free Bf16 Source Engine V1 Models  Model Id  Source Bf16 Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Free Bf16 Source"
+      }
+    },
     "/engine/v1/runtime/settings": {
       "put": {
         "description": "Keeps the studio settings in memory (never written to disk).\n\nChecks: unknown model or quantization is a 422, a variant change while a\ngeneration runs is a 409 (nothing is applied then); the loaded model is unloaded when its variant changed.",
@@ -2938,6 +3494,92 @@
         "summary": "Push Settings",
         "tags": [
           "runtime"
+        ]
+      }
+    },
+    "/engine/v1/setup": {
+      "delete": {
+        "description": "Stops the current step (its partial files are removed); steps already finished stay installed.",
+        "operationId": "cancel_setup_engine_v1_setup_delete",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Setup Engine V1 Setup Delete",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Cancel Setup",
+        "tags": [
+          "setup"
+        ]
+      },
+      "get": {
+        "operationId": "setup_state_engine_v1_setup_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Setup State",
+        "tags": [
+          "setup"
+        ]
+      }
+    },
+    "/engine/v1/setup/{model_id}": {
+      "post": {
+        "description": "Installs what the model lacks (base data, engine, model files); progress through the `setup.progress` event.",
+        "operationId": "start_setup_engine_v1_setup__model_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "model_id",
+            "required": true,
+            "schema": {
+              "title": "Model Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupState"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Setup",
+        "tags": [
+          "setup"
         ]
       }
     },

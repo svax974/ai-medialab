@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
@@ -13,7 +14,7 @@ import { MessageRefEntity } from '../entities/MessageRefEntity';
 import { toMessageDto } from '../mappers/messageMapper';
 import { BUSY_STATUSES, CreateMessageInput, UpdateMessageInput } from '../types/studioTypes';
 
-export const INTERRUPTED_MESSAGE = "Interrompu par l'arrêt du serveur";
+export const interruptedMessage = (): string => tr('studioCore.job.interruptedByServer');
 
 /** Reads and writes messages and their references. Queueing and running them is `GenerationQueueService`. */
 @Injectable()
@@ -131,7 +132,7 @@ export class MessageService {
   async failInterrupted(): Promise<number> {
     const result = await this.messages.update(
       { status: In(BUSY_STATUSES) },
-      { status: 'error', error: INTERRUPTED_MESSAGE, finishedAt: nowSeconds() },
+      { status: 'error', error: interruptedMessage(), finishedAt: nowSeconds() },
     );
     return result.affected ?? 0;
   }

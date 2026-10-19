@@ -1,8 +1,23 @@
 {
-  "_comment": "Profils d'exécution embarqués dans l'application. Un installateur = un profil. Index et versions vérifiés le 2026-10-11 (HEAD des index) ; seul « mac-arm64 » a été construit ET testé de bout en bout.",
+  "_comment": "Profils d'exécution embarqués dans l'application. Un installateur = un profil. Index et versions vérifiés le 2026-10-11 (HEAD des index) ; « mac-arm64 » avec PyTorch embarqué a été construit ET testé de bout en bout (aujourd'hui « mac-arm64-full »). Par défaut, PyTorch n'est plus embarqué : pack « torch » à la demande. Les profils win-cuda, win-rocm, linux-cuda et linux-rocm gardent PyTorch embarqué (hors ligne).",
   "profiles": {
     "mac-arm64": {
-      "label": "macOS Apple Silicon (Metal : MLX + PyTorch/MPS)",
+      "label": "macOS Apple Silicon (Metal) — PyTorch et MLX installés à la demande",
+      "os": "macos",
+      "arch": "aarch64",
+      "python": "3.12",
+      "extras": [],
+      "index_url": null,
+      "extra_index_urls": [],
+      "requirements": [],
+      "status": "unverified",
+      "notes": "Sans PyTorch ni MLX : runtime léger. Le pack « torch » (PyTorch, diffusers, mflux) s'installe au premier besoin (audio_packs.PACKS['torch']). Profil complet : « mac-arm64-full ».",
+      "sdcpp_variants": [
+        "metal"
+      ]
+    },
+    "mac-arm64-full": {
+      "label": "macOS Apple Silicon — PyTorch + MLX embarqués (hors ligne dès l'installation)",
       "os": "macos",
       "arch": "aarch64",
       "python": "3.12",
@@ -16,7 +31,7 @@
         "torchvision"
       ],
       "status": "verified",
-      "notes": "Roues macOS arm64 de PyPI (torch avec backend MPS).",
+      "notes": "Variante lourde (≈ 2 Go) : PyTorch/MPS et mflux dans le runtime. La variante par défaut « mac-arm64 » les installe à la demande.",
       "sdcpp_variants": [
         "metal"
       ]
@@ -128,7 +143,7 @@
         "vulkan"
       ],
       "status": "unverified",
-      "notes": "Sans PyTorch : runtime Python léger (≈ 0,2 Go) + trois builds de stable-diffusion.cpp (≈ 1,2 Go) ; le backend est choisi selon le GPU détecté (CUDA, ROCm, repli Vulkan). Modèles GGUF uniquement (Qwen Image 2.1, Z-Image Turbo…). Compatible avec un vrai installateur (< 2 Go). Jamais exécuté sur Windows."
+      "notes": "Sans PyTorch : runtime léger (≈ 0,2 Go). PyTorch + diffusers (pack « torch ») et les builds CUDA/ROCm de stable-diffusion.cpp s'installent à la demande ; `scripts-local/publish.sh` n'embarque que Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Jamais exécuté sur Windows."
     },
     "linux-universal": {
       "label": "Linux — NVIDIA + AMD + Intel (moteur GGUF : ROCm et Vulkan)",
@@ -144,7 +159,7 @@
         "vulkan"
       ],
       "status": "unverified",
-      "notes": "Sans PyTorch. Les versions officielles ne publient pas de build CUDA pour Linux : NVIDIA passe par Vulkan. Jamais exécuté sur Linux."
+      "notes": "Sans PyTorch : runtime léger (≈ 0,2 Go). PyTorch + diffusers (pack « torch ») et les builds CUDA/ROCm de stable-diffusion.cpp s'installent à la demande ; `scripts-local/publish.sh` n'embarque que Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Jamais exécuté sur Linux."
     }
   }
 }

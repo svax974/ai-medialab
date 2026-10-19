@@ -37,6 +37,16 @@ describe('ChatModelService', () => {
     await expect(service(catalog).resolve(asked as string | undefined)).rejects.toEqual(expect.objectContaining({ code, message: expect.stringMatching(message) }));
   });
 
+  it('resolves a diagram model against the diagram catalog entry, not the chat one', async () => {
+    const s = service({
+      models: [model({ id: 'llm-a' }), model({ id: 'diagram-a', kind: 'diagram' })],
+      llm: { default_model_id: 'llm-a', recommended_model_id: 'llm-a', ready: true },
+      diagram: { default_model_id: 'diagram-a', recommended_model_id: 'diagram-a', ready: true },
+    });
+    expect((await s.resolve(undefined, 'diagram')).id).toBe('diagram-a');
+    await expect(s.resolve('llm-a', 'diagram')).rejects.toMatchObject({ code: 'no_model' });
+  });
+
   it('reports an engine that does not answer', async () => {
     const error = await service(new Error('Engine unreachable')).resolve('llm-a').catch((e: unknown) => e);
     expect(error).toBeInstanceOf(ChatError);

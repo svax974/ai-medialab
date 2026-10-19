@@ -66,5 +66,13 @@
   "settings.chatVoice.aria": "Voix par défaut du chat",
   "settings.help.chatVoice.title": "Voix par défaut du chat",
   "settings.help.chatVoice.body": "Les outils de création du chat peuvent lire un texte à voix haute. Un modèle qui clone une voix en exige une : sans voix nommée dans la demande, le chat prend celle-ci, sinon il affiche une carte pour que vous la choisissiez. Les modèles qui ont leurs propres voix n'en ont pas besoin.",
-  "settings.help.chatVoice.tip": "une voix de la bibliothèque, avec un échantillon."
+  "settings.help.chatVoice.tip": "une voix de la bibliothèque, avec un échantillon.",
+  "settings.tabs.general": "Général",
+  "settings.tabs.engines": "Moteurs",
+  "settings.tabs.models": "Modèles",
+  "settings.language.title": "Langue",
+  "settings.language.description": "Langue de l'interface. Au premier lancement, celle du système est reprise (français, sinon anglais).",
+  "settings.help.language.title": "Langue de l'interface",
+  "settings.help.language.body": "Français ou anglais. Le changement est immédiat et mémorisé dans ce navigateur. Tant que vous n'avez rien choisi, l'application suit la langue du système : français si c'est le français, anglais sinon.",
+  "settings.help.language.tip": "le même choix existe dans le bouton globe de la barre latérale."
 }

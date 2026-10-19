@@ -1,0 +1,22 @@
+{
+  "Image refusée : data URL invalide ou trop grosse (20 Mo au plus).": "Image rejected: invalid or too large data URL (20 MB at most).",
+  "Image refusée : seuls un fichier du dossier de données (chemin absolu) ou une data URL sont acceptés.": "Image rejected: only a file in the data folder (absolute path) or a data URL is accepted.",
+  "Image refusée : en dehors du dossier de données.": "Image rejected: outside the data folder.",
+  "Image refusée : fichier introuvable ou format non pris en charge (png, jpg, webp, gif).": "Image rejected: file not found or unsupported format (png, jpg, webp, gif).",
+  "Image refusée : plus de 20 Mo.": "Image rejected: larger than 20 MB.",
+  "Ce modèle ne lit pas les images : choisissez un modèle avec la mention « vision ».": "This model cannot read images: choose a model with the \"vision\" badge.",
+  "« {} » n'appelle pas de fonctions : choisissez un modèle avec la mention « outils ».": "\"{}\" does not call functions: choose a model with the \"tools\" badge.",
+  "La conversation dépasse la fenêtre de contexte ({} tokens pour {}) : raccourcissez-la, ou ouvrez-la avec un contexte plus grand.": "The conversation exceeds the context window ({} tokens for {}): shorten it, or open it with a larger context.",
+  "Le moteur de chat a répondu {}.": "The chat engine answered {}.",
+  "Mémoire insuffisante pour charger ce modèle avec ce contexte. Essayez un contexte plus court, une quantification plus forte ou un modèle plus léger.": "Not enough memory to load this model with this context. Try a shorter context, a stronger quantization or a lighter model.",
+  "Le moteur de chat s'est arrêté (code {}).": "The chat engine stopped (code {}).",
+  "Modèle de chat inconnu.": "Unknown chat model.",
+  "« {} » n'est pas un modèle de chat.": "\"{}\" is not a chat model.",
+  "Le moteur de chat (llama.cpp) n'est pas installé : ouvrez Modèles pour l'installer.": "The chat engine (llama.cpp) is not installed: open Models to install it.",
+  "Le modèle « {} » n'est pas (entièrement) téléchargé. Ouvrez Modèles pour le télécharger.": "The model \"{}\" is not (fully) downloaded. Open Models to download it.",
+  "Une réponse est déjà en cours de génération.": "A reply is already being generated.",
+  "Une génération de médias est en cours : attendez sa fin ou annulez-la avant de discuter.": "A media generation is in progress: wait for it to finish or cancel it before chatting.",
+  "Fichiers de « {} » introuvables : téléchargez le modèle.": "Files of \"{}\" not found: download the model.",
+  "Le chargement du modèle prend trop de temps : abandon.": "Loading the model is taking too long: giving up.",
+  "La connexion au moteur de chat a été coupée.": "The connection to the chat engine was cut."
+}

@@ -4,37 +4,20 @@
  */
 
 import { useEffect } from 'react'
-import { toast } from 'react-toastify'
 import { eventStreamClient } from '@/modules_shared/common/core/events'
-import { modelCatalogApi, useDownloadStore, type ModelInfo } from '@/modules/model-catalog'
-import { LLAMACPP_INSTALL_TOPIC, nextSetupStep, PACK_INSTALL_TOPIC, parseInstallState, relevantInstall, SDCPP_INSTALL_TOPIC } from '../lib/installState'
+import { type ModelInfo } from '@/modules/model-catalog'
+import { LLAMACPP_INSTALL_TOPIC, PACK_INSTALL_TOPIC, parseInstallState, SDCPP_INSTALL_TOPIC, SETUP_TOPIC } from '../lib/installState'
 import { enginesApi } from '../services/enginesApi'
 import { useInstallStore } from '../state/installStore'
-import type { EngineInstallState, PackInstallState } from '../types'
+import { useSetupStore } from '../state/setupStore'
+import type { EngineInstallState, PackInstallState, SetupRun } from '../types'
 
 /**
- * Installs what a model needs: the engine first when it is missing (the model is then downloaded by
- * `useSetupController` once the engine is installed), else just the model. Errors are shown as messages.
+ * Sets a model up: opens the confirmation dialog, which shows what will be downloaded (base data, engine, model) and, once
+ * confirmed, runs the whole install in the engine with one progress and one cancel (`SetupDialog`).
  */
-export async function startSetup(model: ModelInfo): Promise<void> {
-  const store = useInstallStore.getState()
-  try {
-    if (model.needs_engine_install) {
-      // A finished previous install must not look like this one is done: reset before the pending model is set.
-      if (model.engine_pack) store.setPackInstall({ state: 'idle' })
-      else if (model.backend === 'llamacpp') store.setLlamacppInstall({ state: 'idle' })
-      else store.setEngineInstall({ state: 'idle' })
-      store.setPending(model.install === 'installed' ? null : model.id)
-      if (model.engine_pack) store.setPackInstall(await enginesApi.installPack(model.engine_pack))
-      else if (model.backend === 'llamacpp') store.setLlamacppInstall(await enginesApi.installLlamacpp())
-      else store.setEngineInstall(await enginesApi.installSdcpp())
-    } else if (model.install !== 'installed') {
-      useDownloadStore.getState().setDownload(await modelCatalogApi.download(model.id))
-    }
-  } catch (error) {
-    store.setPending(null)
-    toast.error((error as Error).message)
-  }
+export function startSetup(model: Pick<ModelInfo, 'id'>): void {
+  useSetupStore.getState().open(model.id)
 }
 
 /** Feeds the installers' live state from the event stream (`engine.pack.install`, `engine.engine.install`, `engine.llamacpp.install`). */
@@ -59,36 +42,24 @@ export function useInstallEvents(): void {
   }, [])
 }
 
-/**
- * When the engine of a pending model is installed, starts downloading the model (read from the catalogue, which
- * the finished install has just changed); gives up when the install failed or was cancelled.
- */
-export function useSetupController(): void {
-  const sd = useInstallStore((s) => s.engineInstall)
-  const pack = useInstallStore((s) => s.packInstall)
-  const llama = useInstallStore((s) => s.llamacppInstall)
-  const pending = useInstallStore((s) => s.pendingModelId)
-  const engineState = relevantInstall(sd, pack, llama).state
+/** Feeds the run of the model setup from the event stream, and reads it again after a reconnection or a page reload. */
+export function useSetupEvents(): void {
   useEffect(() => {
-    const step = nextSetupStep(pending, engineState)
-    if (step === 'wait' || !pending) return
-    useInstallStore.getState().setPending(null)
-    if (step === 'abort') return
-    void (async () => {
-      try {
-        // Direct call: a query on the same key would be cancelled by the invalidation the install triggers.
-        const catalog = await modelCatalogApi.catalog()
-        const model = catalog.models.find((m) => m.id === pending)
-        if (model && model.install !== 'installed') useDownloadStore.getState().setDownload(await modelCatalogApi.download(pending))
-      } catch (error) {
-        toast.error((error as Error).message)
-      }
-    })()
-  }, [engineState, pending])
+    const refresh = () => void enginesApi.setupState().then((run) => useSetupStore.getState().setRun(run)).catch(() => undefined)
+    refresh()
+    return eventStreamClient.subscribe(
+      [SETUP_TOPIC],
+      (event) => {
+        const run = parseInstallState<SetupRun>(event.data)
+        if (run) useSetupStore.getState().setRun(run)
+      },
+      { onResync: refresh },
+    )
+  }, [])
 }
 
-/** Everything the studio shell mounts for the engines: live install state and the two-step setup. */
+/** Everything the studio shell mounts for the engines: live install state and the model setup run. */
 export function useEnginesSync(): void {
   useInstallEvents()
-  useSetupController()
+  useSetupEvents()
 }

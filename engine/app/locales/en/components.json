@@ -1,0 +1,6 @@
+{
+  "Le moteur d'images et de vidéos au format GGUF (Metal, CUDA, ROCm ou Vulkan selon la machine).": "The engine for GGUF images and videos (Metal, CUDA, ROCm or Vulkan depending on the machine).",
+  "Le moteur du chat (modèles de langage GGUF), sans Python.": "The chat engine (GGUF language models), without Python.",
+  "Ce moteur est intégré à l'application : il ne peut pas être supprimé.": "This engine is built into the application: it cannot be removed.",
+  "Un téléchargement est en cours pour « {} ».": "A download is in progress for \"{}\"."
+}

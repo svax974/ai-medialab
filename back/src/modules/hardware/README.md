@@ -24,7 +24,7 @@ Module d'application. Tâche H4.1.
 
 | Méthode | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/system?refresh=` | Admin | Matériel : OS, mémoire, accélérateurs, GPU inutilisables, disque, dossiers ; plus `engines`, `packs`, `pack_install` (état des moteurs et des packs, lu par le front du module `engines` ; les installations elles-mêmes sont dans `back/src/modules/engines/README.md`). `refresh=true` relance la détection (sonde PyTorch du moteur, plusieurs secondes). |
+| `GET` | `/api/system?refresh=` | Admin | Matériel : OS, mémoire, accélérateurs, GPU inutilisables, disque, dossiers ; plus `engines`, `packs`, `pack_install` (état des moteurs et des packs, lu par le front du module `engines` ; les installations elles-mêmes sont dans `back/src/modules/engines/README.md`). Répond sans attendre la sonde PyTorch du moteur (sous-processus lancé une fois au démarrage, plusieurs secondes) : tant qu'elle tourne, `torch.pending` vaut `true` et `engines.torch` est indisponible (« détection en cours »), puis le moteur publie `models.changed`. `refresh=true` refait la détection, en gardant le résultat de la sonde. |
 | `GET` | `/api/status` | Admin | Worker de génération : `state`, `model_id`, `quantize`, file, dernière erreur. |
 | `POST` | `/api/engine/unload` | Admin | Décharge le modèle ; 409 (relayé) pendant une génération. |
 

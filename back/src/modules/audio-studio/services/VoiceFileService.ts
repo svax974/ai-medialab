@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { unlink } from 'fs/promises';
 import { join, resolve } from 'path';
@@ -11,12 +12,11 @@ import { assetFilePath, AssetService, newId, StudioEvents, uploadsDir, type Uplo
 import { VoiceDto } from '../dto/VoiceDto';
 import { VoiceTranscriptionDto } from '../dto/VoiceTranscriptionDto';
 import {
-  DEFAULT_SAVED_VOICE_NAME, DEFAULT_UPLOADED_VOICE_NAME, MAX_TRANSCRIPT_LENGTH, type TranscribeVoiceInput,
+  defaultSavedVoiceName, defaultUploadedVoiceName, MAX_TRANSCRIPT_LENGTH, type TranscribeVoiceInput,
   type UpdateVoiceInput, type UploadVoiceInput, type VoiceFromAssetInput,
 } from '../types/voiceTypes';
 import { VoiceService } from './VoiceService';
 
-const VOICE_NOT_FOUND = 'Voix introuvable.';
 const stemOf = (name: string): string => name.replace(/\.[^.]*$/, '');
 const text = (value: unknown): string => (typeof value === 'string' ? value : '');
 
@@ -40,7 +40,7 @@ export class VoiceFileService {
     try {
       return await this.store(file.path, {
         ...input,
-        name: input.name || stemOf(file.originalName) || DEFAULT_UPLOADED_VOICE_NAME,
+        name: input.name || stemOf(file.originalName) || defaultUploadedVoiceName(),
       });
     } finally {
       await unlink(file.path).catch(() => undefined);
@@ -50,10 +50,10 @@ export class VoiceFileService {
   /** Keeps a generated take as a library voice; what the user left empty comes from the take's metadata. 404 if not an audio take. */
   async createFromAsset(input: VoiceFromAssetInput): Promise<VoiceDto> {
     const asset = await this.assets.getEntity(input.assetId);
-    if (!asset || asset.media !== 'audio') throw new NotFoundException('Prise audio introuvable.');
+    if (!asset || asset.media !== 'audio') throw new NotFoundException(tr('audioStudio.error.takeNotFound'));
     const meta = asset.meta ?? {};
     return this.store(assetFilePath(asset.kind, asset.filename), {
-      name: input.name || text(meta.voice) || DEFAULT_SAVED_VOICE_NAME,
+      name: input.name || text(meta.voice) || defaultSavedVoiceName(),
       kind: input.kind,
       transcript: input.transcript || text(meta.prompt).slice(0, MAX_TRANSCRIPT_LENGTH),
       description: input.description || text(meta.instruct),
@@ -84,7 +84,7 @@ export class VoiceFileService {
   /** A suggested transcript computed by the engine (nothing is stored); 404 unknown voice, 409 no transcription model installed. */
   async transcribe(id: string, input: TranscribeVoiceInput): Promise<VoiceTranscriptionDto> {
     const voice = await this.voices.get(id);
-    if (!voice?.url) throw new NotFoundException(VOICE_NOT_FOUND);
+    if (!voice?.url) throw new NotFoundException(tr('audioStudio.error.voiceNotFound'));
     const filename = voice.url.slice(voice.url.lastIndexOf('/') + 1);
     try {
       return await this.engine.post('/engine/v1/media/transcribe', {

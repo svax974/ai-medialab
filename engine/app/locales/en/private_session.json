@@ -1,0 +1,10 @@
+{
+  "La génération a échoué (les détails ne sont pas conservés en mode privé).": "Generation failed (details are not kept in private mode).",
+  "Mémoire insuffisante": "Mémoire insuffisante",
+  "Mémoire GPU insuffisante": "Mémoire GPU insuffisante",
+  "Arrêté par la protection mémoire": "Arrêté par la protection mémoire",
+  "Le processus du modèle s'est arrêté": "Le processus du modèle s'est arrêté",
+  "sd-cli s'est arrêté (code": "sd-cli s'est arrêté (code",
+  "{} : dossier de session privée invalide.": "{}: invalid private session folder.",
+  "dossier privé inconnu : {}": "unknown private folder: {}"
+}

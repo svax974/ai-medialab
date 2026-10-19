@@ -4,15 +4,15 @@ Inventaire de ce qui est **construit** (pas un journal des changements), par mod
 même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints, tests) est dans son README, la forme générale dans
 `ARCHITECTURE.md` (carte de la documentation), le guide des modèles pour l'utilisateur dans `README.md`.
 
-*Dernière vérification contre les sources : 2026-10-15. Ce qui n'a jamais été exécuté pour de vrai est signalé « non vérifié ». Aucun vrai `llama-server`, modèle de chat ni navigateur n'a servi à vérifier le mode Chat, le mode privé et le conseiller de mises à jour : tout a été testé avec de faux serveurs.*
+*Dernière vérification contre les sources : 2026-10-19. Ce qui n'a jamais été exécuté pour de vrai est signalé « non vérifié ». Aucun vrai `llama-server`, modèle de chat ni navigateur n'a servi à vérifier le mode Chat, le mode Diagrammes, le mode privé et le conseiller de mises à jour : tout a été testé avec de faux serveurs.*
 
 ## Studios (interface, `front/src/modules/`)
 
 ### `studio-shell` : coquille
-- Barre latérale (masquable) : commutateur de mode image / audio / vidéo / chat, bouton « Génération privée », pages du mode, recherche, conversations épinglées et
-  groupées par période (mode « Sélectionner » : suppression de plusieurs conversations d'un coup), carte du moteur, accès aux modèles et aux réglages, « Vérifier les mises à jour » (modale : moteurs installés puis modèles installés, mise à jour par ligne, par section ou globale, avec barres de progression ; filtre image / audio / vidéo ; rien n'est mis à jour sans clic), langue (français, anglais), thème sombre ou clair.
-- Routes : `/`, `/c/:id`, `/galerie`, `/audio`, `/audio/voix`, `/audio/bibliotheque`, `/video`, `/video/bibliotheque` ;
-  raccourcis ⌘B, ⌘⇧O, ⌘K, `/`.
+- Barre latérale (masquable) : commutateur de mode chat / image / audio / vidéo / diagrammes, bouton « Génération privée », pages du mode, recherche, conversations épinglées et
+  groupées par période (mode « Sélectionner » : suppression de plusieurs conversations d'un coup), carte du moteur, accès aux modèles et aux réglages, « Vérifier les mises à jour » (modale : moteurs installés puis modèles installés, mise à jour par ligne, par section ou globale, avec barres de progression ; filtre image / audio / vidéo ; rien n'est mis à jour sans clic), thème sombre ou clair.
+- Routes : `/`, `/c/:id`, `/galerie`, `/audio`, `/audio/voix`, `/audio/bibliotheque`, `/video`, `/video/bibliotheque`,
+  `/chat`, `/diagrammes` ; raccourcis ⌘B, ⌘⇧O, ⌘K, `/`.
 - Abonnement au flux d'événements et traduction en mises à jour du cache (TanStack Query) ; repli sur le rechargement quand le
   flux est coupé.
 - Thème « chambre noire » (`front/src/themes/chambre-noire/`) : sombre « noir chaud / rouge inactinique » par défaut, clair
@@ -58,8 +58,18 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
   (images pour les modèles de vision, fichiers texte) ; recherche web optionnelle par conversation (DuckDuckGo, ou Brave avec une clé) ; **outils de création** (actifs par défaut) : le modèle de chat lance une image, une vidéo ou un son avec le modèle sélectionné de chaque studio (paramètres par défaut, ce que chaque modèle accepte seulement), le résultat s'affiche dans la réponse et dans la médiathèque, « Ouvrir dans le studio » ; cartes de choix (durée d'une vidéo, voix d'un modèle qui en exige une, voix par défaut du chat dans les réglages) ; commandes `/image`, `/video [5s]`, `/audio [voix :]` sans le modèle de chat (absents de la session privée) ;
   titre automatique ; export Markdown / JSON ; recherche plein texte ; brouillon par conversation ; indicateur du modèle chargé avec
   « Décharger ».
-- **Envoyer vers Image / Vidéo / Audio** depuis une réponse (sélection ou texte entier, sans balisage) et bouton **✨ Améliorer le prompt** dans
-  les trois compositeurs (rétablissement possible). **Non vérifié** : rendu réel, vrai modèle.
+- **Envoyer vers Image / Vidéo / Audio / Diagrammes** depuis une réponse (sélection ou texte entier, sans balisage) et bouton **✨ Améliorer le prompt** dans
+  les trois compositeurs de médias (rétablissement possible). **Non vérifié** : rendu réel, vrai modèle.
+
+### `diagram-studio`
+- Organigrammes, flowcharts, séquences, architectures (groupées en blocs), diagrammes d'états, cartes mentales : un modèle de
+  langage local (les mêmes fichiers GGUF que l'onglet Chat, catalogue séparé, aucun téléchargement dupliqué) répond en JSON
+  contraint par schéma (jamais de syntaxe Mermaid libre à parser), converti en Mermaid et rendu côté navigateur avec un thème
+  au choix (clair, sombre, coloré, minimal — appliqué sans redemander au modèle). Le rendu (PNG) rejoint la galerie et le fil
+  comme une image normale ; la source Mermaid reste jointe pour re-styler plus tard.
+- Accueil (première installation, composeur « héros », quatre prompts de départ, un par type), composeur : prompt, modèle,
+  type de diagramme, thème. Pas de file de jobs : une génération est un appel ponctuel (texte, puis rendu), comme le bouton
+  « Améliorer le prompt » du chat. **Non vérifié** : rendu réel, vrai modèle.
 
 ### `private` : génération privée
 - Bouton « Génération privée » (cadenas, bandeau et cadre violets) : session éphémère pour image, audio, vidéo **et chat** sans historique, résultat ni
@@ -94,13 +104,23 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
   Hugging Face « LLM ».
 
 ### `engines`
-- Cartes « Moteurs » : installation en un clic de stable-diffusion.cpp (SHA-256 vérifiée) et des packs audio et vidéo
-  (environnements Python isolés), annulation, désinstallation ; installation guidée au premier lancement (« Tout installer ») ; carte llama.cpp (moteur de chat) ;
+- **Installation à la première sélection d'un modèle** : une fenêtre de confirmation liste ce qui sera téléchargé (« Données de base »
+  partagées : PyTorch, FFmpeg ; « Moteur d'exécution » ; « Modèle »), avec les tailles et le total ; une seule exécution côté moteur,
+  progression, annulation qui supprime ce qui est partiel ; un élément déjà installé n'est jamais retéléchargé.
+- Cartes « Moteurs » : installation de stable-diffusion.cpp (SHA-256 vérifiée) et des packs audio et vidéo
+  (environnements Python isolés), annulation ; carte llama.cpp (moteur de chat) ;
   **invitation au lancement** (fenêtre à fermer, case « Ne plus me le proposer », rappelée dans les Réglages) tant que llama.cpp manque : chat, mises à jour
   analysées, prompts améliorés, option du modèle conseillé.
 
+### Langue (français, anglais)
+- Choix dans Réglages > Général ; au premier lancement, la langue du système (français, sinon anglais). L'interface, les messages d'erreur de Nest, les textes du moteur
+  (descriptions et notes des modèles, paramètres, progression, erreurs) et les avis de mise à jour suivent ce choix. Formats de dates et de nombres selon la langue.
+  Flux et règles : `ARCHITECTURE.md`, section « Langue de l'interface ».
+
 ### `settings` et `hardware`
-- Dialogue « Réglages » : délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face et clé Brave Search facultatifs, voix par défaut du chat, invitation « IA locale au lancement », rappel
+- Dialogue « Réglages » en trois onglets. **Moteurs** : tous les composants téléchargeables (données de base, moteurs) avec leur état,
+  l'espace occupé, et la suppression (qui supprime aussi les modèles installés qui en dépendent, nommés dans la confirmation). **Modèles** :
+  le catalogue par catégorie (chat, audio, image, vidéo) avec l'état et la suppression. **Général** : langue de l'interface (français ou anglais ; au premier lancement, celle du système, anglais à défaut), délai de déchargement du modèle, aperçus, économie de mémoire, jeton Hugging Face et clé Brave Search facultatifs, voix par défaut du chat, invitation « IA locale au lancement », rappel
   des raccourcis ; chaque réglage a une info-bulle. Carte « Cette machine » (puce ou GPU, mémoire, disque des modèles, GPU
   inutilisables).
 
@@ -117,6 +137,7 @@ même commit que la fonctionnalité. Le détail d'un module (fichiers, endpoints
 | `model-catalog` | Catalogue, téléchargements, modèles personnalisés, recherche Hugging Face (délégués au moteur) |
 | `engines` | Installateurs de moteurs et de packs (délégués au moteur) |
 | `chat` | Arbre de messages (`chat_messages`, réglages par conversation), flux SSE de réponse vers le moteur LLM, outils web (DuckDuckGo / Brave, garde contre les adresses internes), titre automatique, amélioration de prompt, export, recherche, pièces jointes, déchargement et frères d'un message ; jauge d'occupation partagée avec la file des générations |
+| `diagrams` | Génération de diagrammes par appel LLM ponctuel (JSON contraint par schéma → Mermaid, jamais de job), messages génériques de `studio-core` (mode `diagram`), rendu PNG attaché comme asset généré une fois reçu du front |
 | `private` | Session privée en mémoire (conversations et messages sans base), dossier de session, file partagée, chat privé sans état, nettoyage (fin de session, délai, démarrage) |
 | `updates` | Détection des mises à jour (moteurs, modèles), lancement, version non testée, conseiller et avis enregistrés (`update_advisories`) |
 | `legacy-import` | Import idempotent de l'ancienne base du moteur au premier démarrage, puis renommage en `.imported` |
@@ -126,7 +147,8 @@ migrations TypeORM.
 
 ## Moteur (`engine/`)
 
-- **Images** : MLX (Apple Silicon), PyTorch + diffusers (CUDA, ROCm, MPS), GGUF par stable-diffusion.cpp (Metal, CUDA, ROCm,
+- **Images** : MLX (Apple Silicon), PyTorch + diffusers (CUDA, ROCm, MPS ; installés à la demande par le pack « torch », hors de
+  l'installateur), GGUF par stable-diffusion.cpp (Metal, CUDA, ROCm,
   Vulkan) ; texte vers image, image vers image, édition par instruction ; modèle « Démo » sans GPU (`IMAGEGEN_DEMO=1`).
 - **SDXL spécialisés** : LoRA chargées sur SDXL (force réglable, mots déclencheurs ajoutés au prompt), dont deux de pixel art
   avec post-traitement « Pixels nets », dont « Pixel Art XL · Visage » qui suit le visage d'une photo (IP-Adapter, image de
@@ -141,6 +163,9 @@ migrations TypeORM.
   vérifiés sur Hugging Face (de 0,7 à 17,7 Go : Qwen3, Gemma 4, Ministral 3, gpt-oss, LFM2.5…), recherche Hugging Face « LLM », flux SSE normalisé
   (réflexion, appels d'outils, statistiques), un seul modèle en mémoire avec les générations, cache de prompt borné à 1 Go. **Non vérifié** : aucun vrai
   `llama-server`.
+- **Diagrammes** : réutilise les mêmes modèles et fichiers GGUF que le Chat sous un catalogue séparé (`diagram_models.py`,
+  `kind="diagram"`), via `/engine/v1/llm/chat` (JSON contraint par schéma, pas de job de diffusion) ; aucune recherche
+  Hugging Face ni rubrique « Nouveautés » dédiée (ce sont les mêmes modèles). **Non vérifié** : aucun vrai `llama-server`.
 - Nouveautés Hugging Face (`hf_trending.py`), conseiller de mises à jour (`update_advisor.py`), session privée des jobs (`private_session.py`).
 - Planificateur mémoire (refus argumenté d'un modèle qui ne tient pas), garde mémoire (refus de charger quand la mémoire libre
   manque, arrêt du modèle avant saturation de la machine, relevé par job : `ARCHITECTURE.md`), un modèle chargé à la fois, déchargement après
@@ -151,5 +176,7 @@ migrations TypeORM.
 
 - Coquille Tauri du gabarit : processus annexe `engine` (Python embarqué) puis Nest, jeton partagé, page d'attente « chambre
   noire », dossier de données de l'OS, reprise de l'ancien dossier `app.chambrenoire.studio`.
-- Profils d'exécution : macOS Apple Silicon (assemblé avec l'ancienne coquille) ; Windows et Linux (CUDA, ROCm) scriptés,
-  **non vérifiés**. Aucune application n'a été construite avec la coquille du gabarit.
+- Installateur léger : runtime Python + `uv` + Metal/Vulkan seulement ; PyTorch + diffusers (et MLX), les builds CUDA/ROCm de
+  stable-diffusion.cpp et les modèles se téléchargent au premier besoin. Publication : `scripts-local/publish.sh` (release GitHub).
+- Profils d'exécution : macOS Apple Silicon (runtime léger construit, démarrage vérifié ; assemblé en version complète avec l'ancienne
+  coquille) ; Windows et Linux (universel, CUDA, ROCm) scriptés, **non vérifiés**. Aucune application n'a été construite avec la coquille du gabarit.

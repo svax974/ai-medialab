@@ -23,6 +23,7 @@ import { useModelSelectionStore } from '../state/modelSelectionStore'
 import type { ModelInfo } from '../types'
 import { GatedNotice, HelpTag, LicenseWarning, LlmBadges, VideoBadges } from './ModelBadges'
 import { useSizeLabel } from '../hooks/useSizeLabel'
+import { TempDownloadNote } from './TempDownloadNote'
 import { Tag } from './panels'
 
 /** What the picker row says about what is missing: the engine to install, the model to download (what is left of it), or too heavy. */
@@ -81,6 +82,7 @@ function PickerRow({ model: m, active, loaded }: { model: ModelInfo; active: boo
             </Box>
           )}
           <MissingBadges model={m} />
+          <TempDownloadNote model={m} compact />
           {m.needs_engine_install && m.engine_detail && (
             <Box component="p" sx={{ m: 0, mt: '4px', fontSize: 11.5, lineHeight: 1.4, color: 'var(--faint)' }}>
               <Box component="b" sx={{ fontWeight: 500, color: 'var(--muted)' }}>{m.engine_name}</Box> : {m.engine_detail}
@@ -132,7 +134,7 @@ export function ModelPicker({ model, usage, onSelect }: ModelPickerProps) {
       >
         <MemoryOutlined sx={{ fontSize: 14, flexShrink: 0, color: 'var(--safe)' }} />
         <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{model.name}</Box>
-        <Box component="span" sx={{ flexShrink: 0, fontFamily: 'var(--font-mono, monospace)', fontSize: 10, color: 'var(--faint)' }}>
+        <Box component="span" sx={{ flexShrink: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontFamily: 'var(--font-mono, monospace)', fontSize: 10, color: 'var(--faint)' }}>
           {t(pickerBackendKey(model))}
           {model.precision ? ` · ${model.precision}` : ''}
         </Box>

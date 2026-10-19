@@ -50,6 +50,14 @@ def load_settings() -> dict[str, Any]:
     return {**DEFAULT_SETTINGS, **runtime_settings.get_settings()}
 
 
+def _runtime_has(backend: str) -> bool:
+    """Whether the main runtime brings a backend itself (development environment, older full bundles)."""
+    import importlib.util
+
+    module = {"torch": "torch", "mlx": "mflux"}.get(backend)
+    return module is not None and importlib.util.find_spec(module) is not None
+
+
 class WorkerHandle:
     """Worker process plus a bridge from its events to the asyncio loop."""
 
@@ -303,11 +311,10 @@ class JobManager:
     def _availability_error(self, model_id: str) -> str | None:
         """Why the model cannot run right now (engine or weights not installed), as the message to show."""
         spec = get_spec(model_id)
-        if spec.backend == "pack":
-            pack = spec.options["pack"]
-            if not audio_packs.is_installed(pack):
-                return (f"Le moteur « {audio_packs.PACKS[pack].name} » n'est pas installé. "
-                        "Ouvrez Modèles pour l'installer.")
+        pack = audio_packs.pack_of(spec)
+        if pack and not audio_packs.is_installed(pack) and not _runtime_has(spec.backend):
+            return (f"Le moteur « {audio_packs.PACKS[pack].name} » n'est pas installé. "
+                    "Ouvrez Modèles pour l'installer.")
         if spec.backend == "sdcpp":
             from .system import get_system
 

@@ -1,0 +1,9 @@
+{
+  "diagrams.error.noFile": "No file received (field \"file\").",
+  "diagrams.error.busyGeneration": "A generation is running or waiting: wait for it to finish.",
+  "diagrams.error.busyModel": "The language model is busy: wait for it to finish.",
+  "diagrams.error.emptyPrompt": "The prompt is empty.",
+  "diagrams.error.conversationNotFound": "Conversation not found.",
+  "diagrams.error.notFound": "Diagram generation not found.",
+  "diagrams.error.badJson": "The model did not return usable JSON: try again, or choose a more capable model."
+}

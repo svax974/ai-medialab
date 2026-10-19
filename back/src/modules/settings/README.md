@@ -87,3 +87,5 @@ npx jest --runInBand src/modules/settings/services/settingsPatch.spec.ts
 
 `services/{settingsPatch,SettingsService,SettingsEngineSync}.spec.ts` (faux moteur HTTP, configuration de module simulée),
 `controllers/SettingsController.spec.ts`, `legacySettings.spec.ts`. Côté moteur : `engine/tests/test_runtime_settings.py`.
+
+**Langue.** Les erreurs de validation du patch suivent la langue de l'interface (`Accept-Language`) : textes dans `i18n/messages.{fr,en}.json`, lus par `tr()` (`src/modules/i18n`).

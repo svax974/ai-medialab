@@ -3,7 +3,7 @@
 ## Rôle
 
 Coquille du studio dans le nouveau front : barre latérale (mode image / audio / vidéo / chat, pages du mode, recherche et liste des
-conversations épinglées et groupées par période, carte du moteur, modèles, réglages, langue, thème clair/sombre), mise en page, raccourcis
+conversations épinglées et groupées par période, carte du moteur, modèles, réglages, thème clair/sombre ; la langue se change dans les Réglages), mise en page, raccourcis
 clavier, routes conservées de l'ancienne interface, cache de données serveur (TanStack Query), état client (Zustand) et
 abonnements au flux d'événements (`engine.*` du moteur, `studio.*` de Nest). Les écrans eux-mêmes sont des **pages minces** : l'accueil et la conversation
 sont ceux du studio image (modules `image-studio` et `studio-core`, H4.3b) ; la galerie d'images est celle de `media-library` (H4.4) ; l'accueil audio, la bibliothèque audio et les voix sont ceux des modules `audio-studio` et `voices` (H4.5) ; la vidéo reste « à venir » jusqu'à la tâche H4.6 ;
@@ -101,11 +101,12 @@ Les composeurs de H4 n'ont qu'à appeler `registerFocusTarget('composer', textar
 |---|---|
 | `StudioShell` | Mise en page (barre latérale 284 px masquable + page), raccourcis, suivi du mode, abonnements aux événements (`engine.*`, `studio.*`), lanceur des mises à jour (`useUpdateRunner`, module `updates`), dialogues, visionneuse (`StudioLightbox`), dépôt d'images sur la fenêtre en mode image (`ImageDropLayer`), `ConfirmHost`, bandeau et garde-fous de la génération privée (`PrivateBanner`, `PrivateHost`, module `private` ; son bouton est dans `SidebarFooter`). |
 | `Sidebar` | Marque (`custom.app.name`), masquage, `ModeSwitch`, pages du mode (`NavItem` ; le chat n'a que « Nouvelle conversation »), `SearchField`, `ConversationList` (en mode chat, les extraits des messages qui contiennent la recherche, `chat/ChatSearchHits`), `SidebarFooter`. |
-| `ModeSwitch` | `Tabs` MUI en commande segmentée (image, audio, vidéo, chat) ; revient à la dernière page du mode. |
+| `ModeSwitch` | `Tabs` MUI en commande segmentée (image, audio, vidéo, chat), icône au-dessus du libellé et sans largeur minimale (les quatre tiennent dans la barre latérale) ; revient à la dernière page du mode. |
 | `NavItem` | Entrée de navigation (lien), raccourci visible au survol. |
 | `SearchField` | Champ de recherche, 200 ms d'attente, Échap efface, ⌘K focalise. |
 | `ConversationList` / `ConversationItem` | Groupes par période (épinglées, aujourd'hui, hier, 7 et 30 jours, mois), vignette ou icône, point « occupé », menu (épingler, renommer, supprimer), renommage par double clic. `SelectionBar` (« Sélectionner ») bascule la liste en mode sélection : cases à cocher, compteur, tout (dé)sélectionner, suppression groupée après confirmation ; seules les conversations encore listées comptent (recherche ou changement de mode ne suppriment rien hors de vue). États : chargement, vide (par mode), aucun résultat, erreur avec « Réessayer ». |
-| `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Vérifier les mises à jour (`UpdatesDialog`, module `updates`), Réglages (`SettingsDialog`), `SwitchLanguage`, bascule clair/sombre. |
+| `StudioShell` (montages) | Ajoute `SetupDialog` (module `engines`) : la modale de confirmation et de progression de l'installation d'un modèle, ouverte par `startSetup`. |
+| `SidebarFooter` | Carte du moteur (`EngineCard`, module `studio-core`), Modèles (`ModelsDialog`), Vérifier les mises à jour (`UpdatesDialog`, module `updates`), Réglages (`SettingsDialog`), bascule clair/sombre. |
 | `ComingSoonPage` | Page provisoire (le `ComingSoonDialog` a disparu avec H4.2 : plus aucun dialogue provisoire). |
 
 Les composants génériques viennent du gabarit (lot I) : `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.

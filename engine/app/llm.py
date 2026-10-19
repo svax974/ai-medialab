@@ -416,7 +416,9 @@ class LlmManager:
         from .jobs import jobs
 
         spec = MODELS.get(model_id)
-        if spec is None or spec.kind != "llm":
+        # "diagram" models reuse this same one-shot completion endpoint (same GGUF files as their "llm" counterpart,
+        # see engines/diagram_models.py): structured JSON for the Diagrams tab, not a conversational chat.
+        if spec is None or spec.kind not in ("llm", "diagram"):
             raise LlmNotFound("Modèle de chat inconnu.") if spec is None else LlmError(f"« {spec.name} » n'est pas un modèle de chat.")
         spec = get_spec(model_id)
         if llamacpp.installed_binary() is None:

@@ -3,13 +3,15 @@
  * SPDX-License-Identifier: MIT
  */
 
-import type { EngineInfo, EngineInstallState, InstallStatus, PackInfo, PackInstallState } from '../types'
+import type { EngineInfo, InstallStatus, PackInfo } from '../types'
 import type { ModelInfo, ModelKind } from '@/modules/model-catalog'
 
 /** Topics of the engine's installer events, relayed by Nest (back/src/modules/engine/README.md). */
 export const PACK_INSTALL_TOPIC = 'engine.pack.install'
 export const SDCPP_INSTALL_TOPIC = 'engine.engine.install'
 export const LLAMACPP_INSTALL_TOPIC = 'engine.llamacpp.install'
+/** Progress of the run that installs what a model lacks (`engine/app/setup_runner.py`). */
+export const SETUP_TOPIC = 'engine.setup.progress'
 
 /** The live state (events) when something is happening or happened since the page loaded, else the one read with the system. */
 export function selectInstall<T extends { state: InstallStatus }>(live: T, fromSystem: T | undefined): T {
@@ -27,8 +29,10 @@ export type EngineDot = 'ok' | 'warn' | 'faint'
 export interface EngineRow {
   id: string
   available: boolean
-  /** Not installed, but the app can install it (stable-diffusion.cpp only). */
+  /** Not installed, but the app can install it (stable-diffusion.cpp, or the pack of PyTorch / MLX). */
   installable: boolean
+  /** Pack to install for this engine; absent for stable-diffusion.cpp (its own installer). */
+  pack?: string
   variant?: string
   reason?: string
   installSizeMb?: number
@@ -42,9 +46,9 @@ export function engineRows(engines: Record<string, EngineInfo>): EngineRow[] {
   for (const id of ENGINE_IDS) {
     const e = engines[id]
     if (!e) continue
-    const installable = id === 'sdcpp' && !e.available && !!e.installable
+    const installable = !e.available && !!e.installable
     if (!e.available && !installable && id !== 'sdcpp' && (e.reason ?? '').includes('Mac')) continue
-    rows.push({ id, available: e.available, installable, variant: e.variant, reason: e.reason, installSizeMb: e.install_size_mb })
+    rows.push({ id, available: e.available, installable, pack: e.pack, variant: e.variant, reason: e.reason, installSizeMb: e.install_size_mb })
   }
   return rows
 }
@@ -86,19 +90,4 @@ export function setupPlan(model: ModelInfo): SetupPlan | null {
   const needModel = model.install !== 'installed'
   if (!needEngine && !needModel) return null
   return { needEngine, needModel, engineMb: model.engine_install_size_mb ?? 0, modelGb: Math.max(0, (model.download_size_gb ?? 0) - model.installed_gb) }
-}
-
-/** The installer to follow: only one runs at a time, so the one working (or just done) is the relevant one. */
-export function relevantInstall(sd: EngineInstallState, pack: PackInstallState, llama: EngineInstallState = { state: 'idle' }): EngineInstallState | PackInstallState {
-  if (llama.state === 'running' || (sd.state === 'idle' && pack.state === 'idle' && llama.state !== 'idle')) return llama
-  return pack.state === 'running' || (sd.state === 'idle' && pack.state !== 'idle') ? pack : sd
-}
-
-export type SetupStep = 'wait' | 'abort' | 'download'
-
-/** After an engine install that was started for a model: wait, give up (error, cancelled) or download the model. */
-export function nextSetupStep(pending: string | null, engineState: InstallStatus): SetupStep {
-  if (!pending) return 'wait'
-  if (engineState === 'error' || engineState === 'cancelled') return 'abort'
-  return engineState === 'done' ? 'download' : 'wait'
 }

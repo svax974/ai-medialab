@@ -22,6 +22,6 @@ export function attachHelp(t: (key: string) => string): Help {
 export const SUGGESTIONS = [
   { labelKey: 'imageStudio.suggestion.portrait.label', promptKey: 'imageStudio.suggestion.portrait.prompt' },
   { labelKey: 'imageStudio.suggestion.poster.label', promptKey: 'imageStudio.suggestion.poster.prompt' },
-  { labelKey: 'imageStudio.suggestion.miniature.label', promptKey: 'imageStudio.suggestion.miniature.prompt' },
+  { labelKey: 'imageStudio.suggestion.infographic.label', promptKey: 'imageStudio.suggestion.infographic.prompt' },
   { labelKey: 'imageStudio.suggestion.product.label', promptKey: 'imageStudio.suggestion.product.prompt' },
 ] as const

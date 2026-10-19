@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { UnprocessableEntityException } from '@nestjs/common';
 import {
   ATTACHMENT_NAME, DEFAULT_CHAT_SETTINGS, ID_PATTERN, MAX_ATTACHMENTS, MAX_CONTENT_CHARS, cleanName, parseSettingsPatch,
@@ -40,12 +41,12 @@ export interface PrivateChatBody {
 
 function parseAttachments(value: unknown): PrivateAttachmentRef[] {
   if (value == null) return [];
-  if (!Array.isArray(value) || value.length > MAX_ATTACHMENTS) return unprocessable(`attachments : ${MAX_ATTACHMENTS} pièces jointes au plus.`);
+  if (!Array.isArray(value) || value.length > MAX_ATTACHMENTS) return unprocessable(tr('private.error.attachmentsMax', [MAX_ATTACHMENTS]));
   const seen = new Set<string>();
   const refs: PrivateAttachmentRef[] = [];
   for (const item of value) {
     const name = isRecord(item) ? item.name : undefined;
-    if (typeof name !== 'string' || !ATTACHMENT_NAME.test(name)) return unprocessable('attachments : nom de pièce jointe invalide.');
+    if (typeof name !== 'string' || !ATTACHMENT_NAME.test(name)) return unprocessable(tr('private.error.attachmentNameInvalidField'));
     if (seen.has(name)) continue;
     seen.add(name);
     const original = isRecord(item) && typeof item.original_name === 'string' ? cleanName(item.original_name) : name;
@@ -59,20 +60,20 @@ function parseMessage(value: unknown, index: number): PrivateChatMessage {
   if (value.role !== 'user' && value.role !== 'assistant') return unprocessable(`messages[${index}].role : user ou assistant attendu.`);
   const attachments = value.role === 'user' ? parseAttachments(value.attachments) : [];
   const content = value.content ?? '';
-  if (typeof content !== 'string' || content.length > MAX_CONTENT_CHARS) return unprocessable(`messages[${index}].content : texte de ${MAX_CONTENT_CHARS} caractères au plus attendu.`);
+  if (typeof content !== 'string' || content.length > MAX_CONTENT_CHARS) return unprocessable(tr('private.error.contentMax', [index, MAX_CONTENT_CHARS]));
   if (value.role === 'user' && !content.trim() && !attachments.length) return unprocessable(`messages[${index}] : message vide.`);
   return { role: value.role, content, attachments };
 }
 
 /** Body of `POST /api/private/chat`: `{ reply_id, messages (the history up to the last user message), settings }`. */
 export function parsePrivateChatBody(body: unknown): PrivateChatBody {
-  if (!isRecord(body)) return unprocessable('Corps JSON attendu.');
+  if (!isRecord(body)) return unprocessable(tr('private.error.jsonBodyExpected'));
   if (typeof body.reply_id !== 'string' || !ID_PATTERN.test(body.reply_id)) return unprocessable('reply_id : identifiant invalide.');
   const raw = body.messages;
-  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_MESSAGES) return unprocessable(`messages : de 1 à ${MAX_MESSAGES} messages attendus.`);
+  if (!Array.isArray(raw) || raw.length < 1 || raw.length > MAX_MESSAGES) return unprocessable(tr('private.error.messagesCount', [MAX_MESSAGES]));
   const messages = raw.map(parseMessage);
-  if (messages[messages.length - 1].role !== 'user') return unprocessable('messages : le dernier message doit être celui de l\'utilisateur.');
-  if (messages.reduce((sum, m) => sum + m.content.length, 0) > MAX_HISTORY_CHARS) return unprocessable('messages : la conversation est trop longue pour une requête.');
+  if (messages[messages.length - 1].role !== 'user') return unprocessable(tr('private.error.lastMessageUser'));
+  if (messages.reduce((sum, m) => sum + m.content.length, 0) > MAX_HISTORY_CHARS) return unprocessable(tr('private.error.conversationTooLong'));
   const patch = body.settings === undefined ? {} : parseSettingsPatch(body.settings);
   return { replyId: body.reply_id, messages, settings: { ...DEFAULT_CHAT_SETTINGS, ...patch, params: { ...patch.params }, tools: { web: Boolean(patch.tools?.web), creation: false }, leaf_id: null } };
 }

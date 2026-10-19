@@ -121,17 +121,26 @@ def safe_extract(zf: zipfile.ZipFile, dest: Path) -> None:
     zf.extractall(dest)
 
 
+def _safe_link(member: tarfile.TarInfo, dest: Path) -> bool:
+    """A symbolic link whose target is relative and stays inside the target folder (versioned libraries: `libx.0.dylib` -> `libx.0.1.dylib`)."""
+    if not member.issym() or os.path.isabs(member.linkname):
+        return False
+    root = dest.resolve()
+    target = (dest / Path(member.name).parent / member.linkname).resolve()
+    return root == target or root in target.parents
+
+
 def safe_extract_tar(tf: tarfile.TarFile, dest: Path) -> None:
-    """Same guarantee for tarballs: regular files and folders only, nothing outside the target folder."""
+    """Same guarantee for tarballs: regular files, folders and symbolic links that stay inside the target folder, nothing else."""
     root = dest.resolve()
     members = tf.getmembers()
     for m in members:
         target = (dest / m.name).resolve()
         if root != target and root not in target.parents:
             raise RuntimeError(f"Archive refusée : chemin hors du dossier cible ({m.name})")
-        if not (m.isfile() or m.isdir()):
+        if not (m.isfile() or m.isdir() or _safe_link(m, dest)):
             raise RuntimeError(f"Archive refusée : entrée non ordinaire ({m.name})")
-    tf.extractall(dest, members=members)
+    tf.extractall(dest, members=members, filter="data")
 
 
 def install_variant(

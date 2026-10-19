@@ -5,6 +5,7 @@
 
 import { BadRequestException } from '@nestjs/common';
 import type { UpdateTarget } from '../types/updatesTypes';
+import { tr } from 'src/modules/i18n';
 
 /** The targets an engine update accepts (white list: nothing else reaches the engine). */
 export const UPDATE_TARGETS: readonly UpdateTarget[] = ['pinned', 'latest'];
@@ -17,5 +18,5 @@ export function parseUpdateEngineBody(body: unknown): UpdateTarget {
   if (typeof body !== 'object' || body === null || !('target' in body)) return 'pinned';
   const { target } = body as { target: unknown };
   if (typeof target === 'string' && (UPDATE_TARGETS as readonly string[]).includes(target)) return target as UpdateTarget;
-  throw new BadRequestException(`"target" must be one of: ${UPDATE_TARGETS.join(', ')}`);
+  throw new BadRequestException(tr('updates.error.oneOf', ['target', UPDATE_TARGETS.join(', ')]));
 }

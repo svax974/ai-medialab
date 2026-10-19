@@ -197,3 +197,12 @@ Aussi : `mappers/chatMapper.spec.ts` (état d'une génération), `studio-core/se
 
 **Non vérifié** : aucun vrai `llama-server`, aucun vrai modèle d'image, de vidéo ou de son lancé par un outil (le catalogue, la file et le moteur sont des faux ; la régularité des petits modèles (1 à 4 B) à remplir les arguments des outils n'est pas mesurée : les commandes `/…` sont le recours fiable), ni le temps de rechargement du modèle de chat après une génération, aucun vrai modèle ni appel réseau réel n'a servi dans ces tests (la page DuckDuckGo servant de modèle à l'analyseur a été lue une fois à la main, le 2026-10-15) ; le comportement du flux derrière un proxy inverse n'est pas mesuré
 (les en-têtes sont ceux que le gabarit documente pour ses propres flux).
+
+## Langue
+
+Tout texte que le back montre à l'utilisateur (erreurs HTTP et SSE, validation, libellés d'export, messages d'état d'un outil)
+passe par `tr('chat.…', [params])` (`src/modules/i18n`) et suit la langue de l'interface (`Accept-Language`). Les textes sont
+dans `chat/i18n/messages.fr.json` et `messages.en.json` (mêmes clés, mêmes `{0}`), vérifiés par `i18n/messages.spec.ts`. Les
+requêtes web sortantes (`web_search`, `fetch_url`) envoient `Accept-Language` dans l'ordre de la langue de l'interface
+(`tools/acceptLanguage.ts`). Restent en français, volontairement, les textes destinés au modèle (prompts système, descriptions
+et résultats d'outils) : le modèle répond dans la langue du message de l'utilisateur.

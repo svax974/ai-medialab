@@ -1,0 +1,16 @@
+{
+  "Texte → image très rapide (8 étapes), photoréalisme et texte bilingue. Version quantifiée : 7 Go au lieu de 33 Go, tient sur une carte de 6 à 8 Go. Licence Apache 2.0.": "Very fast text → image (8 steps), photorealism and bilingual text. Quantized version: 7 GB instead of 33 GB, fits on a 6 to 8 GB card. Apache 2.0 license.",
+  "Le modèle est distillé pour 8 étapes.": "The model is distilled for 8 steps.",
+  "1 = désactivé (recommandé pour ce modèle distillé).": "1 = disabled (recommended for this distilled model).",
+  "≈ 7 Go de poids (Q4_K). Les poids sont placés automatiquement sur le GPU, sinon en RAM.": "≈ 7 GB of weights (Q4_K). The weights are placed on the GPU automatically, otherwise in RAM.",
+  "Texte → image de haute qualité, très bon rendu du texte, et édition d'images par instruction avec plusieurs références. Version quantifiée (Q4_K) : ≈ 11 Go au lieu de 33 Go, sans PyTorch.": "High-quality text → image, very good text rendering, and instruction-based image editing with several references. Quantized version (Q4_K): ≈ 11 GB instead of 33 GB, without PyTorch.",
+  "Plus d'étapes = plus de détails, plus lent. Valeur par défaut (20) : remplacée par 12 en édition avec des références, qui donne le même résultat en deux fois moins de temps.": "More steps = more detail, slower. Default value (20): replaced by 12 when editing with references, which gives the same result in half the time.",
+  "1 = automatique : désactivée pour créer une image, 4 pour éditer avec des références (la guidance double le temps de calcul).": "1 = automatic: disabled when creating an image, 4 when editing with references (guidance doubles the computation time).",
+  "≈ 11 Go de poids (Q4_K) ; l'encodeur de texte reste en mémoire pendant le calcul.": "≈ 11 GB of weights (Q4_K); the text encoder stays in memory during computation.",
+  "multi-références": "multi-reference",
+  "édition": "editing",
+  "Édition d'images par instruction (« remplace le texte », « mets-lui un chapeau ») et composition de plusieurs images (jusqu'à 3). Modèle dédié à l'édition, licence Apache 2.0 (usage commercial permis). Version quantifiée (Q4_K_M) : ≈ 19 Go au lieu de 58 Go.": "Instruction-based image editing (\"replace the text\", \"put a hat on him\") and composition of several images (up to 3). Model dedicated to editing, Apache 2.0 license (commercial use allowed). Quantized version (Q4_K_M): ≈ 19 GB instead of 58 GB.",
+  "12 suffisent (mesuré : même résultat qu'à 20, en deux fois moins de temps). Plus lent que Qwen Image 2.1.": "12 is enough (measured: same result as at 20, in half the time). Slower than Qwen Image 2.1.",
+  "Fidélité à l'instruction.": "Adherence to the instruction.",
+  "≈ 19 Go de poids (Q4_K_M) ; plus lourd et plus lent que Qwen Image 2.1 (20 milliards de paramètres).": "≈ 19 GB of weights (Q4_K_M); heavier and slower than Qwen Image 2.1 (20 billion parameters)."
+}

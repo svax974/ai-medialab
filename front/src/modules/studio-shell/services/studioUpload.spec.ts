@@ -8,7 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 type Callback = (payload: unknown) => void
 const upload = vi.hoisted(() => vi.fn())
 vi.mock('@/modules_shared/common/core/http/HttpService', () => ({ httpService: { upload } }))
-vi.mock('@/modules_shared/common/services/ConfigurationService', () => ({ configurationService: { getApiUrl: () => '/api/v1' } }))
+vi.mock('@/modules_shared/common/services/ConfigurationService', () => ({ configurationService: { getApiUrl: () => '/api/v1', get: () => undefined } }))
 
 import { StudioApiError, studioUpload } from './studioHttp'
 

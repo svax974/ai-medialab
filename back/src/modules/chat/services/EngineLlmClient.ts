@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { Injectable } from '@nestjs/common';
 import { EngineClient, EngineUnavailableError, SseParser, type EngineSchemas } from 'src/modules/engine';
 import { ChatError, type ChatErrorCode } from '../types/chatTypes';
@@ -39,16 +40,19 @@ export type LlmEvent =
 
 const ENGINE_CODES: ChatErrorCode[] = ['refused', 'busy', 'context_exceeded', 'upstream', 'closed'];
 
-/** A refusal the engine sends before any byte of the stream (plain HTTP status), as a chat error. */
+/**
+ * A refusal the engine sends before any byte of the stream (plain HTTP status), as a chat error. The engine words its detail in
+ * the interface language, so the patterns below know both.
+ */
 export function refusalFromHttp(status: number, detail: string): ChatError {
-  if (status === 404) return new ChatError('no_model', detail || 'Modèle de chat inconnu.');
+  if (status === 404) return new ChatError('no_model', detail || tr('chat.error.engineUnknownModel'));
   if (status === 409) {
-    if (/pas install/i.test(detail) && /llama\.cpp|moteur de chat/i.test(detail)) return new ChatError('no_engine', detail);
-    if (/téléchargé|introuvable/i.test(detail)) return new ChatError('no_model', detail);
-    return new ChatError('busy', detail || 'Le moteur est occupé.');
+    if (/pas install|not installed/i.test(detail) && /llama\.cpp|moteur de chat|chat engine/i.test(detail)) return new ChatError('no_engine', detail);
+    if (/téléchargé|introuvable|downloaded|not found/i.test(detail)) return new ChatError('no_model', detail);
+    return new ChatError('busy', detail || tr('chat.error.engineBusy'));
   }
-  if (status === 422) return new ChatError('refused', detail || 'Requête refusée par le moteur.');
-  return new ChatError('upstream', detail || `Le moteur a répondu ${status}.`);
+  if (status === 422) return new ChatError('refused', detail || tr('chat.error.engineRefused'));
+  return new ChatError('upstream', detail || tr('chat.error.engineStatus', [status]));
 }
 
 const detailOf = (text: string): string => {
@@ -97,7 +101,7 @@ export class EngineLlmClient {
     } finally {
       await reader.cancel().catch(() => undefined);
     }
-    if (!ended) yield { type: 'error', code: 'closed', message: 'Le moteur a interrompu la réponse.' };
+    if (!ended) yield { type: 'error', code: 'closed', message: tr('chat.error.engineClosed') };
   }
 
   /** One reply as a whole (titles, prompt enhancement): the text, or a `ChatError`. */

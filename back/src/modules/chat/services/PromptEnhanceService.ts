@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { EngineClient } from 'src/modules/engine';
 import { EngineBusyGate, GenerationQueueService } from 'src/modules/studio-core';
@@ -45,9 +46,9 @@ export class PromptEnhanceService {
   ) {}
 
   async enhance(kind: PromptKind, prompt: string, requested: string | undefined): Promise<{ prompt: string; model_id: string }> {
-    if (this.queue.occupied) throw refusal(new ChatError('busy', "Une génération est en cours ou en attente : attendez sa fin avant d'améliorer le prompt."));
+    if (this.queue.occupied) throw refusal(new ChatError('busy', tr('chat.enhance.busyGeneration')));
     await this.gate.preempt(); // a chat title being written gives the engine up
-    if (!this.gate.tryAcquire(GATE_OWNER)) throw refusal(new ChatError('busy', 'Une réponse du chat est en cours : attendez sa fin.'));
+    if (!this.gate.tryAcquire(GATE_OWNER)) throw refusal(new ChatError('busy', tr('chat.enhance.busyReply')));
     try {
       const model = await this.models.resolve(requested ?? (await this.loadedModel()));
       const { content } = await this.llm.complete({
@@ -57,7 +58,7 @@ export class PromptEnhanceService {
         reasoning: 'off',
       }, AbortSignal.timeout(TIMEOUT_MS));
       const improved = cleanPrompt(content);
-      if (!improved) throw new ChatError('upstream', "Le modèle n'a rien renvoyé : réessayez.");
+      if (!improved) throw new ChatError('upstream', tr('chat.enhance.empty'));
       return { prompt: improved, model_id: model.id };
     } catch (error) {
       throw error instanceof ChatError ? refusal(error) : error;

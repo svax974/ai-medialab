@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import { UnprocessableEntityException } from '@nestjs/common';
-import { DEFAULT_CONVERSATION_TITLE } from '../types/studioTypes';
+import { defaultConversationTitle } from '../types/studioTypes';
 import type { CreateGenerationInput, RetryInput } from '../types/jobTypes';
 
 export const MAX_PROMPT_LENGTH = 8000;
@@ -19,17 +20,17 @@ function fail(message: string): never {
 
 /** Validates the body of `POST /api/messages` (same limits as the legacy route; 422 otherwise). */
 export function parseCreateMessage(body: unknown): CreateGenerationInput {
-  if (!isRecord(body)) return fail('Corps JSON attendu.');
+  if (!isRecord(body)) return fail(tr('studioCore.error.jsonBodyExpected'));
   const { conversation_id: conversationId, prompt, model_id: modelId, params, reference_ids: refs, count } = body;
   if (typeof prompt !== 'string' || prompt.length < 1 || prompt.length > MAX_PROMPT_LENGTH) {
-    fail(`prompt : texte de 1 à ${MAX_PROMPT_LENGTH} caractères attendu.`);
+    fail(tr('studioCore.error.promptLength', [MAX_PROMPT_LENGTH]));
   }
-  if (typeof modelId !== 'string' || !modelId) fail('model_id : texte attendu.');
-  if (conversationId != null && typeof conversationId !== 'string') fail('conversation_id : texte attendu.');
-  if (params != null && !isRecord(params)) fail('params : objet attendu.');
-  if (refs != null && (!Array.isArray(refs) || refs.some((r) => typeof r !== 'string'))) fail('reference_ids : liste de textes attendue.');
+  if (typeof modelId !== 'string' || !modelId) fail(tr('studioCore.error.textExpected', ['model_id']));
+  if (conversationId != null && typeof conversationId !== 'string') fail(tr('studioCore.error.textExpected', ['conversation_id']));
+  if (params != null && !isRecord(params)) fail(tr('studioCore.error.objectExpected', ['params']));
+  if (refs != null && (!Array.isArray(refs) || refs.some((r) => typeof r !== 'string'))) fail(tr('studioCore.error.referenceIdsList'));
   if (count != null && (typeof count !== 'number' || !Number.isInteger(count) || count < 1 || count > MAX_COUNT)) {
-    fail(`count : entier entre 1 et ${MAX_COUNT} attendu.`);
+    fail(tr('studioCore.error.countRange', [MAX_COUNT]));
   }
   return {
     conversationId: (conversationId as string | null | undefined) ?? null,
@@ -44,11 +45,11 @@ export function parseCreateMessage(body: unknown): CreateGenerationInput {
 /** Validates the body of `POST /api/messages/:id/retry`. */
 export function parseRetry(body: unknown): RetryInput {
   if (body == null) return { keepSeed: false };
-  if (!isRecord(body)) return fail('Corps JSON attendu.');
+  if (!isRecord(body)) return fail(tr('studioCore.error.jsonBodyExpected'));
   const { model_id: modelId, params, keep_seed: keepSeed } = body;
-  if (modelId != null && typeof modelId !== 'string') fail('model_id : texte attendu.');
-  if (params != null && !isRecord(params)) fail('params : objet attendu.');
-  if (keepSeed != null && typeof keepSeed !== 'boolean') fail('keep_seed : booléen attendu.');
+  if (modelId != null && typeof modelId !== 'string') fail(tr('studioCore.error.textExpected', ['model_id']));
+  if (params != null && !isRecord(params)) fail(tr('studioCore.error.objectExpected', ['params']));
+  if (keepSeed != null && typeof keepSeed !== 'boolean') fail(tr('studioCore.error.booleanExpected', ['keep_seed']));
   return {
     modelId: (modelId as string | null | undefined) || undefined,
     params: (params as Record<string, unknown> | null | undefined) ?? undefined,
@@ -59,7 +60,7 @@ export function parseRetry(body: unknown): RetryInput {
 /** Same title as the legacy server: whitespace collapsed, 60 characters at most, cut at a word with an ellipsis. */
 export function titleFromPrompt(prompt: string): string {
   const text = prompt.split(/\s+/).filter(Boolean).join(' ');
-  if (text.length <= TITLE_LENGTH) return text || DEFAULT_CONVERSATION_TITLE;
+  if (text.length <= TITLE_LENGTH) return text || defaultConversationTitle();
   const cut = text.slice(0, TITLE_LENGTH - 3);
   const space = cut.lastIndexOf(' ');
   return `${space >= 0 ? cut.slice(0, space) : cut}…`;
@@ -70,7 +71,7 @@ export function seedsFor(params: Record<string, unknown>, count: number, random:
   const seed = params.seed;
   if (seed !== undefined && seed !== null && String(seed).trim() !== '') {
     const base = Number(seed);
-    if (!Number.isFinite(base)) fail('seed : entier attendu.');
+    if (!Number.isFinite(base)) fail(tr('studioCore.error.seedInteger'));
     return Array.from({ length: count }, (_, i) => Math.trunc(base) + i);
   }
   return Array.from({ length: count }, () => Math.floor(random() * 2 ** 31));

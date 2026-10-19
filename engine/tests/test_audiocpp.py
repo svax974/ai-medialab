@@ -58,13 +58,13 @@ class TestBuildSelection:
 
 
 class TestSafeExtraction:
-    def _tar(self, name: str, kind=tarfile.REGTYPE) -> tarfile.TarFile:
+    def _tar(self, name: str, kind=tarfile.REGTYPE, linkname: str = "/etc/passwd") -> tarfile.TarFile:
         buf = io.BytesIO()
         with tarfile.open(fileobj=buf, mode="w") as tf:
             info = tarfile.TarInfo(name)
             info.type = kind
             if kind == tarfile.SYMTYPE:
-                info.linkname = "/etc/passwd"
+                info.linkname = linkname
             data = b"x"
             info.size = len(data) if kind == tarfile.REGTYPE else 0
             tf.addfile(info, io.BytesIO(data) if kind == tarfile.REGTYPE else None)
@@ -82,6 +82,16 @@ class TestSafeExtraction:
     def test_symlink_is_refused(self, tmp_path):
         with pytest.raises(RuntimeError, match="non ordinaire"):
             ei.safe_extract_tar(self._tar("link", tarfile.SYMTYPE), tmp_path)
+
+
+    def test_a_relative_symlink_inside_the_folder_is_extracted(self, tmp_path):
+        # Releases ship versioned libraries as links (libggml-rpc.0.dylib -> libggml-rpc.0.9.dylib).
+        ei.safe_extract_tar(self._tar("libx.0.dylib", tarfile.SYMTYPE, "libx.0.9.dylib"), tmp_path)
+        assert (tmp_path / "libx.0.dylib").is_symlink()
+
+    def test_a_symlink_leaving_the_folder_is_refused(self, tmp_path):
+        with pytest.raises(RuntimeError, match="non ordinaire"):
+            ei.safe_extract_tar(self._tar("link", tarfile.SYMTYPE, "../../etc/passwd"), tmp_path)
 
 
 class TestPack:

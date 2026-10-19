@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Controller, Delete, HttpCode, Param, Post, UseInterceptors } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Param, Post, Query, UseInterceptors } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { NoTransportCrypt } from 'src/modules_shared/common/decorators/NoTransportCrypt';
 import { AdminOnlyInterceptor } from 'src/modules_shared/common/interceptors/AdminOnlyInterceptor';
 import { EnginesService } from '../services/EnginesService';
-import type { EngineInstallState, PackInstallState } from '../types/enginesTypes';
+import type { ComponentInfo, EngineInstallState, PackInstallState, SetupPlan, SetupState } from '../types/enginesTypes';
 
 /** `/api/engines/*`: same URLs and shapes as the engine's legacy routes. Admin only. */
 @ApiExcludeController()
@@ -61,5 +61,36 @@ export class EnginesController {
   @Delete('llamacpp')
   uninstallLlamacpp(): Promise<{ ok: true }> {
     return this.engines.uninstallLlamacpp();
+  }
+
+  @Get('components')
+  components(@Query('disk') disk?: string): Promise<ComponentInfo[]> {
+    return this.engines.components(disk === 'true');
+  }
+
+  @Delete('components/:componentId')
+  removeComponent(@Param('componentId') componentId: string) {
+    return this.engines.removeComponent(componentId);
+  }
+
+  @Get('setup/plan/:modelId')
+  setupPlan(@Param('modelId') modelId: string): Promise<SetupPlan> {
+    return this.engines.setupPlan(modelId);
+  }
+
+  @Get('setup')
+  setupState(): Promise<SetupState> {
+    return this.engines.setupState();
+  }
+
+  @Post('setup/:modelId')
+  @HttpCode(200)
+  startSetup(@Param('modelId') modelId: string): Promise<SetupState> {
+    return this.engines.startSetup(modelId);
+  }
+
+  @Delete('setup')
+  cancelSetup(): Promise<{ ok: true }> {
+    return this.engines.cancelSetup();
   }
 }

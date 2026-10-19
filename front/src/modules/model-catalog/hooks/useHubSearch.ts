@@ -9,7 +9,7 @@ import { toast } from 'react-toastify'
 import { modelCatalogKeys } from '../lib/modelCatalogKeys'
 import { SEARCH_DEBOUNCE_MS } from '../lib/hubSearch'
 import { modelCatalogApi } from '../services/modelCatalogApi'
-import { useDownloadStore } from '../state/downloadStore'
+import { useSetupStore } from '@/modules/engines/state/setupStore'
 import type { ModelKind } from '../types'
 import { useRefreshCatalog } from './useModelCatalog'
 
@@ -37,19 +37,14 @@ export function useHubInspect(repo: string) {
   return useQuery({ queryKey: modelCatalogKeys.hubInspect(repo), queryFn: () => modelCatalogApi.hubInspect(repo), staleTime: 300_000, retry: false })
 }
 
-/** Adds a repository to the list, then starts downloading it (the progress comes through the event stream); answers the id of the new model. */
+/** Adds a repository to the list, then opens the install confirmation (engine and base data it needs that are missing, then the files); answers the id of the new model. */
 export function useAddCustomModel(repo: string) {
   const refresh = useRefreshCatalog()
-  const setDownload = useDownloadStore((s) => s.setDownload)
   return useMutation({
     mutationFn: async (option: string): Promise<string> => {
       const { model_id } = await modelCatalogApi.addCustom(repo, option)
       await refresh()
-      try {
-        setDownload(await modelCatalogApi.download(model_id))
-      } catch (error) {
-        toast.error((error as Error).message)
-      }
+      useSetupStore.getState().open(model_id) // the confirmation lists the engine the model needs, then the model itself
       return model_id
     },
     onError: (error: Error) => toast.error(error.message),

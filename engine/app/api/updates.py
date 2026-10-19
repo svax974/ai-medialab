@@ -18,7 +18,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from .. import update_advisor, updates
+from .. import audio_packs, update_advisor, updates
 from ..audio_packs import installer as pack_installer
 from ..downloads import downloads
 from ..engine_install import installer as sdcpp_installer
@@ -113,7 +113,7 @@ async def update_engine(engine_id: str, target: Literal["pinned", "latest"] = "p
         raise HTTPException(409, "Ce moteur est déjà à jour.")
     else:
         tag = None
-    if jobs.worker and jobs.worker.alive and get_spec(jobs.worker.model_id).options.get("pack") == engine_id:
+    if jobs.worker and jobs.worker.alive and audio_packs.pack_of(get_spec(jobs.worker.model_id)) == engine_id:
         raise HTTPException(409, "Ce moteur est en cours d'utilisation : déchargez le modèle d'abord.")
     try:
         if engine_id == "sdcpp":

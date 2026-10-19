@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+import { tr } from 'src/modules/i18n';
 import type { EngineSchemas } from 'src/modules/engine';
 
 export type JobKind = EngineSchemas['schemas']['JobSubmit']['kind'];
@@ -31,8 +32,9 @@ export interface JobEventData {
 }
 
 export const JOB_TERMINAL_EVENTS = ['job.done', 'job.failed', 'job.cancelled'] as const;
-export const INTERRUPTED_BY_ENGINE = "Le moteur s'est arrêté pendant la génération.";
-export const ENGINE_UNREACHABLE = 'Le moteur est injoignable.';
+/** Texts stored on a failed message, in the language of the interface at the time of the failure. */
+export const interruptedByEngine = (): string => tr('studioCore.job.interruptedByEngine');
+export const engineUnreachable = (): string => tr('studioCore.job.engineUnreachable');
 
 /** What `POST /api/messages` takes (validated by `parseCreateMessage`). */
 export interface CreateGenerationInput {

@@ -19,6 +19,14 @@ AUDIO_RUNTIME_DIR = ROOT_DIR / "engine" / "audio_runtime"
 VIDEO_PACKS_DIR = ENGINES_DIR / "video"
 VIDEO_RUNTIME_DIR = ROOT_DIR / "engine" / "video_runtime"
 
+# Add-ons of the main runtime (PyTorch + diffusers, MLX): a venv per pack whose site-packages is put on the import path of the
+# image worker only (audio_packs.activate_overlays); the server never imports them.
+RUNTIME_PACKS_DIR = ENGINES_DIR / "runtime"
+
+# Locally quantized-and-saved model checkpoints (mflux format): a variant's "derived" source, produced once from a
+# Hugging Face bf16 repo already in the HF cache, never shared with another model.
+DERIVED_DIR = DATA_DIR / "models" / "mlx-derived"
+
 UPLOADS_DIR = DATA_DIR / "uploads"
 OUTPUTS_DIR = DATA_DIR / "outputs"
 THUMBS_DIR = DATA_DIR / "thumbs"
@@ -50,7 +58,7 @@ adopt_legacy_data_dir()
 
 
 def ensure_dirs() -> None:
-    for d in (DATA_DIR, *MEDIA_DIRS.values()):
+    for d in (DATA_DIR, DERIVED_DIR, *MEDIA_DIRS.values()):
         d.mkdir(parents=True, exist_ok=True)
     PRIVATE_DIR.mkdir(parents=True, exist_ok=True)
     PRIVATE_DIR.chmod(0o700)

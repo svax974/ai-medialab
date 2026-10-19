@@ -1,0 +1,22 @@
+{
+  "studioCore.error.booleanExpected": "{0}: boolean expected.",
+  "studioCore.error.conversationNotFound": "Conversation not found.",
+  "studioCore.error.countRange": "count: integer between 1 and {0} expected.",
+  "studioCore.error.generationNotFound": "Generation not found.",
+  "studioCore.error.generationNotRunning": "This generation is no longer running.",
+  "studioCore.error.jsonBodyExpected": "JSON body expected.",
+  "studioCore.error.messageNotFound": "Message not found.",
+  "studioCore.error.objectExpected": "{0}: object expected.",
+  "studioCore.error.promptEmpty": "The prompt is empty.",
+  "studioCore.error.promptLength": "prompt: text of 1 to {0} characters expected.",
+  "studioCore.error.referenceIdsList": "reference_ids: list of texts expected.",
+  "studioCore.error.referenceImageNotFound": "Reference image not found: {0}",
+  "studioCore.error.seedInteger": "seed: integer expected.",
+  "studioCore.error.textExpected": "{0}: text expected.",
+  "studioCore.job.engineUnreachable": "The engine cannot be reached.",
+  "studioCore.job.generationFailed": "Generation failed.",
+  "studioCore.job.interruptedByEngine": "The engine stopped during the generation.",
+  "studioCore.job.interruptedByServer": "Interrupted by the server shutdown",
+  "studioCore.title.defaultChat": "New conversation",
+  "studioCore.title.defaultConversation": "New creation"
+}

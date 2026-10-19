@@ -4,6 +4,7 @@
  */
 
 import { readSse, SseParser } from '@/modules_shared/common/core/events'
+import { languageHeaders } from '@/modules/studio-shell/lib/languageHeaders'
 import { studioApiBase, studioRequest, studioUpload } from '@/modules/studio-shell/services/studioHttp'
 import { isPrivateMode } from '@/modules/private/state/privateStore'
 import type { ConversationDetail } from '@/modules/studio-core/types'
@@ -121,7 +122,7 @@ export async function streamAnswer(path: string, body: AnswerBody, options: { si
   try {
     response = await fetch(studioApiBase() + path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+      headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...languageHeaders() },
       body: JSON.stringify(body),
       signal,
     })
@@ -130,7 +131,7 @@ export async function streamAnswer(path: string, body: AnswerBody, options: { si
     throw new ChatError((error as Error).message, 'upstream')
   }
   if (!response.ok) throw await refusal(response)
-  if (!response.body) throw new ChatError('No response body', 'upstream')
+  if (!response.body) throw new ChatError('', 'upstream')
   let finished = false
   try {
     await readSse(response.body, new SseParser(), (block) => {
@@ -143,5 +144,5 @@ export async function streamAnswer(path: string, body: AnswerBody, options: { si
     if (signal.aborted) return
     throw new ChatError((error as Error).message, 'closed')
   }
-  if (!finished && !signal.aborted) onEvent({ type: 'error', code: 'closed', message: 'The answer stopped before its end.' })
+  if (!finished && !signal.aborted) onEvent({ type: 'error', code: 'closed', message: '' })
 }

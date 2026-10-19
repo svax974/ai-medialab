@@ -1,0 +1,4 @@
+{
+  "« {} » (variante {}) n'a rien à quantifier localement.": "\"{}\" (variant {}) has nothing to quantize locally.",
+  "Mémoire insuffisante pour quantifier ce modèle sur cette machine.": "Not enough memory to quantize this model on this machine."
+}
