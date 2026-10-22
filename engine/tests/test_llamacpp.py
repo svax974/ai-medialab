@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """llama.cpp installer: asset choice, checksums, safe extraction, layouts, build selection, engine status (no network:

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Private generation, engine side: every file stays in the session folder, nothing of the job survives it, nothing

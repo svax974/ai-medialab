@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Qwen Image 2.1 (Qwen/Qwen-Image-2.1) via mflux: text to image, and img2img from a start image."""

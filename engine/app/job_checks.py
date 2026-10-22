@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Checks made when a generation is requested, before anything is stored: does the model exist, can it do what is

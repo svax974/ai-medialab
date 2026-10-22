@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Audio models run by audio.cpp (GGUF, ggml): Metal, CUDA, Vulkan or CPU, without PyTorch.

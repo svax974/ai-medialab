@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Memory guard: reserve, preflight, watchdog kill of a worker tree, VAE memory settings (no torch, no model)."""

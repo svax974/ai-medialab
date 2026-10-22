@@ -1,10 +1,6 @@
 /**
- * VXFramework
- *
- * Copyright (c) 2025-2026 Stéphane VAXELAIRE <svax974@gmail.com>
+ * Copyright (c) 2026 Stéphane Vaxelaire - Web3c
  * SPDX-License-Identifier: MIT
- *
- * Licensed under the MIT License. See LICENSE in the project root.
  *
  * Adds `chat_messages.generations` (nullable JSON): the images, videos and sounds a chat reply asked the studios for
  * (creation tools of the chat). A nullable column: existing rows are untouched.

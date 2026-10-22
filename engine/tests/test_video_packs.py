@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Video packs (Kiwi-Edit, Bernini): specs, pack definitions, hardware gating, worker protocol with a stub engine.

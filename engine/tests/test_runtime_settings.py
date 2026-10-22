@@ -1,3 +1,6 @@
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
+# SPDX-License-Identifier: MIT
+
 """Studio settings pushed by Nest (`PUT /engine/v1/runtime/settings`): memory-only values, token, checks. No model."""
 
 import os

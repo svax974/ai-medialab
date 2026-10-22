@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Video models run by stable-diffusion.cpp (`sd-cli -M vid_gen`: Metal, CUDA, ROCm, Vulkan).

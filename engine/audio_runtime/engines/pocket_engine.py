@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Pocket TTS (Kyutai, CC-BY-4.0): ~100M parameters, real time on CPU, zero-shot voice cloning."""

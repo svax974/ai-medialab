@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Routes of the installable components and of the "set a model up" run (`/engine/v1/components`, `/models/{id}/setup-plan`,

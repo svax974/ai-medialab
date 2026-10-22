@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Hardware detection: `get_system()` answers without waiting for the PyTorch probe (replaced here: torch is never imported)."""

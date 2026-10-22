@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """`/engine/v1` prefix, `X-Engine-Token` check, no `/api` prefix, OpenAPI schema. No model, no lifespan."""

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Qwen3-TTS (Alibaba, Apache-2.0): premium voices steerable by instruction, voice design, cloning.

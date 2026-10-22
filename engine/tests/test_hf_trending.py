@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """« What's new »: selection, ranking, entries, cache and route (Hub and memory verdicts simulated: no network, no torch)."""

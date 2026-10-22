@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Add-on of the main runtime (PyTorch + diffusers, MLX): the "torch" pack, installed on demand into a venv whose

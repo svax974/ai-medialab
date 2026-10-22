@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2026 Stéphane VAXELAIRE
+ * Copyright (c) 2026 Stéphane Vaxelaire - Web3c
  * SPDX-License-Identifier: MIT
  */
 
@@ -7,7 +7,7 @@ import type { ChatMessage } from '../types'
 
 /**
  * The tree of messages of a private chat conversation, held by the browser. It follows what the server does for the
- * persistent chat (`back/src/modules/chat/README.md`, « Arbre et réglages »): a message has a `parent_id`, its siblings
+ * persistent chat (`back/src/modules/chat/README.md`, "Tree and settings"): a message has a `parent_id`, its siblings
  * share its parent and role, the active branch is the path from the root to the leaf, and a message deleted takes what
  * follows it. All functions are pure and work on the map `id -> message` in creation order.
  */

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """audio.cpp (ggml, Apache-2.0) speech synthesis through its `audiocpp_cli`: Metal, CUDA, Vulkan or CPU, no PyTorch.

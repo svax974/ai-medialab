@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2026 Stéphane Vaxelaire
+ * Copyright (c) 2026 Stéphane Vaxelaire - Web3c
  * SPDX-License-Identifier: MIT
  */
 
@@ -19,7 +19,7 @@ import { createTestDataSource } from 'src/testing/testDataSource';
 /**
  * End to end, no model: the Python engine runs as a child process in demo mode (synthetic images, no GPU, no torch: the
  * hardware probe is switched off) and the Nest studio services talk to it over HTTP and the real event stream.
- * Skipped when `engine/.venv` is absent. Run it under `docs/migration/tools/guarded_run.sh 2`.
+ * Skipped when `engine/.venv` is absent. Run it under `scripts-local/guarded_run.sh 2`.
  */
 const ENGINE_DIR = resolve(__dirname, '../../../../../engine');
 const PYTHON = join(ENGINE_DIR, '.venv/bin/python');

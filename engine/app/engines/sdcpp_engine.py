@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """GGUF engine: drives stable-diffusion.cpp's `sd-cli` (Metal, CUDA, ROCm, Vulkan, CPU).

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Server side of a pack worker (audio or video): a subprocess (the pack's interpreter) bridged to the asyncio loop.

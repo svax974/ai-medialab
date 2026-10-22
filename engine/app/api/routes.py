@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Engine routes under `/engine/v1`: models, downloads, engines and packs, Hugging Face search, status, event stream."""

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Chat models: llama.cpp's server (`llama-server`) is the one place language models run.
@@ -8,7 +8,7 @@ normalised events back (`ChatEvents` below). The server is a long-lived process 
 `--parallel 1`) listening on 127.0.0.1 only, behind a random API key that never leaves this module.
 
 Memory is shared with the image, audio and video workers, so ONE model lives in memory at a time for the whole
-application (see `ARCHITECTURE.md`, « Filets de sécurité mémoire »):
+application (see `ARCHITECTURE.md`, "Memory safety nets"):
 
 - before a chat model loads, the generation worker is stopped (refused with `LlmBusy` while a generation or a queued one is
   running); before a generation loads its worker, the chat server is stopped (`jobs.py`, `api/jobs.py`);

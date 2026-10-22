@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Routes of the chat models (`/engine/v1/llm/*`) and of their runtime installer (`/engine/v1/engines/llamacpp/*`).

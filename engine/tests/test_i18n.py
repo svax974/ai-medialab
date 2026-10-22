@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Language of the interface: the mechanism (`app/i18n.py`, `app/api/language.py`) and the coverage of the English catalog."""
