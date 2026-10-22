@@ -147,7 +147,7 @@ jobs:
             echo
             echo "Packages are **not code-signed**: macOS shows a Gatekeeper warning (right-click → Open, or \`xattr -dr com.apple.quarantine \"/Applications/AI MediaLab.app\"\`), Windows shows SmartScreen (More info → Run anyway)."
             echo "Models and the GPU-specific engines are downloaded by the app on first use. Third-party licences are in the app's \`licenses/\` folder."
-            [ -f split-notes.md ] && { echo; cat split-notes.md; }
+            if [ -f split-notes.md ]; then echo; cat split-notes.md; fi
           } > notes.md
 
       - name: Create the draft release
