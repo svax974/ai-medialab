@@ -47,6 +47,9 @@ jobs:
       run:
         shell: bash
     steps:
+      - name: Keep the template symlinks (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.symlinks true
       - uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -66,6 +69,8 @@ jobs:
         with:
           python-version: "3.12"
       - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: false
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Linux system libraries (Tauri, AppImage)
@@ -85,6 +90,7 @@ jobs:
           PYTHON: ${{ runner.os == 'Windows' && 'python' || 'python3' }}
           APPIMAGE_EXTRACT_AND_RUN: "1"
           DESKTOP_SKIP_SDCPP_VARIANTS: cuda,rocm
+          GITHUB_TOKEN: ${{ github.token }}   # avoids the anonymous GitHub API rate limit when fetching engine releases
         run: |
           mkdir -p desktop/dist
           scripts-local/publish.sh __build_target "${{ matrix.target }}" "$RELEASE_VERSION"

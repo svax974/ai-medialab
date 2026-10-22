@@ -34,7 +34,7 @@ source "${PROJECT_ROOT}/scripts/desktop/common.sh"
 GUARD="${PROJECT_ROOT}/scripts-local/guarded_run.sh"
 GUARD_GB="${GUARD_GB:-5}"
 PART_SIZE="${PART_SIZE:-1900m}"            # under GitHub's 2 GiB asset limit
-PRUNE_NPM=(@base-org/account stripe typescript)   # in back dependencies (template base), imported by no code
+PRUNE_NPM=(@base-org/account typescript)   # in back dependencies (template base), imported by no code
 export DESKTOP_SKIP_SDCPP_VARIANTS="${DESKTOP_SKIP_SDCPP_VARIANTS:-cuda,rocm}"   # downloaded by the app at first launch
 
 DIST="${PROJECT_ROOT}/desktop/dist"

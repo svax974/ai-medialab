@@ -406,7 +406,7 @@ scripts-local/publish.sh --dry-run            # the plan only; --no-upload (buil
 The script (project, not template: `scripts/` is the shared link) refuses a modified tree, an unpushed HEAD or an existing tag.
 Each target runs under `scripts-local/guarded_run.sh` (`GUARD_GB`, 5 by default). Publication-specific slimming:
 stable-diffusion.cpp's CUDA and ROCm variants are not embedded (`DESKTOP_SKIP_SDCPP_VARIANTS`, downloaded on first launch), and the
-back's production dependencies without code (`@base-org/account`, `stripe`, `typescript`) are then removed from `node_modules`.
+back's production dependencies without code (`@base-org/account`, `typescript`; `stripe` stays: `DonationService` of the template requires it) are then removed from `node_modules`.
 GitHub refuses a file larger than 2 GiB: a larger package is split into `<name>.part-aa`, `.part-ab`… (`cat` to reassemble it,
 procedure in the release notes). The release is created as a draft, filled, then published. The `v*` tag also triggers
 `.github/workflows/release.yml` (never run).
