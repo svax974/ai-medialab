@@ -85,7 +85,7 @@ jobs:
 
       - name: Build the back and the front
         run: |
-          SCRIPT_DIR="$PWD/scripts"
+          PROJECT_ROOT="$PWD"
           source scripts/desktop/common.sh
           desktop_check_project
           build_web
