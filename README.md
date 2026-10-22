@@ -45,9 +45,9 @@ Prebuilt packages are attached to each [GitHub release](https://github.com/svax9
 
 | Platform | File | Status |
 |---|---|---|
-| macOS 14+, Apple Silicon | `AI MediaLab_<version>_aarch64.dmg` | Built and used by the author |
+| macOS 14+, Apple Silicon | `AI.MediaLab_<version>_aarch64.dmg` | Built and used by the author |
 | Windows 10/11, x64 | `AI-MediaLab-<version>-win-x64.zip` (portable: extract to a short path such as `C:\App`, run `AI MediaLab.exe`; needs the WebView2 runtime) | **Experimental**: never run on Windows hardware yet |
-| Linux x64 | `AI MediaLab_<version>_amd64.AppImage` (and `.deb`) | **Experimental**: never run on Linux hardware yet |
+| Linux x64 | `AI.MediaLab_<version>_amd64.AppImage` (and `.deb`) | **Experimental**: never run on Linux hardware yet |
 
 Each file has a `.sha256` next to it. A package larger than 2 GiB is split into `.part-aa`, `.part-ab`…; the release notes say how to
 reassemble it.
@@ -57,7 +57,7 @@ reassemble it.
 - macOS: drag the app to `/Applications`, then right-click → Open, or run
   `xattr -dr com.apple.quarantine "/Applications/AI MediaLab.app"`.
 - Windows: SmartScreen → *More info* → *Run anyway*.
-- Linux: `chmod +x AI*.AppImage && ./AI*.AppImage` (needs FUSE 2, or run it with `--appimage-extract-and-run`).
+- Linux: `chmod +x AI.MediaLab_*.AppImage && ./AI.MediaLab_*.AppImage` (needs FUSE 2, or run it with `--appimage-extract-and-run`).
 
 ### First launch
 
