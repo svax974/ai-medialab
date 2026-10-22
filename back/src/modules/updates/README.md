@@ -1,87 +1,63 @@
 # Module `updates`
 
-## Rôle
+## Role
 
-Recherche de mises à jour des moteurs et des modèles **installés**, et lancement d'une mise à jour à la fois. **Délégué au moteur
-Python** (`engine/app/updates.py`, routes `engine/app/api/updates.py`) : c'est lui qui sait ce qui est installé et comment le comparer.
-Une mise à jour n'est pas un mécanisme de plus : c'est l'installateur existant relancé (téléchargement du modèle, installation du
-moteur ou du pack), dont l'avancement arrive par les événements habituels. Rien ne se met à jour sans demande (pas de mise à jour
-automatique). **Conseiller** : à la demande, le modèle de chat local lit des sources publiques structurées (GitHub pour un moteur,
-Hugging Face pour un modèle) et liste les problèmes signalés sur la mise à jour ; Nest **enregistre** l'avis (`update_advisories`) et le
-restitue ensuite, même hors ligne. L'avis est consultatif : il ne bloque jamais une mise à jour. Module d'application.
+Checking for updates of the **installed** engines and models, and launching one update at a time. **Delegated to the Python engine** (`engine/app/updates.py`, routes `engine/app/api/updates.py`): it is the engine that knows what is installed and how to compare it. An update is not one more mechanism: it is the existing installer run again (model download, engine or pack installation), whose progress arrives through the usual events. Nothing is updated without a request (no automatic update). **Advisor**: on request, the local chat model reads structured public sources (GitHub for an engine, Hugging Face for a model) and lists the problems reported about the update; Nest **records** the advice (`update_advisories`) and returns it afterwards, even offline. The advice is advisory: it never blocks an update. Application module.
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `UpdatesModule.ts` | Contrôleur, services, entité des avis ; importe `StudioCoreModule` (jauge du moteur et file des générations). |
-| Contrôleur | `controllers/UpdatesController.ts` | Les routes ci-dessous (administrateur, JSON en clair). |
-| Service | `services/UpdatesService.ts` | Un appel typé par route ; erreurs via `engineErrorToHttp` ; délai de 120 s pour la recherche (lit l'API Hugging Face et GitHub), 360 s pour une analyse. `check` fusionne les avis enregistrés ; `advise` demande l'analyse au moteur, tient la jauge `EngineBusyGate` (propriétaire `update-advice`) et enregistre. |
-| Service | `services/UpdateAdvisoryService.ts` | Enregistre les avis, garde les 5 plus récents par élément (`ADVISORY_HISTORY`), les attache aux lignes d'un rapport (`merge`), signale ceux qui ne portent plus sur la version proposée (`stale`). |
-| Entité | `entities/UpdateAdvisoryEntity.ts` | Table `update_advisories` (migration `1792061048743-UpdateAdvisories.ts`). |
-| DTO | `dto/AdviseBody.ts` | `parseAdviseBody` : `{ kind, id, target? }` validé (liste blanche, motif d'identifiant, 400 sinon). |
-| Mappeur | `mappers/advisoryMapper.ts` | Entité vers forme publique (snake_case). |
+| Module | `UpdatesModule.ts` | Controller, services, advisory entity; imports `StudioCoreModule` (engine gauge and generation queue). |
+| Controller | `controllers/UpdatesController.ts` | The routes below (administrator, plain JSON). |
+| Service | `services/UpdatesService.ts` | One typed call per route; errors via `engineErrorToHttp`; 120 s timeout for the check (reads the Hugging Face and GitHub APIs), 360 s for an analysis. `check` merges the recorded advice; `advise` asks the engine for the analysis, holds the `EngineBusyGate` gauge (owner `update-advice`) and records it. |
+| Service | `services/UpdateAdvisoryService.ts` | Records the advice, keeps the 5 most recent per item (`ADVISORY_HISTORY`), attaches them to the rows of a report (`merge`), flags those no longer concerning the proposed version (`stale`). |
+| Entity | `entities/UpdateAdvisoryEntity.ts` | Table `update_advisories` (migration `1792061048743-UpdateAdvisories.ts`). |
+| DTO | `dto/AdviseBody.ts` | `parseAdviseBody`: validated `{ kind, id, target? }` (allow-list, identifier pattern, 400 otherwise). |
+| Mapper | `mappers/advisoryMapper.ts` | Entity to public shape (snake_case). |
 | Types | `types/updatesTypes.ts` | `UpdatesReport`, `EngineUpdate`, `ModelUpdate`, `UpdateStarted`, `UpdateAdvisory`, `EngineAdvice`, `AdviceFinding`. |
 
-## Dépendances
+## Dependencies
 
-`engine` : `EngineClient`, `engineErrorToHttp` (segment `updates` de `ENGINE_API_SEGMENTS`). `studio-core` : `EngineBusyGate`, `GenerationQueueService` (une analyse charge le modèle de chat : pas pendant une génération ni une réponse du chat, et inversement). `media-library` : `newId`, `nowSeconds`. `dto/UpdateEngineBody.ts` : `parseUpdateEngineBody` (liste blanche du corps ; les clés ajoutées par la couche d'authentification sont ignorées). Types seulement : `engines`
-(`EngineInstallState`, `PackInstallState`) et `model-catalog` (`DownloadProgress`, `ModelKind`).
+`engine`: `EngineClient`, `engineErrorToHttp` (segment `updates` of `ENGINE_API_SEGMENTS`). `studio-core`: `EngineBusyGate`, `GenerationQueueService` (an analysis loads the chat model: not during a generation or a chat reply, and vice versa). `media-library`: `newId`, `nowSeconds`. `dto/UpdateEngineBody.ts`: `parseUpdateEngineBody` (allow-list of the body; keys added by the authentication layer are ignored). Types only: `engines` (`EngineInstallState`, `PackInstallState`) and `model-catalog` (`DownloadProgress`, `ModelKind`).
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-| Méthode | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/updates/check` | Admin | Moteurs installés et modèles installés, chacun `current`, `update` ou (modèles) `error` : `UpdatesReport`. Lit le réseau : plusieurs secondes. |
-| `POST` | `/api/updates/models/:id` | Admin | Retélécharge les fichiers du modèle qui ont changé sur Hugging Face (200, `DownloadProgress`) ; 404 modèle inconnu, 409 : déjà à jour, non installé, chargé en mémoire, autre téléchargement en cours, vérification en erreur. |
-| `POST` | `/api/updates/engines/:id` | Admin | Réinstalle un moteur : `sdcpp`, `audiocpp` ou l'identifiant d'un pack (200, état de l'installateur). Corps optionnel `{ target }`, liste blanche `pinned` (défaut : la version testée par l'application, ou retour à elle depuis une build plus récente) ou `latest` (la dernière version amont, non testée : `sdcpp` et `audiocpp` seulement) ; autre valeur : 400. 404 moteur non installé ; 409 : déjà à jour, pas de version plus récente connue (`latest`), génération en cours, moteur utilisé par le modèle chargé, autre installation en cours. |
-| `GET` | `/api/updates/advisories` | Admin | Tous les avis enregistrés, du plus récent au plus ancien : `UpdateAdvisory[]`. `stale` vaut `null` tant qu'aucune vérification n'a été vue depuis le démarrage, sinon `true` quand l'avis porte sur une version qui n'est plus celle proposée. Affiché avant ou sans vérification (hors ligne). |
-| `POST` | `/api/updates/advise` | Admin | Corps `{ kind: 'engine' \| 'model', id, target?: 'pinned' \| 'latest' }` (400 si invalide ; `target` : `latest` n'a de sens que pour un moteur). Le moteur lit les sources et le modèle local en extrait les problèmes (environ une minute) ; la réponse est enregistrée et renvoyée : `UpdateAdvisory` (200). 409 avec `{ code, message }` : `busy` (génération, réponse du chat ou autre analyse en cours), `no_engine` (llama.cpp absent), `no_model` (aucun modèle de chat installé), `nothing_to_analyse`, `unsupported` ; 404 `not_installed` ; 502 `no_sources`, `llm_output` ; 504 `llm`. |
-| `DELETE` | `/api/updates/advisories/:id` | Admin | Supprime un avis (`{ ok: true }`) ; 404 s'il n'existe pas. |
+| `GET` | `/api/updates/check` | Admin | Installed engines and installed models, each `current`, `update` or (models) `error`: `UpdatesReport`. Reads the network: several seconds. |
+| `POST` | `/api/updates/models/:id` | Admin | Re-downloads the model files that changed on Hugging Face (200, `DownloadProgress`); 404 unknown model, 409: already up to date, not installed, loaded in memory, another download in progress, check in error. |
+| `POST` | `/api/updates/engines/:id` | Admin | Reinstalls an engine: `sdcpp`, `audiocpp` or the identifier of a pack (200, installer state). Optional body `{ target }`, allow-list `pinned` (default: the version tested by the application, or a return to it from a more recent build) or `latest` (the latest upstream release, untested: `sdcpp` and `audiocpp` only); any other value: 400. 404 engine not installed; 409: already up to date, no more recent version known (`latest`), generation in progress, engine used by the loaded model, another installation in progress. |
+| `GET` | `/api/updates/advisories` | Admin | All recorded advice, from most recent to oldest: `UpdateAdvisory[]`. `stale` is `null` as long as no check has been seen since startup, otherwise `true` when the advice concerns a version that is no longer the proposed one. Displayed before or without a check (offline). |
+| `POST` | `/api/updates/advise` | Admin | Body `{ kind: 'engine' \| 'model', id, target?: 'pinned' \| 'latest' }` (400 if invalid; `target`: `latest` only makes sense for an engine). The engine reads the sources and the local model extracts the problems from them (about one minute); the response is recorded and returned: `UpdateAdvisory` (200). 409 with `{ code, message }`: `busy` (generation, chat reply or another analysis in progress), `no_engine` (llama.cpp absent), `no_model` (no chat model installed), `nothing_to_analyse`, `unsupported`; 404 `not_installed`; 502 `no_sources`, `llm_output`; 504 `llm`. |
+| `DELETE` | `/api/updates/advisories/:id` | Admin | Deletes an advice (`{ ok: true }`); 404 if it does not exist. |
 
-## L'avis (voir `engine/app/update_advisor.py`, seul propriétaire de ces règles)
+## The advice (see `engine/app/update_advisor.py`, sole owner of these rules)
 
-`UpdateAdvisory` : `kind`, `item_id`, `from_version` (build installée, ou révision courte du cache), `to_version` (release visée, ou
-empreinte de ce qui a changé sur le Hub pour un modèle), `verdict` (`none` | `caution` | `discouraged`, **calculé par le code** à partir des constats
-retenus et des régressions connues, jamais donné par le modèle), `summary`, `findings` (`severity`, `title`, `quote` : extrait recopié et **vérifié** dans la source,
-`url`, `source_kind`), `sources`, `notes` (ce qui n'a pas pu être lu), `llm_model_id`, `created_at`, `stale`. Une ligne par analyse, les cinq dernières par
-élément ; pour une même version, la plus récente fait foi. `check` les fusionne dans `advice` (moteur : la release que l'update installe) et `latest.advice` (la
-release amont non testée), et dans `advice` des modèles (liés à l'empreinte `fingerprint`) ; une ligne à jour n'en porte pas ; un avis d'une autre version est rendu `stale: true`.
+`UpdateAdvisory`: `kind`, `item_id`, `from_version` (installed build, or short revision of the cache), `to_version` (targeted release, or fingerprint of what changed on the Hub for a model), `verdict` (`none` | `caution` | `discouraged`, **computed by the code** from the retained findings and the known regressions, never given by the model), `summary`, `findings` (`severity`, `title`, `quote`: an extract copied and **verified** in the source, `url`, `source_kind`), `sources`, `notes` (what could not be read), `llm_model_id`, `created_at`, `stale`. One row per analysis, the last five per item; for a same version, the most recent prevails. `check` merges them into `advice` (engine: the release the update installs) and `latest.advice` (the untested upstream release), and into the `advice` of models (linked to the `fingerprint`); an up-to-date row does not carry one; an advice for another version is returned with `stale: true`.
 
-## Ce qui compte comme une mise à jour (voir `engine/app/updates.py`, seul propriétaire de ces règles)
+## What counts as an update (see `engine/app/updates.py`, sole owner of these rules)
 
-Modèle : un fichier que le modèle télécharge et possède déjà a un identifiant différent sur Hugging Face. Moteur sd.cpp / audio.cpp :
-build installée plus ancienne que la version épinglée par l'application = mise à jour recommandée et testée (`state`) ; une release
-amont plus récente que l'installée et l'épinglée est en plus proposée comme **`latest`** (non testée, avec les régressions connues de
-ce dépôt qui la touchent : table `KNOWN_REGRESSIONS`), que l'utilisateur peut choisir après confirmation ; une build plus récente que l'épinglée
-(installée en `latest`) n'est jamais rétrogradée d'office, mais `rollback` permet de revenir à la version testée. Pack Python : dépendances
-épinglées par l'application changées depuis l'installation. Chaque ligne de moteur porte `advice` et `latest.advice` (l'avis enregistré, ou `null`), chaque ligne de modèle `advice`, `revision` et `fingerprint` (ce à quoi l'avis est lié).
+Model: a file the model downloads and already owns has a different identifier on Hugging Face. Engine sd.cpp / audio.cpp: an installed build older than the version pinned by the application = recommended and tested update (`state`); an upstream release more recent than the installed and the pinned one is additionally proposed as **`latest`** (untested, with the known regressions of this repository that affect it: table `KNOWN_REGRESSIONS`), which the user can choose after confirmation; a build more recent than the pinned one (installed as `latest`) is never downgraded automatically, but `rollback` allows a return to the tested version. Python pack: dependencies pinned by the application changed since installation. Each engine row carries `advice` and `latest.advice` (the recorded advice, or `null`), each model row `advice`, `revision` and `fingerprint` (what the advice is linked to).
 
-## Événements (progression)
+## Events (progress)
 
-Aucun événement propre : `engine.download.progress` (modèles), `engine.engine.install` (stable-diffusion.cpp), `engine.pack.install`
-(packs et audio.cpp), puis `engine.models.changed`. Charges utiles : `back/src/modules/engine/README.md`, « Flux d'événements ».
-Chaque installateur n'en exécute qu'un à la fois : celui qui lance plusieurs mises à jour les enchaîne (le front, module `updates`).
+No event of its own: `engine.download.progress` (models), `engine.engine.install` (stable-diffusion.cpp), `engine.pack.install` (packs and audio.cpp), then `engine.models.changed`. Payloads: `back/src/modules/engine/README.md`, "Event stream". Each installer runs only one at a time: whoever launches several updates chains them (the front, `updates` module).
 
-## Entités
+## Entities
 
-`update_advisories` (`UpdateAdvisoryEntity`) : `id`, `kind`, `item_id`, `from_version`, `to_version`, `verdict`, `summary`, `findings` (JSON), `sources` (JSON), `notes` (JSON),
-`llm_model_id`, `created_at` (secondes, strictement croissantes) ; index `(kind, item_id, created_at)`. Types de colonnes portables (`jsonColumnType()`).
+`update_advisories` (`UpdateAdvisoryEntity`): `id`, `kind`, `item_id`, `from_version`, `to_version`, `verdict`, `summary`, `findings` (JSON), `sources` (JSON), `notes` (JSON), `llm_model_id`, `created_at` (seconds, strictly increasing); index `(kind, item_id, created_at)`. Portable column types (`jsonColumnType()`).
 
 ## Tests
 
 ```sh
-../docs/migration/tools/guarded_run.sh 3 npx jest --runInBand src/modules/updates/services/UpdatesService.spec.ts
-../docs/migration/tools/guarded_run.sh 3 npx jest --runInBand src/modules/updates/services/UpdateAdvisoryService.spec.ts
-../docs/migration/tools/guarded_run.sh 3 npx jest --runInBand src/modules/updates/UpdatesModule.spec.ts
+../scripts-local/guarded_run.sh 3 npx jest --runInBand src/modules/updates/services/UpdatesService.spec.ts
+../scripts-local/guarded_run.sh 3 npx jest --runInBand src/modules/updates/services/UpdateAdvisoryService.spec.ts
+../scripts-local/guarded_run.sh 3 npx jest --runInBand src/modules/updates/UpdatesModule.spec.ts
 ```
 
-Contrôleur et service sur le faux moteur HTTP : refus sans administrateur, rapport relayé, lancement (identifiant encodé), `target` par défaut,
-`latest` et valeurs refusées (400, rien n'atteint le moteur), refus 409 et 404 relayés, moteur injoignable (502).
+Controller and service on the fake engine HTTP server: refusal without administrator, report relayed, launch (encoded identifier), default `target`, `latest` and refused values (400, nothing reaches the engine), 409 and 404 refusals relayed, engine unreachable (502).
 
-`UpdateAdvisoryService.spec.ts` (base SQLite en mémoire) : enregistrement et ordre, historique borné à cinq par élément, suppression, fusion dans un rapport
-(release testée et `latest` sans mélange, avis périmé, élément à jour, empreinte d'un modèle), drapeau `stale` de la liste. `UpdatesService.spec.ts`, section
-« advice » : l'avis demandé est enregistré et rendu, corps validé (huit corps refusés en 400), refus pendant une génération ou une réponse du chat, refus du
-moteur relayés avec leur `code` et jauge toujours rendue, une seule analyse à la fois. `UpdatesModule.spec.ts` : câblage du conteneur.
+`UpdateAdvisoryService.spec.ts` (in-memory SQLite database): recording and order, history bounded to five per item, deletion, merge into a report (tested release and `latest` without mixing, stale advice, up-to-date item, model fingerprint), `stale` flag of the list. `UpdatesService.spec.ts`, "advice" section: the requested advice is recorded and returned, body validated (eight bodies refused with 400), refusal during a generation or a chat reply, engine refusals relayed with their `code` and gauge still returned, only one analysis at a time. `UpdatesModule.spec.ts`: container wiring.
 
-**Langue.** Erreurs, conflits (`busy`) et validations des corps suivent la langue de l'interface : `i18n/messages.{fr,en}.json`, lus par `tr()`. Le texte d'un avis est celui rendu par le moteur au moment de l'analyse et est conservé tel quel en base (il ne change pas de langue ensuite) ; le moteur n'a pas encore de paramètre de langue pour l'adviser.
+**Language.** Errors, conflicts (`busy`) and body validations follow the interface language: `i18n/messages.{fr,en}.json`, read by `tr()`. The text of an advice is the one rendered by the engine at the time of the analysis and is kept as is in the database (it does not change language afterwards); the engine has no language parameter for the advisor yet.

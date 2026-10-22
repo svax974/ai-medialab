@@ -1,50 +1,50 @@
 # `diagram-studio` (front)
 
-## Rôle
+## Role
 
-Onglet « Diagrammes » : organigrammes, flowcharts, séquences, architectures, états, cartes mentales. Même mécanique
-que les autres studios (page d'accueil, composeur, sélection de modèle, téléchargement à la sélection, fil de
-conversation, galerie, export) mais sans job de génération : une génération est un appel ponctuel au LLM local
-(`POST /api/diagrams/generate`), suivi d'un rendu Mermaid → SVG → PNG **côté front**, puis d'un envoi du PNG
-(`POST /api/diagrams/messages/:id/render`) qui l'attache au message comme un asset généré classique — d'où sa
-présence dans la galerie, le fil et le téléchargement exactement comme une image.
+"Diagrams" tab: org charts, flowcharts, sequences, architectures, states, mind maps. Same mechanics
+as the other studios (home page, composer, model selection, download on selection, conversation
+thread, gallery, export) but without a generation job: a generation is a one-off call to the local LLM
+(`POST /api/diagrams/generate`), followed by a Mermaid → SVG → PNG rendering **on the front side**, then an upload of the PNG
+(`POST /api/diagrams/messages/:id/render`) which attaches it to the message as a classic generated asset — hence its
+presence in the gallery, the thread and the download exactly like an image.
 
 ## Structure
 
 ```
 components/  DiagramHome, Composer, DiagramTypePicker, ThemePicker
-hooks/       useSendDiagram (génère → rend → attache, une seule action du point de vue du composeur)
-lib/         composerRules (pur, testé), mermaidThemes, renderDiagram (Mermaid → SVG → PNG, client-side), suggestions
+hooks/       useSendDiagram (generates → renders → attaches, a single action from the composer's point of view)
+lib/         composerRules (pure, tested), mermaidThemes, renderDiagram (Mermaid → SVG → PNG, client-side), suggestions
 services/    diagramsApi
-state/       diagramDraftStore (prompt, type de diagramme, thème — persistant, respecte le mode privé)
+state/       diagramDraftStore (prompt, diagram type, theme — persistent, respects private mode)
 ```
 
-`diagramStudioAdapter.tsx` réutilise l'`AssistantMessage`/`reuseUserMessage` génériques de `studio-core` : un
-diagramme rendu est un asset `image` comme un autre, aucun composant de rendu spécifique n'est nécessaire.
+`diagramStudioAdapter.tsx` reuses the generic `AssistantMessage`/`reuseUserMessage` of `studio-core`: a rendered diagram
+is an `image` asset like any other, no specific rendering component is needed.
 
 ## Services
 
-| Méthode | Endpoint | Description |
+| Method | Endpoint | Description |
 |---|---|---|
-| `generate` | `POST /api/diagrams/generate` | Corps `{conversation_id, prompt, model_id, diagram_type}` → `{conversation_id, user_message, assistant_message, mermaid_source, diagram_type}`. |
-| `render` | `POST /api/diagrams/messages/:id/render` | Multipart : le PNG rendu + `diagram_type`. Réponse : l'asset créé (`Asset`). |
+| `generate` | `POST /api/diagrams/generate` | Body `{conversation_id, prompt, model_id, diagram_type}` → `{conversation_id, user_message, assistant_message, mermaid_source, diagram_type}`. |
+| `render` | `POST /api/diagrams/messages/:id/render` | Multipart: the rendered PNG + `diagram_type`. Response: the created asset (`Asset`). |
 
-## Composants
+## Components
 
-| Composant | Description |
+| Component | Description |
 |---|---|
-| `DiagramHome` | Page d'accueil : accroche, carte de première installation, composeur hero, quatre suggestions de prompt (une par type de diagramme courant). |
-| `Composer` | Prompt (Entrée envoie), sélecteur de modèle, type de diagramme, thème visuel, envoi. Pas de références ni de paramètres de génération (taille, étapes) : un diagramme est prompt + type + thème. |
-| `DiagramTypePicker` | Choix du type (flowchart, organigramme, architecture, états, carte mentale, séquence) — détermine le schéma JSON et la conversion Mermaid côté back. |
-| `ThemePicker` | Thème visuel appliqué au rendu (clair, sombre, coloré, minimal) — jamais envoyé au modèle : change de thème ne redemande rien, la source Mermaid stockée est simplement re-rendue. |
+| `DiagramHome` | Home page: tagline, first-installation card, hero composer, four prompt suggestions (one per common diagram type). |
+| `Composer` | Prompt (Enter sends), model selector, diagram type, visual theme, send. No references nor generation parameters (size, steps): a diagram is prompt + type + theme. |
+| `DiagramTypePicker` | Choice of the type (flowchart, org chart, architecture, states, mind map, sequence) — determines the JSON schema and the Mermaid conversion on the back. |
+| `ThemePicker` | Visual theme applied to the rendering (light, dark, coloured, minimal) — never sent to the model: changing the theme asks for nothing again, the stored Mermaid source is simply rendered again. |
 
-## Types principaux
+## Main types
 
-`DiagramType`, `DiagramTheme`, `GenerateDiagramRequest`/`GenerateDiagramResponse` (miroir de
+`DiagramType`, `DiagramTheme`, `GenerateDiagramRequest`/`GenerateDiagramResponse` (mirror of
 `back/src/modules/diagrams/types/diagramTypes.ts`).
 
-## Dépendances
+## Dependencies
 
 `studio-core` (`AssistantMessage`, `reuseUserMessage`, `StudioModelPicker`, `upsertMessage`/`addOutput`,
 `usePromptHandoff`), `model-catalog` (`useActiveModel('diagram')`, `useModels`), `engines` (`SetupPrompt`,
-`WelcomeSetup`), `mermaid` (rendu SVG, nouvelle dépendance front — voir `package.local.json`).
+`WelcomeSetup`), `mermaid` (SVG rendering, new front dependency — see `package.local.json`).

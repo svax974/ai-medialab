@@ -1,58 +1,58 @@
 # Module `engine`
 
-## Rôle
+## Role
 
-Relie Nest au moteur Python (`engine/`, FastAPI interne : modèles, téléchargements, jobs, médias) : **client HTTP typé**,
-**relais du flux d'événements du moteur** vers le navigateur, **sonde de santé** et **relais des médias**
-(`/api/media/*`). Le navigateur ne parle qu'à Nest ; le moteur n'écoute que sur `127.0.0.1` et exige l'en-tête
-`X-Engine-Token` (sauf `/engine/v1/status` et les fichiers `/media/*`).
+Connects Nest to the Python engine (`engine/`, internal FastAPI: models, downloads, jobs, media): a **typed HTTP client**,
+a **relay of the engine's event stream** to the browser, a **health probe** and a **media relay**
+(`/api/media/*`). The browser only talks to Nest; the engine only listens on `127.0.0.1` and requires the
+`X-Engine-Token` header (except `/engine/v1/status` and the `/media/*` files).
 
-Module d'application (pas un module partagé) ; branché dans `modules/app/AppModule.ts`, `@Global()`.
+Application module (not a shared module); wired in `modules/app/AppModule.ts`, `@Global()`.
 
 ## Architecture
 
-| Élément | Fichier | Rôle |
+| Element | File | Role |
 |---|---|---|
-| `EngineModule` | `EngineModule.ts` | Déclare les providers, fournit `HEALTH_CONTRIBUTORS`, exporte `EngineClient`, `EngineEventRelay`, `ENGINE_CONFIG`. |
-| `engineConfig` | `engineConfig.ts` | `resolveEngineConfig(env)` : URL, jeton, délais (variables ci-dessous). |
-| Types générés | `generated/engineApi.d.ts` | Types `paths`/`operations` produits par `openapi-typescript` depuis `engine/openapi.json`. **Ne pas éditer** : `npm run engine:types`. |
-| Aides de types | `types/engineTypes.ts` | `EnginePath<M>`, `EngineRequestOptions`, `EngineResponse` : requête, paramètres, corps et réponse typés d'après le schéma. |
-| `EngineClient` | `services/EngineClient.ts` | Client typé (`get/post/put/patch/delete/request`, `openEventStream`, `buildUrl`, `authHeaders`). |
-| `EngineError`, `EngineUnavailableError` | `services/EngineError.ts` | Réponse non 2xx (`status`, `detail` FastAPI) / moteur injoignable ou délai dépassé. |
-| `EngineEventRelay` | `services/EngineEventRelay.ts` | Abonnement à `/engine/v1/events` avec reconnexion ; relais vers `EventStreamService` ; flux serveur `events$`. |
-| `SseParser` | `services/sseParser.ts` | Analyse incrémentale d'un flux SSE (trames `event:` / `data:`). Exporté : le client de réponses du module `chat` (`EngineLlmClient`) lit le flux `POST /engine/v1/llm/chat` avec. |
-| `EngineHealthContributor` | `services/EngineHealthContributor.ts` | Contribution `engine` de `GET /api/v1/health`. |
-| `engineErrorToHttp` | `services/engineHttpError.ts` | Erreur du moteur vers erreur HTTP d'une route Nest (statut et message relayés, injoignable : 502). |
-| `EngineMediaService`, `EngineMediaController` | `services/`, `controllers/` | Relais `GET`/`HEAD /api/media/<dossier>/<fichier>` vers `/media/...` du moteur (plages `Range` transmises, sans jeton). |
-| Faux moteur de test | `testing/fakeEngine.ts` | Serveur HTTP local qui joue le moteur dans les tests. |
+| `EngineModule` | `EngineModule.ts` | Declares the providers, provides `HEALTH_CONTRIBUTORS`, exports `EngineClient`, `EngineEventRelay`, `ENGINE_CONFIG`. |
+| `engineConfig` | `engineConfig.ts` | `resolveEngineConfig(env)`: URL, token, timeouts (variables below). |
+| Generated types | `generated/engineApi.d.ts` | `paths`/`operations` types produced by `openapi-typescript` from `engine/openapi.json`. **Do not edit**: `npm run engine:types`. |
+| Type helpers | `types/engineTypes.ts` | `EnginePath<M>`, `EngineRequestOptions`, `EngineResponse`: request, parameters, body and response typed from the schema. |
+| `EngineClient` | `services/EngineClient.ts` | Typed client (`get/post/put/patch/delete/request`, `openEventStream`, `buildUrl`, `authHeaders`). |
+| `EngineError`, `EngineUnavailableError` | `services/EngineError.ts` | Non-2xx response (`status`, FastAPI `detail`) / engine unreachable or timed out. |
+| `EngineEventRelay` | `services/EngineEventRelay.ts` | Subscription to `/engine/v1/events` with reconnection; relays to `EventStreamService`; server stream `events$`. |
+| `SseParser` | `services/sseParser.ts` | Incremental parser of an SSE stream (`event:` / `data:` frames). Exported: the response client of the `chat` module (`EngineLlmClient`) reads the `POST /engine/v1/llm/chat` stream with it. |
+| `EngineHealthContributor` | `services/EngineHealthContributor.ts` | The `engine` contribution to `GET /api/v1/health`. |
+| `engineErrorToHttp` | `services/engineHttpError.ts` | Engine error to HTTP error of a Nest route (status and message relayed; unreachable: 502). |
+| `EngineMediaService`, `EngineMediaController` | `services/`, `controllers/` | Relay of `GET`/`HEAD /api/media/<folder>/<file>` to the engine's `/media/...` (`Range` headers passed through, no token). |
+| Test fake engine | `testing/fakeEngine.ts` | Local HTTP server that plays the engine in tests. |
 
-## Dépendances
+## Dependencies
 
-- `common` : `EventStreamService` (publication), `HEALTH_CONTRIBUTORS`, `AdminOnlyInterceptor`, `NoTransportCrypt`.
-- Dev : `openapi-typescript` (ajouté par `back/package.local.json` ; justifié car le contrat est entre deux langages).
-- Aucune autre dépendance : `fetch` natif pour le client et le relais d'événements, `http` pour le relais des médias.
+- `common`: `EventStreamService` (publishing), `HEALTH_CONTRIBUTORS`, `AdminOnlyInterceptor`, `NoTransportCrypt`.
+- Dev: `openapi-typescript` (added by `back/package.local.json`; justified because the contract is between two languages).
+- No other dependency: native `fetch` for the client and the event relay, `http` for the media relay.
 
-**Pourquoi pas `throttledFetch`.** Ce helper de `common` protège les API tierces à quota (espacement entre appels, reprises
-avec backoff sur 5xx, réponses périmées). Pour un processus local que nous possédons, il retarderait des appels qui doivent
-partir tout de suite (statut, jobs, téléchargements) et masquerait les erreurs 5xx ; le client appelle donc `fetch` directement,
-avec délai (`ENGINE_TIMEOUT_MS`) et erreurs typées.
+**Why not `throttledFetch`.** This helper of `common` protects third-party APIs with quotas (spacing between calls, retries
+with backoff on 5xx, stale responses). For a local process that we own, it would delay calls that must go out immediately
+(status, jobs, downloads) and would hide 5xx errors; the client therefore calls `fetch` directly,
+with a timeout (`ENGINE_TIMEOUT_MS`) and typed errors.
 
 ## Configuration
 
-| Variable | Défaut | Effet |
+| Variable | Default | Effect |
 |---|---|---|
-| `ENGINE_TOKEN` | vide | Secret partagé, envoyé en `X-Engine-Token` (le moteur lit la même variable). Vide : aucun en-tête. |
-| `ENGINE_PORT` | `8000` | Port du moteur sur `127.0.0.1`. |
-| `ENGINE_URL` | `http://127.0.0.1:<ENGINE_PORT>` | URL de base (prioritaire sur `ENGINE_PORT`). |
-| `ENGINE_TIMEOUT_MS` | `30000` | Délai d'un appel typé (surchargeable par appel : `timeoutMs`). |
-| `ENGINE_EVENTS_RELAY` | `true` | `false` : ne pas s'abonner au flux d'événements au démarrage. |
-| `ENGINE_RECONNECT_MIN_MS` / `ENGINE_RECONNECT_MAX_MS` | `1000` / `15000` | Reconnexion du flux : délai doublé à chaque échec, plafonné, +-20 % d'aléa. |
-| `ENGINE_IDLE_TIMEOUT_MS` | `45000` | Le moteur envoie `: ping` toutes les 15 s ; sans octet pendant cette durée la connexion est coupée puis rétablie. |
-| `APP_DATA_DIR` | non défini | Dossier de données commun : le moteur le lit sous le nom `IMAGEGEN_DATA_DIR` (posé par `scripts-local/dev-services.sh`). |
+| `ENGINE_TOKEN` | empty | Shared secret, sent as `X-Engine-Token` (the engine reads the same variable). Empty: no header. |
+| `ENGINE_PORT` | `8000` | Engine port on `127.0.0.1`. |
+| `ENGINE_URL` | `http://127.0.0.1:<ENGINE_PORT>` | Base URL (takes precedence over `ENGINE_PORT`). |
+| `ENGINE_TIMEOUT_MS` | `30000` | Timeout of a typed call (overridable per call: `timeoutMs`). |
+| `ENGINE_EVENTS_RELAY` | `true` | `false`: do not subscribe to the event stream at startup. |
+| `ENGINE_RECONNECT_MIN_MS` / `ENGINE_RECONNECT_MAX_MS` | `1000` / `15000` | Stream reconnection: delay doubled at each failure, capped, +-20% jitter. |
+| `ENGINE_IDLE_TIMEOUT_MS` | `45000` | The engine sends `: ping` every 15 s; without any byte for this duration the connection is cut and re-established. |
+| `APP_DATA_DIR` | not set | Common data folder: the engine reads it as `IMAGEGEN_DATA_DIR` (set by `scripts-local/dev-services.sh`). |
 
-Lancement en dev : `scripts-local/dev-services.sh` (README racine, « Développement avec le serveur NestJS »).
+Development launch: `scripts-local/dev-services.sh` (root README, "Development with the NestJS server").
 
-## Client typé
+## Typed client
 
 ```ts
 constructor(private readonly engine: EngineClient) {}
@@ -63,139 +63,136 @@ await this.engine.delete('/engine/v1/models/{model_id}', { params: { model_id: i
 await this.engine.post('/engine/v1/jobs', { body: job });
 ```
 
-Chemins, méthodes, paramètres de chemin et de requête, corps JSON et type de réponse sont vérifiés à la compilation.
-Une route absente du schéma, un paramètre manquant ou un corps incomplet ne compilent pas. Les `{param}` du chemin sont
-remplacés (valeurs encodées). Erreurs : `EngineError` (le moteur a répondu hors 2xx), `EngineUnavailableError`
-(injoignable, délai). Réponse vide ou non JSON : `undefined`.
+Paths, methods, path and query parameters, JSON body and response type are checked at compile time.
+A route missing from the schema, a missing parameter or an incomplete body do not compile. The `{param}` placeholders of the path are
+replaced (values encoded). Errors: `EngineError` (the engine answered with a non-2xx status), `EngineUnavailableError`
+(unreachable, timeout). Empty or non-JSON response: `undefined`.
 
-**Régénérer les types** après toute modification de l'API du moteur :
+**Regenerate the types** after any change to the engine API:
 
 ```sh
 engine/.venv/bin/python scripts-local/export_engine_openapi.py   # engine/openapi.json
 cd back && npm run engine:types                                   # generated/engineApi.d.ts
 ```
 
-Un test (`generated/engineApi.contract.spec.ts`) échoue si `engineApi.d.ts` n'est plus celui que produit le schéma ; un
-test Python (`engine/tests/test_engine_api.py`) échoue si `engine/openapi.json` est périmé.
+A test (`generated/engineApi.contract.spec.ts`) fails if `engineApi.d.ts` is no longer the one the schema produces; a
+Python test (`engine/tests/test_engine_api.py`) fails if `engine/openapi.json` is stale.
 
-## Flux d'événements
+## Event stream
 
-`EngineEventRelay` ouvre `GET /engine/v1/events` au démarrage (sauf `ENGINE_EVENTS_RELAY=false`), relit le flux, et pour chaque
-événement du moteur publie sur `EventStreamService` :
+`EngineEventRelay` opens `GET /engine/v1/events` at startup (unless `ENGINE_EVENTS_RELAY=false`), reads the stream, and for each
+engine event publishes on `EventStreamService`:
 
-- sujet **`engine.<nom de l'événement>`** (ex. `engine.job.progress`, `engine.engine.status`, `engine.models.changed`,
-  `engine.conversation.updated`), `type` = nom de l'événement, `data` = charge utile du moteur ;
-- audience **`{ admin: true }`** : application mono-utilisateur, et le principal du mode local de confiance (`local-trust`)
-  est `{ id: 0, admin: true }`, donc il reçoit ces événements (vérifié : `matchesAudience` ne teste que `admin`) ;
-- `linkChanges$` (serveur) émet `true` à chaque (re)connexion et `false` à la coupure (`SettingsEngineSync` y renvoie les réglages) ;
-- sujet **`engine.link`** : `{ connected: boolean }`, publié à chaque changement d'état du flux (le front relit l'état
-  du moteur quand `connected` repasse à `true`, le moteur renvoyant son instantané à chaque connexion).
+- topic **`engine.<event name>`** (e.g. `engine.job.progress`, `engine.engine.status`, `engine.models.changed`,
+  `engine.conversation.updated`), `type` = event name, `data` = engine payload;
+- audience **`{ admin: true }`**: single-user application, and the principal of local trust mode (`local-trust`)
+  is `{ id: 0, admin: true }`, so it receives these events (verified: `matchesAudience` only tests `admin`);
+- `linkChanges$` (server) emits `true` at each (re)connection and `false` on disconnection (`SettingsEngineSync` pushes the settings back to it);
+- topic **`engine.link`**: `{ connected: boolean }`, published at each state change of the stream (the front re-reads the engine
+  state when `connected` goes back to `true`, the engine sending its snapshot at each connection).
 
-**Sujets relayés pour les modèles et les installateurs** (H4.2 ; le front s'abonne à ceux-là, vérifiés dans `engine/app/downloads.py`,
-`engine_install.py`, `audio_packs.py` et le flux `/engine/v1/events`) :
+**Topics relayed for models and installers** (H4.2; the front subscribes to these, checked in `engine/app/downloads.py`,
+`engine_install.py`, `audio_packs.py` and the `/engine/v1/events` stream):
 
-| Sujet (navigateur) | Événement du moteur | Charge utile | Quand |
+| Topic (browser) | Engine event | Payload | When |
 |---|---|---|---|
-| `engine.download.progress` | `download.progress` | `DownloadProgress` : `model_id`, `state` (`running`, `done`, `error`, `cancelled`), `done`, `total` (octets), `rate` (octets/s), `eta` (s ou `null`), `error` | au plus toutes les 0,4 s pendant un téléchargement, puis à la fin ; rejoué à chaque connexion pour les téléchargements en cours |
-| `engine.engine.install` | `engine.install` | `EngineInstallState` (stable-diffusion.cpp) : `state` (`idle`, `running`, `done`, `error`, `cancelled`), `variant`, `done`, `total` (octets), `message`, `error` | toutes les 0,4 s pendant l'installation ; l'état courant est rejoué à chaque connexion |
-| `engine.pack.install` | `pack.install` | `PackInstallState` (audio/vidéo) : `state`, `pack`, `name`, `message`, `detail`, `started_at` (s epoch), `size_mb`, `error` | à chaque étape de l'installation d'un pack (pas de pourcentage) ; rejoué à chaque connexion |
-| `engine.setup.progress` | `setup.progress` | `SetupState` : `state`, `model_id`, `steps[]` (`kind` base/engine/model, `state`), `current`, `message`, `detail`, `done`, `total`, `rate`, `eta`, `error` | pendant l'installation de ce qu'un modèle demande (une exécution : données de base, moteur, modèle) ; l'état courant est rejoué à chaque connexion |
-| `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, le moteur du chat) : même forme que `engine.engine.install` | pendant l'installation ; l'état courant est rejoué à chaque connexion |
-| `engine.llm.status` | `llm.status` | `LlmStatus` : `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | à chaque changement d'état du modèle de chat ; rejoué à chaque connexion |
-| `engine.models.changed` | `models.changed` | `{}` | fin de la sonde PyTorch du démarrage, d'un téléchargement, d'une suppression, d'un ajout ou retrait de modèle personnalisé, d'une (dés)installation de pack ou de moteur : le catalogue et `/api/system` sont à relire |
+| `engine.download.progress` | `download.progress` | `DownloadProgress`: `model_id`, `state` (`running`, `done`, `error`, `cancelled`), `done`, `total` (bytes), `rate` (bytes/s), `eta` (s or `null`), `error` | at most every 0.4 s during a download, then at the end; replayed at each connection for downloads in progress |
+| `engine.engine.install` | `engine.install` | `EngineInstallState` (stable-diffusion.cpp): `state` (`idle`, `running`, `done`, `error`, `cancelled`), `variant`, `done`, `total` (bytes), `message`, `error` | every 0.4 s during the installation; the current state is replayed at each connection |
+| `engine.pack.install` | `pack.install` | `PackInstallState` (audio/video): `state`, `pack`, `name`, `message`, `detail`, `started_at` (s epoch), `size_mb`, `error` | at each step of a pack installation (no percentage); replayed at each connection |
+| `engine.setup.progress` | `setup.progress` | `SetupState`: `state`, `model_id`, `steps[]` (`kind` base/engine/model, `state`), `current`, `message`, `detail`, `done`, `total`, `rate`, `eta`, `error` | during the installation of what a model requires (one run: base data, engine, model); the current state is replayed at each connection |
+| `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, the chat engine): same shape as `engine.engine.install` | during the installation; the current state is replayed at each connection |
+| `engine.llm.status` | `llm.status` | `LlmStatus`: `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | at each state change of the chat model; replayed at each connection |
+| `engine.models.changed` | `models.changed` | `{}` | end of the PyTorch probe at startup, of a download, of a deletion, of adding or removing a custom model, of a pack or engine (un)installation: the catalogue and `/api/system` must be re-read |
 
-Le nom `engine.engine.install` n'est pas une faute : préfixe `engine.` + événement `engine.install`. Le relais est générique : tout événement du moteur
-(donc `llamacpp.install` et `llm.status`) arrive au navigateur sans code propre au module `chat`.
+The name `engine.engine.install` is not a typo: prefix `engine.` + event `engine.install`. The relay is generic: every engine event
+(so `llamacpp.install` and `llm.status` too) reaches the browser without code specific to the `chat` module.
 
-## Contrat de jobs (H4.3a)
+## Job contract (H4.3a)
 
-Le moteur est **sans état applicatif** pour les jobs soumis par Nest : il ne lit ni n'écrit conversations, messages ni assets. Routes
-réservées à Nest (jeton `X-Engine-Token`) :
+The engine is **stateless with respect to application data** for the jobs submitted by Nest: it neither reads nor writes conversations, messages or assets. Routes
+reserved for Nest (`X-Engine-Token` header):
 
-| Route | Rôle |
+| Route | Role |
 |---|---|
-| `POST /engine/v1/jobs/check` `{ model_id, reference_media }` | Refuse (422, message à afficher tel quel) une génération que le modèle ne sait pas faire ; renvoie `{ kind, name, max_count, default_params }`. |
-| `POST /engine/v1/jobs` `{ job_id, kind, model_id, prompt, params, inputs, output_dir, voices?, private_dir? }` (202) | Met le job en file. `private_dir` (génération privée, module `private`) : le dossier de session `<données>/private/<id>` où le job garde TOUS ses fichiers (sorties, vignettes, aperçus, fichiers temporaires) ; `output_dir` doit y être (422 sinon), le moteur ne garde alors aucune trace du job (pas d'entrée dans l'historique des jobs terminés, erreurs assainies, aucune ligne de journal, `meta` des sorties sans prompt). `inputs`, `output_dir` et les chemins de `voices` : absolus et **dans le dossier de données** (422 sinon). `job_id` déjà actif : 409. Le contenu (prompt vide, référence absente, modèle non installé…) est vérifié à l'exécution et signalé par `job.failed`. `voices` (audio) : la bibliothèque de l'appelant ; donnée, même vide, le moteur ne consulte pas sa propre base. |
-| `GET /engine/v1/jobs` / `GET /engine/v1/jobs/{id}` | Jobs actifs / état d'un job (`queued`, `loading`, `running`, `done`, `failed`, `cancelled`, `outputs`, `error`) ; les 100 derniers jobs terminés restent consultables (404 sinon). |
-| `POST /engine/v1/jobs/{id}/cancel` | Un job en file s'arrête aussitôt ; un job en cours s'arrête après l'étape courante (pendant le chargement du modèle, le worker est tué ; `sd-cli` est arrêté par son moteur). 409 s'il n'est plus en cours, 404 s'il est inconnu. |
-| `POST /engine/v1/media/ingest` `{ source_path, asset_id, original_name, content_type, private_dir? }` | Transforme un envoi brut en référence stockée (PNG ou vidéo conservée, vignette) ; renvoie `{ media, filename, thumb, width, height, duration, meta }` ; consomme le fichier source. |
-| `POST /engine/v1/media/purge` `{ files: [{ folder, filename, thumb? }] }` | Supprime des fichiers médias et leurs vignettes (noms seuls). |
-| `POST /engine/v1/media/voice-reference` `{ source_path, voice_id }` (H4.5) | Prépare un clip de référence (mono, 24 kHz, silences de bord retirés, 1 à 30 s) dans `uploads/voice_<id>.wav` ; renvoie `{ filename, duration, peaks }` (120 valeurs) ; 422 (illisible, trop court, hors du dossier de données) ; la source n'est pas supprimée. |
-| `POST /engine/v1/media/transcribe` `{ path, language?, model_id? }` (H4.5) | Suggestion de transcription par le premier modèle installé (Whisper, puis Qwen3-ASR) : `{ text, language, duration, model }` ; 409 avec la raison à afficher si aucun modèle ou moteur n'est installé, 500 si le modèle échoue. |
+| `POST /engine/v1/jobs/check` `{ model_id, reference_media }` | Refuses (422, message to display as is) a generation the model cannot do; returns `{ kind, name, max_count, default_params }`. |
+| `POST /engine/v1/jobs` `{ job_id, kind, model_id, prompt, params, inputs, output_dir, voices?, private_dir? }` (202) | Queues the job. `private_dir` (private generation, `private` module): the session folder `<data>/private/<id>` where the job keeps ALL its files (outputs, thumbnails, previews, temporary files); `output_dir` must be inside it (422 otherwise), and the engine then keeps no trace of the job (no entry in the history of finished jobs, sanitized errors, no log line, outputs' `meta` without prompt). `inputs`, `output_dir` and the paths of `voices`: absolute and **inside the data folder** (422 otherwise). `job_id` already active: 409. The content (empty prompt, missing reference, model not installed...) is checked at execution time and reported by `job.failed`. `voices` (audio): the caller's library; given, even empty, the engine does not query its own database. |
+| `GET /engine/v1/jobs` / `GET /engine/v1/jobs/{id}` | Active jobs / state of a job (`queued`, `loading`, `running`, `done`, `failed`, `cancelled`, `outputs`, `error`); the last 100 finished jobs remain queryable (404 otherwise). |
+| `POST /engine/v1/jobs/{id}/cancel` | A queued job stops at once; a running job stops after the current step (while the model is loading, the worker is killed; `sd-cli` is stopped by its engine). 409 if it is no longer running, 404 if unknown. |
+| `POST /engine/v1/media/ingest` `{ source_path, asset_id, original_name, content_type, private_dir? }` | Turns a raw upload into a stored reference (PNG or kept video, thumbnail); returns `{ media, filename, thumb, width, height, duration, meta }`; consumes the source file. |
+| `POST /engine/v1/media/purge` `{ files: [{ folder, filename, thumb? }] }` | Deletes media files and their thumbnails (names only). |
+| `POST /engine/v1/media/voice-reference` `{ source_path, voice_id }` (H4.5) | Prepares a reference clip (mono, 24 kHz, edge silences removed, 1 to 30 s) in `uploads/voice_<id>.wav`; returns `{ filename, duration, peaks }` (120 values); 422 (unreadable, too short, outside the data folder); the source is not deleted. |
+| `POST /engine/v1/media/transcribe` `{ path, language?, model_id? }` (H4.5) | Transcription suggestion by the first installed model (Whisper, then Qwen3-ASR): `{ text, language, duration, model }`; 409 with the reason to display if no model or engine is installed, 500 if the model fails. |
 
-Événements du job (sur `/engine/v1/events`, tous avec `job_id`) :
+Job events (on `/engine/v1/events`, all with `job_id`):
 
-| Événement | Charge utile (en plus de `job_id`) |
+| Event | Payload (in addition to `job_id`) |
 |---|---|
-| `job.started` | `kind`, `model_id`, `params` (résolus : dimensions, graines, étapes, tâche vidéo…), `started_at` |
-| `job.progress` | `phase` (`loading` pendant le chargement du modèle, `running`), `count`, `index`, `step`, `total`, `eta`, `seconds_per_step`, `stage`, `preview_url`, `load_started_at` (rejoué à la connexion pour les jobs actifs) |
+| `job.started` | `kind`, `model_id`, `params` (resolved: dimensions, seeds, steps, video task...), `started_at` |
+| `job.progress` | `phase` (`loading` while the model loads, `running`), `count`, `index`, `step`, `total`, `eta`, `seconds_per_step`, `stage`, `preview_url`, `load_started_at` (replayed at connection for active jobs) |
 | `job.preview` | `index`, `path`, `filename`, `url` (`/media/previews/…`) |
-| `job.output` | un fichier produit : `index`, `media` (`image`, `audio`, `video`), `asset_id` (choisi par le moteur : la vignette en porte le nom), `path`, `filename`, `thumb`, `width`, `height`, `seed`, `duration`, `meta` (modèle, prompt, étapes, graine, durée de calcul ; fps, voix, formes d'onde, marqueurs selon le média) |
-| `job.done` | `outputs` (nombre de fichiers) |
-| `job.failed` | `error` (texte à afficher) |
+| `job.output` | one produced file: `index`, `media` (`image`, `audio`, `video`), `asset_id` (chosen by the engine: the thumbnail bears the same name), `path`, `filename`, `thumb`, `width`, `height`, `seed`, `duration`, `meta` (model, prompt, steps, seed, compute time; fps, voice, waveforms, markers depending on the media) |
+| `job.done` | `outputs` (number of files) |
+| `job.failed` | `error` (text to display) |
 | `job.cancelled` | `outputs` |
 
-Un job privé (`private_dir`) publie les mêmes événements, avec des URL `/media/private/<session>/…` (aperçus) et sans `prompt` dans `meta`.
+A private job (`private_dir`) publishes the same events, with `/media/private/<session>/…` URLs (previews) and no `prompt` in `meta`.
 
-Garde-fous conservés : un modèle chargé à la fois, une génération à la fois, déchargement après inactivité (`keep_alive_minutes`),
-annulation. Les vignettes et le sondage des médias restent au moteur (`media.py`, `job_outputs.py`).
+Safeguards kept: one model loaded at a time, one generation at a time, unloading after inactivity (`keep_alive_minutes`),
+cancellation. Thumbnails and media polling stay in the engine (`media.py`, `job_outputs.py`).
 
-Côté navigateur : `GET /api/v1/events/stream?topics=engine.job.progress,engine.link`. Côté serveur, `events$` donne les
-événements (`{ name, data }`) à un service Nest (H4.3 en dépend pour mettre les messages à jour). Reconnexion : délai
-`min * 2^n` plafonné, aléa +-20 %, remis à zéro après une ouverture réussie ; coupure silencieuse détectée par le délai
-d'inactivité. Une indisponibilité prolongée n'est journalisée qu'une fois par série.
+Browser side: `GET /api/v1/events/stream?topics=engine.job.progress,engine.link`. Server side, `events$` gives the
+events (`{ name, data }`) to a Nest service (H4.3 depends on it to update the messages). Reconnection: delay `min * 2^n` capped,
++-20% jitter, reset after a successful opening; a silent cut is detected by the idle timeout. A prolonged unavailability is logged only once per series.
 
-Limites : un événement de plus de 16 Ko est abandonné par `EventStreamService` (journalisé) ; `events$` le reçoit toujours.
+Limits: an event larger than 16 KB is dropped by `EventStreamService` (logged); `events$` still receives it.
 
-## Relais des médias
+## Media relay
 
-Le moteur sert ses fichiers (`uploads/`, `outputs/`, `thumbs/`, `previews/`) en lecture seule sur `/media/<dossier>/<fichier>`,
-sans jeton, sur `127.0.0.1`. Nest les relaie au navigateur sous **`/api/media/<dossier>/<fichier>`** (`GET` et `HEAD`, en-têtes
-`Range`, `If-None-Match` et `If-Modified-Since` transmis : lecture et déplacement dans l'audio et la vidéo). Le préfixe `/api`
-évite que le repli SPA de `serveFrontend` (qui sert `index.html` à tout `GET` acceptant du HTML hors `/api`) ne masque un
-média ouvert dans un onglet.
+The engine serves its files (`uploads/`, `outputs/`, `thumbs/`, `previews/`) read-only on `/media/<folder>/<file>`,
+without a token, on `127.0.0.1`. Nest relays them to the browser under **`/api/media/<folder>/<file>`** (`GET` and `HEAD`, `Range`,
+`If-None-Match` and `If-Modified-Since` headers passed through: reading and seeking in audio and video). The `/api` prefix
+prevents the SPA fallback of `serveFrontend` (which serves `index.html` for any `GET` accepting HTML outside `/api`) from masking
+a media opened in a tab.
 
-- **Sécurité** : `AdminOnlyInterceptor` (le principal `local-trust` est administrateur). Sans principal ou non admin : 401.
-  L'en-tête `Authorization` du navigateur n'est jamais transmis. Moteur injoignable : 502
-  `{ statusCode: 502, message: 'Engine unavailable' }`. Le contrôleur est exclu de Swagger.
-- Seul ce chemin est relayé : tout le reste de l'API du moteur passe par `EngineClient`, appelé par les modules Nest.
-- **Couverture du contrat** : `ENGINE_API_SEGMENTS` (`engineConfig.ts`) liste les premiers segments de `engine/openapi.json` ;
-  `EngineMedia.spec.ts` échoue si le schéma gagne ou perd un segment, pour qu'une nouvelle zone du moteur soit une décision
-  consciente côté Nest.
-- Limite connue : un `<img>` ou `EventSource` n'envoie pas `Authorization` ; hors mode local de confiance, ces ressources
-  ne sont accessibles qu'avec un autre mécanisme (sans objet pour cette application locale).
+- **Security**: `AdminOnlyInterceptor` (the `local-trust` principal is an administrator). No principal or non-admin: 401.
+  The browser's `Authorization` header is never passed on. Engine unreachable: 502
+  `{ statusCode: 502, message: 'Engine unavailable' }`. The controller is excluded from Swagger.
+- Only this path is relayed: the rest of the engine API goes through `EngineClient`, called by the Nest modules.
+- **Contract coverage**: `ENGINE_API_SEGMENTS` (`engineConfig.ts`) lists the first segments of `engine/openapi.json`;
+  `EngineMedia.spec.ts` fails if the schema gains or loses a segment, so that a new engine area is a conscious decision on the Nest side.
+- Known limit: an `<img>` or `EventSource` does not send `Authorization`; outside local trust mode, these resources
+  are only reachable with another mechanism (not applicable to this local application).
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-| Méthode | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/v1/health` | Public | Route de `common` ; ce module y ajoute `checks.engine` : `{ status, events, engine }`. |
-| `GET`, `HEAD` | `/api/media/<dossier>/<fichier>` | Admin (`local-trust` inclus) | Relais des médias du moteur (`/media/...`). |
+| `GET` | `/api/v1/health` | Public | Route of `common`; this module adds `checks.engine` there: `{ status, events, engine }`. |
+| `GET`, `HEAD` | `/api/media/<folder>/<file>` | Admin (`local-trust` included) | Relay of the engine's media (`/media/...`). |
 
-Santé : `status: ok` si `/engine/v1/status` répond sous 2 s, sinon **`degraded`** (HTTP 200 : le serveur et l'interface
-fonctionnent, seule la génération est indisponible ; le moteur est supervisé par le lanceur ou la coquille de bureau) ;
-`events` indique si le flux d'événements est ouvert.
+Health: `status: ok` if `/engine/v1/status` answers within 2 s, otherwise **`degraded`** (HTTP 200: the server and the interface
+work, only generation is unavailable; the engine is supervised by the launcher or the desktop shell); `events` tells whether the event stream is open.
 
-## Entités
+## Entities
 
-Aucune (la persistance est dans `studio-core`, `media-library`, `audio-studio` et `settings`).
+None (persistence lives in `studio-core`, `media-library`, `audio-studio` and `settings`).
 
-## Points d'extension
+## Extension points
 
-- Injecter `EngineClient` (typage complet) ou s'abonner à `EngineEventRelay.events$` depuis un module applicatif.
-- Une route ajoutée au moteur : régénérer `engine/openapi.json` et les types, puis mettre à jour `ENGINE_API_SEGMENTS` si le segment est nouveau.
-- `HEALTH_CONTRIBUTORS` est fourni ici sous forme de tableau : un autre contributeur est à ajouter à ce tableau (un seul
-  fournisseur du jeton par projet).
+- Inject `EngineClient` (full typing) or subscribe to `EngineEventRelay.events$` from an application module.
+- A route added to the engine: regenerate `engine/openapi.json` and the types, then update `ENGINE_API_SEGMENTS` if the segment is new.
+- `HEALTH_CONTRIBUTORS` is provided here as an array: another contributor must be added to this array (a single
+  provider of the token per project).
 
 ## Tests
 
-Un fichier à la fois, depuis `back/` (sous `docs/migration/tools/guarded_run.sh 3`) :
+One file at a time, from `back/` (under `scripts-local/guarded_run.sh 3`):
 
 ```sh
-npx jest --runInBand src/modules/engine/services/EngineClient.spec.ts      # idem pour les autres fichiers du dossier
+npx jest --runInBand src/modules/engine/services/EngineClient.spec.ts      # same for the other files of the folder
 ```
 
-Fichiers : `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHealthContributor,engineHttpError,EngineMedia,sseParser}.spec.ts`
-(faux moteur HTTP local, `testing/fakeEngine.ts`), `generated/engineApi.contract.spec.ts` (types à jour).
+Files: `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHealthContributor,engineHttpError,EngineMedia,sseParser}.spec.ts`
+(local fake HTTP engine, `testing/fakeEngine.ts`), `generated/engineApi.contract.spec.ts` (types up to date).
 
-**Langue.** Le client envoie `Accept-Language` au moteur, qui rédige ses messages dans cette langue ; le texte « moteur indisponible » du back est dans `i18n/messages.{fr,en}.json` (`tr()`).
+**Language.** The client sends `Accept-Language` to the engine, which writes its messages in that language; the back's "engine unavailable" text is in `i18n/messages.{fr,en}.json` (`tr()`).

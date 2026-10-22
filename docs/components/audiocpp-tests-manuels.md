@@ -1,64 +1,65 @@
-# Tests manuels — audio.cpp, transcription, marqueur « lent », recherche Hugging Face
+# Manual tests: audio.cpp, transcription, "slow" marker, Hugging Face search
 
-À faire par vous : ce que je n'ai pas pu exécuter (pas de GPU Vulkan/CUDA/AMD/Intel ici, application non lancée).
-Cochez chaque étape une fois faite : `[ ]` à faire · `[x]` OK · `[~]` OK avec réserve (noter laquelle) · `[!]` échec (noter l'erreur).
-Fiche du composant : [audiocpp.md](audiocpp.md). Machine, système, GPU et date : à noter en tête de chaque passage.
+To be done by you: what I could not run (no Vulkan/CUDA/AMD/Intel GPU here, application not launched).
+Tick each step once done: `[ ]` to do · `[x]` OK · `[~]` OK with a reservation (note which one) · `[!]` failure (note the error).
+Component sheet: [audiocpp.md](audiocpp.md). Machine, system, GPU and date: to note at the top of each pass.
 
-*Dernière vérification contre les sources : 2026-10-13 (aucune référence à un chemin ou à une route périmée après la migration).*
+*Last verified against source: 2026-10-13 (no reference to a stale path or route after the migration).*
 
-Passage du ____ / ____ / ______ — machine : ______________________ — GPU : ______________________
+Pass of ____ / ____ / ______ — machine: ______________________ — GPU: ______________________
 
-## A. Installation du moteur (toute machine)
+## A. Engine installation (any machine)
 
-- [ ] **Ouvrir Modèles → Audio et repérer « Qwen3-TTS · Clonage 0.6B (GGUF) »**
-  - Attendu : badge « audio.cpp (ggml) », texte « Programme autonome : le moteur audio.cpp précompilé… », bouton pour installer le moteur (≈ 30 à 60 Mo selon la machine), aucun message sur Python/uv.
-- [ ] **Installer le moteur**
-  - Attendu : progression, puis « Installé ». Le fichier `VERSION.json` du dossier `<engines>/audiocpp/<variante>/` indique la version épinglée.
-  - Variante installée attendue : Mac Apple Silicon → `metal` · Windows NVIDIA → `cuda` · Windows/Linux AMD ou Intel → `vulkan` · sinon `cpu`. Noter la variante obtenue : ________
-- [ ] **Vérifier que le GPU est vu** : lancer `<engines>/audiocpp/<variante>/audiocpp_cli --list-devices`
-  - Attendu : une ligne `[GPU]` (par exemple `Vulkan0 "AMD Radeon…" [GPU]`). Si seulement `[CPU]` : noter, c'est le repli.
+- [ ] **Open Models → Audio and locate "Qwen3-TTS · Clonage 0.6B (GGUF)"**
+  - Expected: badge "audio.cpp (ggml)", text "Standalone program: the precompiled audio.cpp engine…", button to install the engine (≈ 30 to 60 MB depending on the machine), no message about Python/uv.
+- [ ] **Install the engine**
+  - Expected: progress, then "Installed". The `VERSION.json` file of the folder `<engines>/audiocpp/<variant>/` gives the pinned version.
+  - Expected installed variant: Mac Apple Silicon → `metal` · Windows NVIDIA → `cuda` · Windows/Linux AMD or Intel → `vulkan` · otherwise `cpu`. Note the variant obtained: ________
+- [ ] **Check that the GPU is seen**: run `<engines>/audiocpp/<variant>/audiocpp_cli --list-devices`
+  - Expected: a `[GPU]` line (for example `Vulkan0 "AMD Radeon…" [GPU]`). If only `[CPU]`: note it, this is the fallback.
 
-## B. Synthèse vocale GGUF (sur votre GPU)
+## B. GGUF speech synthesis (on your GPU)
 
-Pour chaque modèle, télécharger puis générer une phrase de 2 à 3 lignes. Noter le temps et si la voix est correcte.
+For each model, download then generate a sentence of 2 to 3 lines. Note the time and whether the voice is correct.
 
-- [ ] **Pocket TTS · FR / EN (GGUF)** (≈ 0,4 Go) : voix « Estelle » en français puis « Alba » en anglais, puis un clonage.
-  - Attendu : la langue choisie est respectée, voix intelligible, bien plus rapide que le temps réel. Temps : ________
-- [ ] **Chatterbox · Clonage expressif (GGUF)** (≈ 2,1 Go) : choisir une voix de la bibliothèque, générer en **français**, puis en **anglais** et en **allemand** sans changer de voix.
-  - Attendu : la langue suit le sélecteur ; sans voix choisie, le modèle demande une voix de référence. Régler « Expressivité » à 0,5 puis 0,9 : la diction change. Noter l'accent résiduel de l'échantillon : ________
-  - Le portage n'ajoute pas le filigrane de l'éditeur (vérifié dans le code, voir audiocpp.md) : rien à contrôler ici.
-- [ ] **Qwen3-TTS · Clonage 0.6B (GGUF)** : cloner une voix en français.
-  - Attendu : voix proche de l'échantillon ; avec la transcription de l'échantillon renseignée, la fidélité est meilleure.
-- [ ] **Qwen3-TTS 1.7B (GGUF) : Voix & style, Création de voix, Clonage** (≈ 2,7 à 2,8 Go chacun)
-  - Voix & style : essayer au moins « Vivian », « Ryan » et une consigne de style (« chuchoté »). Noter les voix qui échouent : ________
-  - Création de voix : « femme de 30 ans, voix grave et rassurante ».
-- [ ] **Surveiller la mémoire** pendant ces essais : sur un GPU Vulkan, la mémoire vidéo et la RAM ne doivent pas saturer. Noter le pic : ________
+- [ ] **Pocket TTS · FR / EN (GGUF)** (≈ 0.4 GB): voice "Estelle" in French then "Alba" in English, then a cloning.
+  - Expected: the chosen language is respected, voice intelligible, much faster than real time. Time: ________
+- [ ] **Chatterbox · Clonage expressif (GGUF)** (≈ 2.1 GB): choose a voice from the library, generate in **French**, then in **English** and in **German** without changing voice.
+  - Expected: the language follows the selector; without a chosen voice, the model asks for a reference voice. Set "Expressivité" to 0.5 then 0.9: the diction changes. Note the residual accent of the sample: ________
+  - The port does not add the publisher's watermark (checked in the code, see audiocpp.md): nothing to check here.
+- [ ] **Qwen3-TTS · Clonage 0.6B (GGUF)**: clone a voice in French.
+  - Expected: voice close to the sample; with the transcription of the sample filled in, fidelity is better.
+- [ ] **Qwen3-TTS 1.7B (GGUF): Voix & style, Création de voix, Clonage** (≈ 2.7 to 2.8 GB each)
+  - Voice & style: try at least "Vivian", "Ryan" and a style instruction ("whispered"). Note the voices that fail: ________
+  - Voice creation: "woman of 30, deep and reassuring voice".
+- [ ] **Monitor the memory** during these tests: on a Vulkan GPU, video memory and RAM must not saturate. Note the peak: ________
 
 ## C. Transcription
 
-- [ ] **Voix → Nouvelle voix : enregistrer ou importer un extrait de 10 à 20 s en français, sans rien installer d'autre que « Qwen3-ASR 0.6B (GGUF) »**
-  - Attendu : le bouton « Transcrire automatiquement » est disponible, le texte proposé correspond à l'extrait, **le champ reste modifiable** : corriger un mot, enregistrer la voix, rouvrir avec le crayon « Modifier » : la correction est conservée.
-- [ ] **Avec Whisper ET Qwen3-ASR installés** : la transcription utilise Whisper (par défaut).
-- [ ] **Whisper téléchargé mais son moteur « Voix légères » non installé, Qwen3-ASR installé** : la transcription fonctionne quand même (elle bascule sur Qwen3-ASR).
-- [ ] **Extrait difficile (accent marqué ou bruit de fond)** : comparer Qwen3-ASR 0.6B, 1.7B et Whisper. Noter lequel se trompe le moins : ________
+- [ ] **Voice → New voice: record or import an extract of 10 to 20 s in French, installing nothing else than "Qwen3-ASR 0.6B (GGUF)"**
+  - Expected: the "Transcrire automatiquement" button is available, the proposed text matches the extract, **the field remains editable**: correct a word, save the voice, reopen with the "Modifier" pencil: the correction is kept.
+- [ ] **With Whisper AND Qwen3-ASR installed**: the transcription uses Whisper (by default).
+- [ ] **Whisper downloaded but its "Voix légères" engine not installed, Qwen3-ASR installed**: the transcription still works (it switches to Qwen3-ASR).
+- [ ] **Difficult extract (marked accent or background noise)**: compare Qwen3-ASR 0.6B, 1.7B and Whisper. Note which one makes the fewest mistakes: ________
 
-## D. Marqueur « lent · processeur » (machine AMD ou Intel sous Windows, ou sans GPU)
+## D. "Slow · processor" marker (AMD or Intel machine under Windows, or without GPU)
 
-- [ ] **Modèles → Audio : repérer « Qwen3-TTS · Clonage 1.7B » (version PyTorch)**
-  - Attendu sur AMD/Intel Windows : pastille « lent · processeur », message en orange qui nomme l'alternative GGUF. Sur NVIDIA ou Mac : aucune pastille.
-- [ ] **Kokoro, Pocket TTS, Whisper** : jamais de pastille.
-- [ ] **Modèle recommandé par défaut** : ce n'est pas un modèle marqué lent.
+- [ ] **Models → Audio: locate "Qwen3-TTS · Clonage 1.7B" (PyTorch version)**
+  - Expected on AMD/Intel Windows: "slow · processor" chip, orange message naming the GGUF alternative. On NVIDIA or Mac: no chip.
+- [ ] **Kokoro, Pocket TTS, Whisper**: never a chip.
+- [ ] **Recommended default model**: it is not a model marked slow.
 
-## E. Recherche Hugging Face et mémoire
+## E. Hugging Face search and memory
 
-- [ ] **Modèles → Ajouter depuis Hugging Face : chercher un dépôt GGUF d'image** (par exemple « Z-Image Turbo GGUF »), ouvrir un résultat.
-  - Attendu : la quantification présélectionnée est une qui tient dans la mémoire ; celles qui ne tiennent pas sont barrées (info-bulle avec les chiffres) et, si on en sélectionne une, un message orange apparaît et « Ajouter et télécharger » est grisé.
-  - Sur une machine confortable, aucune variante barrée : noter la RAM/VRAM : ________
-- [ ] **Chercher un modèle PyTorch (Stable Diffusion) sur une machine sans CUDA/ROCm/Metal**
-  - Attendu : résultat grisé « incompatible avec cette machine », raison affichée, ajout impossible.
+- [ ] **Models → Add from Hugging Face: search for an image GGUF repository** (for example "Z-Image Turbo GGUF"), open a result.
+  - Expected: the preselected quantization is one that fits in the memory; those that do not fit are struck through (tooltip with the figures) and, if one is selected, an orange message appears and "Ajouter et télécharger" is greyed out.
+  - On a comfortable machine, no struck-through variant: note the RAM/VRAM: ________
+- [ ] **Search for a PyTorch model (Stable Diffusion) on a machine without CUDA/ROCm/Metal**
+  - Expected: result greyed out "incompatible with this machine", reason displayed, addition impossible.
 
-## F. Vulkan / CUDA / CPU (à faire au moins une fois par type de GPU disponible)
+## F. Vulkan / CUDA / CPU (to do at least once per available GPU type)
 
-- [ ] **Forcer chaque build installé** (variable `IMAGEGEN_AUDIOCPP_VARIANT=vulkan`, `cuda` ou `cpu`) et générer avec Pocket FR puis Chatterbox.
-  - Attendu : même résultat qu'en B ; noter les erreurs éventuelles et la vitesse par build : ________
-- [ ] **Noter le résultat dans la section « À vérifier à la revue » d'`audiocpp.md`** (point « Valider Vulkan, CUDA et CPU »).
+- [ ] **Force each installed build** (variable `IMAGEGEN_AUDIOCPP_VARIANT=vulkan`, `cuda` or `cpu`) and generate with Pocket FR then Chatterbox.
+  - Expected: same result as in B; note any errors and the speed per build: ________
+- [ ] **Note the result in the section "To check at review" of `audiocpp.md`** (point "Validate Vulkan, CUDA and CPU").
+</content>

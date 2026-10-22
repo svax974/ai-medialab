@@ -1,208 +1,208 @@
 # Module `chat`
 
-## Rôle
+## Role
 
-Le **studio de chat** : conversations avec un modèle de langage local (llama.cpp, piloté par le moteur Python), sous forme d'un **arbre de
-messages** (répondre, modifier un message ou régénérer une réponse ajoute une branche, rien n'est écrasé), réponses **en flux** (SSE),
-**pièces jointes** (images pour les modèles de vision, fichiers texte), **outils web** (recherche et lecture de pages) et **outils de création** (image, vidéo, son lancés dans les studios) pour les modèles qui
-appellent des fonctions, titre automatique, export, recherche, et le bouton ✨ d'amélioration de prompt des trois autres studios.
+The **chat studio**: conversations with a local language model (llama.cpp, driven by the Python engine), organized as a **tree of
+messages** (replying, editing a message or regenerating a reply adds a branch; nothing is overwritten), **streamed** replies (SSE),
+**attachments** (images for vision models, text files), **web tools** (search and page reading) and **creation tools** (image, video, audio, launched in the studios) for models
+that call functions, automatic titling, export, search, and the ✨ prompt-improvement button of the three other studios.
 
-Les conversations sont celles de `studio-core` (`conversations`, `mode = 'chat'` : liste, titre, épingle, suppression et recherche de titre
-passent par `/api/conversations*`) ; seuls les **messages** et les **réglages** de chaque conversation vivent ici. Le moteur Python ne garde
-aucune conversation : Nest lui envoie tout l'historique à chaque réponse. Module d'application, branché dans `modules/app/AppModule.ts`.
+The conversations are those of `studio-core` (`conversations`, `mode = 'chat'`: list, title, pin, deletion and title search
+go through `/api/conversations*`); only the **messages** and the **settings** of each conversation live here. The Python engine keeps
+no conversation: Nest sends it the whole history on every reply. Application module, wired in `modules/app/AppModule.ts`.
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `ChatModule.ts` | Importe `CommonModule`, `MediaLibraryModule`, `AudioStudioModule`, `StudioCoreModule`, `ModelCatalogModule`, `SettingsModule` ; déclare les deux entités, le contrôleur et les services ; exporte `ChatReplyService`, `EngineLlmClient`, `ChatModelService`, `WebToolsService` et `PromptEnhanceService` (le chat privé du module `private` les réutilise). |
-| Entité | `entities/ChatMessageEntity.ts` | Table `chat_messages` : arbre (`parent_id`), `role`, `content`, `reasoning`, `tool_runs`, `generations`, `attachments`, `model_id`, `params`, `status`, `error`, `stats`, `created_at`. |
-| Entité | `entities/ChatSettingsEntity.ts` | Table `chat_conversation_settings` : modèle, instruction système, échantillonnage, contexte, raisonnement, outils, `leaf_id` (feuille de la branche active). |
-| Contrôleur | `controllers/ChatController.ts` | `/api/chat/*` (ci-dessous). Administrateur seulement, JSON en clair (`NoTransportCrypt`). |
-| Flux | `controllers/SseStream.ts` | Réponse SSE : en-têtes envoyés avec le premier évènement, `: ping` toutes les 15 s, `signal` qui s'abat quand le client part, client qui ne lit plus (plus de 1 Mo en attente) coupé. `Cache-Control` au choix du constructeur (`no-cache, no-transform` ici, `no-store, no-transform` pour le chat privé). |
-| Service | `services/ChatReplyService.ts` | **Orchestrateur d'une réponse** : crée les messages, interroge le moteur, relaie le flux, boucle d'outils (5 tours au plus), persistance par lots de 500 ms, annulation, titre. `streamRounds` (les tours du modèle et des outils, sans rien stocker) est public : le chat privé l'appelle avec un `ReplyState` qui n'écrit nulle part et `isPrivate = true`. |
-| Service | `services/ChatStoreService.ts` | Persistance : arbre (frères, descendant le plus récent, suppression de sous-arbre), réglages, recherche, reprise des réponses interrompues. |
-| Service | `services/ChatService.ts` | Routes qui ne diffusent pas : lecture, réglages, changement de branche, suppression, sœurs d'un message, déchargement du modèle, export, recherche. |
-| Service | `services/EngineLlmClient.ts` | Client du flux `POST /engine/v1/llm/chat` (même URL et même jeton que `EngineClient`, sans délai, annulé par `AbortSignal`) ; `complete()` pour les réponses courtes. Le corps porte `private: false` (ou `true` pour une réponse du chat privé : le moteur n'écrit alors pas la ligne `[memory] llm`). |
-| Service | `services/ChatModelService.ts` | Quel modèle répond (demandé, sinon celui de la conversation, sinon le défaut du moteur), téléchargé, avec son moteur installé ; sinon une `ChatError` avec un texte qui dit quoi faire. |
-| Service | `services/ChatAttachmentService.ts` | Pièces jointes dans `<données>/uploads/` (`chat_<16 hex>.<ext>`), type reconnu par les octets, purge, balayage des envois jamais utilisés. |
-| Service | `services/WebToolsService.ts` | `web_search` (DuckDuckGo, ou Brave si une clé est saisie dans les réglages) et `fetch_url` (page publique en texte). |
-| Service | `services/CreationToolsService.ts` | Les outils de création : schémas `generate_image` / `generate_video` / `generate_audio` construits à chaque réponse d'après les modèles des studios et leurs capacités, exécution d'un appel (génération mise en file de `studio-core`), commandes `/image` `/video` `/audio`, carte de choix (`confirm`), nettoyage à la suppression d'un message. |
-| Service | `services/PromptEnhanceService.ts` | `POST /api/chat/enhance-prompt` : améliore un prompt d'image, de vidéo ou un texte à lire à voix haute. |
-| Service | `services/ChatBootstrap.ts` | Au démarrage : inscrit le chat au registre des modes de `studio-core`, termine les réponses restées `streaming`, balaie les envois orphelins. |
-| Pures | `services/chatValidation.ts`, `chatHistory.ts`, `chatExport.ts` | Validation de tout ce qui entre (listes blanches, bornes), historique envoyé au moteur, export Markdown / JSON. |
-| Pures | `mappers/chatMapper.ts` | Entités vers formes publiques (`sibling_ids`, `sibling_index`, URL d'aperçu des images). |
-| Outils | `tools/ssrfGuard.ts`, `safeFetch.ts`, `htmlText.ts`, `webSearch.ts` | Garde SSRF, téléchargement borné d'une page publique, extraction de texte, lecture des résultats DuckDuckGo et Brave. |
-| Tests | `testing/sse.ts` | Aides des tests (trames SSE du moteur, type `Json`). |
+| Module | `ChatModule.ts` | Imports `CommonModule`, `MediaLibraryModule`, `AudioStudioModule`, `StudioCoreModule`, `ModelCatalogModule`, `SettingsModule`; declares the two entities, the controller and the services; exports `ChatReplyService`, `EngineLlmClient`, `ChatModelService`, `WebToolsService` and `PromptEnhanceService` (the `private` module's private chat reuses them). |
+| Entity | `entities/ChatMessageEntity.ts` | Table `chat_messages`: tree (`parent_id`), `role`, `content`, `reasoning`, `tool_runs`, `generations`, `attachments`, `model_id`, `params`, `status`, `error`, `stats`, `created_at`. |
+| Entity | `entities/ChatSettingsEntity.ts` | Table `chat_conversation_settings`: model, system prompt, sampling, context, reasoning, tools, `leaf_id` (leaf of the active branch). |
+| Controller | `controllers/ChatController.ts` | `/api/chat/*` (below). Administrator only, plain JSON (`NoTransportCrypt`). |
+| Stream | `controllers/SseStream.ts` | SSE response: headers sent with the first event, `: ping` every 15 s, `signal` fires when the client leaves, client that stops reading (more than 1 MB pending) is cut off. `Cache-Control` is chosen by the constructor (`no-cache, no-transform` here, `no-store, no-transform` for the private chat). |
+| Service | `services/ChatReplyService.ts` | **Orchestrator of a reply**: creates the messages, queries the engine, relays the stream, tool loop (5 turns at most), batch persistence every 500 ms, cancellation, title. `streamRounds` (the turns of the model and of the tools, storing nothing) is public: the private chat calls it with a `ReplyState` that writes nowhere and `isPrivate = true`. |
+| Service | `services/ChatStoreService.ts` | Persistence: tree (siblings, most recent descendant, subtree deletion), settings, search, recovery of interrupted replies. |
+| Service | `services/ChatService.ts` | Routes that do not stream: read, settings, branch change, deletion, siblings of a message, model unload, export, search. |
+| Service | `services/EngineLlmClient.ts` | Client of the stream `POST /engine/v1/llm/chat` (same URL and token as `EngineClient`, no timeout, cancelled by `AbortSignal`); `complete()` for short replies. The body carries `private: false` (or `true` for a reply of the private chat: the engine then does not write the `[memory] llm` line). |
+| Service | `services/ChatModelService.ts` | Which model replies (the requested one, otherwise the conversation's, otherwise the engine default), downloaded, with its engine installed; otherwise a `ChatError` with a text that says what to do. |
+| Service | `services/ChatAttachmentService.ts` | Attachments in `<data>/uploads/` (`chat_<16 hex>.<ext>`), type recognized from the bytes, purge, sweep of uploads never used. |
+| Service | `services/WebToolsService.ts` | `web_search` (DuckDuckGo, or Brave if a key is entered in the settings) and `fetch_url` (public page as text). |
+| Service | `services/CreationToolsService.ts` | The creation tools: `generate_image` / `generate_video` / `generate_audio` schemas built at each reply from the studios' models and their capabilities, execution of a call (generation queued in `studio-core`), `/image` `/video` `/audio` commands, choice card (`confirm`), cleanup when a message is deleted. |
+| Service | `services/PromptEnhanceService.ts` | `POST /api/chat/enhance-prompt`: improves an image or video prompt, or a text to be read aloud. |
+| Service | `services/ChatBootstrap.ts` | At startup: registers the chat in the mode registry of `studio-core`, ends the replies left `streaming`, sweeps orphan uploads. |
+| Pure | `services/chatValidation.ts`, `chatHistory.ts`, `chatExport.ts` | Validation of everything that comes in (allowlists, bounds), history sent to the engine, Markdown / JSON export. |
+| Pure | `mappers/chatMapper.ts` | Entities to public shapes (`sibling_ids`, `sibling_index`, preview URL of images). |
+| Tools | `tools/ssrfGuard.ts`, `safeFetch.ts`, `htmlText.ts`, `webSearch.ts` | SSRF guard, bounded download of a public page, text extraction, reading of DuckDuckGo and Brave results. |
+| Tests | `testing/sse.ts` | Test helpers (engine SSE frames, `Json` type). |
 
-## Dépendances
+## Dependencies
 
-- `studio-core` : `ConversationEntity`, `ConversationService`, `GenerationService` (`publishConversation`, `create`, `remove` : les outils de création), `MessageService` (état et fichiers d'une génération), `ConversationModeRegistry`, `EngineBusyGate`, `GenerationQueueService.occupied`. Pas l'inverse (voir le README de `studio-core`, « Modes qui gardent leurs messages ailleurs »).
-- `engine` (global) : `EngineClient` (URL, jeton, `GET /engine/v1/llm/status`), `SseParser`, `EngineSchemas` (type du corps de `POST /engine/v1/llm/chat`, tiré de l'OpenAPI du moteur).
-- `model-catalog` : `ModelCatalogService.catalog()` (capacités `llm` : `tools`, `vision`… ; `audio` et `video` : ce que chaque outil de création propose). `audio-studio` : `VoiceService` (voix nommées). `settings` : `SettingsService.braveApiKey()`, `chat_voice_id` (voix par défaut). `media-library` : `uploadStorage`, `uploadsDir`, `newId`, `nowSeconds`.
-- `common` : `throttledFetchJson` (tout appel sortant des outils web : espacement par source, reprise sur 429/5xx, ne lève jamais), `AdminOnlyInterceptor`, `NoTransportCrypt`.
-- Le moteur (`engine/app/llm.py`, `api/llm.py`) : `POST /engine/v1/llm/chat` (flux), `GET /engine/v1/llm/status`. Il refuse un chemin d'image hors du dossier de données.
+- `studio-core`: `ConversationEntity`, `ConversationService`, `GenerationService` (`publishConversation`, `create`, `remove`: the creation tools), `MessageService` (state and files of a generation), `ConversationModeRegistry`, `EngineBusyGate`, `GenerationQueueService.occupied`. Not the reverse (see the `studio-core` README, "Modes that keep their messages elsewhere").
+- `engine` (global): `EngineClient` (URL, token, `GET /engine/v1/llm/status`), `SseParser`, `EngineSchemas` (type of the body of `POST /engine/v1/llm/chat`, taken from the engine's OpenAPI).
+- `model-catalog`: `ModelCatalogService.catalog()` (`llm` capabilities: `tools`, `vision`…; `audio` and `video`: what each creation tool offers). `audio-studio`: `VoiceService` (named voices). `settings`: `SettingsService.braveApiKey()`, `chat_voice_id` (default voice). `media-library`: `uploadStorage`, `uploadsDir`, `newId`, `nowSeconds`.
+- `common`: `throttledFetchJson` (every outgoing call of the web tools: spacing per source, retry on 429/5xx, never throws), `AdminOnlyInterceptor`, `NoTransportCrypt`.
+- The engine (`engine/app/llm.py`, `api/llm.py`): `POST /engine/v1/llm/chat` (stream), `GET /engine/v1/llm/status`. It refuses an image path outside the data folder.
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-Tous **administrateur** (le principal `local-trust` l'est). Erreurs de Nest `{ statusCode, message }` : **400** identifiant, `q` ou `format` invalide ;
-**404** conversation (absente ou d'un autre studio) ou message ; **409** conflit (`code` en plus : voir `enhance-prompt` et la suppression pendant une réponse) ;
-**422** corps invalide (valeurs hors bornes, pièce jointe inconnue, type de fichier refusé).
+All **administrator** (the `local-trust` principal is one). Nest errors `{ statusCode, message }`: **400** invalid identifier, `q` or `format`;
+**404** conversation (absent or from another studio) or message; **409** conflict (`code` in addition: see `enhance-prompt` and deletion during a reply);
+**422** invalid body (values out of bounds, unknown attachment, refused file type).
 
-| Méthode | Endpoint | Corps → Réponse |
+| Method | Endpoint | Body → Response |
 |---|---|---|
-| `GET` | `/api/chat/conversations/:id` | → `ChatConversation` : `{ conversation: ConversationSummary, settings, messages }` (`messages` = la branche active, racine → feuille) |
-| `PATCH` | `/api/chat/conversations/:id/settings` | partie de `{ model_id, system_prompt, params, context_size, reasoning, tools }` → `ChatSettings`. `params` : `temperature` 0–2, `top_p` 0–1, `top_k` 0–1000, `min_p` 0–1, `repeat_penalty` 0–2, `presence_penalty` et `frequency_penalty` −2–2, `max_tokens` 1–262144, `seed` 0–4294967295, `stop` (8 textes de 64 caractères) ; `context_size` `null` ou 256–1048576 ; `reasoning` `auto` `off` `low` `medium` `high` ; `tools` `{ web?: boolean, creation?: boolean }` (fusionné avec l'existant ; `creation` est **actif par défaut**). `leaf_id` n'est pas modifiable ici |
-| `POST` | `/api/chat/conversations/:id/messages` | `{ content, attachments?: [{ name }], parent_id?, model_id?, creation_models? }` → **flux SSE**. `parent_id` absent : la feuille courante ; `null` : une nouvelle racine ; sinon un message **de réponse** (un message utilisateur est refusé en 422). `content` peut être vide s'il y a une pièce jointe. `creation_models` : `{ image?, video?, audio? }`, le modèle sélectionné de chaque studio (le navigateur le tient, Nest l'ignore sinon) : voir « Outils de création ». `regenerate` et `edit` le prennent aussi |
-| `POST` | `/api/chat/conversations/:id/messages/:mid/regenerate` | `{ model_id? }` (`mid` = réponse) → **flux SSE** : nouvelle réponse **sœur** de `mid`, d'un autre modèle si demandé (comparaison) ; l'ancienne reste |
-| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `{ seconds? }` ou `{ voice_id? }` → `ChatGeneration` : lance la génération d'une carte de choix (`pending`). **422** durée hors des bornes du modèle, voix disparue ou absente, génération qui n'attend plus de choix ; **404** message |
-| `POST` | `/api/chat/conversations/:id/messages/:mid/edit` | `{ content, attachments? }` (`mid` = message utilisateur) → **flux SSE** : nouveau message utilisateur **sœur** de `mid` et sa réponse. `attachments` omis : ceux de l'original restent ; `[]` : aucun |
-| `POST` | `/api/chat/conversations/:id/leaf` | `{ message_id }` → `ChatConversation` : la feuille devient le descendant le plus récent de ce message (changement de branche) |
-| `DELETE` | `/api/chat/conversations/:id/messages/:mid` | → `ChatConversation` : supprime le message et son sous-arbre, les fichiers joints que plus rien n'utilise ; la feuille passe à la branche sœur la plus récente, sinon au parent. **409** (`code: busy`) si une réponse de cette conversation est en cours |
-| `GET` | `/api/chat/conversations/:id/messages/:mid/siblings` | → `ChatMessage[]` : les sœurs complètes de `mid` (même parent et même rôle, lui compris, plus ancienne d'abord), quelle que soit la branche active : c'est ce qu'affiche la comparaison de réponses après un rechargement de page |
-| `POST` | `/api/chat/model/unload` | → `{ ok: true }` : décharge le modèle de chat de la mémoire (`POST /engine/v1/llm/unload`). **409** (`code: busy`) tant qu'une réponse ou une amélioration de prompt tient le moteur (la jauge `EngineBusyGate`), **409** aussi si le moteur le refuse, **502** s'il ne répond pas |
-| `POST` | `/api/chat/attachments` | multipart, champ `file` (images png / jpeg / webp / gif ≤ 10 Mo ; texte UTF-8 ≤ 1 Mo ; type vérifié sur les octets, jamais sur le nom ou le type déclaré) → `ChatAttachment` `{ kind, name, original_name, mime, size, url? }` |
-| `GET` | `/api/chat/conversations/:id/export?format=md\|json` | → fichier (`Content-Disposition: attachment`), la branche active |
-| `POST` | `/api/chat/enhance-prompt` | `{ kind: 'image'\|'audio'\|'video', prompt, model_id? }` → `{ prompt, model_id }` ; **409** avec `code` `busy`, `no_model`, `no_engine` ou `upstream` |
-| `GET` | `/api/chat/search?q=` | → `[{ conversation_id, message_id, snippet }]` (50 au plus, sous-chaîne sans casse) |
+| `GET` | `/api/chat/conversations/:id` | → `ChatConversation`: `{ conversation: ConversationSummary, settings, messages }` (`messages` = the active branch, root → leaf) |
+| `PATCH` | `/api/chat/conversations/:id/settings` | part of `{ model_id, system_prompt, params, context_size, reasoning, tools }` → `ChatSettings`. `params`: `temperature` 0–2, `top_p` 0–1, `top_k` 0–1000, `min_p` 0–1, `repeat_penalty` 0–2, `presence_penalty` and `frequency_penalty` −2–2, `max_tokens` 1–262144, `seed` 0–4294967295, `stop` (8 texts of 64 characters); `context_size` `null` or 256–1048576; `reasoning` `auto` `off` `low` `medium` `high`; `tools` `{ web?: boolean, creation?: boolean }` (merged with the existing ones; `creation` is **enabled by default**). `leaf_id` is not editable here |
+| `POST` | `/api/chat/conversations/:id/messages` | `{ content, attachments?: [{ name }], parent_id?, model_id?, creation_models? }` → **SSE stream**. `parent_id` absent: the current leaf; `null`: a new root; otherwise a **reply** message (a user message is refused with 422). `content` may be empty if there is an attachment. `creation_models`: `{ image?, video?, audio? }`, the selected model of each studio (the browser holds it, Nest ignores it otherwise): see "Creation tools". `regenerate` and `edit` take it too |
+| `POST` | `/api/chat/conversations/:id/messages/:mid/regenerate` | `{ model_id? }` (`mid` = reply) → **SSE stream**: new reply **sibling** of `mid`, from another model if requested (comparison); the old one stays |
+| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `{ seconds? }` or `{ voice_id? }` → `ChatGeneration`: starts the generation of a choice card (`pending`). **422** duration out of the model's bounds, voice gone or absent, generation no longer waiting for a choice; **404** message |
+| `POST` | `/api/chat/conversations/:id/messages/:mid/edit` | `{ content, attachments? }` (`mid` = user message) → **SSE stream**: new user message **sibling** of `mid` and its reply. `attachments` omitted: those of the original stay; `[]`: none |
+| `POST` | `/api/chat/conversations/:id/leaf` | `{ message_id }` → `ChatConversation`: the leaf becomes the most recent descendant of this message (branch change) |
+| `DELETE` | `/api/chat/conversations/:id/messages/:mid` | → `ChatConversation`: deletes the message and its subtree, and the attached files nothing uses any more; the leaf moves to the most recent sibling branch, otherwise to the parent. **409** (`code: busy`) if a reply of this conversation is in progress |
+| `GET` | `/api/chat/conversations/:id/messages/:mid/siblings` | → `ChatMessage[]`: the full siblings of `mid` (same parent and same role, itself included, oldest first), whatever the active branch: this is what the reply comparison shows after a page reload |
+| `POST` | `/api/chat/model/unload` | → `{ ok: true }`: unloads the chat model from memory (`POST /engine/v1/llm/unload`). **409** (`code: busy`) as long as a reply or a prompt improvement holds the engine (the `EngineBusyGate` gauge), **409** also if the engine refuses it, **502** if it does not answer |
+| `POST` | `/api/chat/attachments` | multipart, field `file` (png / jpeg / webp / gif images ≤ 10 MB; UTF-8 text ≤ 1 MB; type checked on the bytes, never on the name or the declared type) → `ChatAttachment` `{ kind, name, original_name, mime, size, url? }` |
+| `GET` | `/api/chat/conversations/:id/export?format=md\|json` | → file (`Content-Disposition: attachment`), the active branch |
+| `POST` | `/api/chat/enhance-prompt` | `{ kind: 'image'\|'audio'\|'video', prompt, model_id? }` → `{ prompt, model_id }`; **409** with `code` `busy`, `no_model`, `no_engine` or `upstream` |
+| `GET` | `/api/chat/search?q=` | → `[{ conversation_id, message_id, snippet }]` (50 at most, case-insensitive substring) |
 
-### Flux SSE d'une réponse
+### SSE stream of a reply
 
-`Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no` (la compression du back et les proxys ne le tamponnent pas),
-chaque bloc `event: <type>` + `data: <json>`, `: ping` toutes les 15 s. Les en-têtes partent avec **le premier évènement** : une erreur de validation (400, 404, 409, 422)
-levée avant est une réponse HTTP ordinaire.
+`Content-Type: text/event-stream`, `Cache-Control: no-cache, no-transform`, `X-Accel-Buffering: no` (the back's compression and the proxies do not buffer it),
+each block `event: <type>` + `data: <json>`, `: ping` every 15 s. The headers leave with **the first event**: a validation error (400, 404, 409, 422)
+raised before that is an ordinary HTTP response.
 
-| Évènement | Données |
+| Event | Data |
 |---|---|
-| `message` | `{ message: ChatMessage }` : le message utilisateur créé (pas pour une régénération) puis la réponse créée (`status: 'streaming'`, `content: ''`) |
-| `loading` | `{ phase: 'starting'\|'loading', model_id, elapsed_s? }` : chargement du modèle |
-| `delta` / `reasoning` | `{ id, content }` : fragment du texte / de la réflexion de la réponse `id` |
-| `tool` | `{ id, run: ToolRun }` : début (`running`) et fin (`done` ou `error`) d'un appel d'outil ; `run.arguments` montre la requête réellement envoyée |
-| `usage` | `{ id, stats }` : `prompt_tokens`, `completion_tokens` (cumulés sur les tours d'outils), `tokens_per_second`, `context_size`, `elapsed_ms` |
-| `done` | `{ message }` : la réponse finale (`status: 'done'`, statistiques comprises), émis **dès la fin de la réponse** |
-| `title` | `{ title }` : titre court trouvé par le modèle, émis **après** `done` (voir ci-dessous) |
-| `error` | `{ code, message, id? }` : `busy`, `no_model`, `no_engine`, `context_exceeded`, `refused`, `upstream`, `closed`, `invalid` |
+| `message` | `{ message: ChatMessage }`: the user message created (not for a regeneration), then the reply created (`status: 'streaming'`, `content: ''`) |
+| `loading` | `{ phase: 'starting'\|'loading', model_id, elapsed_s? }`: model loading |
+| `delta` / `reasoning` | `{ id, content }`: fragment of the text / of the reasoning of the reply `id` |
+| `tool` | `{ id, run: ToolRun }`: start (`running`) and end (`done` or `error`) of a tool call; `run.arguments` shows the request actually sent |
+| `usage` | `{ id, stats }`: `prompt_tokens`, `completion_tokens` (cumulated over the tool turns), `tokens_per_second`, `context_size`, `elapsed_ms` |
+| `done` | `{ message }`: the final reply (`status: 'done'`, statistics included), emitted **as soon as the reply ends** |
+| `title` | `{ title }`: short title found by the model, emitted **after** `done` (see below) |
+| `error` | `{ code, message, id? }`: `busy`, `no_model`, `no_engine`, `context_exceeded`, `refused`, `upstream`, `closed`, `invalid` |
 
-Un seul `done` **ou** un seul `error` termine la **réponse**. Le flux se ferme à `done` quand aucun titre n'est à produire ; sinon il reste ouvert jusqu'à `title` (ou jusqu'à l'échec, l'annulation ou le délai du titre : il se ferme alors sans `title`). Refus **avant** tout enregistrement (`busy`, `no_model`, `no_engine`, `upstream` du catalogue) : un flux à un seul évènement `error`, aucun message créé.
-Annuler = fermer la connexion : le moteur coupe la génération et laisse le modèle chargé, le message garde le texte reçu avec `status: 'cancelled'` (aucun évènement n'est envoyé, personne n'écoute).
+A single `done` **or** a single `error` ends the **reply**. The stream closes at `done` when no title is to be produced; otherwise it stays open until `title` (or until failure, cancellation or the title timeout: it then closes without `title`). Refusal **before** any recording (`busy`, `no_model`, `no_engine`, `upstream` from the catalogue): a stream with a single `error` event, no message created.
+Cancelling = closing the connection: the engine stops the generation and leaves the model loaded, the message keeps the text received with `status: 'cancelled'` (no event is sent, nobody is listening).
 
-### Le titre automatique, après `done`
+### The automatic title, after `done`
 
-Le premier échange d'une conversation dont le titre vient encore du prompt reçoit d'abord un **titre provisoire** tiré du prompt (tout de suite, avec la création des messages). Une fois `done` émis, une requête au modèle
-(24 jetons, 15 s au plus, sans raisonnement) tourne **en arrière-plan** et `title` est émis à son retour, puis le flux se ferme : l'interface a donc la réponse, ses statistiques et ses actions dès `done`.
-Pendant cette requête la jauge d'occupation reste tenue **mais offerte** (`EngineBusyGate.setYield`) : un nouvel envoi, une régénération, une modification, `enhance-prompt` ou une génération en file d'attente **annule le titre et prend le moteur
-immédiatement** (jamais de `busy` à cause d'un titre ; la file reprend à la libération de la jauge). Si le client ferme la connexion après `done`, le titre est annulé sans bruit (le titre provisoire reste, la réponse n'est pas touchée).
-Pendant le titre, `runningIn(conversation)` est faux : on peut déjà supprimer un message ou régénérer.
+The first exchange of a conversation whose title still comes from the prompt first gets a **provisional title** taken from the prompt (immediately, with the creation of the messages). Once `done` is emitted, a request to the model
+(24 tokens, 15 s at most, no reasoning) runs **in the background** and `title` is emitted when it returns, then the stream closes: the interface therefore has the reply, its statistics and its actions from `done`.
+During this request the occupancy gauge stays held **but offered** (`EngineBusyGate.setYield`): a new send, a regeneration, an edit, `enhance-prompt` or a generation queued **cancels the title and takes the engine
+immediately** (never `busy` because of a title; the queue resumes when the gauge is released). If the client closes the connection after `done`, the title is cancelled silently (the provisional title stays, the reply is untouched).
+During the title, `runningIn(conversation)` is false: a message can already be deleted or regenerated.
 
-### Écarts et précisions par rapport au contrat convenu avec le front
+### Deviations and details relative to the contract agreed with the front end
 
-- `ChatAttachment` a un champ de plus, **`original_name`** (le nom que l'utilisateur a choisi ; `name` est le nom stocké, celui qu'on renvoie à `POST .../messages`).
-- Les erreurs de forme (identifiant, `q`, `format`) sont des **400**, celles du corps des **422**, comme `studio-core`.
-- `edit` : `attachments` omis garde les pièces jointes de l'original.
-- Une réponse annulée ou en erreur **reste dans l'historique** (son texte est renvoyé au modèle au tour suivant) ; une réponse en erreur sans texte en est écartée.
-- `usage.prompt_tokens` est celui du **dernier tour** (la taille du contexte utilisé), `completion_tokens` la somme des tours.
+- `ChatAttachment` has one extra field, **`original_name`** (the name the user chose; `name` is the stored name, the one returned to `POST .../messages`).
+- Shape errors (identifier, `q`, `format`) are **400**, those of the body are **422**, as in `studio-core`.
+- `edit`: `attachments` omitted keeps the attachments of the original.
+- A cancelled or failed reply **stays in the history** (its text is sent back to the model on the next turn); a failed reply without text is dropped from it.
+- `usage.prompt_tokens` is that of the **last turn** (the size of the context used), `completion_tokens` the sum of the turns.
 
-## Arbre et réglages
+## Tree and settings
 
-Un message a un `parent_id` ; ses **sœurs** sont les messages de même parent et même rôle, dans l'ordre de création (`sibling_ids`, `sibling_index` : le front propose `‹ 2/3 ›`).
-La **branche active** est le chemin de la racine à `leaf_id`. Répondre, modifier un message utilisateur et régénérer une réponse créent des enfants / sœurs ;
-changer de branche déplace la feuille. Les dates de création sont strictement croissantes dans le processus (deux messages créés dans la même milliseconde gardent leur ordre).
-Supprimer une conversation supprime tout par cascade (clés étrangères) et, par `beforeRemove`, arrête la réponse en cours et supprime les fichiers joints.
+A message has a `parent_id`; its **siblings** are the messages with the same parent and the same role, in creation order (`sibling_ids`, `sibling_index`: the front shows `‹ 2/3 ›`).
+The **active branch** is the path from the root to `leaf_id`. Replying, editing a user message and regenerating a reply create children / siblings;
+changing branch moves the leaf. Creation dates are strictly increasing within the process (two messages created in the same millisecond keep their order).
+Deleting a conversation deletes everything by cascade (foreign keys) and, through `beforeRemove`, stops the reply in progress and deletes the attached files.
 
-L'historique envoyé au moteur : l'instruction système (si non vide), puis la branche active jusqu'au message auquel on répond — textes finaux seulement (les `tool_runs` ne sont pas rejoués),
-fichiers texte en tête du message dans un bloc `<fichier nom="…">…</fichier>`, images en parties `image_url` avec leur chemin sous le dossier de données.
+The history sent to the engine: the system prompt (if not empty), then the active branch up to the message being replied to — final texts only (the `tool_runs` are not replayed),
+text files at the head of the message in a `<fichier nom="…">…</fichier>` block, images as `image_url` parts with their path under the data folder.
 
-## Arbitrage avec les générations (un modèle à la fois)
+## Arbitration with generations (one model at a time)
 
-Le moteur ne tient qu'un modèle en mémoire (mémoire unifiée) et répond **409** à celui qui arrive second. Côté Nest :
+The engine holds only one model in memory (unified memory) and answers **409** to the second caller. On the Nest side:
 
-- une réponse de chat prend `EngineBusyGate` (`tryAcquire('chat')`) pour toute sa durée, titre compris, et la rend dans tous les cas (fin, erreur, annulation). Pendant le titre elle l'**offre** (`setYield`) : `ReplyService.run`, `PromptEnhanceService` et `GenerationQueueService` appellent `gate.preempt()`, qui annule le titre et rend la main à la libération ;
-- `GenerationQueueService` ne soumet aucun job tant que la jauge est tenue et reprend à sa libération (les messages restent `queued`) ;
-- le chat répond `busy` (texte : « Une génération d'image, d'audio ou de vidéo est en cours ou en attente… ») tant que `GenerationQueueService.occupied` est vrai, et `busy` (« Une réponse est déjà en cours… ») si la jauge est tenue ;
-- `enhance-prompt` suit les mêmes règles ; il préfère le modèle de chat déjà chargé (pas de rechargement), sinon le défaut du moteur.
+- a chat reply takes `EngineBusyGate` (`tryAcquire('chat')`) for its whole duration, title included, and releases it in every case (end, error, cancellation). During the title it **offers** it (`setYield`): `ReplyService.run`, `PromptEnhanceService` and `GenerationQueueService` call `gate.preempt()`, which cancels the title and gives the engine back on release;
+- `GenerationQueueService` submits no job while the gauge is held and resumes on its release (the messages stay `queued`);
+- the chat answers `busy` (text: `Une génération d'image, d'audio ou de vidéo est en cours ou en attente…` (an image, audio or video generation is running or queued…)) as long as `GenerationQueueService.occupied` is true, and `busy` (`Une réponse est déjà en cours…` (a reply is already in progress…)) if the gauge is held;
+- `enhance-prompt` follows the same rules; it prefers the chat model already loaded (no reloading), otherwise the engine default.
 
-## Outils web
+## Web tools
 
-Actifs seulement si `settings.tools.web` **et** que le modèle appelle des fonctions (`llm.tools`). Au plus **5 tours** d'outils par réponse (le sixième appel n'offre plus d'outil : le modèle doit répondre).
-Un outil en échec est un `ToolRun` en erreur dont le texte est renvoyé au modèle (« Erreur : … »), pas un échec de la réponse.
+Active only if `settings.tools.web` **and** the model calls functions (`llm.tools`). At most **5 tool turns** per reply (the sixth call no longer offers a tool: the model must answer).
+A tool that fails is a `ToolRun` in error whose text is sent back to the model (`Erreur : …` (error: …)), not a failure of the reply.
 
-- `web_search(query, count ≤ 10)` : **DuckDuckGo** (`html.duckduckgo.com/html/`, sans clé ; page lue par expressions régulières : balisage vérifié le 2026-10-15, non officiel, peut changer ou être limité) ou **Brave Search** (API, en-tête `X-Subscription-Token`) quand une clé est saisie dans les réglages
-  (`PUT /api/settings { brave_api_key }`, chiffrée, jamais renvoyée ni journalisée, jamais envoyée au moteur ni mise dans un `ToolRun`).
-- `fetch_url(url)` : texte d'une page publique (20 000 caractères au plus). **Garde SSRF** (`tools/ssrfGuard.ts`, `safeFetch.ts`) : schémas `http` / `https` seulement, pas d'identifiants dans l'adresse, ports 80 / 443 / 8080 / 8443, noms locaux
-  (`localhost`, `*.local`, `*.internal`, noms sans point…) et adresses littérales privées, locales, réservées, de métadonnées cloud (IPv4 et IPv6, y compris `::ffff:a.b.c.d`, NAT64, 6to4, Teredo) refusés ; **toutes** les adresses d'un nom doivent être publiques
-  (une seule privée et le nom est refusé) ; la résolution est faite **par l'appel qui ouvre la connexion** (`lookup` d'`http.request`) : un nom qui change de réponse entre le contrôle et la connexion (rebinding DNS) ne peut pas atteindre une adresse privée ;
-  l'adresse de la socket connectée est revérifiée ; au plus 3 redirections, chaque `Location` revalidée ; corps limité à 1,5 Mo et lu seulement pour les types texte ; aucun script exécuté (le HTML n'est jamais rendu).
-- Toute requête sortante passe par `throttledFetchJson` (espacement par source : 1,5 s DuckDuckGo, 1 s Brave, 0,5 s pages ; une reprise sur 429 / 5xx).
-- La vie privée : les requêtes de recherche **sortent de la machine**. Elles sont visibles dans le message (`tool_runs[].arguments`), et l'outil est désactivé par défaut (par conversation).
+- `web_search(query, count ≤ 10)`: **DuckDuckGo** (`html.duckduckgo.com/html/`, no key; page read with regular expressions: markup checked on 2026-10-15, unofficial, may change or be rate-limited) or **Brave Search** (API, header `X-Subscription-Token`) when a key is entered in the settings
+  (`PUT /api/settings { brave_api_key }`, encrypted, never returned nor logged, never sent to the engine nor put in a `ToolRun`).
+- `fetch_url(url)`: text of a public page (20,000 characters at most). **SSRF guard** (`tools/ssrfGuard.ts`, `safeFetch.ts`): `http` / `https` schemes only, no credentials in the address, ports 80 / 443 / 8080 / 8443, local names
+  (`localhost`, `*.local`, `*.internal`, names without a dot…) and private, local, reserved or cloud-metadata literal addresses (IPv4 and IPv6, including `::ffff:a.b.c.d`, NAT64, 6to4, Teredo) refused; **all** the addresses of a name must be public
+  (a single private one and the name is refused); resolution is done **by the call that opens the connection** (`lookup` of `http.request`): a name that changes its answer between the check and the connection (DNS rebinding) cannot reach a private address;
+  the address of the connected socket is checked again; at most 3 redirections, each `Location` revalidated; body limited to 1.5 MB and read only for text types; no script executed (the HTML is never rendered).
+- Every outgoing request goes through `throttledFetchJson` (spacing per source: 1.5 s DuckDuckGo, 1 s Brave, 0.5 s pages; one retry on 429 / 5xx).
+- Privacy: search requests **leave the machine**. They are visible in the message (`tool_runs[].arguments`), and the tool is disabled by default (per conversation).
 
-## Outils de création (image, vidéo, audio)
+## Creation tools (image, video, audio)
 
-Actifs seulement si `settings.tools.creation` (par défaut) **et** que le modèle appelle des fonctions, et pour chaque studio dont le navigateur envoie un modèle (`creation_models`, lu de la sélection de chaque studio) **prêt** dans le catalogue : sans modèle prêt, l'outil n'est pas proposé.
-Les schémas sont **reconstruits à chaque réponse** d'après les capacités du modèle (jamais figés) ; ils passent avec les outils web dans la même boucle de 5 tours (`ChatReplyService.streamRounds`, paramètre `creation`).
+Active only if `settings.tools.creation` (by default) **and** the model calls functions, and for each studio whose browser sends a model (`creation_models`, read from the selection of each studio) that is **ready** in the catalogue: without a ready model, the tool is not offered.
+The schemas are **rebuilt at each reply** from the model's capabilities (never fixed); they go with the web tools in the same 5-turn loop (`ChatReplyService.streamRounds`, parameter `creation`).
 
-- `generate_image(prompt, aspect?)` : `aspect` parmi `1:1`, `16:9`, `9:16`, `4:3`, `3:4` ; le reste vient des paramètres par défaut du modèle.
-- `generate_video(prompt, seconds?)` : la description donne les bornes de **ce** modèle (`min_seconds`–`max_seconds`, défaut `default_seconds`). Sans `seconds`, **rien n'est lancé** : le message reçoit une génération `pending: 'duration'` (carte de choix, curseur borné par le modèle) et le modèle apprend qu'il n'a pas à relancer l'outil.
-- `generate_audio(text, …)` : n'expose que ce que le modèle accepte (`AudioCaps`) : `voice` (noms de la bibliothèque, si le modèle clone, et des voix prédéfinies du modèle, listés dans la description), `voice_description` si le modèle crée une voix d'après une description (`design`), `style` s'il prend une consigne (`instruct`), `language` s'il a plusieurs langues, `text` borné par `max_chars`. Les deux dernières vont dans `params.instruct` / `params.language`. Un modèle d'un autre `task` que `tts` (sons, musique : aucun au catalogue à ce jour) prend `description` (+ `seconds`) au lieu d'un texte et d'une voix ; un modèle de transcription (`stt`) n'a pas d'outil. La voix n'est exigée **que** si le modèle clone sans voix prédéfinie (`clone = required`) : voix nommée, sinon la **voix par défaut du chat** (`chat_voice_id`, réglage de l'application), sinon une carte de choix (`pending: 'voice'`). Une voix inconnue est une erreur renvoyée au modèle avec la liste des voix.
+- `generate_image(prompt, aspect?)`: `aspect` among `1:1`, `16:9`, `9:16`, `4:3`, `3:4`; the rest comes from the model's default parameters.
+- `generate_video(prompt, seconds?)`: the description gives the bounds of **this** model (`min_seconds`–`max_seconds`, default `default_seconds`). Without `seconds`, **nothing is launched**: the message receives a generation `pending: 'duration'` (choice card, slider bounded by the model) and the model learns it has no need to call the tool again.
+- `generate_audio(text, …)`: exposes only what the model accepts (`AudioCaps`): `voice` (names from the library, if the model clones, and the model's predefined voices, listed in the description), `voice_description` if the model creates a voice from a description (`design`), `style` if it takes an instruction (`instruct`), `language` if it has several languages, `text` bounded by `max_chars`. The last two go into `params.instruct` / `params.language`. A model with a `task` other than `tts` (sounds, music: none in the catalogue to date) takes `description` (+ `seconds`) instead of a text and a voice; a transcription model (`stt`) has no tool. The voice is required **only** if the model clones without a predefined voice (`clone = required`): named voice, otherwise the **chat default voice** (`chat_voice_id`, application setting), otherwise a choice card (`pending: 'voice'`). An unknown voice is an error sent back to the model with the list of voices.
 
-Un appel crée la génération avec les paramètres par défaut du modèle via `GenerationService.create` : un prompt et sa réponse **rattachés à la conversation de chat** (lignes `messages` de `studio-core` : les fichiers appartiennent à la conversation, leur origine est « chat », la suppression de la conversation les emporte) et mis en file. L'outil rend la main **tout de suite** (« génération lancée ») : le modèle de chat tient la jauge, la file ne soumet le job qu'à sa libération. Un refus du moteur (422 du contrôle `jobs/check`) est une erreur lisible par le modèle, comme pour les outils web.
-Le modèle conclut en une phrase (il ne voit pas le résultat). La conversation reste « occupée » (`busy`) tant que la génération attend ou tourne : le chat ne répond pas avant sa fin.
+A call creates the generation with the model's default parameters via `GenerationService.create`: a prompt and its reply **attached to the chat conversation** (`messages` rows of `studio-core`: the files belong to the conversation, their origin is "chat", deleting the conversation takes them along) and queued. The tool gives the hand back **immediately** (`génération lancée` (generation started)): the chat model holds the gauge, the queue submits the job only when it is released. A refusal by the engine (422 of the `jobs/check` check) is an error readable by the model, as for the web tools.
+The model concludes in one sentence (it does not see the result). The conversation stays "busy" (`busy`) as long as the generation waits or runs: the chat does not answer before its end.
 
-**Commandes** `/image …`, `/video [Ns] …`, `/audio [voix :] …` (début du message, sans pièce jointe, `tools.creation` actif) : reconnues **avant** le modèle, qui n'est pas chargé et ne tient pas la jauge ; réponse = une phrase fixe (« Génération lancée… »). Un nom avant les deux-points n'est pris pour une voix que s'il en désigne une du modèle ou de la bibliothèque. Sans modèle prêt dans le studio : erreur `no_model` sans rien créer ; texte vide : `invalid`.
+**Commands** `/image …`, `/video [Ns] …`, `/audio [voix :] …` (start of the message, no attachment, `tools.creation` active): recognized **before** the model, which is not loaded and does not hold the gauge; reply = a fixed sentence (`Génération lancée…` (Generation started…)). A name before the colon is taken as a voice only if it designates one of the model's or the library's. Without a ready model in the studio: `no_model` error without creating anything; empty text: `invalid`.
 
-**Stockage** : `chat_messages.generations` (JSON, nullable) porte, par génération, `{ id, kind, model_id, message_id, prompt, params, pending? }`. Le **côté état** (`state`, `error`, `assets`) n'y est pas copié : `ChatStoreService` le lit chez `studio-core` à chaque lecture (`MessageService`, par `message_id`), donc une seule source ; `state: 'pending'` tant qu'une carte attend un choix, `cancelled` si le message du studio a disparu. Le front est prévenu par les événements `studio.*` déjà publiés par la file (`message.updated`, `job.image`) : voir le README du chat côté front. Supprimer un message du chat supprime ses générations (arrêt si elles tournent, fichiers purgés : `CreationToolsService.discard`).
-**Chat privé** : les outils de création y sont **éteints** (`creation: false` imposé par `parsePrivateChatBody`) : une génération de la session privée passe par `PrivateGenerationService` et sa mémoire, ce que le chat privé sans état ne tient pas encore.
+**Storage**: `chat_messages.generations` (JSON, nullable) holds, per generation, `{ id, kind, model_id, message_id, prompt, params, pending? }`. The **state side** (`state`, `error`, `assets`) is not copied there: `ChatStoreService` reads it from `studio-core` at each read (`MessageService`, by `message_id`), so a single source; `state: 'pending'` as long as a card waits for a choice, `cancelled` if the studio's message has disappeared. The front is notified through the `studio.*` events already published by the queue (`message.updated`, `job.image`): see the chat README on the front. Deleting a chat message deletes its generations (stopped if they run, files purged: `CreationToolsService.discard`).
+**Private chat**: the creation tools are **turned off** there (`creation: false` imposed by `parsePrivateChatBody`): a generation of the private session goes through `PrivateGenerationService` and its memory, which the stateless private chat does not handle yet.
 
-## Entités
+## Entities
 
-- `ChatMessageEntity` (`chat_messages`) : `id`, `conversationId` (cascade), `parentId` (cascade), `role` (`user` | `assistant`), `content`, `reasoning`, `toolRuns` (JSON), `generations` (JSON, nullable : `StoredGeneration[]`), `attachments` (JSON : `kind`, `name`, `original_name`, `mime`, `size`), `modelId`, `params` (JSON : échantillonnage et raisonnement du tour), `status` (`done` | `streaming` | `error` | `cancelled`), `error`, `stats` (JSON), `createdAt` (secondes, flottant). Index `(conversation_id, created_at)` et `(parent_id)`.
-- `ChatSettingsEntity` (`chat_conversation_settings`) : `conversationId` (clé primaire, cascade), `modelId`, `systemPrompt`, `params` (JSON), `contextSize`, `reasoning`, `tools` (JSON), `leafId` (sans clé étrangère : une branche supprimée déplace la feuille dans le code). Créée au premier réglage ou à la première réponse.
-- Migrations `1792058442183-ChatTables.ts` (colonnes portables : `jsonColumnType()`) et `1792070000000-ChatGenerations.ts` (`chat_messages.generations`, nullable).
-- `ChatSettingsEntity.tools` est un JSON : `creation` s'y ajoute sans migration (absent = actif).
+- `ChatMessageEntity` (`chat_messages`): `id`, `conversationId` (cascade), `parentId` (cascade), `role` (`user` | `assistant`), `content`, `reasoning`, `toolRuns` (JSON), `generations` (JSON, nullable: `StoredGeneration[]`), `attachments` (JSON: `kind`, `name`, `original_name`, `mime`, `size`), `modelId`, `params` (JSON: sampling and reasoning of the turn), `status` (`done` | `streaming` | `error` | `cancelled`), `error`, `stats` (JSON), `createdAt` (seconds, float). Index `(conversation_id, created_at)` and `(parent_id)`.
+- `ChatSettingsEntity` (`chat_conversation_settings`): `conversationId` (primary key, cascade), `modelId`, `systemPrompt`, `params` (JSON), `contextSize`, `reasoning`, `tools` (JSON), `leafId` (no foreign key: a deleted branch moves the leaf in the code). Created at the first setting or the first reply.
+- Migrations `1792058442183-ChatTables.ts` (portable columns: `jsonColumnType()`) and `1792070000000-ChatGenerations.ts` (`chat_messages.generations`, nullable).
+- `ChatSettingsEntity.tools` is a JSON: `creation` is added to it without migration (absent = active).
 
-Pièces jointes : fichiers `chat_<16 hex>.<ext>` dans `<données>/uploads/` (le moteur les lit par chemin absolu, le navigateur voit les images par `/api/media/uploads/<nom>`) et une description `uploads/chat-meta/<nom>.json`.
-Un message modifié partage les fichiers de l'original : un fichier n'est supprimé que lorsqu'aucun message de la conversation ne l'utilise. Au démarrage, les envois vieux d'un jour et jamais utilisés sont supprimés.
+Attachments: files `chat_<16 hex>.<ext>` in `<data>/uploads/` (the engine reads them by absolute path, the browser sees the images through `/api/media/uploads/<nom>`) and a description `uploads/chat-meta/<nom>.json`.
+An edited message shares the files of the original: a file is deleted only when no message of the conversation uses it. At startup, uploads older than a day and never used are deleted.
 
-## Reprise au démarrage
+## Recovery at startup
 
-Une réponse restée `streaming` (arrêt brutal) passe à `error` avec « Réponse interrompue par l'arrêt de l'application. », son texte conservé (`ChatStoreService.failInterrupted`, comme `MessageService.failInterrupted`).
+A reply left `streaming` (abrupt stop) goes to `error` with `Réponse interrompue par l'arrêt de l'application.` (reply interrupted by the application shutting down), its text kept (`ChatStoreService.failInterrupted`, as `MessageService.failInterrupted`).
 
-## Points d'extension
+## Extension points
 
-- Un nouvel outil : son schéma dans `WEB_TOOL_SCHEMAS` (`WebToolsService.ts`), son exécution dans `WebToolsService.run`, son nom dans `ToolRun.name` ; le moteur et le flux n'ont rien à savoir.
-- Un nouvel outil de création (ou le `task` d'un nouveau modèle audio, sons / musique) : son schéma dans `CreationToolsService.schema` / `audioSchema`, son exécution dans `fromArguments`, son nom dans `CREATION_TOOL_NAMES` et `ToolRun.name` ; les capacités viennent du catalogue, rien à changer dans le moteur ni le flux.
-- Un autre fournisseur de recherche : un analyseur dans `tools/webSearch.ts` et une branche de `WebToolsService.search`.
-- `WEB_TOOL_DEPS` (jeton de `WebToolsService`) remplace la lecture de la clé Brave, le téléchargement et les transports de recherche : c'est ce que les tests injectent.
-- Les instructions du bouton ✨ : `ENHANCE_INSTRUCTIONS` (`PromptEnhanceService.ts`).
+- A new tool: its schema in `WEB_TOOL_SCHEMAS` (`WebToolsService.ts`), its execution in `WebToolsService.run`, its name in `ToolRun.name`; the engine and the stream know nothing about it.
+- A new creation tool (or the `task` of a new audio model, sounds / music): its schema in `CreationToolsService.schema` / `audioSchema`, its execution in `fromArguments`, its name in `CREATION_TOOL_NAMES` and `ToolRun.name`; the capabilities come from the catalogue, nothing to change in the engine or the stream.
+- Another search provider: a parser in `tools/webSearch.ts` and a branch in `WebToolsService.search`.
+- `WEB_TOOL_DEPS` (token of `WebToolsService`) replaces the reading of the Brave key, the download and the search transports: this is what the tests inject.
+- The ✨ button's instructions: `ENHANCE_INSTRUCTIONS` (`PromptEnhanceService.ts`).
 
 ## Tests
 
-Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh 3` (aucun moteur réel : faux moteur HTTP local qui diffuse des trames SSE) :
+One file at a time, from `back/`, under `scripts-local/guarded_run.sh 3` (no real engine: a fake local HTTP engine that broadcasts SSE frames):
 
 ```sh
-npx jest --runInBand src/modules/chat/controllers/ChatController.spec.ts     # routes : flux, en-têtes, refus, branches, sœurs, déchargement, pièces jointes, export, recherche, ✨, fermeture du client
-npx jest --runInBand src/modules/chat/controllers/ConversationChatMode.spec.ts # /api/conversations avec mode=chat
-npx jest --runInBand src/modules/chat/services/ChatReplyService.spec.ts      # réponse, titre, annulation, outils, régénération, modification, jauge
-npx jest --runInBand src/modules/chat/services/ChatStoreService.spec.ts      # arbre, feuille, suppression, cascade, recherche, reprise
-npx jest --runInBand src/modules/chat/services/EngineLlmClient.spec.ts       # flux du moteur, refus, coupure, annulation
-npx jest --runInBand src/modules/chat/services/ChatAttachmentService.spec.ts # type par les octets, purge, balayage
-npx jest --runInBand src/modules/chat/services/ChatBootstrap.spec.ts        # branchement sur les conversations partagées, suppression, reprise
-npx jest --runInBand src/modules/chat/services/WebToolsService.spec.ts       # outils web avec faux fournisseurs
-npx jest --runInBand src/modules/chat/services/CreationToolsService.spec.ts  # outils de création : schémas selon les capacités, appels, commandes, cartes de choix, nettoyage
-npx jest --runInBand src/modules/chat/tools/ssrfGuard.spec.ts                # garde SSRF : adresses, URL, résolution, rebinding
-npx jest --runInBand src/modules/chat/tools/safeFetch.spec.ts                # redirections, adresse de la socket, types, taille
-npx jest --runInBand src/modules/chat/services/chatValidation.spec.ts        # toutes les validations
+npx jest --runInBand src/modules/chat/controllers/ChatController.spec.ts     # routes: stream, headers, refusals, branches, siblings, unload, attachments, export, search, ✨, client closing
+npx jest --runInBand src/modules/chat/controllers/ConversationChatMode.spec.ts # /api/conversations with mode=chat
+npx jest --runInBand src/modules/chat/services/ChatReplyService.spec.ts      # reply, title, cancellation, tools, regeneration, edit, gauge
+npx jest --runInBand src/modules/chat/services/ChatStoreService.spec.ts      # tree, leaf, deletion, cascade, search, recovery
+npx jest --runInBand src/modules/chat/services/EngineLlmClient.spec.ts       # engine stream, refusals, cut, cancellation
+npx jest --runInBand src/modules/chat/services/ChatAttachmentService.spec.ts # type by bytes, purge, sweep
+npx jest --runInBand src/modules/chat/services/ChatBootstrap.spec.ts        # hook on shared conversations, deletion, recovery
+npx jest --runInBand src/modules/chat/services/WebToolsService.spec.ts       # web tools with fake providers
+npx jest --runInBand src/modules/chat/services/CreationToolsService.spec.ts  # creation tools: schemas by capabilities, calls, commands, choice cards, cleanup
+npx jest --runInBand src/modules/chat/tools/ssrfGuard.spec.ts                # SSRF guard: addresses, URL, resolution, rebinding
+npx jest --runInBand src/modules/chat/tools/safeFetch.spec.ts                # redirections, socket address, types, size
+npx jest --runInBand src/modules/chat/services/chatValidation.spec.ts        # all validations
 ```
 
-Aussi : `mappers/chatMapper.spec.ts` (état d'une génération), `studio-core/services/GenerationService.spec.ts` (une génération rattachée à une conversation de chat), `chatHistory`, `chatExport`, `ChatModelService`, `PromptEnhanceService`, `tools/htmlText`, `tools/webSearch` (mêmes dossiers), `studio-core/services/EngineBusyGate.spec.ts` (jauge et file), `migrations/tests/migrations.spec.ts`.
+Also: `mappers/chatMapper.spec.ts` (state of a generation), `studio-core/services/GenerationService.spec.ts` (a generation attached to a chat conversation), `chatHistory`, `chatExport`, `ChatModelService`, `PromptEnhanceService`, `tools/htmlText`, `tools/webSearch` (same folders), `studio-core/services/EngineBusyGate.spec.ts` (gauge and queue), `migrations/tests/migrations.spec.ts`.
 
-**Non vérifié** : aucun vrai `llama-server`, aucun vrai modèle d'image, de vidéo ou de son lancé par un outil (le catalogue, la file et le moteur sont des faux ; la régularité des petits modèles (1 à 4 B) à remplir les arguments des outils n'est pas mesurée : les commandes `/…` sont le recours fiable), ni le temps de rechargement du modèle de chat après une génération, aucun vrai modèle ni appel réseau réel n'a servi dans ces tests (la page DuckDuckGo servant de modèle à l'analyseur a été lue une fois à la main, le 2026-10-15) ; le comportement du flux derrière un proxy inverse n'est pas mesuré
-(les en-têtes sont ceux que le gabarit documente pour ses propres flux).
+**Not verified**: no real `llama-server`, no real image, video or sound model launched by a tool (the catalogue, the queue and the engine are fakes; the reliability of small models (1 to 4 B) in filling the tool arguments is not measured: the `/…` commands are the reliable fallback), nor the time to reload the chat model after a generation; no real model nor real network call was used in these tests (the DuckDuckGo page serving as a model for the parser was read once by hand, on 2026-10-15); the behavior of the stream behind a reverse proxy is not measured
+(the headers are those the template documents for its own streams).
 
-## Langue
+## Language
 
-Tout texte que le back montre à l'utilisateur (erreurs HTTP et SSE, validation, libellés d'export, messages d'état d'un outil)
-passe par `tr('chat.…', [params])` (`src/modules/i18n`) et suit la langue de l'interface (`Accept-Language`). Les textes sont
-dans `chat/i18n/messages.fr.json` et `messages.en.json` (mêmes clés, mêmes `{0}`), vérifiés par `i18n/messages.spec.ts`. Les
-requêtes web sortantes (`web_search`, `fetch_url`) envoient `Accept-Language` dans l'ordre de la langue de l'interface
-(`tools/acceptLanguage.ts`). Restent en français, volontairement, les textes destinés au modèle (prompts système, descriptions
-et résultats d'outils) : le modèle répond dans la langue du message de l'utilisateur.
+Any text the back shows to the user (HTTP and SSE errors, validation, export labels, status messages of a tool)
+goes through `tr('chat.…', [params])` (`src/modules/i18n`) and follows the interface language (`Accept-Language`). The texts are
+in `chat/i18n/messages.fr.json` and `messages.en.json` (same keys, same `{0}`), checked by `i18n/messages.spec.ts`. The
+outgoing web requests (`web_search`, `fetch_url`) send `Accept-Language` in the order of the interface language
+(`tools/acceptLanguage.ts`). Deliberately kept in French, the texts meant for the model (system prompts, tool descriptions
+and results): the model answers in the language of the user's message.

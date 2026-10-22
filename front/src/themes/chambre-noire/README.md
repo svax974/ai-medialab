@@ -1,142 +1,140 @@
-# Thème visuel `chambre-noire`
+# Visual theme `chambre-noire`
 
-Thème de l'application, repris de l'ancienne interface (`frontend/src/styles.css`, Tailwind, supprimé en H6) pour le nouveau front
-(MUI). Sombre par défaut (« noir chaud, lumière inactinique rouge »), mode clair « papier » conservé. Les valeurs sont
-reprises **telles quelles** ; seuls l'habillage (variables CSS, thème MUI) et les noms de classes changent.
+Theme of the application, taken from the former interface (`frontend/src/styles.css`, Tailwind, removed in H6) for the new front
+(MUI). Dark by default ("warm black, red safelight"), light "paper" mode kept. The values are
+taken **as they are**; only the skin (CSS variables, MUI theme) and the class names change.
 
 ## Structure
 
-| Fichier | Rôle |
+| File | Role |
 |---|---|
-| `theme.css` | Jetons (variables CSS) sombre et clair, polices (fontsource), alias des variables du gabarit, animations, grain de film, règles de base (couche `@layer base`), aides `.cn-*`. |
-| `tokens.ts` | Les mêmes couleurs en hexadécimal pour la palette MUI (MUI ne lit ni `var()` ni `color-mix()`), polices, rayons. `tokens.spec.ts` échoue si `tokens.ts` et `theme.css` divergent. |
-| `muiTheme.ts` | `createChambreNoireTheme(mode)` : palette, typographie, ombres supprimées, surcharges de composants. |
-| `index.ts` | `ThemeDefinition` (`id: 'chambre-noire'`) enregistrée dans `ThemeRegistry` par `src/themes/index.ts` ; importe `theme.css`. |
-| `locales/` | Nom et description du thème (`studio.theme.chambreNoire.*`, fr/en). |
-| `../muiThemes.ts` | Associe un id de thème visuel à sa fabrique de thème MUI (le registre du gabarit ne connaît que le CSS). |
-| `../AppMuiTheme.tsx` | Fournit le thème MUI actif au-dessus de `ThemeModeProvider`, restaure et enregistre le mode clair/sombre. |
-| `../modeStorage.ts` | Lecture/écriture du mode (`cn-theme`, comme avant). |
+| `theme.css` | Tokens (CSS variables) dark and light, fonts (fontsource), aliases of the template's variables, animations, film grain, base rules (`@layer base` layer), `.cn-*` helpers. |
+| `tokens.ts` | The same colors in hexadecimal for the MUI palette (MUI reads neither `var()` nor `color-mix()`), fonts, radii. `tokens.spec.ts` fails if `tokens.ts` and `theme.css` diverge. |
+| `muiTheme.ts` | `createChambreNoireTheme(mode)`: palette, typography, shadows removed, component overrides. |
+| `index.ts` | `ThemeDefinition` (`id: 'chambre-noire'`) registered in `ThemeRegistry` by `src/themes/index.ts`; imports `theme.css`. |
+| `locales/` | Name and description of the theme (`studio.theme.chambreNoire.*`, fr/en). |
+| `../muiThemes.ts` | Associates a visual theme id with its MUI theme factory (the template's registry only knows CSS). |
+| `../AppMuiTheme.tsx` | Provides the active MUI theme above `ThemeModeProvider`, restores and saves the light/dark mode. |
+| `../modeStorage.ts` | Reading/writing of the mode (`cn-theme`, as before). |
 
-## Intégration au gabarit
+## Integration with the template
 
-- **Mode** : l'attribut `data-color-scheme` (`dark` | `light`) de `<html>`, comme le veut le gabarit. L'ancien `data-theme`
-  portait le mode ; il désigne maintenant le thème visuel (`chambre-noire`). Le script anti-flash d'`index.html` pose les
-  deux avant le premier rendu : sombre sauf si `localStorage['cn-theme'] === 'light'` (réglage système ignoré, comme avant).
-- **Thème par défaut** : le registre retombe sur l'id `default` ; `src/themes/index.ts` écrit une fois
-  `vx_visual_theme = 'chambre-noire'` quand rien n'est enregistré. Le thème `default` du gabarit reste enregistré (repli
-  si le stockage est bloqué) ; comme `theme.css` est écrit sur `:root`, il a le même rendu.
-- **MUI** : `ThemeModeProvider` construit un thème de palette seulement à partir des variables CSS ; `AppMuiTheme` pose
-  par-dessus le thème complet (surcharges comprises) via un second `ThemeProvider`. Les composants partagés (`TipIconButton`,
-  `Kbd`, `ConfirmHost`, `InfoTip`…) lisent la palette (`text.secondary`, `divider`, `action.hover`) : ils prennent le thème sans retouche.
-- **Variables du gabarit** pointées sur les jetons : `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`,
+- **Mode**: the attribute `data-color-scheme` (`dark` | `light`) of `<html>`, as the template requires. The former `data-theme`
+  carried the mode; it now designates the visual theme (`chambre-noire`). The anti-flash script of `index.html` sets
+  both before the first render: dark unless `localStorage['cn-theme'] === 'light'` (system setting ignored, as before).
+- **Default theme**: the registry falls back to the id `default`; `src/themes/index.ts` writes once
+  `vx_visual_theme = 'chambre-noire'` when nothing is saved. The template's `default` theme stays registered (fallback
+  if the storage is blocked); as `theme.css` is written on `:root`, it renders the same.
+- **MUI**: `ThemeModeProvider` builds a palette-only theme from the CSS variables alone; `AppMuiTheme` applies on top
+  the full theme (overrides included) through a second `ThemeProvider`. The shared components (`TipIconButton`,
+  `Kbd`, `ConfirmHost`, `InfoTip`…) read the palette (`text.secondary`, `divider`, `action.hover`): they take the theme without modification.
+- **Template variables pointed at the tokens**: `--color-bg`, `--color-surface`, `--color-text`, `--color-text-muted`,
   `--color-border`, `--color-primary`, `--color-success`, `--color-danger`, `--color-warning`, `--accent-strong`
-  (`:root[data-color-scheme]` l'emporte sur les règles de `colors.css`). Les pages du gabarit (administration, mentions)
-  gardent leur en-tête, avec la palette de ce thème.
+  (`:root[data-color-scheme]` takes precedence over the rules of `colors.css`). The template's pages (administration, legal notices)
+  keep their header, with the palette of this theme.
 
-## Correspondance des jetons (ancien -> nouveau)
+## Token correspondence (former -> new)
 
-Valeurs identiques à l'ancienne interface en sombre / clair (`:root`, `:root[data-color-scheme='dark']` / `[data-color-scheme='light']`),
-sauf les trois niveaux de texte secondaires, éclaircis (sombre) ou foncés (clair) le 2026-10-14 pour la lisibilité. Contraste
-WCAG sur `--surface-2` (les cartes) : `--ink-2` ≥ 10,5:1, `--muted` ≥ 6,5:1, `--faint` ≥ 4,6:1 (seuil du texte courant : 4,5:1).
+Values identical to the former interface in dark / light (`:root`, `:root[data-color-scheme='dark']` / `[data-color-scheme='light']`),
+except the three secondary text levels, lightened (dark) or darkened (light) on 2026-10-14 for readability. WCAG contrast
+on `--surface-2` (the cards): `--ink-2` ≥ 10.5:1, `--muted` ≥ 6.5:1, `--faint` ≥ 4.6:1 (threshold for regular text: 4.5:1).
 
-| Ancien (`styles.css`) | Nouveau | Sombre | Clair | Usage MUI |
+| Former (`styles.css`) | New | Dark | Light | MUI usage |
 |---|---|---|---|---|
-| `--bg` | `--bg` | `#0d0b0a` | `#f3eee6` | `palette.background.default`, corps |
-| `--bg-elev` | `--bg-elev` | `#141110` | `#f8f4ee` | fond de la barre latérale (`MuiDrawer`, `Sidebar`) |
-| `--surface` | `--surface` | `#191514` | `#fffcf7` | `palette.background.paper`, `Paper`, `Dialog`, champs |
-| `--surface-2` | `--surface-2` | `#221d1b` | `#f1ebe2` | `Popover`/`Menu`, bouton bordé, survol de ligne |
-| `--surface-3` | `--surface-3` | `#2c2624` | `#e7dfd4` | élément actif/survolé (`action.hover`/`selected`), rail du curseur, info-bulle |
-| `--line` | `--line` | `#2f2826` | `#e2d9cd` | `palette.divider`, bordures fines |
-| `--line-strong` | `--line-strong` | `#43392f` | `#cbbfae` | bordure de `Popover`/`Menu`/`Tooltip`, focus de champ |
+| `--bg` | `--bg` | `#0d0b0a` | `#f3eee6` | `palette.background.default`, body |
+| `--bg-elev` | `--bg-elev` | `#141110` | `#f8f4ee` | sidebar background (`MuiDrawer`, `Sidebar`) |
+| `--surface` | `--surface` | `#191514` | `#fffcf7` | `palette.background.paper`, `Paper`, `Dialog`, fields |
+| `--surface-2` | `--surface-2` | `#221d1b` | `#f1ebe2` | `Popover`/`Menu`, bordered button, row hover |
+| `--surface-3` | `--surface-3` | `#2c2624` | `#e7dfd4` | active/hovered element (`action.hover`/`selected`), slider rail, tooltip |
+| `--line` | `--line` | `#2f2826` | `#e2d9cd` | `palette.divider`, thin borders |
+| `--line-strong` | `--line-strong` | `#43392f` | `#cbbfae` | border of `Popover`/`Menu`/`Tooltip`, field focus |
 | `--ink` | `--ink` | `#efe8e1` | `#1c1815` | `palette.text.primary` |
-| `--ink-2` | `--ink-2` | `#d5ccc3` | `#3a322d` | texte de navigation, `palette.secondary` |
-| `--muted` | `--muted` | `#aaa098` | `#5b5149` | `palette.text.secondary`, icônes au repos |
+| `--ink-2` | `--ink-2` | `#d5ccc3` | `#3a322d` | navigation text, `palette.secondary` |
+| `--muted` | `--muted` | `#aaa098` | `#5b5149` | `palette.text.secondary`, icons at rest |
 | `--faint` | `--faint` | `#8e8680` | `#71685f` | `palette.text.disabled`, placeholders |
-| `--safe` | `--safe` | `#ff5b37` | `#d8401f` | `palette.primary.main` (rouge inactinique) |
+| `--safe` | `--safe` | `#ff5b37` | `#d8401f` | `palette.primary.main` (safelight red) |
 | `--safe-ink` | `--safe-ink` | `#1a0a05` | `#fff6f1` | `palette.primary.contrastText` |
-| `--safe-soft` | `--safe-soft` | `color-mix(--safe 16%)` | `color-mix(--safe 11%)` | halo de focus du curseur, pastille primaire |
-| `--safe-glow` | `--safe-glow` | `color-mix(--safe 45%)` | `color-mix(--safe 30%)` | sélection du texte (`::selection`) |
+| `--safe-soft` | `--safe-soft` | `color-mix(--safe 16%)` | `color-mix(--safe 11%)` | slider focus halo, primary badge |
+| `--safe-glow` | `--safe-glow` | `color-mix(--safe 45%)` | `color-mix(--safe 30%)` | text selection (`::selection`) |
 | `--ok` | `--ok` | `#8fc28a` | `#3f8a3a` | `palette.success.main` |
 | `--warn` | `--warn` | `#f2b84b` | `#b7791f` | `palette.warning.main` |
-| `--danger` | `--danger` | `#ff6b6b` | `#c43d3d` | `palette.error.main`, entrée de menu `data-danger` |
-| `--tray` | `--tray` | `#070605` | `#e9e2d7` | classe `.cn-tray` (fond des vignettes vides) |
-| `--shadow` | `--shadow` (conservé, **non utilisé**) | voir CSS | voir CSS | remplacé par des bordures (voir ci-dessous) |
-| `--grain-opacity` | `--grain-opacity` | `0.05` | `0.035` | grain de film |
-| `--font-sans` / `--font-display` / `--font-mono` | idem | Hanken Grotesk Variable / Instrument Serif / JetBrains Mono Variable | | `typography.fontFamily`, titres h1-h6, `ListSubheader`, `kbd` |
-| `--animate-*` + `@keyframes` | idem | rise, fade, develop, breathe, shimmer, slide | | CSS, pour les écrans H4 |
-| alias Tailwind `--color-bg`, `-surface`, `-surface-2`, `-surface-3`, `-line`, `-line-strong`, `-ink`, `-ink-2`, `-muted`, `-faint`, `-safe`, `-safe-ink`, `-safe-soft`, `-ok`, `-warn`, `-danger`, `-tray`, `-bg-elev` | idem (variables CSS simples) | | | utilisables dans `sx` |
-| *(gabarit)* | `--color-text`, `--color-text-muted`, `--color-border`, `--color-border-strong`, `--color-primary`, `--color-primary-strong`, `--color-success`, `--color-warning`, `--accent-strong` | alias des jetons | | composants partagés, `ThemeModeProvider` |
+| `--danger` | `--danger` | `#ff6b6b` | `#c43d3d` | `palette.error.main`, menu entry `data-danger` |
+| `--tray` | `--tray` | `#070605` | `#e9e2d7` | class `.cn-tray` (background of empty thumbnails) |
+| `--shadow` | `--shadow` (kept, **unused**) | see CSS | see CSS | replaced by borders (see below) |
+| `--grain-opacity` | `--grain-opacity` | `0.05` | `0.035` | film grain |
+| `--font-sans` / `--font-display` / `--font-mono` | same | Hanken Grotesk Variable / Instrument Serif / JetBrains Mono Variable | | `typography.fontFamily`, h1-h6 headings, `ListSubheader`, `kbd` |
+| `--animate-*` + `@keyframes` | same | rise, fade, develop, breathe, shimmer, slide | | CSS, for the H4 screens |
+| Tailwind aliases `--color-bg`, `-surface`, `-surface-2`, `-surface-3`, `-line`, `-line-strong`, `-ink`, `-ink-2`, `-muted`, `-faint`, `-safe`, `-safe-ink`, `-safe-soft`, `-ok`, `-warn`, `-danger`, `-tray`, `-bg-elev` | same (plain CSS variables) | | | usable in `sx` |
+| *(template)* | `--color-text`, `--color-text-muted`, `--color-border`, `--color-border-strong`, `--color-primary`, `--color-primary-strong`, `--color-success`, `--color-warning`, `--accent-strong` | aliases of the tokens | | shared components, `ThemeModeProvider` |
 
-Aides et classes de l'ancien `@layer components` :
+Helpers and classes of the former `@layer components`:
 
-| Ancien | Nouveau |
+| Former | New |
 |---|---|
-| `.panel` (fond, bordure, ombre) | `Paper` / `Dialog` : fond `--surface`, bordure `--line`, **sans ombre** |
-| `.menu` | `Menu` / `Popover` : fond `--surface-2`, bordure `--line-strong`, rayon 14, marge intérieure 6, apparition en fondu 140 ms |
-| `.menu-item` (+ `data-highlighted`, `data-danger`) | `MenuItem` (survol/focus `--surface-3`, `data-danger` en rouge), rayon 9, 13,5 px |
-| `.eyebrow` | `.cn-eyebrow` (mono 10,5 px, 0,14 em, majuscules) ; `ListSubheader` a le même style |
+| `.panel` (background, border, shadow) | `Paper` / `Dialog`: background `--surface`, border `--line`, **no shadow** |
+| `.menu` | `Menu` / `Popover`: background `--surface-2`, border `--line-strong`, radius 14, inner padding 6, fade-in 140 ms |
+| `.menu-item` (+ `data-highlighted`, `data-danger`) | `MenuItem` (hover/focus `--surface-3`, `data-danger` in red), radius 9, 13.5 px |
+| `.eyebrow` | `.cn-eyebrow` (mono 10.5 px, 0.14 em, uppercase); `ListSubheader` has the same style |
 | `.tray`, `.shimmer`, `.checker` | `.cn-tray`, `.cn-shimmer`, `.cn-checker` |
-| Règles de `@layer base` (grain, `::selection`, `:focus-visible`, barres de défilement fines) | idem, dans `@layer base` (les styles de composants l'emportent toujours, comme les utilitaires avant) |
+| Rules of `@layer base` (grain, `::selection`, `:focus-visible`, thin scrollbars) | same, in `@layer base` (component styles still take precedence, as the utilities did before) |
 
-## Typographie
+## Typography
 
-- Texte : Hanken Grotesk Variable (`font-feature-settings: "ss01", "cv11"`, lissage), 14 px.
-- Titres (h1-h6, titres de dialogue) : Instrument Serif 400 ; marque de la barre latérale en italique 22 px.
-- Code, raccourcis, intitulés de groupe : JetBrains Mono Variable.
-- Les trois sont chargées par fontsource (`@fontsource-variable/hanken-grotesk`, `@fontsource-variable/jetbrains-mono`,
-  `@fontsource/instrument-serif`, 400 et 400 italique), ajoutées par `front/package.local.json`.
+- Text: Hanken Grotesk Variable (`font-feature-settings: "ss01", "cv11"`, smoothing), 14 px.
+- Headings (h1-h6, dialog titles): Instrument Serif 400; sidebar brand in italic 22 px.
+- Code, shortcuts, group labels: JetBrains Mono Variable.
+- All three are loaded by fontsource (`@fontsource-variable/hanken-grotesk`, `@fontsource-variable/jetbrains-mono`,
+  `@fontsource/instrument-serif`, 400 and 400 italic), added by `front/package.local.json`.
 
-## Rayons (échelle Tailwind de l'ancienne interface)
+## Radii (Tailwind scale of the former interface)
 
-`shape.borderRadius = 6` (donc `sx={{ borderRadius: 2 }}` = 12 px). `radii` de `tokens.ts` : 6 (puces, `rounded-md`), 8 (boutons
-icône, info-bulles, vignettes), 9 (entrées de menu), 12 (boutons, champs, lignes de liste, bascule de mode), 14 (menus,
-popovers), 16 (dialogue de confirmation), 24 (dialogues).
+`shape.borderRadius = 6` (so `sx={{ borderRadius: 2 }}` = 12 px). `radii` of `tokens.ts`: 6 (chips, `rounded-md`), 8 (icon
+buttons, tooltips, thumbnails), 9 (menu entries), 12 (buttons, fields, list rows, mode switch), 14 (menus,
+popovers), 16 (confirmation dialog), 24 (dialogs).
 
-## Bordures fines au lieu des ombres
+## Thin borders instead of shadows
 
-`theme.shadows` vaut `'none'` partout ; `Paper` a `elevation: 0`. La profondeur vient de bordures de 1 px : `--line` (surfaces),
-`--line-strong` (couches flottantes : menus, info-bulles, popovers). Exceptions voulues, qui ne sont pas des ombres de
-surface : l'anneau de focus du curseur (`0 0 0 4px --safe-soft`), le halo du point « occupé » d'une conversation, les
-contours internes `inset 0 0 0 1px` qui jouent le rôle de bordure (piste des onglets, rail du commutateur).
+`theme.shadows` is `'none'` everywhere; `Paper` has `elevation: 0`. Depth comes from 1 px borders: `--line` (surfaces),
+`--line-strong` (floating layers: menus, tooltips, popovers). Intended exceptions, which are not surface shadows: the slider's focus ring (`0 0 0 4px --safe-soft`), the halo of a conversation's "busy" dot,
+the inner outlines `inset 0 0 0 1px` that play the role of a border (tab track, switch rail).
 
-## Effet d'onde
+## Ripple effect
 
-`disableRipple` : `MuiButtonBase.defaultProps` (donc `Button`, `IconButton`, `Tab`, `ListItemButton`, `MenuItem`…), `Button`,
-`IconButton`, `Tab`, `Switch`. Les états sont des changements de couleur/bordure (survol, actif). Focus clavier : anneau
-2 px `--safe` décalé de 2 px (`:focus-visible` de l'ancienne interface, reproduit sur `.Mui-focusVisible`).
+`disableRipple`: `MuiButtonBase.defaultProps` (so `Button`, `IconButton`, `Tab`, `ListItemButton`, `MenuItem`…), `Button`,
+`IconButton`, `Tab`, `Switch`. The states are color/border changes (hover, active). Keyboard focus: a 2 px `--safe` ring offset by 2 px (`:focus-visible` of the former interface, reproduced on `.Mui-focusVisible`).
 
-## Surcharges MUI
+## MUI overrides
 
-| Composant | Rendu repris de l'ancienne interface |
+| Component | Rendering taken from the former interface |
 |---|---|
-| `Button` | 36 px, rayon 12, 14 px/500, sans majuscules. `contained primary` = `--safe` + `--safe-ink`, survol `brightness(1.1)` ; `outlined` et `contained secondary` = fond `--surface-2`, bordure `--line` -> `--line-strong` au survol ; `contained error` = rouge à 15 % (25 % au survol) ; `text` = fantôme `--ink-2` -> `--ink`. |
-| `IconButton` | 36 px (petit 28 ; s'élargit autour d'un libellé marqué `cn-icon-label`, comme le bouton des réglages et son nombre d'étapes), rayon 8, `--muted` -> `--ink` sur fond `--surface-3` ; `colorError` : survol rouge doux. |
-| `Dialog` | fond `--surface`, bordure `--line`, rayon 24 (16 pour `maxWidth="xs"`, la confirmation), hauteur max 720 px / 90 vh, voile noir 55 % flou 4 px, titre Instrument Serif 28 px. |
-| `Popover` / `Menu` / `MenuItem` | voir `.menu` / `.menu-item` ci-dessus. |
-| `Slider` | rail 4 px `--surface-3`, piste `--safe`, poignée 14 px bordée `--safe` sur fond `--surface`, grossit de 10 % au survol, halo `--safe-soft` au focus. |
-| `Switch` | 36 x 20, rail `--surface-3` cerclé `--line`, coché `--safe` ; poignée blanche 16 px décalée de 2 px. |
-| `Tooltip` | fond `--surface-3`, bordure `--line-strong`, rayon 8, 12 px, `6px 10px`, 6 px de l'ancre, délai 350 ms, fondu. |
-| `TextField` / `OutlinedInput` | 36 px, rayon 12, fond `--surface`, bordure `--line`, focus `--line-strong` (1 px, pas d'anneau), placeholder `--faint`. |
-| `Tabs` / `Tab` | commande segmentée : piste en creux (`--surface`, bordure `--line`, 4 px de marge), onglet actif = pastille `--surface-3` cerclée `--line-strong` qui glisse en 300 ms (`cubic-bezier(.2,.7,.2,1)`), icône de l'onglet actif en `--safe`. |
-| `Chip` | 22 px, rayon 6, 12 px/500, `--surface-2` cerclé `--line` ; `primary`/`success`/`warning`/`error` en teinte douce sans bordure. |
-| `LinearProgress` | 4 px, rayon plein, rail `--surface-3`, barre `--safe`. |
-| `Paper` | `elevation: 0`, fond `--surface`, sans surcouche claire du mode sombre de MUI. |
-| autres | `Backdrop`, `Divider`, `ListSubheader`, `ListItemButton`, `Snackbar`, `Alert`, `AppBar`, `Drawer`, `Link`, `Skeleton`, `CircularProgress`. |
+| `Button` | 36 px, radius 12, 14 px/500, no uppercase. `contained primary` = `--safe` + `--safe-ink`, hover `brightness(1.1)`; `outlined` and `contained secondary` = background `--surface-2`, border `--line` -> `--line-strong` on hover; `contained error` = red at 15% (25% on hover); `text` = ghost `--ink-2` -> `--ink`. |
+| `IconButton` | 36 px (small 28; widens around a label marked `cn-icon-label`, like the settings button and its step count), radius 8, `--muted` -> `--ink` on background `--surface-3`; `colorError`: soft red hover. |
+| `Dialog` | background `--surface`, border `--line`, radius 24 (16 for `maxWidth="xs"`, the confirmation), max height 720 px / 90 vh, black 55% veil with 4 px blur, title Instrument Serif 28 px. |
+| `Popover` / `Menu` / `MenuItem` | see `.menu` / `.menu-item` above. |
+| `Slider` | 4 px rail `--surface-3`, track `--safe`, 14 px handle bordered `--safe` on background `--surface`, grows 10% on hover, `--safe-soft` halo on focus. |
+| `Switch` | 36 x 20, rail `--surface-3` ringed by `--line`, checked `--safe`; white 16 px handle offset by 2 px. |
+| `Tooltip` | background `--surface-3`, border `--line-strong`, radius 8, 12 px, `6px 10px`, 6 px from the anchor, delay 350 ms, fade. |
+| `TextField` / `OutlinedInput` | 36 px, radius 12, background `--surface`, border `--line`, focus `--line-strong` (1 px, no ring), placeholder `--faint`. |
+| `Tabs` / `Tab` | segmented control: recessed track (`--surface`, border `--line`, 4 px margin), active tab = badge `--surface-3` ringed by `--line-strong` that slides in 300 ms (`cubic-bezier(.2,.7,.2,1)`), icon of the active tab in `--safe`. |
+| `Chip` | 22 px, radius 6, 12 px/500, `--surface-2` ringed by `--line`; `primary`/`success`/`warning`/`error` in a soft tint without border. |
+| `LinearProgress` | 4 px, full radius, rail `--surface-3`, bar `--safe`. |
+| `Paper` | `elevation: 0`, background `--surface`, without the MUI dark-mode light overlay. |
+| others | `Backdrop`, `Divider`, `ListSubheader`, `ListItemButton`, `Snackbar`, `Alert`, `AppBar`, `Drawer`, `Link`, `Skeleton`, `CircularProgress`. |
 
-## Grain de film
+## Film grain
 
-`body::after` : bruit SVG `feTurbulence` en image de fond, `position: fixed`, `pointer-events: none`, opacité `--grain-opacity`.
-Seule différence : `z-index: 2000` (l'ancien 100 passait au-dessus des dialogues Radix, qui étaient à 60-81 ; les modales MUI sont à 1300 et
-les info-bulles à 1500, le grain reste donc au-dessus de tout).
+`body::after`: SVG `feTurbulence` noise as background image, `position: fixed`, `pointer-events: none`, opacity `--grain-opacity`.
+The only difference: `z-index: 2000` (the former 100 went above the Radix dialogs, which were at 60-81; the MUI modals are at 1300 and
+the tooltips at 1500, so the grain stays above everything).
 
-## Ajouter un thème
+## Adding a theme
 
-Créer `src/themes/<id>/` (CSS, `index.ts`, fabrique MUI), l'enregistrer dans `src/themes/index.ts` (`themeRegistry.register`) et dans
+Create `src/themes/<id>/` (CSS, `index.ts`, MUI factory), register it in `src/themes/index.ts` (`themeRegistry.register`) and in
 `src/themes/muiThemes.ts`.
 
-## Écarts connus
+## Known deviations
 
-- Le sélecteur de thème du gabarit (`UserAdminThemes`) n'est pas affiché : il n'y a qu'un thème.
-- `<html lang>` reste `fr` (le gabarit ne le met pas à jour au changement de langue).
-- Les composants partagés qui codent des tailles en dur (`Kbd` : 10 px) gardent leurs dimensions ; seule la police mono est imposée.
-- Parité visuelle à valider à l'œil (aucun navigateur n'a été lancé pour H3) : voir la liste du compte rendu H3.
+- The template's theme selector (`UserAdminThemes`) is not shown: there is only one theme.
+- `<html lang>` stays `fr` (the template does not update it when the language changes).
+- The shared components that hard-code sizes (`Kbd`: 10 px) keep their dimensions; only the mono font is enforced.
+- Visual parity to be validated by eye (no browser was launched for H3): see the list in the H3 report.

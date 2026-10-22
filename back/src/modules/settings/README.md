@@ -1,91 +1,77 @@
 # Module `settings`
 
-## Rôle
+## Role
 
-**Source de vérité des réglages du studio** (anciennement la table `settings` de la base du moteur). Ils sont déclarés comme
-configuration de module du gabarit (valeurs par défaut semées au démarrage, `hf_token` chiffré), exposés par `GET/PUT
-/api/settings` (même URL et même forme publique que l'ancienne route du moteur) et **transmis au moteur** au démarrage et à
-chaque changement. Module d'application. Tâche H4.1.
+**Source of truth for the studio settings** (formerly the `settings` table of the engine's database). They are declared as a template module configuration (default values seeded at startup, `hf_token` encrypted), exposed by `GET/PUT /api/settings` (same URL and same public shape as the former engine route) and **passed to the engine** at startup and at each change. Application module. Task H4.1.
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `SettingsModule.ts` | Importe `CommonModule`, déclare le contrôleur et les services, exporte `SettingsService`. |
-| Schéma | `configSchema.ts` | `settingsConfigSchema` (moduleId `studio`). |
-| Contrôleur | `controllers/SettingsController.ts` | `GET/PUT /api/settings` (administrateur, `local-trust` inclus ; JSON en clair, `NoTransportCrypt`). |
-| Service | `services/SettingsService.ts` | Lecture (défauts si absent), mise à jour (validation, envoi au moteur, enregistrement), `pushToEngine()`. Appels sérialisés. |
-| Service | `services/SettingsEngineSync.ts` | Envoie l'état au moteur au démarrage et à chaque reconnexion du flux d'événements (`EngineEventRelay.linkChanges$`). |
-| Pures | `services/settingsPatch.ts` | `parseSettingsPatch` (422 sur un mauvais type), `applyPatch` (fusion des cartes par modèle), `toPublic`, `DEFAULT_SETTINGS`. |
-| Service | `services/SettingsConfigRegistration.ts` | `OnApplicationBootstrap` : `moduleConfigService.register(schema)`. |
-| Correspondance | `legacySettings.ts` | `LEGACY_SETTING_KEYS`, `mapLegacySettings()` (utilisée par l'importateur). |
+| Module | `SettingsModule.ts` | Imports `CommonModule`, declares the controller and the services, exports `SettingsService`. |
+| Schema | `configSchema.ts` | `settingsConfigSchema` (moduleId `studio`). |
+| Controller | `controllers/SettingsController.ts` | `GET/PUT /api/settings` (administrator, `local-trust` included; plain JSON, `NoTransportCrypt`). |
+| Service | `services/SettingsService.ts` | Read (defaults if absent), update (validation, sending to the engine, saving), `pushToEngine()`. Calls are serialized. |
+| Service | `services/SettingsEngineSync.ts` | Sends the state to the engine at startup and at each reconnection of the event stream (`EngineEventRelay.linkChanges$`). |
+| Pure functions | `services/settingsPatch.ts` | `parseSettingsPatch` (422 on a wrong type), `applyPatch` (merging of the per-model maps), `toPublic`, `DEFAULT_SETTINGS`. |
+| Service | `services/SettingsConfigRegistration.ts` | `OnApplicationBootstrap`: `moduleConfigService.register(schema)`. |
+| Mapping | `legacySettings.ts` | `LEGACY_SETTING_KEYS`, `mapLegacySettings()` (used by the importer). |
 | Types | `types/settingsTypes.ts` | `StudioSettings`, `PublicSettings`, `SettingsPatch`. |
 
-Libellés : `back/src/locales/custom.fr.json` et `custom.en.json` (clés `custom.settings.*`).
+Labels: `back/src/locales/custom.fr.json` and `custom.en.json` (keys `custom.settings.*`).
 
-## Dépendances
+## Dependencies
 
-`common` : `ModuleConfigService`, `ConfigurationService` (table `config`). `engine` : `EngineClient` (typé), `EngineEventRelay`,
-`engineErrorToHttp`. `legacy-import` appelle `SettingsService.pushToEngine()` après avoir importé les réglages de l'ancienne base.
+`common`: `ModuleConfigService`, `ConfigurationService` (table `config`). `engine`: `EngineClient` (typed), `EngineEventRelay`, `engineErrorToHttp`. `legacy-import` calls `SettingsService.pushToEngine()` after importing the settings from the former database.
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-| Méthode | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/settings` | Admin | Réglages publics : `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`, `chat_voice_id`. Les secrets ne sont **jamais** renvoyés. |
-| `PUT` | `/api/settings` | Admin | Sous-ensemble des mêmes clés + `hf_token` et `brave_api_key` (texte de 512 caractères au plus ; `''` le retire) ; `chat_voice_id` : id d'une voix de la bibliothèque (texte de 512 caractères au plus, `''` : aucune). Renvoie l'état public. |
+| `GET` | `/api/settings` | Admin | Public settings: `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`, `chat_voice_id`. Secrets are **never** returned. |
+| `PUT` | `/api/settings` | Admin | Subset of the same keys + `hf_token` and `brave_api_key` (text of 512 characters at most; `''` removes it); `chat_voice_id`: id of a library voice (text of 512 characters at most, `''`: none). Returns the public state. |
 
-Erreurs de `PUT` : 422 si un type est faux (`keep_alive_minutes` entier de -1 à 1440, booléens, cartes `model_id -> entier|null` et
-`model_id -> texte`) ; 422 relayé du moteur (modèle ou quantification inconnus) ; 409 relayé du moteur (changer la
-quantification du modèle chargé pendant une génération). Dans ces cas **rien n'est enregistré**.
+`PUT` errors: 422 if a type is wrong (`keep_alive_minutes` integer from -1 to 1440, booleans, maps `model_id -> integer|null` and `model_id -> text`); 422 relayed from the engine (unknown model or quantization); 409 relayed from the engine (changing the quantization of the loaded model during a generation). In these cases **nothing is saved**.
 
-## Transmission au moteur
+## Passing settings to the engine
 
-Le moteur ne lit plus ces réglages dans sa base : Nest lui envoie l'état **complet** par `PUT /engine/v1/runtime/settings`
-(route réservée à Nest, protégée par `X-Engine-Token`) :
+The engine no longer reads these settings from its database: Nest sends it the **complete** state through `PUT /engine/v1/runtime/settings` (route reserved to Nest, protected by `X-Engine-Token`):
 
-1. au démarrage (`SettingsEngineSync.onApplicationBootstrap`), puis à chaque (re)connexion du flux d'événements (le moteur a pu
-   redémarrer et a perdu sa mémoire) ;
-2. après l'import des réglages de l'ancienne base (`LegacyImportBootstrap`) ;
-3. à chaque `PUT /api/settings` : le moteur valide **avant** l'enregistrement (il connaît les modèles).
+1. at startup (`SettingsEngineSync.onApplicationBootstrap`), then at each (re)connection of the event stream (the engine may have restarted and lost its memory);
+2. after the import of the settings from the former database (`LegacyImportBootstrap`);
+3. at each `PUT /api/settings`: the engine validates **before** saving (it knows the models).
 
-Si le moteur est injoignable au moment d'un `PUT`, les valeurs sont enregistrées (la validation du moteur est alors sautée) et
-envoyées à la prochaine connexion ; un refus tardif est journalisé. Tant que Nest n'a rien envoyé, le moteur applique ses valeurs par défaut
-(`DEFAULT_SETTINGS` de `engine/app/jobs.py`) ; il ne les écrit jamais sur disque (le jeton Hugging Face en fait partie).
+If the engine is unreachable at the time of a `PUT`, the values are saved (the engine's validation is then skipped) and sent at the next connection; a late refusal is logged. As long as Nest has sent nothing, the engine applies its default values (`DEFAULT_SETTINGS` in `engine/app/jobs.py`); it never writes them to disk (the Hugging Face token is among them).
 
-## Entités
+## Entities
 
-Aucune (table `config` de `common`).
+None (table `config` of `common`).
 
-| Clé de configuration | Ancienne clé | Type | Défaut | Rôle |
+| Configuration key | Former key | Type | Default | Role |
 |---|---|---|---|---|
-| `studio_keepAliveMinutes` | `keep_alive_minutes` | nombre | 10 | Inactivité avant de décharger le modèle ; -1 jamais, 0 après chaque génération. |
-| `studio_previews` | `previews` | booléen | vrai | Aperçus intermédiaires des images. |
-| `studio_lowMemory` | `low_memory` | booléen | vrai | Libère l'encodeur de texte après l'encodage du prompt. |
-| `studio_quantize` | `quantize` | json (masqué) | `{}` | `model_id` vers bits de quantification (écrit par le dialogue des modèles, H4.2). |
-| `studio_variant` | `variant` | json (masqué) | `{}` | `model_id` vers variante de quantification (H4.2). |
-| `studio_hfToken` | `hf_token` | `secret` | vide | Jeton Hugging Face (modèles à accès restreint), chiffré. |
-| `studio_braveApiKey` | `brave_api_key` (pas d'ancienne clé) | `secret` | vide | Clé de l'API Brave Search pour l'outil de recherche web du chat (sans clé, DuckDuckGo) ; chiffrée. **Reste dans Nest** : elle n'est pas envoyée au moteur (`SettingsService.push` l'écarte, type `EngineSettings`), et `SettingsService.braveApiKey()` la donne au module `chat`. |
-| `studio_chatVoiceId` | `chat_voice_id` (pas d'ancienne clé) | `string` (masqué) | vide | Voix de la bibliothèque avec laquelle l'outil audio du chat parle quand aucune n'est nommée et que le modèle en exige une (`CreationToolsService`). **Reste dans Nest** : `SettingsService.push` l'écarte (type `EngineSettings`). Choisie dans le dialogue de réglages (`ChatVoiceField`). |
+| `studio_keepAliveMinutes` | `keep_alive_minutes` | number | 10 | Inactivity before unloading the model; -1 never, 0 after each generation. |
+| `studio_previews` | `previews` | boolean | true | Intermediate previews of the images. |
+| `studio_lowMemory` | `low_memory` | boolean | true | Frees the text encoder after the prompt is encoded. |
+| `studio_quantize` | `quantize` | json (masked) | `{}` | `model_id` to quantization bits (written by the models dialog, H4.2). |
+| `studio_variant` | `variant` | json (masked) | `{}` | `model_id` to quantization variant (H4.2). |
+| `studio_hfToken` | `hf_token` | `secret` | empty | Hugging Face token (restricted-access models), encrypted. |
+| `studio_braveApiKey` | `brave_api_key` (no former key) | `secret` | empty | Brave Search API key for the chat's web search tool (without a key, DuckDuckGo); encrypted. **Stays in Nest**: it is not sent to the engine (`SettingsService.push` drops it, type `EngineSettings`), and `SettingsService.braveApiKey()` gives it to the `chat` module. |
+| `studio_chatVoiceId` | `chat_voice_id` (no former key) | `string` (masked) | empty | Library voice with which the chat's audio tool speaks when none is named and the model requires one (`CreationToolsService`). **Stays in Nest**: `SettingsService.push` drops it (type `EngineSettings`). Chosen in the settings dialog (`ChatVoiceField`). |
 
-Les valeurs restent lisibles et modifiables par les routes d'administration de `common` (`GET`/`PUT
-/api/v1/admin/module-configs/studio`) ; une modification faite par là n'est **pas** transmise au moteur avant le prochain
-démarrage ou la prochaine reconnexion (limite connue).
+The values remain readable and editable through the `common` administration routes (`GET`/`PUT /api/v1/admin/module-configs/studio`); a change made there is **not** passed to the engine before the next startup or the next reconnection (known limitation).
 
-## Points d'extension
+## Extension points
 
-- Un nouveau réglage : champ du schéma, clé de `LEGACY_SETTING_KEYS` si l'ancienne base le portait, `StudioSettings`,
-  `parseSettingsPatch`, `RuntimeSettings` du moteur (`engine/app/api/runtime.py`), puis `npm run engine:types`.
+- A new setting: a field of the schema, a key in `LEGACY_SETTING_KEYS` if the former database held it, `StudioSettings`, `parseSettingsPatch`, the engine's `RuntimeSettings` (`engine/app/api/runtime.py`), then `npm run engine:types`.
 
 ## Tests
 
-Un fichier à la fois, depuis `back/`, sous `docs/migration/tools/guarded_run.sh 3` :
+One file at a time, from `back/`, under `scripts-local/guarded_run.sh 3`:
 
 ```sh
 npx jest --runInBand src/modules/settings/services/settingsPatch.spec.ts
 ```
 
-`services/{settingsPatch,SettingsService,SettingsEngineSync}.spec.ts` (faux moteur HTTP, configuration de module simulée),
-`controllers/SettingsController.spec.ts`, `legacySettings.spec.ts`. Côté moteur : `engine/tests/test_runtime_settings.py`.
+`services/{settingsPatch,SettingsService,SettingsEngineSync}.spec.ts` (fake engine HTTP server, simulated module configuration), `controllers/SettingsController.spec.ts`, `legacySettings.spec.ts`. Engine side: `engine/tests/test_runtime_settings.py`.
 
-**Langue.** Les erreurs de validation du patch suivent la langue de l'interface (`Accept-Language`) : textes dans `i18n/messages.{fr,en}.json`, lus par `tr()` (`src/modules/i18n`).
+**Language.** Patch validation errors follow the interface language (`Accept-Language`): texts in `i18n/messages.{fr,en}.json`, read by `tr()` (`src/modules/i18n`).

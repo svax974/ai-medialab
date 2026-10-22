@@ -1,63 +1,62 @@
 # Module `settings` (front)
 
-## Rôle
+## Role
 
-Dialogue **Réglages** du studio (remplace le `ComingSoonDialog` de la coquille), en trois onglets : **Général** (`GeneralSettings`, ce qui suit),
-**Moteurs** (`ComponentsManager` du module `engines` : état des composants téléchargés, suppression) et **Modèles** (`ModelsManager` du module `model-catalog` :
-catalogue par catégorie, état, suppression). Seul l'onglet affiché est monté. Général : langue de l'interface, mémoire du modèle (délai de déchargement),
-aperçus, économie de mémoire, jeton Hugging Face facultatif et rappel des raccourcis. Chaque réglage a son `InfoTip`. Les
-valeurs sont celles de `GET/PUT /api/settings` (back : `back/src/modules/settings/README.md`). Tâche H4.1.
+**Settings** dialog of the studio (replaces the `ComingSoonDialog` of the shell), in three tabs: **General** (`GeneralSettings`, described below),
+**Engines** (`ComponentsManager` of the `engines` module: state of the downloaded components, deletion) and **Models** (`ModelsManager` of the `model-catalog` module:
+catalogue by category, state, deletion). Only the displayed tab is mounted. General: interface language, model memory (unloading delay),
+previews, memory saving, optional Hugging Face token and reminder of the shortcuts. Each setting has its `InfoTip`. The
+values are those of `GET/PUT /api/settings` (back: `back/src/modules/settings/README.md`). Task H4.1.
 
 ## Structure
 
 ```
 settings/
-  index.ts                  exports : SettingsDialog, HfTokenField, BraveKeyField, ChatVoiceField, useSettings, useSaveSettings, settingsApi, settingsKeys
+  index.ts                  exports: SettingsDialog, HfTokenField, BraveKeyField, ChatVoiceField, useSettings, useSaveSettings, settingsApi, settingsKeys
   types.ts                  Settings, SettingsPatch
   services/settingsApi.ts   GET/PUT /api/settings (studioRequest)
-  hooks/useSettings.ts      useSettings(enabled) (requête), useSaveSettings(onSaved?) (mutation)
+  hooks/useSettings.ts      useSettings(enabled) (query), useSaveSettings(onSaved?) (mutation)
   lib/settingsConfig.ts     KEEP_ALIVE_OPTIONS, SHORTCUT_ROWS, SETTINGS_HELP, settingsKeys
-  components/               SettingsDialog (onglets), GeneralSettings, LanguageField, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField, ChatVoiceField
-  locales/                  locales.fr.json, locales.en.json (clés settings.*)
+  components/               SettingsDialog (tabs), GeneralSettings, LanguageField, KeepAliveControl, SettingsSection (SectionTitle, SectionText, SwitchRow), HfTokenField, BraveKeyField, ChatVoiceField
+  locales/                  locales.fr.json, locales.en.json (keys settings.*)
 ```
 
-Monté par `StudioShell` (`settingsOpen` du store Zustand) ; ouvert par le bouton « Réglages » du pied de la barre latérale.
+Mounted by `StudioShell` (`settingsOpen` of the Zustand store); opened by the "Settings" button at the foot of the sidebar.
 
-## Comportement
+## Behaviour
 
-- Chargement à l'ouverture seulement (`enabled`). États : chargement (indicateur), erreur avec « Réessayer », contenu.
-- Chaque changement est enregistré aussitôt ; la réponse du serveur (état public complet) remplace le cache `['settings']`
-  et le catalogue `['models']` est invalidé (la quantification change ce qu'il affiche). Un refus (422 quantification inconnue,
-  409 génération en cours) s'affiche en message (react-toastify) et l'affichage reste sur la valeur enregistrée.
-- Jeton : champ à écriture seule ; le serveur ne dit que `has_hf_token` (« Un jeton est enregistré », bouton « Retirer »).
-  Enregistrer ou retirer affiche un message de confirmation. `HfTokenField` est aussi monté par le dialogue des modèles (H4.2). `useSaveSettings` y sert aux choix de quantification (`quantize`) et de variante (`variant`).
+- Loaded only when the dialog opens (`enabled`). States: loading (indicator), error with "Retry", content.
+- Each change is saved immediately; the server response (complete public state) replaces the `['settings']` cache
+  and the `['models']` catalogue is invalidated (the quantization changes what it displays). A refusal (422 unknown quantization,
+  409 generation in progress) is shown as a message (react-toastify) and the display stays on the saved value.
+- Token: write-only field; the server only says `has_hf_token` ("A token is saved", "Remove" button). Saving or removing shows a confirmation message. `HfTokenField` is also mounted by the models dialog (H4.2). `useSaveSettings` serves there for the choices of quantization (`quantize`) and variant (`variant`).
 
-- **Langue** (`LanguageField`) : français ou anglais (`LANGUAGE_OPTIONS`), seul endroit où se change la langue (`localeService.ensureLangLoaded` puis `i18n.setLang`, choix mémorisé dans le navigateur ; `registerModuleLocales.ts` répercute `<html lang>` et l'en-tête `Accept-Language`). Sans choix mémorisé, `LocaleService` suit la langue du système (français, sinon anglais) : `front/src/config/config.ts` n'a donc pas de `localeDefault`.
-- **IA locale au lancement** : interrupteur (`SwitchRow`) lié à `useLocalAiPromptStore.optOut` du module `engines` (navigateur, `cn-local-ai`) : activé, l'invitation d'installation de llama.cpp s'affiche à chaque lancement tant qu'il manque.
-- **Clé Brave Search** (`BraveKeyField`, facultative) : champ secret, enregistré par `PUT /api/settings { brave_api_key }` (`''` la retire) ; le serveur la stocke chiffrée et ne la renvoie jamais, seulement `has_brave_api_key`.
-  Elle sert à la recherche web du chat (Brave au lieu de DuckDuckGo) : `back/src/modules/settings/README.md`, `back/src/modules/chat/README.md`.
-- **Voix par défaut du chat** (`ChatVoiceField`) : une voix de la bibliothèque **avec échantillon** (liste de `voices`), enregistrée par `PUT /api/settings { chat_voice_id }` (`''` : aucune). L'outil audio du chat la prend quand la demande n'en nomme pas et que le modèle en exige une ; sinon le chat affiche une carte de choix (`front/src/modules/chat/README.md`).
+- **Language** (`LanguageField`): French or English (`LANGUAGE_OPTIONS`), the only place where the language is changed (`localeService.ensureLangLoaded` then `i18n.setLang`, choice remembered in the browser; `registerModuleLocales.ts` propagates `<html lang>` and the `Accept-Language` header). Without a remembered choice, `LocaleService` follows the system language (French, otherwise English): `front/src/config/config.ts` therefore has no `localeDefault`.
+- **Local AI at launch**: switch (`SwitchRow`) bound to `useLocalAiPromptStore.optOut` of the `engines` module (browser, `cn-local-ai`): when enabled, the llama.cpp installation invitation is displayed at each launch as long as it is missing.
+- **Brave Search key** (`BraveKeyField`, optional): secret field, saved by `PUT /api/settings { brave_api_key }` (`''` removes it); the server stores it encrypted and never returns it, only `has_brave_api_key`.
+  It is used for the chat's web search (Brave instead of DuckDuckGo): `back/src/modules/settings/README.md`, `back/src/modules/chat/README.md`.
+- **Default chat voice** (`ChatVoiceField`): a voice of the library **with a sample** (list of `voices`), saved by `PUT /api/settings { chat_voice_id }` (`''`: none). The chat's audio tool takes it when the request does not name one and the model requires one; otherwise the chat displays a choice card (`front/src/modules/chat/README.md`).
 
-## Info-bulles
+## Tooltips
 
-Textes de `frontend/src/lib/help.ts` (supprimé en H6) (`keep_alive`, `previews`, `low_memory`) repris à l'identique en français
-(`settings.help.*`), traduits en anglais ; `hfToken` est nouveau (l'ancienne interface n'en avait pas).
+Texts of `frontend/src/lib/help.ts` (removed in H6) (`keep_alive`, `previews`, `low_memory`) repeated identically in French
+(`settings.help.*`), translated into English; `hfToken` is new (the old interface had none).
 
 ## Tests
 
-Un fichier à la fois, depuis `front/`, sous `docs/migration/tools/guarded_run.sh 3` :
+One file at a time, from `front/`, under `scripts-local/guarded_run.sh 3`:
 
 ```sh
-../docs/migration/tools/guarded_run.sh 3 npx vitest run src/modules/settings/lib/settingsConfig.spec.ts
+../scripts-local/guarded_run.sh 3 npx vitest run src/modules/settings/lib/settingsConfig.spec.ts
 ```
 
-`lib/settingsConfig.spec.ts` (parité fr/en, clés définies, options), `services/settingsApi.spec.ts`. Le rendu des composants
-n'est pas testé (environnement Node).
+`lib/settingsConfig.spec.ts` (fr/en parity, defined keys, options), `services/settingsApi.spec.ts`. Component rendering
+is not tested (Node environment).
 
-## Correspondance avec l'ancienne interface
+## Correspondence with the old interface
 
-| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
+| Old (`frontend/src/`, removed in H6: `git show 2435ab3:frontend/src/…`) | New |
 |---|---|
 | `components/SettingsDialog.tsx` | `components/SettingsDialog`, `KeepAliveControl`, `SettingsSection` |
-| `components/ModelsDialog.tsx` : `TokenField` | `components/HfTokenField` (affiché ici et dans le dialogue des modèles, H4.2) |
-| `lib/help.ts` : `keep_alive`, `previews`, `low_memory` | `lib/settingsConfig.ts` `SETTINGS_HELP` + locales |
+| `components/ModelsDialog.tsx`: `TokenField` | `components/HfTokenField` (shown here and in the models dialog, H4.2) |
+| `lib/help.ts`: `keep_alive`, `previews`, `low_memory` | `lib/settingsConfig.ts` `SETTINGS_HELP` + locales |

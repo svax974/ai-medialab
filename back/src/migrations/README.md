@@ -1,30 +1,30 @@
-# Migrations TypeORM
+# TypeORM migrations
 
-Migrations versionnées de la base de Nest (SQLite ; Postgres n'est pas une cible de cette application). Chargées par
-`src/config/Datasource.ts` (`migrations/*.{js,ts}`, un seul niveau : les tests sont dans `tests/`).
+Versioned migrations of the Nest database (SQLite; Postgres is not a target of this application). Loaded by
+`src/config/Datasource.ts` (`migrations/*.{js,ts}`, a single level: the tests are in `tests/`).
 
-| Fichier | Contenu |
+| File | Content |
 |---|---|
-| `1791891387395-InitialSchema.ts` | Tout le schéma de départ : tables de `common` (`config`, `themes`, `cookie_consent_log`) et de l'application (`conversations`, `messages`, `message_refs`, `assets`, `voices`, `import_markers`) avec leurs index et clés étrangères. |
-| `1792061048743-UpdateAdvisories.ts` | Le conseiller de mises à jour : `update_advisories` (avis enregistrés sur une mise à jour de moteur ou de modèle : verdict, résumé, constats cités, sources, modèle utilisé), un index par élément et date. |
-| `1792058442183-ChatTables.ts` | Le chat : `chat_messages` (arbre de messages, clés étrangères en cascade vers la conversation et le message parent) et `chat_conversation_settings` (réglages et feuille active de chaque conversation de chat). |
-| `1792070000000-ChatGenerations.ts` | Les outils de création du chat : colonne `chat_messages.generations` (JSON, nullable : les messages existants ne changent pas). |
+| `1791891387395-InitialSchema.ts` | The whole starting schema: tables of `common` (`config`, `themes`, `cookie_consent_log`) and of the application (`conversations`, `messages`, `message_refs`, `assets`, `voices`, `import_markers`) with their indexes and foreign keys. |
+| `1792061048743-UpdateAdvisories.ts` | The update advisor: `update_advisories` (advisories recorded on an engine or model update: verdict, summary, cited findings, sources, model used), one index per item and date. |
+| `1792058442183-ChatTables.ts` | The chat: `chat_messages` (message tree, cascading foreign keys to the conversation and the parent message) and `chat_conversation_settings` (settings and active leaf of each chat conversation). |
+| `1792070000000-ChatGenerations.ts` | The chat creation tools: column `chat_messages.generations` (JSON, nullable: existing messages do not change). |
 
-## Utilisation
+## Usage
 
-- **Dev** : `DB_SCHEMA_MODE` non défini (ou `sync`), TypeORM construit les tables (`synchronize`, défaut hors production). Les migrations
-  ne servent pas.
-- **Bureau et production** : `DB_SCHEMA_MODE=migrations` (voir `back/.env.example`) : les migrations
-  en attente s'exécutent au démarrage. Ne jamais mélanger `synchronize` et migrations sur un même fichier `app.db` : une
-  base construite par `synchronize` n'a pas la table `migrations`, la migration initiale échouerait (« table already
-  exists »). Repartir d'un `app.db` vide, ou le supprimer en dev (rien d'irremplaçable : les données d'origine sont dans
-  l'ancienne base, réimportable en supprimant `app.db`).
-- La base cible du bureau est créée par `DB_PATH` (relatif à `APP_DATA_DIR`).
+- **Dev**: `DB_SCHEMA_MODE` unset (or `sync`), TypeORM builds the tables (`synchronize`, default outside production). The migrations
+  are not used.
+- **Desktop and production**: `DB_SCHEMA_MODE=migrations` (see `back/.env.example`): pending
+  migrations run at startup. Never mix `synchronize` and migrations on the same `app.db` file: a
+  database built by `synchronize` does not have the `migrations` table, so the initial migration would fail ("table already
+  exists"). Start again from an empty `app.db`, or delete it in dev (nothing irreplaceable: the original data is in
+  the former database, re-importable by deleting `app.db`).
+- The desktop target database is created by `DB_PATH` (relative to `APP_DATA_DIR`).
 
-## Générer une migration après un changement d'entité
+## Generating a migration after an entity change
 
-Toute modification d'entité (voir la règle de sécurité TypeORM du gabarit : prévenir avant de renommer ou supprimer une
-colonne) s'accompagne d'une migration, dans le même commit :
+Any entity change (see the TypeORM safety rule of the template: warn before renaming or removing a
+column) comes with a migration, in the same commit:
 
 ```sh
 cd back
@@ -33,8 +33,7 @@ DB_ENGINE=sqlite DB_PATH=/tmp/gen.db CRYPT_DB_MASTER_KEY=<clé> \
   migration:generate -d src/config/Datasource.ts src/migrations/<Nom>
 ```
 
-La base `DB_PATH` doit refléter le schéma **précédent** (appliquer d'abord les migrations existantes :
-`migration:run -d src/config/Datasource.ts` avec les mêmes variables, sur un fichier neuf). Relire le fichier généré
-(SQLite recrée les tables pour ajouter une clé étrangère) et lancer
-`npx jest --runInBand src/migrations/tests/migrations.spec.ts` : il applique les migrations sur une base vide en
-mémoire, vérifie qu'aucune différence ne subsiste avec les entités, les clés étrangères et le retour arrière.
+The `DB_PATH` database must reflect the **previous** schema (first apply the existing migrations:
+`migration:run -d src/config/Datasource.ts` with the same variables, on a new file). Re-read the generated file
+(SQLite recreates the tables to add a foreign key) and run
+`npx jest --runInBand src/migrations/tests/migrations.spec.ts`: it applies the migrations to an empty in-memory database, checks that no difference remains with the entities, the foreign keys and the rollback.

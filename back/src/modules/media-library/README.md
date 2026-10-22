@@ -1,99 +1,66 @@
 # Module `media-library`
 
-## Rôle
+## Role
 
-Persistance des **assets** : fichiers connus de l'application, qu'ils soient envoyés par l'utilisateur (`upload` : image
-de référence, échantillon de voix, clip source) ou produits par un moteur (`generated` : image, prise audio, vidéo).
-La table ne contient que des métadonnées ; les fichiers restent dans le dossier de données
-(`uploads/`, `outputs/`, `thumbs/`), les chemins sont des **noms de fichiers relatifs** conservés tels quels depuis
-l'ancienne base. Couche basse : `studio-core` en dépend, jamais l'inverse.
+Persistence of **assets**: files known to the application, whether sent by the user (`upload`: reference image, voice sample, source clip) or produced by an engine (`generated`: image, audio take, video). The table only holds metadata; the files stay in the data folder (`uploads/`, `outputs/`, `thumbs/`), and the paths are **relative file names** kept as they were in the former database. Low layer: `studio-core` depends on it, never the reverse.
 
-État (tâche H4.3a) : entités, DTO, mappeur et service (H2), plus les routes `/api/assets*` (envois, galerie, favori,
-suppression avec fichiers) et l'éditeur d'événements `studio.*`. **Écart au plan** : ces routes étaient prévues en H4.4 ; elles
-passent à Nest dès H4.3a par **cohérence** : les assets générés sont maintenant enregistrés dans la base de Nest, et une
-génération qui référence une image envoyée par l'ancien chemin (`/api/assets` du moteur, base du moteur) ne la trouverait pas.
-Le front (galerie d'images, visionneuse, dépôt global) est dans `front/src/modules/media-library/README.md` (H4.4) ; la galerie lit `GET /api/assets` page par page (curseur `next_before`).
+Status (task H4.3a): entities, DTOs, mapper and service (H2), plus the routes `/api/assets*` (uploads, gallery, favorite, deletion with files) and the `studio.*` event publisher. **Deviation from the plan**: these routes were planned for H4.4; they move to Nest as early as H4.3a for **consistency**: generated assets are now recorded in Nest's database, and a generation referencing an image sent through the old path (`/api/assets` of the engine, the engine's database) would not find it. The front (image gallery, viewer, global drop) is in `front/src/modules/media-library/README.md` (H4.4); the gallery reads `GET /api/assets` page by page (cursor `next_before`).
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `MediaLibraryModule.ts` | Déclare `AssetEntity` (`forFeature`), fournit et exporte `AssetService` et `TypeOrmModule`. |
-| Entité | `entities/AssetEntity.ts` | Table `assets`. |
-| DTO | `dto/AssetDto.ts` | Forme publique d'un asset (identique à `asset_public` de l'ancien moteur, `engine/app/repo.py` supprimé en H6). |
-| DTO | `dto/AssetListItemDto.ts` | Élément de galerie (`AssetDto` + titre de la conversation, prompt, modèle) et page (`items`, `next_before`). |
-| Mappeur | `mappers/assetMapper.ts` | `toAssetDto`, `toAssetListItemDto`, `mediaUrl` (`/media/<dossier>/<fichier>`). |
-| Service | `services/AssetService.ts` | `get`, `getEntity`, `create`, `setFavorite`, `remove` (ligne seulement), `purge` (`purge_assets` : ligne seulement), `adoptOrphans`, `list` (filtres et curseur de l'ancienne API). |
-| Service | `services/AssetFileService.ts` | `ingest` (envoi : le moteur décode et fait la vignette, Nest enregistre la ligne), `purge` / `removeFiles` (fichiers et vignettes retirés par le moteur). |
-| Service | `services/StudioEvents.ts` | Publie les événements `studio.<nom>` (mêmes noms et formes que l'ancien SSE) ; utilisé aussi par `studio-core` et `audio-studio` (`voices.changed`). |
-| Module | `StudioEventLimitsModule.ts` | Module **global** qui fournit `EVENT_STREAM_OPTIONS` au flux partagé : `maxEventBytes` = 256 Ko au lieu de 16 Ko (voir « Taille des événements »). |
-| Utilitaires | `utils/uploadStorage.ts` | `uploadStorage` (multer sur disque, `uploads/tmp_<aléa>`) et `decodeUploadName`, partagés avec `audio-studio`. |
-| Contrôleur | `controllers/AssetController.ts` | `/api/assets*`. |
-| Utilitaires | `utils/dataDir.ts` | Dossier de données partagé avec le moteur (`APP_DATA_DIR`, sinon `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
+| Module | `MediaLibraryModule.ts` | Declares `AssetEntity` (`forFeature`), provides and exports `AssetService` and `TypeOrmModule`. |
+| Entity | `entities/AssetEntity.ts` | Table `assets`. |
+| DTO | `dto/AssetDto.ts` | Public shape of an asset (identical to `asset_public` of the former engine, `engine/app/repo.py` removed in H6). |
+| DTO | `dto/AssetListItemDto.ts` | Gallery item (`AssetDto` + conversation title, prompt, model) and page (`items`, `next_before`). |
+| Mapper | `mappers/assetMapper.ts` | `toAssetDto`, `toAssetListItemDto`, `mediaUrl` (`/media/<dossier>/<fichier>`). |
+| Service | `services/AssetService.ts` | `get`, `getEntity`, `create`, `setFavorite`, `remove` (row only), `purge` (`purge_assets`: row only), `adoptOrphans`, `list` (filters and cursor of the former API). |
+| Service | `services/AssetFileService.ts` | `ingest` (upload: the engine decodes and makes the thumbnail, Nest records the row), `purge` / `removeFiles` (files and thumbnails removed by the engine). |
+| Service | `services/StudioEvents.ts` | Publishes the `studio.<nom>` events (same names and shapes as the former SSE); also used by `studio-core` and `audio-studio` (`voices.changed`). |
+| Module | `StudioEventLimitsModule.ts` | **Global** module that provides `EVENT_STREAM_OPTIONS` to the shared stream: `maxEventBytes` = 256 KB instead of 16 KB (see "Event size"). |
+| Utilities | `utils/uploadStorage.ts` | `uploadStorage` (multer on disk, `uploads/tmp_<aléa>`) and `decodeUploadName`, shared with `audio-studio`. |
+| Controller | `controllers/AssetController.ts` | `/api/assets*`. |
+| Utilities | `utils/dataDir.ts` | Data folder shared with the engine (`APP_DATA_DIR`, otherwise `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
 | Types | `types/assetTypes.ts` | `CreateAssetInput`, `ListAssetsQuery`. |
-| Utilitaires | `utils/ids.ts` | `newId()` (id triable : 11 chiffres hexa de l'horodatage en ms + 10 aléatoires, format de l'ancien `new_id`), `nowSeconds()` (secondes, flottant). |
+| Utilities | `utils/ids.ts` | `newId()` (sortable id: 11 hex digits of the timestamp in ms + 10 random, format of the former `new_id`), `nowSeconds()` (seconds, float). |
 
-Les tests : `services/AssetService.spec.ts` (service, mappeur, galerie), `services/AssetFileService.spec.ts` (envoi, purge,
-dossiers, éditeur d'événements) ; la parité avec le moteur est vérifiée par `legacy-import/publicShapes.spec.ts` et, pour les routes,
-`studio-core/controllers/studioRoutes.spec.ts`.
+Tests: `services/AssetService.spec.ts` (service, mapper, gallery), `services/AssetFileService.spec.ts` (upload, purge, folders, event publisher); parity with the engine is checked by `legacy-import/publicShapes.spec.ts` and, for the routes, `studio-core/controllers/studioRoutes.spec.ts`.
 
-## Langue
+## Language
 
-Les textes montrés à l'utilisateur (erreurs, titres par défaut, états d'échec) passent par `tr('mediaLibrary.…')` (`src/modules/i18n`) et suivent la langue de l'interface (en-tête `Accept-Language`). Dictionnaires : `media-library/i18n/messages.fr.json` et `messages.en.json` (parité contrôlée par `i18n/messages.spec.ts`).
+Texts shown to the user (errors, default titles, failure states) go through `tr('mediaLibrary.…')` (`src/modules/i18n`) and follow the interface language (`Accept-Language` header). Dictionaries: `media-library/i18n/messages.fr.json` and `messages.en.json` (parity checked by `i18n/messages.spec.ts`).
 
-## Dépendances
+## Dependencies
 
 - `typeorm`, `@nestjs/typeorm`, `common` (`jsonColumnType()`).
-- `engine` (global : `EngineClient`, `engineErrorToHttp`), `common` (`EventStreamService`), `multer` (déjà fourni par
-  `@nestjs/platform-express`, écriture sur disque).
-- Aucune dépendance vers `studio-core` : `conversationId` et `messageId` visent ses entités **par leur nom**
-  (`@ManyToOne('ConversationEntity')`), la jointure de la galerie utilise les noms de tables.
+- `engine` (global: `EngineClient`, `engineErrorToHttp`), `common` (`EventStreamService`), `multer` (already provided by `@nestjs/platform-express`, disk writing).
+- No dependency on `studio-core`: `conversationId` and `messageId` target its entities **by their name** (`@ManyToOne('ConversationEntity')`), and the gallery join uses table names.
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-Administrateur (`local-trust` inclus), JSON en clair, mêmes URLs et formes que l'ancienne API du moteur.
+Administrator (`local-trust` included), plain JSON, same URLs and shapes as the former engine API.
 
-| Méthode | Endpoint | Réponse | Erreurs |
+| Method | Endpoint | Response | Errors |
 |---|---|---|---|
-| `POST` | `/api/assets` (multipart, champ `files`, 50 fichiers et 500 Mo chacun au plus) | liste d'assets `upload` | 422 (aucun fichier, image ou vidéo illisible : « Image illisible : nom »), 413 |
-| `GET` | `/api/assets?kind=&media=&favorites=&q=&before=&limit=` | `{ items, next_before }` (galerie, plus récents d'abord) | |
-| `PATCH` | `/api/assets/:id` `{ favorite }` | asset ; publie `asset.updated` | 404 « Image introuvable. », 422 |
-| `DELETE` | `/api/assets/:id` | `{ ok: true }` ; ligne, fichier et vignette supprimés ; publie `asset.deleted` `{ id, message_id, conversation_id }` | 404 |
+| `POST` | `/api/assets` (multipart, field `files`, 50 files and 500 MB each at most) | list of `upload` assets | 422 (no file, unreadable image or video: `Image illisible : nom` (unreadable image: name)), 413 |
+| `GET` | `/api/assets?kind=&media=&favorites=&q=&before=&limit=` | `{ items, next_before }` (gallery, most recent first) | |
+| `PATCH` | `/api/assets/:id` `{ favorite }` | asset; publishes `asset.updated` | 404 `Image introuvable.` (image not found), 422 |
+| `DELETE` | `/api/assets/:id` | `{ ok: true }`; row, file and thumbnail deleted; publishes `asset.deleted` `{ id, message_id, conversation_id }` | 404 |
 
-**Envoi** : multer écrit le fichier brut dans `<données>/uploads/tmp_<aléa>` (pas de copie en mémoire : une vidéo peut peser 500 Mo),
-puis le moteur le transforme (`POST /engine/v1/media/ingest` : image réencodée en PNG, orientation EXIF appliquée, transparence
-aplatie, 4096 px au plus ; vidéo conservée, dimensions, durée et fps lus ; vignette WebP) et supprime le brut ; Nest enregistre la
-ligne avec l'id et les noms de fichiers rendus. Le nom d'origine est relu en UTF-8 (multer le lit en latin1).
+**Upload**: multer writes the raw file to `<données>/uploads/tmp_<aléa>` (no copy in memory: a video can weigh 500 MB), then the engine transforms it (`POST /engine/v1/media/ingest`: image re-encoded as PNG, EXIF orientation applied, transparency flattened, 4096 px at most; video kept, dimensions, duration and fps read; WebP thumbnail) and deletes the raw file; Nest records the row with the id and the rendered file names. The original name is re-read as UTF-8 (multer reads it as latin1).
 
-## Taille des événements
+## Event size
 
-`EventStreamService` abandonne (en le journalisant) tout événement de plus de 16 Ko. Un `message.updated` audio final
-(jusqu'à 4 prises, chacune avec 240 pics de forme d'onde, un marqueur par tour de parole et le texte) mesure **~8 Ko** pour
-un texte court, **~33 Ko** pour un dialogue de 40 répliques et **~105 Ko** pour 8000 caractères (mesuré par
-`studio-core/services/AudioGeneration.spec.ts`) : sans réglage, l'interface ne verrait jamais la fin d'une génération
-audio longue. **Solution retenue : relever la limite pour cette application** (`StudioEventLimitsModule`, 256 Ko, soit plus de
-deux fois le pire cas ; le tampon de reprise garde ses 500 événements). Raisons : la limite protège un serveur multi-utilisateur
-d'un contenu venu de l'extérieur, or ici tous les événements sont produits par notre propre serveur pour une seule personne ;
-l'alternative (événements d'invalidation, relecture REST) changerait la forme de tous les événements `studio.*` déjà
-consommés par le front, obligerait à relire chaque message à chaque changement d'état et laisserait une fenêtre où l'interface
-est en retard. Le module doit être **global** parce que `EventStreamService` est déclaré dans `CommonModule`, qui ne voit
-que ses propres imports et les modules globaux (`StudioEventLimitsModule.spec.ts` le vérifie, avec le cas témoin sans le module).
+`EventStreamService` drops (while logging it) any event larger than 16 KB. A final audio `message.updated` (up to 4 takes, each with 240 waveform peaks, one marker per speech turn and the text) measures **~8 KB** for a short text, **~33 KB** for a 40-line dialogue and **~105 KB** for 8000 characters (measured by `studio-core/services/AudioGeneration.spec.ts`): without a change, the interface would never see the end of a long audio generation. **Chosen solution: raise the limit for this application** (`StudioEventLimitsModule`, 256 KB, i.e. more than twice the worst case; the resume buffer keeps its 500 events). Reasons: the limit protects a multi-user server from content coming from outside, whereas here all events are produced by our own server for a single person; the alternative (invalidation events, REST re-reading) would change the shape of all the `studio.*` events already consumed by the front, would force re-reading each message on every state change, and would leave a window in which the interface is late. The module must be **global** because `EventStreamService` is declared in `CommonModule`, which only sees its own imports and the global modules (`StudioEventLimitsModule.spec.ts` checks it, with the control case without the module).
 
-## Entités
+## Entities
 
-`AssetEntity` (table `assets`) : `id` (clé), `kind` (`upload` | `generated`), `media` (`image` | `audio` | `video`,
-défaut `image`), `conversationId` / `messageId` (nullables, `ON DELETE SET NULL` : supprimer une conversation ne supprime
-pas l'asset), `filename`, `thumb`, `originalName`, `width`, `height`, `seed` (entier 31 bits), `duration` (secondes),
-`position` (ordre dans la sortie d'un message), `favorite`, `meta` (JSON libre : `fps`, `frames`, voix, prompt…),
-`createdAt` (secondes depuis l'époque, flottant : unité de l'ancienne base). Index : `(kind, created_at)`,
-`(media, kind, created_at)`, `(message_id)`.
+`AssetEntity` (table `assets`): `id` (key), `kind` (`upload` | `generated`), `media` (`image` | `audio` | `video`, default `image`), `conversationId` / `messageId` (nullable, `ON DELETE SET NULL`: deleting a conversation does not delete the asset), `filename`, `thumb`, `originalName`, `width`, `height`, `seed` (31-bit integer), `duration` (seconds), `position` (order in a message's output), `favorite`, `meta` (free JSON: `fps`, `frames`, voice, prompt…), `createdAt` (seconds since the epoch, float: unit of the former database). Indexes: `(kind, created_at)`, `(media, kind, created_at)`, `(message_id)`.
 
-Forme publique (`AssetDto`, champs en snake_case comme l'ancienne API, jamais omis : `null` si absent) :
-`id, kind, media, duration, fps (meta.fps, vidéo seulement), url, thumb_url, width, height, seed, original_name,
-favorite, meta, conversation_id, message_id, created_at`.
+Public shape (`AssetDto`, snake_case fields as in the former API, never omitted: `null` when absent): `id, kind, media, duration, fps (meta.fps, video only), url, thumb_url, width, height, seed, original_name, favorite, meta, conversation_id, message_id, created_at`.
 
-## Points d'extension
+## Extension points
 
-- H4.4 (fait) : le front des galeries ; H4.5 et H4.6 réutilisent la même route avec `media=audio` / `media=video`. `StudioEvents` publie aussi `studio.queue.updated` (file des générations, voir `studio-core`).
-- `AssetService.remove` renvoie l'entité supprimée pour que l'appelant retire les fichiers ; `AssetService.purge` est
-  l'équivalent de `purge_assets` du moteur (un asset encore référencé par un message restant perd seulement son lien au message).
+- H4.4 (done): the gallery front; H4.5 and H4.6 reuse the same route with `media=audio` / `media=video`. `StudioEvents` also publishes `studio.queue.updated` (generation queue, see `studio-core`).
+- `AssetService.remove` returns the deleted entity so that the caller removes the files; `AssetService.purge` is the equivalent of the engine's `purge_assets` (an asset still referenced by a message only loses its link to the message).

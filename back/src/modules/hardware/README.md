@@ -1,45 +1,42 @@
 # Module `hardware`
 
-## Rôle
+## Role
 
-État de la machine et du moteur, **délégué au moteur Python** par le client typé (la détection GPU/mémoire/disque, le modèle
-chargé et son déchargement vivent dans `engine/app/system.py` et `jobs.py`). Nest porte les routes et traduit les erreurs.
-Module d'application. Tâche H4.1.
+State of the machine and of the engine, **delegated to the Python engine** by the typed client (GPU/memory/disk detection, the loaded model and its unloading live in `engine/app/system.py` and `jobs.py`). Nest carries the routes and translates the errors. Application module. Task H4.1.
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `HardwareModule.ts` | Contrôleur et service (`EngineModule` est global). |
-| Contrôleur | `controllers/HardwareController.ts` | Les trois routes ci-dessous (administrateur ; JSON en clair). |
-| Service | `services/HardwareService.ts` | `system(refresh)`, `status()`, `unload()` ; erreurs via `engineErrorToHttp`. |
+| Module | `HardwareModule.ts` | Controller and service (`EngineModule` is global). |
+| Controller | `controllers/HardwareController.ts` | The three routes below (administrator; plain JSON). |
+| Service | `services/HardwareService.ts` | `system(refresh)`, `status()`, `unload()`; errors via `engineErrorToHttp`. |
 | Types | `types/hardwareTypes.ts` | `SystemInfo`, `Accelerator`, `UnusableGpu`, `EngineStatus`. |
 
-## Dépendances
+## Dependencies
 
-`engine` : `EngineClient`, `engineErrorToHttp` (statut et message du moteur relayés ; moteur injoignable : 502
-`Engine unavailable`).
+`engine`: `EngineClient`, `engineErrorToHttp` (engine status and message relayed; engine unreachable: 502 `Engine unavailable`).
 
-## Endpoints exposés (exhaustif)
+## Exposed endpoints (exhaustive)
 
-| Méthode | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/system?refresh=` | Admin | Matériel : OS, mémoire, accélérateurs, GPU inutilisables, disque, dossiers ; plus `engines`, `packs`, `pack_install` (état des moteurs et des packs, lu par le front du module `engines` ; les installations elles-mêmes sont dans `back/src/modules/engines/README.md`). Répond sans attendre la sonde PyTorch du moteur (sous-processus lancé une fois au démarrage, plusieurs secondes) : tant qu'elle tourne, `torch.pending` vaut `true` et `engines.torch` est indisponible (« détection en cours »), puis le moteur publie `models.changed`. `refresh=true` refait la détection, en gardant le résultat de la sonde. |
-| `GET` | `/api/status` | Admin | Worker de génération : `state`, `model_id`, `quantize`, file, dernière erreur. |
-| `POST` | `/api/engine/unload` | Admin | Décharge le modèle ; 409 (relayé) pendant une génération. |
+| `GET` | `/api/system?refresh=` | Admin | Hardware: OS, memory, accelerators, unusable GPUs, disk, folders; plus `engines`, `packs`, `pack_install` (state of the engines and packs, read by the front of the `engines` module; the installations themselves are in `back/src/modules/engines/README.md`). Answers without waiting for the engine's PyTorch probe (a subprocess launched once at startup, several seconds): while it runs, `torch.pending` is `true` and `engines.torch` is unavailable ("detection in progress"), then the engine publishes `models.changed`. `refresh=true` runs the detection again, keeping the probe result. |
+| `GET` | `/api/status` | Admin | Generation worker: `state`, `model_id`, `quantize`, queue, last error. |
+| `POST` | `/api/engine/unload` | Admin | Unloads the model; 409 (relayed) during a generation. |
 
-Ces trois segments (`system`, `status`, `engine`) délèguent au moteur par `EngineClient`.
+These three segments (`system`, `status`, `engine`) delegate to the engine through `EngineClient`.
 
-## Entités
+## Entities
 
-Aucune.
+None.
 
-## Points d'extension
+## Extension points
 
-Les installateurs (moteurs, packs) sont dans le module `engines` (H4.2) ; H4.3 l'état du worker en événements.
+The installers (engines, packs) are in the `engines` module (H4.2); H4.3 moves the worker state to events.
 
 ## Tests
 
 ```sh
-npx jest --runInBand src/modules/hardware/services/HardwareService.spec.ts   # faux moteur HTTP
+npx jest --runInBand src/modules/hardware/services/HardwareService.spec.ts   # fake engine HTTP server
 ```

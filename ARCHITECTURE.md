@@ -1,276 +1,272 @@
-# Architecture d'AI MediaLab
+# AI MediaLab architecture
 
-Point d'entrée technique du projet : la **forme** de l'application (processus, propriétés, flux, contrats). Le détail de
-chaque brique est dans l'annexe qui la possède (carte ci-dessous) ; ce fichier ne recopie ni constante ni liste d'URL.
+Technical entry point of the project: the **shape** of the application (processes, ownership, flows, contracts). The detail of
+each component is in the annex that owns it (map below); this file repeats neither constants nor lists of URLs.
 
-## Carte de la documentation
+## Documentation map
 
-La seule liste faisant autorité des annexes du projet et de ce que chacune possède. Une annexe absente de cette carte
-n'existe pas ; une nouvelle annexe s'y ajoute avec son chemin (règle « un fait, un seul endroit », `CLAUDE.md`).
+The only authoritative list of the project's annexes and of what each one owns. An annex missing from this map does not
+exist; a new annex is added here with its path (rule "one fact, one place").
 
-| Fichier | Possède |
+| File | Owns |
 |---|---|
-| `README.md` | Présentation, lancement (développement, bureau), variables d'environnement du moteur, règles de test, guide des modèles et moteurs pour l'utilisateur (image, audio, vidéo, mesures, limites) |
-| `FEATURES.md` | Inventaire de ce qui est construit, par module (et ce qui ne l'est pas) |
-| `ARCHITECTURE.md` (ce fichier) | Processus, contrat Nest ↔ moteur, flux d'événements, données et migrations, bureau, mémoire au repos, plan du moteur |
-| `CLAUDE.md` | Règles de travail du projet : gabarit importé, mémoire unifiée (critique), notes de développement |
-| `back/src/modules/<module>/README.md` | Contrat d'un module serveur : rôle, fichiers, endpoints exhaustifs, entités, tests. Modules : `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `private`, `media-library`, `audio-studio`, `legacy-import` |
-| `back/src/migrations/README.md` | Migrations TypeORM de la base de Nest : usage, génération, vérification |
-| `front/src/modules/<module>/README.md` | Contrat d'un module d'interface : composants, hooks, locales, parité avec l'ancienne interface. Modules : `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
-| `front/src/themes/chambre-noire/README.md` | Thème « chambre noire » : jetons, surcharges MUI |
-| `desktop/README.md` | Coquille de bureau (Tauri) : configuration, lancement, empaquetage, signature, CI |
-| `engine/openapi.json` | Contrat de l'API interne du moteur (**généré** : `scripts-local/export_engine_openapi.py`) |
-| `docs/components/README.md` | Registre des composants tiers intégrés et procédure de revue ; fiches `audiocpp.md`, `llamacpp.md` (moteur de chat : drapeaux, installation, licences), `pytorch-gpu.md`, `ffmpeg.md` (build et licence de FFmpeg), `audiocpp-tests-manuels.md` |
-| `THIRD_PARTY_LICENSES.md` | Licences des composants et des modèles |
-| `docs/migration/` | Plan et suivi de la migration vers le gabarit vx-public (historique) |
-| `back/.libs/vx-public/template/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Conventions du gabarit et lanceur (hors de ce dépôt : sous-modules) |
+| `README.md` | GitHub front page: what the app is, downloads, first launch, build from source, licence |
+| `docs/guide.md` | Launch (development, desktop), engine environment variables, test rules, user guide to models and engines (image, audio, video, measurements, limits), release procedure |
+| `CHANGELOG.md` | Changes per released version (source of the GitHub release notes) |
+| `CONTRIBUTING.md`, `SECURITY.md` | How to contribute; how to report a vulnerability |
+| `FEATURES.md` | Inventory of what is built, per module (and what is not) |
+| `ARCHITECTURE.md` (this file) | Processes, Nest ↔ engine contract, event flow, data and migrations, desktop, resting memory, engine plan |
+| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `private`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/migrations/README.md` | TypeORM migrations of Nest's database: usage, generation, verification |
+| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
+| `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |
+| `desktop/README.md` | Desktop shell (Tauri): configuration, launch, packaging, signing, CI |
+| `engine/openapi.json` | Contract of the engine's internal API (**generated**: `scripts-local/export_engine_openapi.py`) |
+| `docs/components/README.md` | Registry of the third-party components integrated and the review procedure; sheets `audiocpp.md`, `llamacpp.md` (chat engine: flags, installation, licences), `pytorch-gpu.md`, `ffmpeg.md` (FFmpeg build and licence), `audiocpp-tests-manuels.md` |
+| `THIRD_PARTY_LICENSES.md` | Licences of the components and the models |
+| `front/.libs/apptemplate/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Template conventions and launcher (outside this repository: submodules) |
 
-*Dernière vérification contre les sources : 2026-10-16 (outils de création du chat) et 2026-10-15 (modes Chat et Génération privée, conseiller de mises à jour). Les sections sur le chat et le mode privé décrivent du code testé avec de faux serveurs : aucun vrai `llama-server` ni navigateur.*
+*Last verified against source: 2026-10-16 (chat creation tools) and 2026-10-15 (Chat and Private generation modes, update advisor). The sections on chat and private mode describe code tested with fake servers: no real `llama-server` or browser.*
 
-## Vue d'ensemble : quatre processus
+## Overview: four processes
 
 ```
-navigateur / fenêtre Tauri
-        │  HTTP + SSE (/api/v1, /api/…)           (le seul point d'entrée du navigateur)
+browser / Tauri window
+        │  HTTP + SSE (/api/v1, /api/…)           (the only entry point of the browser)
         ▼
-  Nest (back/, port 3000)  ──── HTTP + jeton X-Engine-Token ───►  moteur Python (engine/, 127.0.0.1:8000)
-   · routes /api, base SQLite app.db                               · modèles, téléchargements, jobs, médias
-   · file des générations, relais d'événements                     · un modèle chargé à la fois (worker séparé)
-   · sert le front compilé (bureau)                                · n'a pas de base applicative
+  Nest (back/, port 3000)  ──── HTTP + X-Engine-Token token ───►  Python engine (engine/, 127.0.0.1:8000)
+   · /api routes, SQLite base app.db                               · models, downloads, jobs, media
+   · generation queue, event relay                                 · one model loaded at a time (separate worker)
+   · serves the compiled front (desktop)                           · has no application database
         ▲
-        │ supervise (bureau seulement)
-  coquille Tauri (desktop/)  ──►  lance le moteur, puis Nest, puis ouvre l'interface
+        │ supervises (desktop only)
+  Tauri shell (desktop/)  ──►  starts the engine, then Nest, then opens the interface
 ```
 
-| Processus | Rôle | Écoute | Possède |
+| Process | Role | Listens on | Owns |
 |---|---|---|---|
-| **Moteur** (`engine/`, FastAPI) | Tout ce qui fait tourner des modèles : détection de la machine, catalogue, téléchargements, installateurs de moteurs, planification et exécution des générations (image, audio, vidéo), vignettes et sondage des médias | `127.0.0.1` seulement, jeton obligatoire | Les fichiers médias (`uploads/`, `outputs/`, `thumbs/`, `previews/`), le cache des modèles, `engine-state.json`, les moteurs installés (`engines/`) |
-| **Nest** (`back/`, vx-public) | L'application : conversations, messages, assets, voix, réglages, file des générations, import de l'ancienne base, événements vers le navigateur | `NODE_PORT` (3000), `LOCAL_TRUST` | La base `app.db` et toutes les données applicatives |
-| **Front** (`front/`, React + MUI) | L'interface : trois studios (image, audio, vidéo), bibliothèque, modèles, réglages | Vite (5173) en développement ; servi par Nest en bureau | L'état d'affichage (cache TanStack Query, Zustand) |
-| **Coquille** (`desktop/`, Tauri 2) | Lance et supervise le moteur puis Nest, ouvre la fenêtre, gère le dossier de données | aucun | Le cycle de vie des deux processus, le jeton partagé, les secrets du premier lancement |
+| **Engine** (`engine/`, FastAPI) | Everything that runs models: machine detection, catalogue, downloads, engine installers, planning and execution of generations (image, audio, video), thumbnails and media probing | `127.0.0.1` only, token required | Media files (`uploads/`, `outputs/`, `thumbs/`, `previews/`), the model cache, `engine-state.json`, the installed engines (`engines/`) |
+| **Nest** (`back/`, vx-public) | The application: conversations, messages, assets, voices, settings, generation queue, import of the former database, events to the browser | `NODE_PORT` (3000), `LOCAL_TRUST` | The `app.db` database and all application data |
+| **Front** (`front/`, React + MUI) | The interface: three studios (image, audio, video), library, models, settings | Vite (5173) in development; served by Nest on desktop | The display state (TanStack Query cache, Zustand) |
+| **Shell** (`desktop/`, Tauri 2) | Starts and supervises the engine then Nest, opens the window, manages the data folder | none | The lifecycle of both processes, the shared token, the first-launch secrets |
 
-Règles de propriété qui structurent tout le reste :
+Ownership rules that structure everything else:
 
-- **Le navigateur ne parle qu'à Nest.** Les médias passent par `/api/media/…` (relais, `back/src/modules/engine/README.md`).
-- **Le moteur n'a pas d'état applicatif.** Il ne connaît ni conversation, ni message, ni voix, ni réglage persistant : un job
-  arrive avec tout ce qu'il faut, les événements en sortie décrivent ce qui a été produit, Nest enregistre.
-- **Nest ne fait jamais tourner de modèle.** Il délègue au moteur par un client typé.
-- **Un modèle chargé à la fois, une génération à la fois** (mémoire unifiée), imposé par le moteur ; la file qui décide « quel
-  message ensuite » est dans Nest (`back/src/modules/studio-core/README.md`).
+- **The browser only talks to Nest.** Media go through `/api/media/…` (relay, `back/src/modules/engine/README.md`).
+- **The engine has no application state.** It knows neither conversation, nor message, nor voice, nor persistent setting: a job
+  arrives with everything it needs, the output events describe what was produced, Nest records it.
+- **Nest never runs a model.** It delegates to the engine through a typed client.
+- **One model loaded at a time, one generation at a time** (unified memory), enforced by the engine; the queue that decides "which
+  message next" is in Nest (`back/src/modules/studio-core/README.md`).
 
-## Contrat Nest ↔ moteur
+## Nest ↔ engine contract
 
-Le moteur expose `/engine/v1` (FastAPI) ; `engine/openapi.json` en est le schéma, **généré** (jamais écrit à la main) :
+The engine exposes `/engine/v1` (FastAPI); `engine/openapi.json` is its schema, **generated** (never written by hand):
 
 ```sh
-engine/.venv/bin/python scripts-local/export_engine_openapi.py          # écrit engine/openapi.json
-cd back && npm run engine:types                                           # écrit back/src/modules/engine/generated/engineApi.d.ts
+engine/.venv/bin/python scripts-local/export_engine_openapi.py          # writes engine/openapi.json
+cd back && npm run engine:types                                           # writes back/src/modules/engine/generated/engineApi.d.ts
 ```
 
-Deux tests gardent les deux fichiers à jour (`engine/tests/test_engine_api.py`, `generated/engineApi.contract.spec.ts`), et
-`EngineMedia.spec.ts` vérifie que `ENGINE_API_SEGMENTS` suit les segments du schéma. Le client typé (`EngineClient`) refuse à la
-compilation une route, un paramètre ou un corps absent du schéma.
+Two tests keep both files up to date (`engine/tests/test_engine_api.py`, `generated/engineApi.contract.spec.ts`), and
+`EngineMedia.spec.ts` checks that `ENGINE_API_SEGMENTS` follows the segments of the schema. The typed client (`EngineClient`)
+refuses at compile time a route, a parameter or a body absent from the schema.
 
-- **Authentification** : l'en-tête `X-Engine-Token` (secret partagé, variable `ENGINE_TOKEN` des deux côtés) est exigé sur toutes
-  les routes sauf `/engine/v1/status` (sonde de vivacité). Les fichiers `/media/<dossier>/…` sont servis sans jeton, en lecture
-  seule, sur la boucle locale. En développement le jeton est dans `back/.env.dev` ; en bureau la coquille le génère à chaque
-  lancement.
-- **Zones de l'API** (premiers segments ; routes exactes dans `engine/openapi.json` et dans le README du module Nest qui les appelle) :
-  `models`, `hf` (catalogue, téléchargements, modèles personnalisés, recherche Hugging Face : `model-catalog`), `engines`
-  (installateurs : `engines`), `updates` (détection et lancement des mises à jour des moteurs et des modèles installés : `updates`), `system`, `status`, `engine` (matériel, état, déchargement : `hardware`), `runtime` (réglages
-  poussés par Nest : `settings`), `jobs` et `media` (générations et fichiers : `studio-core`, `audio-studio`, `media-library`),
-  `events` (flux SSE du moteur : module `engine`), `llm` (serveur de chat, flux SSE de réponse, déchargement : `chat`). Le mode privé n'a pas de zone moteur propre : ses jobs passent par `jobs` avec un champ `private_dir`.
-- **Jobs** : contrat détaillé (corps, erreurs, événements) dans `back/src/modules/engine/README.md`, section « Contrat de jobs ». Le
-  moteur refuse hors du dossier de données tout chemin d'entrée, de sortie ou de voix.
-- **Réglages du studio** : propriété de Nest (module `settings`, configuration de module, jeton Hugging Face chiffré). Nest les
-  pousse au moteur par `PUT /engine/v1/runtime/settings` au démarrage, à chaque reconnexion du flux et à chaque changement ; le
-  moteur les garde **en mémoire seulement** (jamais sur disque) et applique des valeurs par défaut tant qu'il n'a rien reçu.
-- **Erreurs** : une réponse non 2xx devient `EngineError`, un moteur injoignable `EngineUnavailableError` (502 côté route Nest) ;
-  la sonde de santé de Nest passe en `degraded` (HTTP 200) quand le moteur ne répond pas : l'interface reste utilisable, seules
-  les générations le sont plus.
+- **Authentication**: the `X-Engine-Token` header (shared secret, variable `ENGINE_TOKEN` on both sides) is required on all routes
+  except `/engine/v1/status` (liveness probe). The files `/media/<folder>/…` are served without token, read-only, on the local loop.
+  In development the token is in `back/.env.dev`; on desktop the shell generates it at each launch.
+- **API zones** (first segments; exact routes in `engine/openapi.json` and in the README of the Nest module that calls them):
+  `models`, `hf` (catalogue, downloads, custom models, Hugging Face search: `model-catalog`), `engines`
+  (installers: `engines`), `updates` (detection and launch of updates of the installed engines and models: `updates`), `system`, `status`, `engine` (hardware, state, unloading: `hardware`), `runtime` (settings pushed by Nest: `settings`), `jobs` and `media` (generations and files: `studio-core`, `audio-studio`, `media-library`),
+  `events` (engine SSE stream: `engine` module), `llm` (chat server, response SSE stream, unloading: `chat`). Private mode has no engine zone of its own: its jobs go through `jobs` with a `private_dir` field.
+- **Jobs**: detailed contract (body, errors, events) in `back/src/modules/engine/README.md`, section "Job contract". Outside the data folder,
+  the engine refuses any input, output or voice path.
+- **Studio settings**: owned by Nest (`settings` module, module configuration, encrypted Hugging Face token). Nest
+  pushes them to the engine via `PUT /engine/v1/runtime/settings` at startup, at each reconnection of the stream and at each change; the
+  engine keeps them **in memory only** (never on disk) and applies default values as long as it has received nothing.
+- **Errors**: a non-2xx response becomes an `EngineError`, an unreachable engine an `EngineUnavailableError` (502 on the Nest route);
+  Nest's health probe switches to `degraded` (HTTP 200) when the engine does not answer: the interface stays usable, only
+  generations no longer are.
 
-## Flux d'événements
+## Event flow
 
 ```
-moteur: bus d'événements ──SSE /engine/v1/events──► EngineEventRelay (Nest, reconnexion exponentielle)
+engine: event bus ──SSE /engine/v1/events──► EngineEventRelay (Nest, exponential reconnection)
                                                         │
                        ┌────────────────────────────────┴───────────────────────────┐
                        ▼                                                            ▼
-   EventStreamService  sujets engine.<nom>               GenerationQueueService : job.* → messages, assets (base)
-   (téléchargements, installateurs, état du moteur,                                  │
-    changement de catalogue, engine.link)                                            ▼
-                       │                                       EventStreamService  sujets studio.<nom>
+   EventStreamService  topics engine.<name>              GenerationQueueService: job.* → messages, assets (database)
+   (downloads, installers, engine state,                                             │
+    catalogue change, engine.link)                                                   ▼
+                       │                                       EventStreamService  topics studio.<name>
                        └──────────────┬────────────────────────────────────────────┘ (message.updated, job.progress, job.image,
                                       ▼                                               queue.updated, asset.*, conversation.*, voices.changed…)
-                     GET /api/v1/events/stream?topics=…  (SSE, brique commune du gabarit)
+                     GET /api/v1/events/stream?topics=…  (SSE, shared building block of the template)
                                       ▼
-                     front : eventStreamClient → effets de cache (studio-shell/lib/eventEffects.ts)
+                     front: eventStreamClient → cache effects (studio-shell/lib/eventEffects.ts)
 ```
 
-- **Moteur → Nest** : un flux unique ; à chaque connexion le moteur rejoue son instantané (état, jobs actifs, téléchargements,
-  installations). Un client lent est déconnecté côté moteur puis se reconnecte et relit son état. Le relais signale la perte et le
-  retour du lien (`engine.link`), ce qui fait renvoyer les réglages et relire l'état côté interface.
-- **Nest → navigateur** : sujets `engine.*` (noms et charges utiles dans `back/src/modules/engine/README.md`, section « Flux
-  d'événements ») et `studio.*` (publiés par `StudioEvents`, liste dans `back/src/modules/media-library/services/StudioEvents.ts`).
-  Audience : administrateur (application mono-utilisateur, le principal `local-trust` en est un).
-- **Taille** : la limite d'un événement du gabarit est portée à 256 Ko pour cette application (`StudioEventLimitsModule`,
-  `back/src/modules/media-library/README.md`), à cause des formes d'onde des prises audio.
-- **Navigateur** : le front s'abonne aux sujets utiles et traduit chaque événement en invalidation ou retrait du cache TanStack
-  Query, regroupés sur 250 ms ; au retour du lien ou sur la trame `resync`, il recharge tout
-  (`front/src/modules/studio-shell/README.md`). Sans flux, retour au polling.
+- **Engine → Nest**: a single stream; at each connection the engine replays its snapshot (state, active jobs, downloads,
+  installations). A slow client is disconnected on the engine side, then reconnects and rereads its state. The relay signals the loss and
+  the return of the link (`engine.link`), which makes the settings be sent again and the state be reread on the interface side.
+- **Nest → browser**: topics `engine.*` (names and payloads in `back/src/modules/engine/README.md`, section "Event flow")
+  and `studio.*` (published by `StudioEvents`, list in `back/src/modules/media-library/services/StudioEvents.ts`).
+  Audience: administrator (single-user application, the `local-trust` principal is one).
+- **Size**: the size limit of an event of the template is raised to 256 KB for this application (`StudioEventLimitsModule`,
+  `back/src/modules/media-library/README.md`), because of the waveforms of audio takes.
+- **Browser**: the front subscribes to the useful topics and turns each event into an invalidation or removal of the TanStack
+  Query cache, grouped over 250 ms; when the link returns or on the `resync` frame, it reloads everything
+  (`front/src/modules/studio-shell/README.md`). Without a stream, it falls back to polling.
 
-## Données et migrations
+## Data and migrations
 
-Dossier de données commun à Nest et au moteur : `APP_DATA_DIR` côté Nest, **le même dossier** lu sous `IMAGEGEN_DATA_DIR` côté
-moteur (posé par `scripts-local/dev-services.sh` en développement, par la coquille en bureau). Par défaut `<dépôt>/data/` en
-développement ; en bureau le dossier local de l'OS de l'identifiant `app.aimedialab.studio` (`desktop/README.md`).
+Data folder shared by Nest and the engine: `APP_DATA_DIR` on the Nest side, **the same folder** read under `IMAGEGEN_DATA_DIR` on the
+engine side (set by `scripts-local/dev-services.sh` in development, by the shell on desktop). By default `<repository>/data/` in
+development; on desktop the local folder of the OS for the identifier `app.aimedialab.studio` (`desktop/README.md`).
 
-| Élément | Propriétaire | Remarque |
+| Element | Owner | Note |
 |---|---|---|
-| `app.db` (SQLite) | Nest | conversations, messages, références, assets (métadonnées), voix, messages de chat en arbre (`chat_messages`) et leurs réglages, avis du conseiller de mises à jour (`update_advisories`), configuration de modules (réglages), marqueur d'import ; schéma versionné par migrations. **Rien du mode privé** |
-| `private/<session>/` | moteur (fichiers) | dossier de session du mode privé (entrées, sorties, aperçus, vignettes, temporaires), 0700, effacé à la fin de la session, après 30 min d'inactivité, à l'arrêt et au démarrage (reliquats) |
-| `video-memory.json` | moteur | mesures de mémoire des passages vidéo (cache, pas une donnée applicative ; non écrit en session privée) |
-| `uploads/`, `outputs/`, `thumbs/`, `previews/` | moteur (fichiers) | les lignes d'assets ne gardent que des noms de fichiers relatifs |
-| `engine-state.json` | moteur | recettes des modèles personnalisés Hugging Face (`engines/custom.py` → `engine_state.py`) |
-| `engines/` | moteur | moteurs et packs installés depuis l'application (stable-diffusion.cpp, audio.cpp, environnements Python isolés audio et vidéo) |
-| `ai-medialab.db.imported` | personne | ancienne base du moteur, conservée, jamais supprimée |
-| `secrets.json`, `logs/` | coquille (bureau) | clés au premier lancement, journaux |
-| cache Hugging Face (`HF_HOME`) | Hugging Face | hors du dossier de données ; poids des modèles |
+| `app.db` (SQLite) | Nest | conversations, messages, references, assets (metadata), voices, chat messages as a tree (`chat_messages`) and their settings, update advisor notices (`update_advisories`), module configuration (settings), import marker; schema versioned by migrations. **Nothing from private mode** |
+| `private/<session>/` | engine (files) | folder of the private-mode session (inputs, outputs, previews, thumbnails, temporary files), 0700, erased at the end of the session, after 30 min of inactivity, at shutdown and at startup (leftovers) |
+| `video-memory.json` | engine | memory measurements of video passes (cache, not application data; not written in private session) |
+| `uploads/`, `outputs/`, `thumbs/`, `previews/` | engine (files) | asset rows only keep relative file names |
+| `engine-state.json` | engine | recipes of the custom Hugging Face models (`engines/custom.py` → `engine_state.py`) |
+| `engines/` | engine | engines and packs installed from the application (stable-diffusion.cpp, audio.cpp, isolated Python environments for audio and video) |
+| `ai-medialab.db.imported` | person | former engine database, kept, never deleted |
+| `secrets.json`, `logs/` | shell (desktop) | keys at first launch, logs |
+| Hugging Face cache (`HF_HOME`) | Hugging Face | outside the data folder; model weights |
 
-**Migrations de la base de Nest** : versionnées dans `back/src/migrations/` (en développement TypeORM construit le schéma lui-même ;
-en bureau `DB_SCHEMA_MODE=migrations`). Toute modification d'entité s'accompagne d'une migration dans le même
-commit (procédure et test de cohérence : `back/src/migrations/README.md`).
+**Migrations of Nest's database**: versioned in `back/src/migrations/` (in development TypeORM builds the schema itself;
+on desktop `DB_SCHEMA_MODE=migrations`). Any entity change comes with a migration in the same
+commit (procedure and consistency test: `back/src/migrations/README.md`).
 
-**Reprise des anciennes données (versions d'avant la migration)**, trois étapes indépendantes, dans cet ordre au premier
-lancement d'une installation existante :
+**Recovery of former data (versions before the migration)**, three independent steps, in this order at the first
+launch of an existing installation:
 
-1. **Ancien dossier de bureau** (`app.chambrenoire.studio`) : le moteur, démarré en premier, déplace ses entrées dans le dossier
-   courant à l'import de `config.py` (`engine/app/legacy_data.py`), sauf si le dossier courant contient déjà une base (y compris
-   `….imported`) ; rien n'est écrasé.
-2. **Recettes de modèles personnalisés** : le moteur, au premier accès à son registre, crée `engine-state.json` à partir de la
-   table `settings` de l'ancienne base (`ai-medialab.db`, `chambre-noire.db` ou `….imported`), en lecture seule ; seule la clé
-   `custom_models` est reprise (`engine/app/engine_state.py`, testé par `engine/tests/test_engine_state.py`).
-3. **Conversations, messages, assets, voix, réglages** : Nest, au démarrage, importe l'ancienne base en une transaction avec un
-   marqueur (idempotent), puis la **renomme** `ai-medialab.db.imported` (et ses fichiers `-wal`, `-shm`), sans jamais la supprimer
-   (`back/src/modules/legacy-import/README.md`). L'ordre de démarrage moteur / Nest n'a pas d'importance : le moteur lit aussi
-   le fichier renommé.
+1. **Former desktop folder** (`app.chambrenoire.studio`): the engine, started first, moves its entries into the current folder when
+   `config.py` is imported (`engine/app/legacy_data.py`), unless the current folder already contains a database (including
+   `….imported`); nothing is overwritten.
+2. **Custom model recipes**: the engine, on first access to its registry, creates `engine-state.json` from the `settings`
+   table of the former database (`ai-medialab.db`, `chambre-noire.db` or `….imported`), read-only; only the key `custom_models`
+   is taken over (`engine/app/engine_state.py`, tested by `engine/tests/test_engine_state.py`).
+3. **Conversations, messages, assets, voices, settings**: Nest, at startup, imports the former database in one transaction with a
+   marker (idempotent), then **renames** it `ai-medialab.db.imported` (and its `-wal`, `-shm` files), without ever deleting it
+   (`back/src/modules/legacy-import/README.md`). The startup order of engine / Nest does not matter: the engine also reads the
+   renamed file.
 
-## Bureau
+## Desktop
 
-La coquille du gabarit (Tauri 2, `desktop/`) est configurée par `desktop/desktop.config.json` : un processus annexe `engine`
-(interpréteur Python et dépendances **embarqués**, `uvicorn app.main:app`, santé `/engine/v1/status`) démarré **avant** Nest, puis le
-serveur Nest (Node embarqué), qui sert aussi le front compilé et dont la santé inclut celle du moteur. Le jeton `ENGINE_TOKEN` est
-généré à chaque lancement et partagé ; les ports sont alloués libres. À la fermeture la coquille arrête les deux groupes de
-processus, y compris le worker de génération. Procédure de construction, profils d'exécution par GPU, signature et CI :
-`desktop/README.md` et la section « Application de bureau » de `README.md`. Le crochet d'empaquetage du moteur est
-`scripts-local/desktop-prepare.sh` (appelé par `scripts/app.sh` et `scripts/bundle.sh`), qui lance `scripts-local/build_runtime.py`
-avec le profil de la cible (profils : `desktop/runtime/profiles.json`).
+The template shell (Tauri 2, `desktop/`) is configured by `desktop/desktop.config.json`: an auxiliary process `engine`
+(Python interpreter and dependencies **embedded**, `uvicorn app.main:app`, health `/engine/v1/status`) started **before** Nest, then the
+Nest server (embedded Node), which also serves the compiled front and whose health includes that of the engine. The `ENGINE_TOKEN` token is
+generated at each launch and shared; the ports are allocated free. On closing, the shell stops both groups of
+processes, including the generation worker. Build procedure, runtime profiles per GPU, signing and CI:
+`desktop/README.md` and the section "Desktop application" of `docs/guide.md`. The packaging hook of the engine is
+`scripts-local/desktop-prepare.sh` (called by `scripts/app.sh` and `scripts/bundle.sh`), which runs `scripts-local/build_runtime.py`
+with the profile of the target (profiles: `desktop/runtime/profiles.json`).
 
-**PyTorch hors de l'installateur.** Les profils par défaut ne contiennent ni PyTorch, ni diffusers, ni mflux : le moteur démarre et
-répond sans eux (sonde `system._probe_torch` en sous-processus, qui les ignore s'ils manquent). Le pack « torch »
-(`engine/app/audio_packs.py`, famille `runtime`) les installe à la demande dans `<données>/engines/runtime/torch/venv`, un venv bâti
-sur l'interpréteur embarqué avec le `uv` embarqué. Son `site-packages` n'est ajouté à `sys.path` que par le worker de génération
-(`activate_overlays`, appelé au début de `worker.run_worker`) et par la sonde : le serveur ne les importe jamais. Les modèles de
-backend `torch` et `mlx` désignent ce pack (`audio_packs.pack_of`) et l'interface propose son installation comme celle d'un moteur.
+**PyTorch outside the installer.** The default profiles contain neither PyTorch, nor diffusers, nor mflux: the engine starts and
+answers without them (probe `system._probe_torch` in a subprocess, which ignores them if they are missing). The "torch" pack
+(`engine/app/audio_packs.py`, family `runtime`) installs them on demand in `<data>/engines/runtime/torch/venv`, a venv built
+on the embedded interpreter with the embedded `uv`. Its `site-packages` is added to `sys.path` only by the generation worker
+(`activate_overlays`, called at the start of `worker.run_worker`) and by the probe: the server never imports them. The models of
+backend `torch` and `mlx` point to this pack (`audio_packs.pack_of`) and the interface offers its installation like that of an engine.
 
-**Composants et installation d'un modèle.** Tout ce que l'application télécharge hors des modèles est un *composant* (`engine/app/components.py`),
-à deux niveaux : les *données de base*, partagées par plusieurs moteurs (le pack `torch`, le pack `ffmpeg` : PyAV, jamais embarqué à cause de sa
-licence, voir `docs/components/ffmpeg.md`), et les *moteurs d'exécution* (stable-diffusion.cpp, llama.cpp, audio.cpp, les packs Python).
-`components_of(spec)` donne ceux qu'un modèle exige (FFmpeg pour toute vidéo). `setup_runner.py` calcule le plan (`GET /setup-plan` : seulement ce
-qui manque, donc rien n'est retéléchargé) et l'exécute avec les installateurs existants, un à la fois, sous un seul état publié par
-`setup.progress` ; l'annulation arrête l'étape courante, dont l'installateur supprime les fichiers partiels. Supprimer un composant supprime aussi
-les modèles installés qui en dépendent (`components.uninstall`). Le serveur n'importe `av` que paresseusement, après avoir ajouté l'add-on FFmpeg
-à son `sys.path` (`media.load_av`) ; sans lui, l'envoi d'une vidéo répond 409 avec le message d'installation.
+**Components and model installation.** Everything the application downloads outside the models is a *component* (`engine/app/components.py`),
+at two levels: the *base data*, shared by several engines (the `torch` pack, the `ffmpeg` pack: PyAV, never embedded because of its
+licence, see `docs/components/ffmpeg.md`), and the *runtime engines* (stable-diffusion.cpp, llama.cpp, audio.cpp, the Python packs).
+`components_of(spec)` gives those a model requires (FFmpeg for any video). `setup_runner.py` computes the plan (`GET /setup-plan`: only
+what is missing, so nothing is downloaded again) and runs it with the existing installers, one at a time, under a single state published by
+`setup.progress`; cancellation stops the current step, whose installer deletes the partial files. Deleting a component also deletes
+the installed models that depend on it (`components.uninstall`). The server imports `av` only lazily, after having added the FFmpeg add-on
+to its `sys.path` (`media.load_av`); without it, sending a video answers 409 with the installation message.
 
-État de vérification : la chaîne de construction de la coquille a été écrite et testée par morceaux, **aucune application n'a été
-assemblée ni lancée de bout en bout** avec la coquille du gabarit (voir le suivi de la migration, `docs/migration/README.md`).
+Verification status: the build chain of the shell was written and tested in pieces, **no application has been
+assembled or launched end to end** with the template shell.
 
-## Mode privé
+## Private mode
 
-Une session privée est **éphémère** et ne passe jamais par `app.db` : Nest la tient en mémoire (`back/src/modules/private/`, mêmes formes publiques que
-les conversations normales, pour que le front réutilise ses composants), la file des générations est **partagée** avec le mode normal (une génération à la
-fois) et les fichiers d'une génération vivent dans `private/<session>/`, servis sans cache et effacés à la fin. Le moteur reçoit un champ
-`private_dir` sur ses jobs : il refuse un dossier hors de la session, ne garde aucune trace du job et assainit ses erreurs. Le chat privé est **sans
-état** (le navigateur renvoie tout l'historique). Ce que la session garantit, ce qu'elle ne peut pas garantir (mémoire virtuelle, sauvegardes,
-SSD, captures) et la conception détaillée : `back/src/modules/private/README.md` et `front/src/modules/private/README.md`.
+A private session is **ephemeral** and never goes through `app.db`: Nest keeps it in memory (`back/src/modules/private/`, same public
+shapes as normal conversations, so that the front reuses its components), the generation queue is **shared** with normal mode (one generation at a time) and the files of a generation live in `private/<session>/`, served without cache and erased at the end. The engine receives a `private_dir` field on its jobs: it refuses a folder outside the session, keeps no trace of the job and sanitizes its errors. Private chat is **stateless** (the browser sends back the whole history). What the session guarantees, what it cannot guarantee (virtual memory, backups,
+SSD, captures) and the detailed design: `back/src/modules/private/README.md` and `front/src/modules/private/README.md`.
 
-## Chat et générations (outils de création)
+## Chat and generations (creation tools)
 
-Le modèle de chat (ou une commande `/image`, `/video`, `/audio`) peut lancer une génération des studios sans quitter la conversation. Le chemin
-reste celui des studios : le module `chat` n'appelle jamais le moteur pour cela, il crée un prompt et sa génération dans `studio-core`
-(`GenerationService.create`), **rattachés à la conversation de chat**, et la **file** les envoie au moteur. Le chat tient la jauge du moteur
-(`EngineBusyGate`) pendant sa réponse : l'outil rend la main aussitôt (« génération lancée ») et le job part quand la réponse a rendu la
-mémoire (un seul modèle en mémoire). L'état et les fichiers d'une carte sont lus chez `studio-core` à chaque lecture (une source), le navigateur est
-prévenu par les événements `studio.*` ; le modèle de chaque studio est celui que le navigateur a sélectionné (Nest ne le connaît pas : il
-l'envoie avec chaque message). Le moteur n'a rien de nouveau. Détail et limites (session privée) : `back/src/modules/chat/README.md`, « Outils de création ».
+The chat model (or a `/image`, `/video`, `/audio` command) can launch a generation of the studios without leaving the conversation. The path
+remains that of the studios: the `chat` module never calls the engine for this, it creates a prompt and its generation in `studio-core`
+(`GenerationService.create`), **attached to the chat conversation**, and the **queue** sends them to the engine. The chat holds the engine gauge
+(`EngineBusyGate`) during its response: the tool gives the hand back at once ("generation launched") and the job leaves when the response has freed
+the memory (a single model in memory). The state and files of a card are read from `studio-core` at each read (a single source), the browser is
+informed by `studio.*` events; the model of each studio is the one the browser has selected (Nest does not know it: it
+sends it with each message). The engine has nothing new. Details and limits (private session): `back/src/modules/chat/README.md`, "Creation tools".
 
-## Langue de l'interface
+## Interface language
 
-Deux langues, `fr` et `en`. **Le front en est le propriétaire** : le choix (Réglages > Général) est mémorisé dans le navigateur ; sans choix, `LocaleService` prend la langue du système (français, sinon anglais). Chaque changement met `<html lang>` et l'en-tête `Accept-Language` des requêtes à jour (`front/src/locales/registerModuleLocales.ts`, `languageHeaders()` pour les `fetch`).
+Two languages, `fr` and `en`. **The front owns them**: the choice (Settings > General) is remembered in the browser; without a choice, `LocaleService` takes the system language (French, otherwise English). Each change keeps `<html lang>` and the `Accept-Language` header of the requests up to date (`front/src/locales/registerModuleLocales.ts`, `languageHeaders()` for the `fetch` calls).
 
-- **Nest** lit `Accept-Language` (`back/src/modules/i18n/`) et retient la dernière langue vue : l'application est mono-utilisateur, une seule valeur sert aussi ce qui tourne hors requête (file de générations). Ses messages passent par `tr('module.clé', [valeurs])` ; les dictionnaires sont `back/src/modules/<module>/i18n/messages.{fr,en}.json`, vérifiés (parité, clés utilisées) par `messages.spec.ts`. Un texte **enregistré** (échec d'une génération, titre par défaut) garde la langue de son écriture.
-- **Le moteur** reçoit la même langue (`EngineClient.authHeaders()`). Ses textes restent écrits en français dans le code ; chaque réponse JSON, détail d'erreur et événement est traduit à la sortie par `engine/app/i18n.py` à partir de `engine/app/locales/en/*.json` (texte français → anglais, `{}` pour une valeur). Un texte ajouté au code n'a besoin que de son entrée anglaise : `engine/tests/test_i18n.py` échoue sinon (scanneur `engine/tests/i18n_scan.py`, qui liste les textes manquants).
-- Les textes envoyés **à un modèle** (invites) ne sont pas traduits ; ceux dont la réponse s'affiche à l'utilisateur demandent la langue de l'interface. La réponse du chat suit la langue du message de l'utilisateur.
+- **Nest** reads `Accept-Language` (`back/src/modules/i18n/`) and keeps the last language seen: the application is single-user, a single value also serves what runs outside a request (generation queue). Its messages go through `tr('module.key', [values])`; the dictionaries are `back/src/modules/<module>/i18n/messages.{fr,en}.json`, checked (parity, keys used) by `messages.spec.ts`. A **stored** text (failure of a generation, default title) keeps the language of its writing.
+- **The engine** receives the same language (`EngineClient.authHeaders()`). Its texts remain written in French in the code; each JSON response, error detail and event is translated on output by `engine/app/i18n.py` from `engine/app/locales/en/*.json` (French text → English, `{}` for a value). A text added to the code only needs its English entry: `engine/tests/test_i18n.py` fails otherwise (scanner `engine/tests/i18n_scan.py`, which lists the missing texts).
+- Texts sent **to a model** (prompts) are not translated; those whose response is displayed to the user require the interface language. The chat response follows the language of the user's message.
 
-## Mémoire au repos
+## Resting memory
 
-Mesurée sans modèle chargé ni génération (macOS arm64, Apple Silicon) :
+Measured without a loaded model or generation (macOS arm64, Apple Silicon):
 
-| Mesure | Moteur | Nest | Total | Source |
+| Measure | Engine | Nest | Total | Source |
 |---|---|---|---|---|
-| H1b, 13/10/2026, `nest build` puis `node dist/main.js`, moteur lancé à la main | ≈ 77 Mo | ≈ 155 Mo | ≈ 232 Mo | Nest après connexion au flux et quelques requêtes ; Vite non mesuré |
-| H5, 13/10/2026, mêmes variables que la coquille, sans Tauri | ≈ 80 Mo | ≈ 157 Mo | ≈ 235 Mo | la coque Tauri et la fenêtre de rendu ne sont pas comptées |
+| H1b, 13/10/2026, `nest build` then `node dist/main.js`, engine started by hand | ≈ 77 MB | ≈ 155 MB | ≈ 232 MB | Nest after connecting to the stream and a few requests; Vite not measured |
+| H5, 13/10/2026, same variables as the shell, without Tauri | ≈ 80 MB | ≈ 157 MB | ≈ 235 MB | the Tauri shell and the render window are not counted |
 
-Pic du moteur au démarrage : ≈ 0,40 Go (sonde PyTorch lancée en sous-processus par `warm_up`, qui se termine) ; pic de Nest
-≈ 0,15 Go. Pendant une génération la mémoire est celle du worker et du modèle (planificateur mémoire du moteur, `README.md`).
-Les mesures de H6 (bout en bout en mode démonstration) : pic de ≈ 0,8 Go pour le test `studioEngine.e2e.spec.ts` complet (Jest, Nest en
-mémoire et moteur en sous-processus). Elles ne remplacent pas une mesure de l'application empaquetée, qui n'a pas été faite.
+Engine peak at startup: ≈ 0.40 GB (PyTorch probe launched as a subprocess by `warm_up`, which ends); Nest peak
+≈ 0.15 GB. During a generation the memory is that of the worker and the model (engine memory planner, `docs/guide.md`).
+The H6 measurements (end to end in demonstration mode): peak of ≈ 0.8 GB for the full `studioEngine.e2e.spec.ts` test (Jest, Nest in
+memory and engine in a subprocess). They do not replace a measurement of the packaged application, which has not been made.
 
-## Le moteur : plan
+## The engine: plan
 
 ```
 engine/app/
-  main.py            application FastAPI : routeurs sous /engine/v1 (jeton), médias statiques sous /media/<dossier>
-  api/               routes : routes.py (modèles, moteurs, Hugging Face, statut, flux SSE), jobs.py (jobs, ingestion et purge de
-                     médias), runtime.py (réglages poussés), voice_media.py (clip de référence, transcription), auth.py (jeton)
-  jobs.py            file des jobs, cycle de vie du worker, progression, annulation, déchargement après inactivité
-  job_plans.py       JobRequest et planification pure d'une génération ; job_checks.py, job_outputs.py (description des sorties)
-  worker.py, audio_worker.py, download_worker.py   processus séparés : génération, audio, téléchargement
-  engines/           registre des modèles (specs) et moteurs : MLX, diffusers, stable-diffusion.cpp, audio, vidéo, modèles personnalisés
-  catalog.py, downloads.py, hf_search.py           catalogue, téléchargements, recherche Hugging Face
-  system.py          détection GPU, mémoire, disque ; planificateur mémoire
-  memory_guard.py    garde mémoire : vérification avant chargement, surveillance du worker, arrêt avant saturation
-  engine_install.py, audio_packs.py, audiocpp.py, llamacpp.py   installateurs (moteur GGUF, packs audio et vidéo, audio.cpp, llama.cpp)
-  llm.py             serveur de chat (`llama-server` : démarrage, arbitre mémoire, flux SSE normalisé) ; engines/llm_models.py : catalogue de chat
-  update_advisor.py, hf_trending.py, private_session.py, video_memory.py   conseiller de mises à jour, nouveautés Hugging Face, session privée, longueur des passages vidéo
-  runtime_settings.py  réglages poussés par Nest (mémoire seulement) ; engine_state.py  état propre du moteur (fichier JSON)
-  legacy_data.py     reprise de l'ancien dossier de données ; events.py  bus d'événements
-engine/audio_runtime/, engine/video_runtime/   code exécuté dans les environnements isolés des packs
-engine/tests/        tests pytest, un fichier à la fois (aucun ne charge de modèle)
+  main.py            FastAPI application: routers under /engine/v1 (token), static media under /media/<folder>
+  api/               routes: routes.py (models, engines, Hugging Face, status, SSE stream), jobs.py (jobs, ingestion and purge of
+                     media), runtime.py (settings pushed), voice_media.py (reference clip, transcription), auth.py (token)
+  jobs.py            job queue, worker lifecycle, progress, cancellation, unloading after inactivity
+  job_plans.py       JobRequest and pure planning of a generation; job_checks.py, job_outputs.py (description of the outputs)
+  worker.py, audio_worker.py, download_worker.py   separate processes: generation, audio, download
+  engines/           model registry (specs) and engines: MLX, diffusers, stable-diffusion.cpp, audio, video, custom models
+  catalog.py, downloads.py, hf_search.py           catalogue, downloads, Hugging Face search
+  system.py          GPU, memory, disk detection; memory planner
+  memory_guard.py    memory guard: check before loading, worker monitoring, stop before saturation
+  engine_install.py, audio_packs.py, audiocpp.py, llamacpp.py   installers (GGUF engine, audio and video packs, audio.cpp, llama.cpp)
+  llm.py             chat server (`llama-server`: start, memory arbiter, normalized SSE stream); engines/llm_models.py: chat catalogue
+  update_advisor.py, hf_trending.py, private_session.py, video_memory.py   update advisor, Hugging Face novelties, private session, video pass length
+  runtime_settings.py  settings pushed by Nest (memory only); engine_state.py  the engine's own state (JSON file)
+  legacy_data.py     recovery of the former data folder; events.py  event bus
+engine/audio_runtime/, engine/video_runtime/   code run in the isolated environments of the packs
+engine/tests/        pytest tests, one file at a time (none loads a model)
 ```
 
-Le worker tourne dans son propre processus : le serveur reste réactif pendant le calcul, décharger un modèle libère
-vraiment la mémoire et un plantage (mémoire insuffisante…) n'emporte pas l'application.
+The worker runs in its own process: the server stays responsive during computation, unloading a model really frees the memory
+and a crash (out of memory…) does not take down the application.
 
-### Filets de sécurité mémoire
+### Memory safety nets
 
-Sur un Mac le processeur et le GPU partagent la même mémoire : un débordement ne fait pas échouer le programme, il fige
-ou redémarre la machine. Les protections, de la plus en amont à la dernière :
+On a Mac the processor and the GPU share the same memory: an overflow does not make the program fail, it freezes
+or restarts the machine. The protections, from the furthest upstream to the last:
 
-| Filet | Où | Effet |
+| Net | Where | Effect |
 |---|---|---|
-| Planificateur | `system.py` (`memory_plan`) | refuse un modèle dont les poids ne tiennent pas dans la mémoire totale de la machine (marqueur « trop lourd », modèle masqué des sélecteurs) |
-| Vérification avant chargement | `memory_guard.preflight`, appelé par `jobs.py` (`_memory_preflight`) | mémoire partagée seulement : refuse de charger si la mémoire **libre à cet instant** ne couvre pas les poids plus la réserve (8 % de la RAM, 2,5 Go au moins) ; le message donne les chiffres |
-| Surveillance | `memory_guard.MemoryWatchdog`, fil du processus principal du moteur, 5 lectures par seconde | tant qu'un worker vit : sous la réserve, ou si macOS signale une pression mémoire critique, tue le worker **et ses sous-processus** (`sd-cli`) ; le job échoue avec « Arrêté par la protection mémoire : … » |
-| Ancien worker arrêté avant le suivant | `jobs.py` (`_ensure_worker`, `stop`) | un seul modèle en mémoire ; l'arrêt attend la fin du processus, même forcé |
-| Pics d'une génération | `diffusers_engine.py` (`tune_vae`, `_from_pretrained`), `sdcpp_engine.py` (`VAE_TILING_FROM`) | VAE en tuiles de 512 px, sans copie float32 hors float16 ; poids chargés directement sur le GPU d'un Mac ; `--vae-tiling` de `sd-cli` dès 1 Mpx |
-| Serveur de chat | `llm.py`, `jobs.py`, `memory_guard.py` | un seul modèle en mémoire pour toute l'application : charger un LLM arrête le worker de génération et inversement (409 côté refusé) ; `preflight` (poids + cache de contexte estimé) ; le garde mémoire surveille le pid de `llama-server` ; cache de prompt en RAM borné à 1 Gio (`--cache-ram`, 8 Gio par défaut) |
-| Relevé | journal du moteur, ligne `[memory] job …` | mémoire libre au plus bas et pic des processus du modèle, pour chaque job |
-| Longueur des passages vidéo | `video_memory.py`, `sdcpp_video_engine.py` (`_generate_chained`) | un clip long des modèles GGUF image → vidéo sans son se fait par passages enchaînés dont la longueur suit la mémoire **mesurée sur cette machine** : essai court au premier usage d'un modèle (a priori prudent), puis passages de plus en plus longs (jamais plus de 1,6 fois le plus gros passage déjà mesuré) tant que la prévision tient dans la mémoire disponible moins la réserve. Chaque passage enregistre la mémoire réellement consommée (`video-memory.json` du dossier de données : un cache de mesures, pas une donnée de l'application) ; `sd-cli --max-vram` reçoit ce budget (build 956 ou plus récent, `IMAGEGEN_SDCPP_MAX_VRAM=off` le retire) |
+| Planner | `system.py` (`memory_plan`) | refuses a model whose weights do not fit in the total memory of the machine ("too heavy" marker, model hidden from the selectors) |
+| Check before loading | `memory_guard.preflight`, called by `jobs.py` (`_memory_preflight`) | shared memory only: refuses to load if the **free memory at this moment** does not cover the weights plus the reserve (8 % of RAM, 2.5 GB at least); the message gives the figures |
+| Watchdog | `memory_guard.MemoryWatchdog`, thread of the engine's main process, 5 readings per second | as long as a worker lives: below the reserve, or if macOS signals a critical memory pressure, kills the worker **and its subprocesses** (`sd-cli`); the job fails with "Stopped by the memory protection: …" |
+| Former worker stopped before the next | `jobs.py` (`_ensure_worker`, `stop`) | a single model in memory; the stop waits for the end of the process, even when forced |
+| Peaks of a generation | `diffusers_engine.py` (`tune_vae`, `_from_pretrained`), `sdcpp_engine.py` (`VAE_TILING_FROM`) | VAE in 512 px tiles, without float32 copy outside float16; weights loaded directly onto the GPU of a Mac; `--vae-tiling` of `sd-cli` from 1 Mpx |
+| Chat server | `llm.py`, `jobs.py`, `memory_guard.py` | a single model in memory for the whole application: loading an LLM stops the generation worker and vice versa (409 on the refused side); `preflight` (weights + estimated context cache); the memory guard watches the pid of `llama-server`; prompt cache in RAM capped at 1 GiB (`--cache-ram`, 8 GiB by default) |
+| Record | engine journal, line `[memory] job …` | free memory at its lowest and peak of the model's processes, for each job |
+| Length of video passes | `video_memory.py`, `sdcpp_video_engine.py` (`_generate_chained`) | a long clip of the GGUF image → video models without sound is made in chained passes whose length follows the memory **measured on this machine**: short trial at the first use of a model (a priori cautious), then longer and longer passes (never more than 1.6 times the largest pass already measured) as long as the forecast fits in the available memory minus the reserve. Each pass records the memory actually consumed (`video-memory.json` of the data folder: a cache of measurements, not application data); `sd-cli --max-vram` receives this budget (build 956 or newer, `IMAGEGEN_SDCPP_MAX_VRAM=off` removes it) |
 
-Les générations d'un même envoi (jusqu'à 4 images) passent l'une après l'autre dans le même worker, jamais en parallèle.
+The generations of a single submission (up to 4 images) run one after the other in the same worker, never in parallel.
 
-## Pile de développement
+## Development stack
 
-Lancement : `./scripts/run.sh dev` (Nest 3000, Vite 5173, moteur 127.0.0.1:8000 via le crochet
-`scripts-local/dev-services.sh`) ; détail et variables dans `README.md`. Règles de test et de mémoire : `CLAUDE.md`.
+Launch: `./scripts/run.sh dev` (Nest 3000, Vite 5173, engine 127.0.0.1:8000 via the hook
+`scripts-local/dev-services.sh`); details and variables in `docs/guide.md`. Test and memory rules: `docs/guide.md`, section "Tests".

@@ -1,53 +1,53 @@
-# Composants tiers intégrés — registre et procédure de revue
+# Bundled third-party components: registry and review procedure
 
-Ce dossier décrit **chaque composant externe que l'application installe ou pilote**, pour pouvoir les passer en revue de
-temps en temps : une version corrigée, un modèle amélioré, une famille nouvelle, une licence qui change.
+This folder describes **every external component the application installs or drives**, so they can be reviewed from time to
+time: a fixed version, an improved model, a new family, a changed license.
 
-*Dernière vérification contre les sources : 2026-10-13 (épinglages et chemins relus après la migration : le moteur est dans `engine/`).*
+*Last verified against source: 2026-10-13 (pins and paths re-read after the migration: the engine is in `engine/`).*
 
-Règle de ce dossier : **un fait, un seul endroit**. Les versions épinglées ne sont jamais recopiées ici, on cite le
-fichier qui les porte (le code ne ment pas, une copie finit par mentir). Les licences des modèles sont dans
-`THIRD_PARTY_LICENSES.md` (résumé) et dans la fiche du composant (détail et statut amont).
+Rule of this folder: **one fact, one place**. Pinned versions are never copied here; we cite the
+file that holds them (the code does not lie, a copy always ends up lying). Model licenses are in
+`THIRD_PARTY_LICENSES.md` (summary) and in the component's sheet (detail and upstream status).
 
-## Procédure de revue (toutes les 3 à 4 semaines, ou avant une release)
+## Review procedure (every 3 to 4 weeks, or before a release)
 
-1. Lancer le rapport (réseau requis, ne modifie rien) :
+1. Run the report (network required, changes nothing):
    `engine/.venv/bin/python scripts-local/review_components.py`
-   Il compare ce qui est épinglé à la dernière version amont (moteurs natifs, bibliothèques des packs audio, **pile web de
-   `front/` et `back/`**, Tauri) et liste, pour audio.cpp, les familles nouvelles ou dont le statut ou la licence ont changé
-   depuis le dernier instantané.
-2. Pour chaque ligne « NOUVELLE VERSION » ou chaque famille nouvelle : lire les notes de version amont, puis la section
-   « À vérifier à la revue » de la fiche du composant.
-3. Si on met à jour un épinglage : changer la constante (fichier indiqué dans le registre), relancer les tests du composant
-   **un fichier à la fois, jamais la suite complète d'un coup** (sur Mac, un débordement de mémoire unifiée redémarre la machine ; lancer sous surveillance de la mémoire libre), puis mettre à jour la fiche (date de revue, résultats).
-4. Rafraîchir l'instantané des familles : `… review_components.py --snapshot`, puis commiter le JSON.
-5. Noter la date dans la colonne « Dernière revue » ci-dessous.
+   It compares what is pinned with the latest upstream version (native engines, audio pack libraries, **web stack of
+   `front/` and `back/`**, Tauri) and lists, for audio.cpp, the new families or those whose status or license has changed
+   since the last snapshot.
+2. For each line "NEW VERSION" or each new family: read the upstream release notes, then the
+   "To check at review" section of the component's sheet.
+3. If we update a pin: change the constant (file given in the registry), rerun the component's tests
+   **one file at a time, never the full suite at once** (on a Mac, an overflow of unified memory reboots the machine; run under memory monitoring of free memory), then update the sheet (review date, results).
+4. Refresh the family snapshot: `… review_components.py --snapshot`, then commit the JSON.
+5. Note the date in the "Last review" column below.
 
-## Registre
+## Registry
 
-| Composant | Rôle | Où est l'épinglage | Licence | Fiche | Dernière revue |
+| Component | Role | Where the pin is | License | Sheet | Last review |
 |---|---|---|---|---|---|
-| **audio.cpp** (ggml) | synthèse vocale GGUF sur Metal, CUDA, Vulkan ou CPU (puis transcription, voir fiche) | `engine/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md) ; tests à faire à la main : [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
-| **llama.cpp** (`llama-server`) | modèles de chat GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/llamacpp.py` (`PINNED_TAG`) | MIT | [llamacpp.md](llamacpp.md) | 2026-10-15 |
-| **Accélération PyTorch** (CUDA, ROCm, XPU, Vulkan) | quels GPU les packs audio PyTorch peuvent utiliser, et le marqueur « lent · processeur » | `engine/app/audio_packs.py` (`torch_acceleration`, `_torch_index`) | – | [pytorch-gpu.md](pytorch-gpu.md) | 2026-10-13 |
-| **stable-diffusion.cpp** | images et vidéo GGUF (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/engine_install.py` (`PINNED_TAG`) ; raison de l'épinglage dans le commentaire au-dessus | MIT | à écrire | – |
-| **FFmpeg** (via PyAV) | encodage MP4 (H.264 + AAC), décodage des vidéos envoyées | extra `ffmpeg` de `engine/pyproject.toml` et pack `ffmpeg` (`engine/app/audio_packs.py`), téléchargé sur la machine de l'utilisateur ; encodeurs H.264 : `H264_ENCODERS` (`engine/app/media.py`) | roue PyPI GPL de fait (x264, x265) : non redistribuée, téléchargée par l'utilisateur | [ffmpeg.md](ffmpeg.md) | 2026-10-13 |
-| **mflux / MLX** | images sur Apple Silicon | `engine/pyproject.toml` | MIT | à écrire | – |
-| **PyTorch, diffusers, transformers, peft** | moteur torch (images, vidéo, packs) ; `peft` charge les LoRA SDXL | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | à écrire | – |
-| **qwen-tts** | Qwen3-TTS en PyTorch | `engine/app/audio_packs.py` (pack `qwen3`) | Apache-2.0 | à écrire | – |
-| **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | pack audio « speech » | `engine/app/audio_packs.py` (pack `speech`) | voir `THIRD_PARTY_LICENSES.md` | à écrire | – |
-| **MUI, Emotion, TanStack Query, Zustand, polices Fontsource** | interface (composants et thème, cache des données, état, polices embarquées) | `front/package.json` (plages), `front/package.local.json` (écarts au gabarit) | MIT (MUI, Emotion, TanStack, Zustand), OFL-1.1 (polices) | à écrire | – |
-| **NestJS, TypeORM, better-sqlite3** | serveur applicatif, accès aux données, base SQLite | `back/package.json` (plages), `back/package.local.json` | MIT | à écrire | – |
-| **openapi-typescript** | types du contrat Nest ↔ moteur (`engine/openapi.json`) | `back/package.json` (`devDependencies`) | MIT | à écrire | – |
-| **Tauri 2** | coquille de bureau | `desktop/src-tauri/Cargo.toml`, `desktop/package.json` | Apache-2.0 OR MIT | à écrire | – |
+| **audio.cpp** (ggml) | GGUF speech synthesis on Metal, CUDA, Vulkan or CPU (then transcription, see sheet) | `engine/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md); manual tests to run by hand: [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
+| **llama.cpp** (`llama-server`) | GGUF chat models (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/llamacpp.py` (`PINNED_TAG`) | MIT | [llamacpp.md](llamacpp.md) | 2026-10-15 |
+| **PyTorch acceleration** (CUDA, ROCm, XPU, Vulkan) | which GPUs the PyTorch audio packs can use, and the "slow · processor" marker | `engine/app/audio_packs.py` (`torch_acceleration`, `_torch_index`) | – | [pytorch-gpu.md](pytorch-gpu.md) | 2026-10-13 |
+| **stable-diffusion.cpp** | GGUF images and video (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/engine_install.py` (`PINNED_TAG`); reason for the pin in the comment above it | MIT | to write | – |
+| **FFmpeg** (via PyAV) | MP4 encoding (H.264 + AAC), decoding of uploaded videos | `ffmpeg` extra of `engine/pyproject.toml` and `ffmpeg` pack (`engine/app/audio_packs.py`), downloaded on the user's machine; H.264 encoders: `H264_ENCODERS` (`engine/app/media.py`) | de facto GPL PyPI wheel (x264, x265): not redistributed, downloaded by the user | [ffmpeg.md](ffmpeg.md) | 2026-10-13 |
+| **mflux / MLX** | images on Apple Silicon | `engine/pyproject.toml` | MIT | to write | – |
+| **PyTorch, diffusers, transformers, peft** | torch engine (images, video, packs); `peft` loads the SDXL LoRAs | `engine/pyproject.toml`, `engine/app/audio_packs.py` | BSD-3 / Apache-2.0 | to write | – |
+| **qwen-tts** | Qwen3-TTS in PyTorch | `engine/app/audio_packs.py` (`qwen3` pack) | Apache-2.0 | to write | – |
+| **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | "speech" audio pack | `engine/app/audio_packs.py` (`speech` pack) | see `THIRD_PARTY_LICENSES.md` | to write | – |
+| **MUI, Emotion, TanStack Query, Zustand, Fontsource fonts** | interface (components and theme, data cache, state, embedded fonts) | `front/package.json` (ranges), `front/package.local.json` (deviations from the template) | MIT (MUI, Emotion, TanStack, Zustand), OFL-1.1 (fonts) | to write | – |
+| **NestJS, TypeORM, better-sqlite3** | application server, data access, SQLite database | `back/package.json` (ranges), `back/package.local.json` | MIT | to write | – |
+| **openapi-typescript** | types of the Nest ↔ engine contract (`engine/openapi.json`) | `back/package.json` (`devDependencies`) | MIT | to write | – |
+| **Tauri 2** | desktop shell | `desktop/src-tauri/Cargo.toml`, `desktop/package.json` | Apache-2.0 OR MIT | to write | – |
 
-Les lignes « à écrire » n'ont pas encore de fiche détaillée : le script de revue les vérifie déjà (versions installées contre
-la dernière version publiée), la fiche viendra quand on les revisitera. Pour la pile web, une montée de version majeure de MUI ou
-de TypeORM se lit dans leurs notes de version avant d'élargir la plage de `package.json`. Ne pas recopier ici ce que `THIRD_PARTY_LICENSES.md` dit déjà.
+The "to write" lines do not have a detailed sheet yet: the review script already checks them (installed versions against the
+latest published version), the sheet will come when we revisit them. For the web stack, a major version bump of MUI or
+TypeORM is read in their release notes before widening the range in `package.json`. Do not copy here what `THIRD_PARTY_LICENSES.md` already says.
 
-## Ajouter un composant
+## Adding a component
 
-1. Une fiche `docs/components/<nom>.md` sur le modèle d'`audiocpp.md` (pourquoi, ce qui est intégré, comment ça tourne,
-   limites mesurées, candidats non intégrés, à vérifier à la revue).
-2. Une ligne dans le registre ci-dessus et une dans `THIRD_PARTY_LICENSES.md`.
-3. Si le composant a des versions ou un catalogue de modèles amont, l'ajouter à `scripts-local/review_components.py`.
+1. A sheet `docs/components/<name>.md` modeled on `audiocpp.md` (why, what is integrated, how it runs, measured
+   limits, candidates not integrated, to check at review).
+2. A line in the registry above and one in `THIRD_PARTY_LICENSES.md`.
+3. If the component has upstream versions or a model catalogue, add it to `scripts-local/review_components.py`.

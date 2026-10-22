@@ -1,72 +1,71 @@
-# llama.cpp — moteur des modèles de chat (GGUF)
+# llama.cpp — engine for the chat models (GGUF)
 
-*Dernière vérification contre le code et l'amont : 2026-10-15.* Registre et procédure de revue : [README.md](README.md).
+*Last verified against the code and upstream: 2026-10-15.* Registry and review procedure: [README.md](README.md).
 
-## Pourquoi
+## Why
 
-Le mode « Chat » fait tourner des modèles de langage locaux. llama.cpp (<https://github.com/ggml-org/llama.cpp>, MIT)
-est la référence pour les lire au format GGUF : binaires précompilés pour Metal, CUDA, ROCm, Vulkan et CPU, serveur HTTP
-(`llama-server`) compatible OpenAI avec flux de réponse, appels de fonctions (`--jinja`), modèles de vision
-(`--mmproj`) et raisonnement. C'est le même principe que stable-diffusion.cpp et audio.cpp : un petit programme
-autonome, installé à la demande, sans Python.
+The "Chat" mode runs local language models. llama.cpp (<https://github.com/ggml-org/llama.cpp>, MIT)
+is the reference for reading them in the GGUF format: prebuilt binaries for Metal, CUDA, ROCm, Vulkan and CPU, an OpenAI-compatible
+HTTP server (`llama-server`) with streamed responses, function calls (`--jinja`), vision models
+(`--mmproj`) and reasoning. It is the same principle as stable-diffusion.cpp and audio.cpp: a small
+standalone program, installed on demand, without Python.
 
-## Ce qui est intégré
+## What is integrated
 
-| Élément | Où | Rôle |
+| Element | Where | Role |
 |---|---|---|
-| Installation et choix du build | `engine/app/llamacpp.py` | télécharge la version épinglée (`PINNED_TAG`), vérifie le SHA-256 publié par GitHub, extrait sans sortir du dossier cible, vérifie que le programme tourne (et voit un GPU pour un build GPU), sinon essaie le build suivant jusqu'au CPU |
-| Serveur et arbitre mémoire | `engine/app/llm.py` | un `llama-server` à la fois, sur `127.0.0.1`, clé d'API aléatoire dans l'environnement ; flux d'événements normalisé ; surveillance mémoire ; déchargement après inactivité |
-| Routes | `engine/app/api/llm.py` | `/engine/v1/llm/*` (statut, chat en flux, déchargement, comptage de tokens) et `/engine/v1/engines/llamacpp/*` (installation) ; le détail du flux est dans l'en-tête du fichier |
-| Modèles | `engine/app/engines/llm_models.py` | liste prédéfinie, estimation du cache de contexte et besoin mémoire |
-| Modèles de Hugging Face | `engine/app/hf_search.py`, `engine/app/engines/custom.py` (famille `llm-gguf`) | recherche, choix de la quantification, fichiers découpés en tranches, projecteur de vision |
+| Installation and build choice | `engine/app/llamacpp.py` | downloads the pinned version (`PINNED_TAG`), checks the SHA-256 published by GitHub, extracts without leaving the target folder, checks that the program runs (and sees a GPU for a GPU build), otherwise tries the next build down to CPU |
+| Server and memory arbiter | `engine/app/llm.py` | one `llama-server` at a time, on `127.0.0.1`, random API key in the environment; normalized event stream; memory monitoring; unloading after inactivity |
+| Routes | `engine/app/api/llm.py` | `/engine/v1/llm/*` (status, streamed chat, unloading, token counting) and `/engine/v1/engines/llamacpp/*` (installation); the stream detail is in the file header |
+| Models | `engine/app/engines/llm_models.py` | predefined list, context cache estimate and memory need |
+| Hugging Face models | `engine/app/hf_search.py`, `engine/app/engines/custom.py` (family `llm-gguf`) | search, quantization choice, sliced files, vision projector |
 
-Sur disque : binaires dans `<engines>/llamacpp/<variante>/` (`IMAGEGEN_LLAMACPP_DIR` pour le changer) ; poids dans le cache
-Hugging Face. `IMAGEGEN_LLAMACPP_TAG` remplace la version épinglée (`latest` ou un tag), `IMAGEGEN_LLAMACPP_VARIANT` force un build.
+On disk: binaries in `<engines>/llamacpp/<variant>/` (`IMAGEGEN_LLAMACPP_DIR` to change it); weights in the Hugging Face
+cache. `IMAGEGEN_LLAMACPP_TAG` replaces the pinned version (`latest` or a tag), `IMAGEGEN_LLAMACPP_VARIANT` forces a build.
 
-### Épinglage
+### Pinning
 
-La dernière release publiée depuis au moins 14 jours au moment de l'épinglage (le 2026-10-15 à 09 h 42 UTC : la release du
-2026-10-01 à 09 h 32 UTC), dont les 35 fichiers ont un SHA-256 publié et dont les noms attendus (table `ASSETS`) existent, vérifiés par
-l'API GitHub. Une release voisine (`b11311`) n'a que 25 fichiers : une publication partielle, à écarter si on remonte la liste à la main. Les builds
-sortent plusieurs fois par jour : une montée de version se décide à la revue, pas automatiquement.
+The latest release published for at least 14 days at the time of pinning (on 2026-10-15 at 09:42 UTC: the release of
+2026-10-01 at 09:32 UTC), whose 35 files have a published SHA-256 and whose expected names (table `ASSETS`) exist, checked
+through the GitHub API. A neighbouring release (`b11311`) has only 25 files: a partial publication, to be avoided if the list is moved up by hand. Builds
+come out several times a day; a version bump is decided at review, not automatically.
 
-### Drapeaux de `llama-server` utilisés
+### `llama-server` flags used
 
-Source : `tools/server/README.md` de la release `b11317` (`https://github.com/ggml-org/llama.cpp/blob/b11317/tools/server/README.md`),
-lue le 2026-10-15 (identique à celle de `b11312`, qui a servi à la première lecture) ; **aucun binaire n'a été lancé** pour les confirmer.
+Source: `tools/server/README.md` of release `b11317` (`https://github.com/ggml-org/llama.cpp/blob/b11317/tools/server/README.md`),
+read on 2026-10-15 (identical to that of `b11312`, which was used for the first reading); **no binary has been run** to confirm them.
 
-| Drapeau | Pourquoi |
+| Flag | Why |
 |---|---|
-| `--model`, `--alias`, `--host 127.0.0.1`, `--port` | chargement du fichier, nom du modèle dans l'API, écoute locale seulement |
-| `--ctx-size`, `--parallel 1` | contexte demandé (le cache est payé au chargement) ; une réponse à la fois |
-| `--jinja` | gabarits de conversation et appels de fonctions (actif par défaut, explicite ici) |
-| `--no-webui`, `--no-slots` | pas d'interface web ni de point de surveillance des emplacements |
-| `--cache-ram 1024` | cache des états de prompt en RAM borné à 1 Gio (8 Gio par défaut, trop pour une mémoire unifiée partagée avec le modèle) |
-| `--reasoning-format deepseek` | la réflexion du modèle arrive dans `reasoning_content`, séparée de la réponse |
-| `--mmproj` | projecteur de vision, seulement pour un modèle qui lit les images |
-| `-ngl all` | tout sur le GPU quand le planificateur dit que ça tient ; sinon le défaut (`--fit`, actif par défaut) place les couches |
-| variable `LLAMA_API_KEY` | clé d'API, hors de la ligne de commande (visible dans `ps`) |
+| `--model`, `--alias`, `--host 127.0.0.1`, `--port` | loading the file, model name in the API, local listening only |
+| `--ctx-size`, `--parallel 1` | requested context (the cache is paid at loading); one response at a time |
+| `--jinja` | conversation templates and function calls (active by default, explicit here) |
+| `--no-webui`, `--no-slots` | no web interface nor slot monitoring endpoint |
+| `--cache-ram 1024` | prompt-state cache in RAM capped at 1 GiB (8 GiB by default, too much for unified memory shared with the model) |
+| `--reasoning-format deepseek` | the model's reasoning arrives in `reasoning_content`, separate from the answer |
+| `--mmproj` | vision projector, only for a model that reads images |
+| `-ngl all` | everything on the GPU when the planner says it fits; otherwise the default (`--fit`, active by default) places the layers |
+| variable `LLAMA_API_KEY` | API key, outside the command line (visible in `ps`) |
 
-Côté requête (`/v1/chat/completions`) : `stream_options.include_usage`, `cache_prompt`, les paramètres d'échantillonnage,
-`tools`, `reasoning_effort` (`none` coupe la réflexion), `parallel_tool_calls: false`. Les images ne sont jamais données par adresse :
-le moteur lit le fichier du dossier de données (ou une data URL) et envoie une data URL, donc le serveur ne lit ni ne télécharge rien
-(`--media-path` n'est pas utilisé).
+Request side (`/v1/chat/completions`): `stream_options.include_usage`, `cache_prompt`, the sampling parameters,
+`tools`, `reasoning_effort` (`none` turns reasoning off), `parallel_tool_calls: false`. Images are never given by address:
+the engine reads the file from the data folder (or a data URL) and sends a data URL, so the server reads and downloads nothing
+(`--media-path` is not used).
 
-## Mémoire
+## Memory
 
-Un seul modèle en mémoire pour toute l'application (`ARCHITECTURE.md`, « Filets de sécurité mémoire ») : le worker de génération
-part avant un modèle de chat, le serveur de chat part avant un worker. Le besoin d'un chat = poids (modèle et projecteur) + cache
-de contexte + 0,6 Go de tampons (`llm_models.memory_need_gb`). Le cache vient de l'architecture de chaque modèle (couches à cache complet,
-couches à fenêtre glissante, têtes, dimension, lues dans le `config.json` du modèle) avec une marge de 10 % ; pour un modèle ajouté
-depuis Hugging Face, dont l'architecture est inconnue, il est deviné à partir de la taille des poids (0,03 Mo par token et par Go de poids,
-calé sur Qwen3 8B : surestimé pour la plupart).
+A single model in memory for the whole application (`ARCHITECTURE.md`, "Memory safety nets"): the generation worker leaves before a chat model,
+the chat server leaves before a worker. The need of a chat = weights (model and projector) + context cache +
+0.6 GB of buffers (`llm_models.memory_need_gb`). The cache comes from the architecture of each model (full-cache layers,
+sliding-window layers, heads, dimension, read from the model's `config.json`) with a 10% margin; for a model added
+from Hugging Face, whose architecture is unknown, it is guessed from the size of the weights (0.03 MB per token and per GB of weights,
+calibrated on Qwen3 8B: overestimated for most).
 
-## À vérifier à la revue
+## To check at review
 
-- Que les archives ont bien la structure attendue : le programme est cherché là où l'archive le met (`find_binary_dir`) et les
-  bibliothèques CUDA sont copiées à côté, mais **aucune archive réelle n'a été téléchargée** pour le confirmer.
-- Le format de `llama-server --list-devices` (lu par `_DEVICE`) : une sortie illisible est acceptée par bénéfice du doute.
-- Le build `macos-x64` : classé « cpu » faute d'avoir vérifié qu'il active Metal.
-- Les capacités des modèles prédéfinis (`outils`, `raisonnement`, `vision`) : lues dans les cartes des modèles de base, jamais
-  essayées en vrai avec ce serveur.
-- Les licences (`THIRD_PARTY_LICENSES.md`) : la section 5 de la LFM Open License n'a pas été relue.
+- That the archives have the expected structure: the program is looked for where the archive puts it (`find_binary_dir`) and the
+  CUDA libraries are copied alongside, but **no real archive has been downloaded** to confirm this.
+- The format of `llama-server --list-devices` (read by `_DEVICE`): unreadable output is accepted in good faith.
+- The `macos-x64` build: classified as "cpu" for lack of having verified that it enables Metal.
+- The capabilities of the predefined models (`tools`, `reasoning`, `vision`): read from the base models' cards, never tried for real with this server.
+- The licences (`THIRD_PARTY_LICENSES.md`): section 5 of the LFM Open License has not been re-read.

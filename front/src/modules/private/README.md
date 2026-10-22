@@ -1,90 +1,90 @@
-# Module `private` (génération privée, interface)
+# Module `private` (private generation, interface)
 
-## Rôle
+## Role
 
-Le mode « Génération privée » vu du navigateur : le bouton de la barre latérale, le bandeau et le cadre colorés qui disent
-qu'on est en mode privé, le routage des requêtes du studio vers les routes privées de Nest (module `private` du back, voir son
-README pour l'audit complet de ce qui est ou n'est pas gardé), et surtout ce qui empêche l'interface elle-même d'écrire un
-contenu dans le navigateur (`localStorage`).
+The "Private generation" mode as seen from the browser: the sidebar button, the banner and the coloured frame that say
+the user is in private mode, the routing of studio requests to the private routes of Nest (module `private` of the back, see its
+README for the full audit of what is or is not guarded), and above all what prevents the interface itself from writing
+content into the browser (`localStorage`).
 
-Le mode n'est **jamais persisté** : une page qui s'ouvre démarre toujours en mode normal, et efface la session privée qu'une
-page précédente aurait laissée (rechargement, fermeture sans avertir le serveur).
+The mode is **never persisted**: a page that opens always starts in normal mode, and erases the private session that a
+previous page may have left (reload, closing without warning the server).
 
 ## Structure
 
 ```
 index.ts                      PrivateBanner, PrivateHost, PrivateToggle, usePrivateSession, privacyStorage, registerPrivacyStore, privatePath, isPrivateMode, usePrivateStore
 types.ts                      PrivateSessionInfo (`GET /api/private/session`)
-state/privateStore.ts         drapeau `active` (jamais persisté), `busy`, `info` ; `isPrivateMode()` pour le code hors React
-lib/privateRouting.ts         `privatePath` (routes du studio → `/private/…`), `isPersistingRequest` (écritures refusées : voix, conversations du chat persistant), `isLibraryListing` (galerie vide)
-lib/privateChatMemory.ts      la mémoire du chat privé (conversations, fichiers envoyés, réponses en cours) et le registre des nettoyages de fin de session ; vidée à chaque transition
-lib/privacyStorage.ts         `localStorage` des stores qui gardent du contenu : ni lu ni écrit en session privée ; registre, vidage et relecture
-lib/privateTransition.ts      vidage des caches du côté quitté (conversations, listes, visionneuse, progression, file)
+state/privateStore.ts         `active` flag (never persisted), `busy`, `info`; `isPrivateMode()` for code outside React
+lib/privateRouting.ts         `privatePath` (studio routes → `/private/…`), `isPersistingRequest` (writes refused: voices, conversations of the persistent chat), `isLibraryListing` (empty gallery)
+lib/privateChatMemory.ts      memory of the private chat (conversations, sent files, responses in progress) and the registry of end-of-session cleanups; emptied at each transition
+lib/privacyStorage.ts         `localStorage` of the stores that keep content: neither read nor written in private session; registry, emptying and reloading
+lib/privateTransition.ts      emptying of the caches on the side being left (conversations, lists, lightbox, progress, queue)
 lib/privateSession.ts         `enterPrivate`, `leavePrivate`, `eraseNow`, `leaveLocally`
-lib/ttl.ts                    minutes d'inactivité annoncées par le serveur
-services/privateApi.ts        `/api/private/session` (info, ouvrir, terminer, balise de sortie)
-hooks/usePrivateSession.ts    entrer / quitter / tout effacer, avec les confirmations et la navigation
-hooks/usePrivateEvents.ts     sujet `private.changed` : relecture de ce qui a changé ; session terminée par le serveur → retour au mode normal
-hooks/usePrivateGuards.ts     session orpheline effacée au démarrage, avertissement avant fermeture s'il y a des résultats, `sendBeacon` à la fermeture
-components/                   PrivateToggle (pied de la barre latérale), PrivateBanner, PrivateHost (cadre et attribut `data-private`)
+lib/ttl.ts                    minutes of inactivity announced by the server
+services/privateApi.ts        `/api/private/session` (info, open, end, exit beacon)
+hooks/usePrivateSession.ts    enter / leave / erase everything, with confirmations and navigation
+hooks/usePrivateEvents.ts     topic `private.changed`: rereading of what changed; session ended by the server → back to normal mode
+hooks/usePrivateGuards.ts     orphan session erased at startup, warning before closing if there are results, `sendBeacon` on closing
+components/                   PrivateToggle (foot of the sidebar), PrivateBanner, PrivateHost (frame and `data-private` attribute)
 locales/                      fr, en
 ```
 
 ## Services
 
-| Méthode | Endpoint | Description |
+| Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/private/session` | État de la session (sans contenu). |
-| `POST` | `/api/private/session` | Ouvre la session. |
-| `DELETE` | `/api/private/session` | La termine et efface tout. |
-| `POST` | `/api/private/session/leave` | Balise (`sendBeacon`) à la fermeture de la page. |
+| `GET` | `/api/private/session` | State of the session (without content). |
+| `POST` | `/api/private/session` | Opens the session. |
+| `DELETE` | `/api/private/session` | Ends it and erases everything. |
+| `POST` | `/api/private/session/leave` | Beacon (`sendBeacon`) when the page is closed. |
 
-Pendant la session, `studioRequest` et `studioUpload` (module `studio-shell`) appellent `/api/private` + le chemin pour
-`/conversations`, `/messages` (sauf `/messages/model-usage`), `/queue`, `/assets` et, pour le chat, `/chat/attachments` et `/chat/enhance-prompt` ; refusent (409, code `private`) toute
-écriture vers `/voices` et `/chat/conversations` (le chat privé n'en a pas besoin : sa conversation est celle de la page, `chat/services/privateChatBackend.ts`) ; ne demandent pas la liste des assets (galerie vide).
+During the session, `studioRequest` and `studioUpload` (module `studio-shell`) call `/api/private` + the path for
+`/conversations`, `/messages` (except `/messages/model-usage`), `/queue`, `/assets` and, for the chat, `/chat/attachments` and `/chat/enhance-prompt`; they refuse (409, code `private`) any
+write to `/voices` and `/chat/conversations` (private chat does not need them: its conversation is the page's, `chat/services/privateChatBackend.ts`); they do not request the list of assets (empty gallery).
 
-## Entrer, sortir (ordre qui compte)
+## Entering, leaving (order matters)
 
-- **Entrer** : le drapeau passe à vrai AVANT tout ; les composeurs sont vidés (en mémoire seulement : les écritures sont ignorées) ;
-  les caches du côté normal sont supprimés ; le serveur ouvre la session ; en cas d'échec tout revient.
-- **Sortir** : le serveur efface ; les composeurs sont vidés pendant que le drapeau est encore vrai, le drapeau passe à faux, puis
-  les stores relisent `localStorage` (qui n'a jamais été touché) : les brouillons d'avant reviennent. Vider un store APRÈS avoir baissé
-  le drapeau écraserait les brouillons (un test le garde).
+- **Enter**: the flag switches to true BEFORE anything; the composers are emptied (in memory only: writes are ignored);
+  the caches of the normal side are deleted; the server opens the session; on failure everything goes back.
+- **Leave**: the server erases; the composers are emptied while the flag is still true, the flag switches to false, then
+  the stores reread `localStorage` (which has never been touched): the earlier drafts come back. Emptying a store AFTER lowering
+  the flag would overwrite the drafts (a test guards it).
 
-Stores concernés (`registerPrivacyStore` + `storage: privacyStorage()`) : `useImageDraftStore`, `useVideoDraftStore`,
-`useAudioDraftStore`, `useChatDraftStore`, `useChatDefaultsStore`. Gardés tels quels, sans contenu : `cn-prefs` (barre latérale
-ouverte), `cn-models` (modèle choisi par type), le thème et la langue.
+Stores concerned (`registerPrivacyStore` + `storage: privacyStorage()`): `useImageDraftStore`, `useVideoDraftStore`,
+`useAudioDraftStore`, `useChatDraftStore`, `useChatDefaultsStore`. Kept as they are, without content: `cn-prefs` (sidebar
+open), `cn-models` (model chosen per type), the theme and the language.
 
-## Composants
+## Components
 
-| Nom | Description |
+| Name | Description |
 |---|---|
-| `PrivateToggle` | Bouton « Génération privée » (cadenas) du pied de la barre latérale ; infobulle qui dit ce qui est et n'est pas gardé ; confirmation à l'entrée (garanties et limites) et à la sortie. |
-| `PrivateBanner` | Bandeau collant en haut de la page : « rien n'est enregistré », nombre de résultats en mémoire, « Tout effacer maintenant », « Quitter ». Rappelle sur les pages galerie et bibliothèques qu'elles sont vides en privé. |
-| `PrivateHost` | Monté une fois dans `StudioShell` : garde-fous, évènements, cadre violet autour de la fenêtre (jamais cliquable), `data-private` sur `<html>`. |
+| `PrivateToggle` | "Private generation" button (padlock) at the foot of the sidebar; tooltip that says what is and is not guarded; confirmation on entry (guarantees and limits) and on exit. |
+| `PrivateBanner` | Sticky banner at the top of the page: "nothing is saved", number of results in memory, "Erase everything now", "Leave". Reminds on the gallery and library pages that they are empty in private mode. |
+| `PrivateHost` | Mounted once in `StudioShell`: guards, events, purple frame around the window (never clickable), `data-private` on `<html>`. |
 
-## Dépendances
+## Dependencies
 
-`studio-shell` (`studioRequest`, `studioHttp`, `queryKeys`, `useT`, routes), `studio-core` (stores de progression et de file, `messagesApi`),
-`media-library` (visionneuse, clés d'assets), le gabarit (`confirm`, `eventStreamClient`). `studio-shell`, `studio-core` et `chat` importent à leur tour
-`lib/privateRouting`, `state/privateStore` et `lib/privacyStorage` (chemins profonds, sans cycle de fichiers).
+`studio-shell` (`studioRequest`, `studioHttp`, `queryKeys`, `useT`, routes), `studio-core` (progress and queue stores, `messagesApi`),
+`media-library` (lightbox, asset keys), the template (`confirm`, `eventStreamClient`). `studio-shell`, `studio-core` and `chat` in turn import
+`lib/privateRouting`, `state/privateStore` and `lib/privacyStorage` (deep paths, without file cycles).
 
-## Garanties et limites
+## Guarantees and limits
 
-Voir le README du module back `private` (audit, garanties, limites). Côté interface : rien n'est écrit dans `localStorage` pendant la
-session ; la progression, la file et les listes sont en mémoire ; un fichier affiché est servi `no-store`. Fermer la fenêtre sans
-confirmation efface la session au mieux (`sendBeacon`) ; le serveur l'efface de toute façon après le délai d'inactivité.
+See the README of the back module `private` (audit, guarantees, limits). On the interface side: nothing is written to `localStorage` during the
+session; progress, queue and lists are in memory; a displayed file is served `no-store`. Closing the window without
+confirmation erases the session on a best-effort basis (`sendBeacon`); the server erases it anyway after the inactivity delay.
 
 ## Tests
 
-`lib/privateRouting.spec.ts`, `lib/privacyStorage.spec.ts` (stores réels, `localStorage` simulé avec une phrase témoin : jamais écrite, brouillons rendus
-intacts), `lib/privateSession.spec.ts` (entrée, échec, sortie, serveur injoignable, tout effacer), `lib/privateHttp.spec.ts` (routage, refus, galerie vide).
-Rien n'a été vu dans un navigateur.
+`lib/privateRouting.spec.ts`, `lib/privacyStorage.spec.ts` (real stores, simulated `localStorage` with a witness phrase: never written, drafts rendered
+intact), `lib/privateSession.spec.ts` (entry, failure, exit, server unreachable, erase everything), `lib/privateHttp.spec.ts` (routing, refusals, empty gallery).
+Nothing has been seen in a browser.
 
-## Chat privé
+## Private chat
 
-La conversation d'un chat privé est tenue par la page (`chat/services/privateChatBackend.ts`, documenté dans `front/src/modules/chat/README.md`, « Chat en session privée ») ; ce module n'en garde que
-la **mémoire** (`lib/privateChatMemory.ts` : conversations, fichiers envoyés, flux en cours) et le **registre des nettoyages** (`registerPrivateCleanup`, utilisé par le chat, le texte « envoyé vers »…) :
-`dropStudioCaches` appelle `forgetPrivateChats()` à chaque entrée, sortie, « tout effacer » ou retour local, ce qui abandonne les flux, vide la mémoire et lance les nettoyages.
-Supprimer une conversation de la liste appelle `forgetPrivateChat(id)` (`studio-shell/hooks/useConversations.ts`). Les textes de confirmation d'entrée disent que le chat est privé aussi, que la conversation
-reste dans la page, que la recherche web du chat reste éteinte tant qu'on ne l'allume pas, et que le texte d'une synthèse vocale passe par la ligne de commande du programme de calcul.
+The conversation of a private chat is held by the page (`chat/services/privateChatBackend.ts`, documented in `front/src/modules/chat/README.md`, "Chat in private session"); this module keeps only
+the **memory** (`lib/privateChatMemory.ts`: conversations, sent files, ongoing streams) and the **cleanup registry** (`registerPrivateCleanup`, used by the chat, the "sent to" text…):
+`dropStudioCaches` calls `forgetPrivateChats()` at each entry, exit, "erase everything" or local return, which abandons the streams, empties the memory and runs the cleanups.
+Deleting a conversation from the list calls `forgetPrivateChat(id)` (`studio-shell/hooks/useConversations.ts`). The entry confirmation texts say that the chat is private too, that the conversation
+stays on the page, that the chat's web search stays off until it is turned on, and that the text of a voice synthesis goes through the command line of the computation program.

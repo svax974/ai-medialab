@@ -1,65 +1,65 @@
 # Module `engines`
 
-## Rôle
+## Role
 
-Installateurs des moteurs d'inférence, **délégués au moteur Python** : packs audio et vidéo (environnements Python isolés,
-`engine/app/audio_packs.py`) et pack « torch » (PyTorch, diffusers, mflux : venv ajouté à l'import du seul worker de génération) et stable-diffusion.cpp (`engine/app/engine_install.py`). Nest porte les routes
-(même URL et même forme que l'ancienne API), l'installation tourne dans le moteur et son avancement est **poussé** par événements.
-Module d'application. Tâche H4.2.
+Installers of the inference engines, **delegated to the Python engine**: audio and video packs (isolated Python environments,
+`engine/app/audio_packs.py`), the "torch" pack (PyTorch, diffusers, mflux: a venv added at import of the sole generation worker) and stable-diffusion.cpp (`engine/app/engine_install.py`). Nest carries the routes
+(same URL and same shape as the former API); the installation runs in the engine and its progress is **pushed** by events.
+Application module. Task H4.2.
 
 ## Architecture
 
-| Type | Fichier | Description |
+| Type | File | Description |
 |---|---|---|
-| Module | `EnginesModule.ts` | Contrôleur et service. |
-| Contrôleur | `controllers/EnginesController.ts` | Les routes ci-dessous (administrateur, JSON en clair). `pack/install` est déclarée avant `pack/:packId`. |
-| Service | `services/EnginesService.ts` | Un appel typé par route ; erreurs via `engineErrorToHttp`. |
+| Module | `EnginesModule.ts` | Controller and service. |
+| Controller | `controllers/EnginesController.ts` | The routes below (administrator, plain JSON). `pack/install` is declared before `pack/:packId`. |
+| Service | `services/EnginesService.ts` | One typed call per route; errors via `engineErrorToHttp`. |
 | Types | `types/enginesTypes.ts` | `PackInstallState`, `EngineInstallState`, `ComponentInfo`, `SetupPlan`, `SetupState`. |
 
-## Dépendances
+## Dependencies
 
-`engine` : `EngineClient`, `engineErrorToHttp`. L'état installé / installable de chaque moteur et pack est dans `GET /api/system` (module `hardware` :
+`engine`: `EngineClient`, `engineErrorToHttp`. The installed / installable state of each engine and pack is in `GET /api/system` (module `hardware`:
 `engines`, `packs`, `pack_install`).
 
-## Endpoints exposés (exhaustif)
+## Endpoints exposed (exhaustive)
 
-| Méthode | Endpoint | Auth | Description |
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `POST` | `/api/engines/pack/:packId/install` | Admin | Démarre l'installation d'un pack (200, `PackInstallState`) ; 404 pack inconnu, 409 refus (une installation est déjà en cours, pack non installable ici). |
-| `DELETE` | `/api/engines/pack/install` | Admin | Annule l'installation d'un pack en cours ; 409 si aucune. |
-| `DELETE` | `/api/engines/pack/:packId` | Admin | Désinstalle le pack seul (réponse une fois l'environnement supprimé, délai 120 s) : `{ ok: true }` ; les modèles téléchargés sont conservés ; 404 pack inconnu, 409 si un modèle du pack est chargé. L'interface utilise `components/:id`, qui supprime aussi les modèles dépendants. |
-| `POST` | `/api/engines/sdcpp/install` | Admin | Démarre l'installation de stable-diffusion.cpp (200, `EngineInstallState`) ; 409 refus. |
-| `DELETE` | `/api/engines/sdcpp/install` | Admin | Annule ; 409 si aucune installation en cours. |
-| `POST` | `/api/engines/llamacpp/install` | Admin | Démarre l'installation de llama.cpp, le moteur du chat (200, `EngineInstallState`) ; la progression arrive par l'événement `engine.llamacpp.install` ; 409 refus. |
-| `DELETE` | `/api/engines/llamacpp/install` | Admin | Annule ; 409 si aucune installation en cours. |
-| `DELETE` | `/api/engines/llamacpp` | Admin | Désinstalle llama.cpp (les modèles téléchargés restent) ; 409 si le modèle de chat est chargé ou si une installation tourne. |
-| `GET` | `/api/engines/components?disk=` | Admin | Les composants téléchargeables (données de base : PyTorch, FFmpeg ; moteurs : stable-diffusion.cpp, llama.cpp, audio.cpp, packs) : `ComponentInfo[]` avec état, taille, raison d'indisponibilité, modèles installés qui en dépendent ; `disk=true` mesure aussi l'espace occupé. |
-| `DELETE` | `/api/engines/components/:componentId` | Admin | Supprime le composant **et** les modèles installés qui en ont besoin (`{ ok, removed_models }`, délai 120 s) ; 404 inconnu, 409 s'il est utilisé, en cours d'installation, intégré à l'application ou si un téléchargement d'un de ses modèles tourne. |
-| `GET` | `/api/engines/setup/plan/:modelId` | Admin | Ce qu'il faut télécharger pour utiliser un modèle (`SetupPlan` : données de base, moteur, modèle, tailles ; ce qui est installé coûte 0) ; 404 modèle inconnu. |
-| `POST` | `/api/engines/setup/:modelId` | Admin | Installe tout ce qui manque au modèle en une exécution (200, `SetupState`) ; progression par l'événement `engine.setup.progress` ; 404, 409 (autre installation en cours, machine incapable). |
-| `GET` | `/api/engines/setup` | Admin | État de l'exécution en cours ou de la dernière. |
-| `DELETE` | `/api/engines/setup` | Admin | Annule : l'étape en cours s'arrête et supprime ses fichiers partiels, les étapes finies restent ; 409 si rien ne tourne. |
+| `POST` | `/api/engines/pack/:packId/install` | Admin | Starts the installation of a pack (200, `PackInstallState`); 404 unknown pack, 409 refusal (an installation is already running, pack not installable here). |
+| `DELETE` | `/api/engines/pack/install` | Admin | Cancels the installation of a pack in progress; 409 if none. |
+| `DELETE` | `/api/engines/pack/:packId` | Admin | Uninstalls the pack alone (response once the environment is deleted, 120 s timeout): `{ ok: true }`; downloaded models are kept; 404 unknown pack, 409 if a model of the pack is loaded. The interface uses `components/:id`, which also deletes the dependent models. |
+| `POST` | `/api/engines/sdcpp/install` | Admin | Starts the installation of stable-diffusion.cpp (200, `EngineInstallState`); 409 refusal. |
+| `DELETE` | `/api/engines/sdcpp/install` | Admin | Cancels; 409 if no installation is running. |
+| `POST` | `/api/engines/llamacpp/install` | Admin | Starts the installation of llama.cpp, the chat engine (200, `EngineInstallState`); progress arrives through the `engine.llamacpp.install` event; 409 refusal. |
+| `DELETE` | `/api/engines/llamacpp/install` | Admin | Cancels; 409 if no installation is running. |
+| `DELETE` | `/api/engines/llamacpp` | Admin | Uninstalls llama.cpp (downloaded models remain); 409 if the chat model is loaded or if an installation is running. |
+| `GET` | `/api/engines/components?disk=` | Admin | The downloadable components (base data: PyTorch, FFmpeg; engines: stable-diffusion.cpp, llama.cpp, audio.cpp, packs): `ComponentInfo[]` with state, size, reason for unavailability, installed models that depend on them; `disk=true` also measures the disk space used. |
+| `DELETE` | `/api/engines/components/:componentId` | Admin | Deletes the component **and** the installed models that need it (`{ ok, removed_models }`, 120 s timeout); 404 unknown, 409 if it is in use, being installed, built into the application, or if a download of one of its models is running. |
+| `GET` | `/api/engines/setup/plan/:modelId` | Admin | What must be downloaded to use a model (`SetupPlan`: base data, engine, model, sizes; what is installed costs 0); 404 unknown model. |
+| `POST` | `/api/engines/setup/:modelId` | Admin | Installs everything the model is missing in one run (200, `SetupState`); progress through the `engine.setup.progress` event; 404, 409 (another installation in progress, machine unable). |
+| `GET` | `/api/engines/setup` | Admin | State of the run in progress or of the last one. |
+| `DELETE` | `/api/engines/setup` | Admin | Cancels: the current step stops and deletes its partial files, finished steps remain; 409 if nothing is running. |
 
-Le segment `engines` délègue au moteur par `EngineClient`.
+The `engines` segment delegates to the engine through `EngineClient`.
 
-## Événements (progression)
+## Events (progress)
 
-`engine.engine.install` (état de stable-diffusion.cpp : octets téléchargés) et `engine.pack.install` (étapes d'un pack : message,
-détail, début), puis `engine.models.changed` à la fin. Charges utiles : `back/src/modules/engine/README.md`, « Flux d'événements ».
+`engine.engine.install` (state of stable-diffusion.cpp: bytes downloaded) and `engine.pack.install` (steps of a pack: message,
+detail, start), then `engine.models.changed` at the end. Payloads: `back/src/modules/engine/README.md`, "Event flow".
 
-## Entités
+## Entities
 
-Aucune.
+None.
 
-## Points d'extension
+## Extension points
 
-`EnginesService` est exporté (H4.3+ peut déclencher une installation depuis une carte moteur).
+`EnginesService` is exported (H4.3+ can trigger an installation from an engine card).
 
 ## Tests
 
 ```sh
-../docs/migration/tools/guarded_run.sh 3 npx jest --runInBand src/modules/engines/services/EnginesService.spec.ts
+../scripts-local/guarded_run.sh 3 npx jest --runInBand src/modules/engines/services/EnginesService.spec.ts
 ```
 
-Contrôleur et service sur le faux moteur HTTP : refus sans administrateur, installation de pack (URL encodée, 404 relayé), ordre des
-routes de désinstallation et d'annulation, 409 relayé, stable-diffusion.cpp, moteur injoignable (502).
+Controller and service on the fake HTTP engine: refusal without administrator, pack installation (URL encoded, 404 relayed), order of
+the uninstall and cancel routes, 409 relayed, stable-diffusion.cpp, unreachable engine (502).

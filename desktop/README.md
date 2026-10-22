@@ -9,10 +9,10 @@ this project, and nothing else:
   profile) and `../scripts-local/build_runtime.py`: the packaging of the sidecar (Python runtime per GPU profile, `engine/`,
   `engines/sdcpp`) writing `build/engine-bundle/`, copied by `packaging.extraResources`.
   PyAV (FFmpeg) is not bundled (its PyPI wheel is a GPL build): the `ffmpeg` pack downloads it on the user's machine, see `docs/components/ffmpeg.md`. The build still warns if a profile re-embeds it.
-- `splash/`: the template's waiting page restyled with the « chambre noire » theme (fonts, glow); texts in `splash/messages.json`
+- `splash/`: the template's waiting page restyled with the `chambre noire` (darkroom) theme (fonts, glow); texts in `splash/messages.json`
   plus the overrides of `desktop.config.json`.
 - Migration of the old `app.chambrenoire.studio` data folder: done by the engine (`engine/app/legacy_data.py`), not by the shell.
-- Build procedure: root `README.md`, section « Application de bureau »; data folder, take-over of the old data and memory at rest: `ARCHITECTURE.md`.
+- Build procedure: root `README.md`, section "Desktop application"; data folder, takeover of the old data and data at rest: `ARCHITECTURE.md`.
 
 ---
 
@@ -31,7 +31,7 @@ Optional, generic desktop shell for a project made from this template. It opens 
 (Node) on a free `127.0.0.1` port, waits for its health endpoint, then navigates the window to
 `http://127.0.0.1:<port>/`: the back serves the built front (`SERVE_FRONT_DIR`), so the front keeps its relative API
 URLs and nothing changes in it. Why not `tauri://`: `LOCAL_TRUST` refuses that origin by design
-(`nest/common/README.md`, « Mode local de confiance »).
+(`nest/common/README.md`, "Local trust mode").
 
 Optional **sidecars** (extra processes such as a Python engine) are declared in the config and supervised the same way.
 The shell contains no project logic: everything specific is in `desktop.config.json`.
@@ -224,7 +224,7 @@ Resources for the target must have been assembled with the same `--target`; for 
 ## Adding the shell to a project
 
 - New project: `create-project.mjs --desktop [--desktop-name <text>] [--desktop-identifier <reverse.domain>]`, or answer
-  yes to « Desktop application (Tauri)? » (asked before the database: SQLite becomes the default, multi-user is not asked, local
+  yes to "Desktop application (Tauri)?" (asked before the database: SQLite becomes the default, multi-user is not asked, local
   trust is proposed). The answers are saved in the `desktop` section of `project.config.json`
   (`{ enabled, productName, identifier, sidecars: [] }`); `productName` defaults to the site name, `identifier` to
   `com.example.<project name>` (a placeholder: it names the OS data folder, choose your own).

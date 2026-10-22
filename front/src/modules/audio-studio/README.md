@@ -1,113 +1,113 @@
 # Module `audio-studio` (front)
 
-## Rôle
+## Role
 
-Le **studio audio** : l'accueil (« Que voulez-vous faire entendre ? »), le **composeur** (texte ou dialogue avec distribution des voix, voix, langue, consigne de style ou description de voix,
-réglages du modèle, graine, nombre de prises, lecture automatique, `ModelPicker` audio), les **messages** (prises avec lecteur partagé et forme d'onde, repères des personnages, vitesse, favori,
-téléchargement WAV, garder comme voix de référence, supprimer), la **galerie audio** (`/audio/bibliotheque`) et l'adaptateur de mode qui branche tout cela sur le fil de `studio-core`.
-Les voix (bibliothèque, studio, dépôt d'un son) sont dans le module `voices`. Back : `back/src/modules/studio-core/README.md` (`POST /api/messages`, jobs audio) et
-`back/src/modules/audio-studio/README.md` (voix). Tâche H4.5.
+The **audio studio**: the home page (`Que voulez-vous faire *entendre* ?`, "What do you want to make heard?"), the **composer** (text or dialogue with voice cast, voice, language, style instruction or voice description,
+model settings, seed, number of takes, autoplay, `ModelPicker` audio), the **messages** (takes with shared player and waveform, character markers, speed, favourite,
+WAV download, keep as reference voice, delete), the **audio gallery** (`/audio/bibliotheque`) and the mode adapter that plugs all this into the `studio-core` flow.
+Voices (library, studio, sound upload) are in the `voices` module. Back: `back/src/modules/studio-core/README.md` (`POST /api/messages`, audio jobs) and
+`back/src/modules/audio-studio/README.md` (voices). Task H4.5.
 
 ## Structure
 
 ```
 audio-studio/
-  index.ts                         exports : AudioHome, AudioGallery, TakeCard, audioStudioAdapter, useWriteWithVoice, useAudioDraftStore
-  audioStudioAdapter.tsx           le ModeAdapter de l'audio (composeur, message, reprise d'un texte)
-  hooks/useAudioComposer.ts        tout ce que montre et envoie le composeur : paramètres, langue, voix, personnages et distribution, durée estimée, état d'envoi, avis, submit
-  hooks/useSendAudio.ts            envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
-  hooks/useTakeActions.ts          téléchargement WAV, « garder comme voix », suppression avec confirmation
-  hooks/useAutoplayFirstTake.ts    lecture automatique de la première prise d'un message qui vient d'être produite
-  hooks/useWriteWithVoice.ts       « Écrire avec cette voix » (bouton de la bibliothèque de voix)
-  state/audioDraftStore.ts         brouillon : texte, par modèle (réglages, voix, langue, style), distribution, prises, lecture auto, graine (Zustand, `cn-audio-composer`)
-  lib/audioText.ts                 durée estimée, durée approchée, personnages d'un dialogue (testé)
-  lib/voiceChoice.ts               voix intégrées, langue par défaut, voix effective, distribution automatique (testé)
-  lib/composerRules.ts             ce qui bloque l'envoi, info-bulle du bouton, avis (testé)
-  lib/sendRequest.ts               corps de POST /api/messages (testé)
-  lib/takes.ts                     méta d'une prise, cellules d'un message, étiquette, couleurs, repères, nom de fichier, lecture auto, voix depuis une prise, réglages repris (testé)
-  lib/audioStatus.ts               ligne d'état d'un message audio (testé)
-  lib/cloner.ts                    modèle à utiliser pour une voix de la bibliothèque (testé)
-  lib/audioHelp.ts                 info-bulles et textes de départ ; lib/audioDraftActions.ts : reprise d'un texte, de réglages
-  components/                      AudioHome, AudioComposer (avec le bouton ✨ `EnhancePromptButton` du module `chat` : texte corrigé pour une lecture naturelle ; il prend aussi le texte qu'une réponse du chat lui envoie, `usePromptHandoff('audio', …)`), AudioAssistantMessage (+ AudioStatusLine, AudioMessageFooter), TakeCard (+ RateMenu, TakeMenu, PendingTake, VoiceSavedToast),
+  index.ts                         exports: AudioHome, AudioGallery, TakeCard, audioStudioAdapter, useWriteWithVoice, useAudioDraftStore
+  audioStudioAdapter.tsx           the ModeAdapter of audio (composer, message, resuming a text)
+  hooks/useAudioComposer.ts        everything the composer shows and sends: settings, language, voice, characters and cast, estimated duration, sending state, notices, submit
+  hooks/useSendAudio.ts            sending (writes the two messages to the cache; from the home page, loads the conversation then opens it)
+  hooks/useTakeActions.ts          WAV download, "keep as voice", deletion with confirmation
+  hooks/useAutoplayFirstTake.ts    autoplay of the first take of a message that has just been produced
+  hooks/useWriteWithVoice.ts       "Write with this voice" (button of the voice library)
+  state/audioDraftStore.ts         draft: text, per model (settings, voice, language, style), cast, takes, autoplay, seed (Zustand, `cn-audio-composer`)
+  lib/audioText.ts                 estimated duration, approximate duration, characters of a dialogue (tested)
+  lib/voiceChoice.ts               built-in voices, default language, effective voice, automatic cast (tested)
+  lib/composerRules.ts             what blocks sending, button tooltip, notices (tested)
+  lib/sendRequest.ts               body of POST /api/messages (tested)
+  lib/takes.ts                     meta of a take, cells of a message, label, colours, markers, file name, autoplay, voice from a take, settings taken over (tested)
+  lib/audioStatus.ts               status line of an audio message (tested)
+  lib/cloner.ts                    model to use for a library voice (tested)
+  lib/audioHelp.ts                 info tips and starting texts; lib/audioDraftActions.ts: resuming a text, settings
+  components/                      AudioHome, AudioComposer (with the ✨ `EnhancePromptButton` of the `chat` module: corrected text for a natural reading; it also takes the text that a chat response sends to it, `usePromptHandoff('audio', …)`), AudioAssistantMessage (+ AudioStatusLine, AudioMessageFooter), TakeCard (+ RateMenu, TakeMenu, PendingTake, VoiceSavedToast),
                                    VoicePicker, LanguagePicker, CastPanel, TakesPicker, AutoplayToggle, AudioGallery
-  locales/                         locales.fr.json, locales.en.json (clés audioStudio.*)
+  locales/                         locales.fr.json, locales.en.json (keys audioStudio.*)
 ```
 
-Montage : `studio-shell/pages/{AudioHomePage,AudioLibraryPage,VoicesPage,ConversationPage}.tsx` (pages minces) ; `ConversationPage` passe `{ image, audio: audioStudioAdapter }` à `ConversationView`.
+Mounting: `studio-shell/pages/{AudioHomePage,AudioLibraryPage,VoicesPage,ConversationPage}.tsx` (thin pages); `ConversationPage` passes `{ image, audio: audioStudioAdapter }` to `ConversationView`.
 
-## Composeur
+## Composer
 
-| Élément | Comportement |
+| Element | Behaviour |
 |---|---|
-| Style / Voix | ligne au-dessus du texte pour un modèle à consigne (« Style ») ou à voix décrite (« Voix », **obligatoire**) ; texte d'aide du modèle en placeholder ; info-bulles |
-| Texte | Entrée envoie, Maj+Entrée saute une ligne (pas pendant une composition IME), le champ grandit jusqu'à 40 % de la fenêtre (`/` le focalise), placeholder selon le modèle ; 8000 caractères au plus |
-| Compteur | « N caractères · ≈ durée d'audio » (15 caractères par seconde, selon la vitesse) ; « ? » sur la longueur lue d'un seul tenant par le modèle et sur le dialogue |
-| Dialogue | deux personnages détectés (« Nom : réplique » en début de ligne) : panneau « Scénario à N voix » avec un sélecteur de voix par personnage (distribution automatique : le premier garde la voix choisie, les autres des voix du genre opposé d'abord) ; « C'est un simple texte » / « Attribuer une voix à chaque personnage » |
-| Avis | modèle incompatible (texte du moteur), note du plan, « Ce modèle clone une voix : choisissez ou enregistrez une voix de référence. », texte très long (> 6000) |
-| Modèle non prêt | `SetupPrompt` (module `engines`) ; sur l'accueil, la carte du premier lancement (`WelcomeSetup`) la remplace |
-| Barre | `ModelPicker`, voix (intégrées par langue / « Mes voix » / « Enregistrer ou importer une voix… » ; modèle à voix décrite : rappel « Voix décrite ci-dessus » ; modèle qui ne clone pas : avertissement), langue (si le modèle en a plusieurs), réglages du modèle + graine (`GenerationParams` de `studio-core`), prises 1 à 4, lecture automatique, Synthétiser |
-| Envoyer | désactivé sans texte, au-delà de 8000, modèle non installé ou incompatible, sans voix, sans description de voix ; info-bulle selon la raison, raccourci ↵ ; après l'envoi le texte est vidé ; depuis l'accueil la conversation s'ouvre |
+| Style / Voice | line above the text for a model with an instruction (`Style`) or with a described voice (`Voix`, **mandatory**); model help text as placeholder; info tips |
+| Text | Enter sends, Shift+Enter adds a line (not during an IME composition); the field grows up to 40 % of the window (`/` focuses it); placeholder depending on the model; 8000 characters at most |
+| Counter | "N characters · ≈ audio duration" (15 characters per second, depending on speed); "?" on the length the model reads in one go and on the dialogue |
+| Dialogue | two characters detected (`Name: line` at the start of a line): panel `Scénario à N voix` (script with N voices, "script with N voices") with a voice selector per character (automatic cast: the first keeps the chosen voice, the others get voices of the opposite gender first); `C'est un simple texte` (it is plain text) / `Attribuer une voix à chaque personnage` (assign a voice to each character) |
+| Notices | model incompatible (engine text), plan note, `Ce modèle clone une voix : choisissez ou enregistrez une voix de référence.` (this model clones a voice: choose or record a reference voice), very long text (> 6000) |
+| Model not ready | `SetupPrompt` (`engines` module); on the home page, the first-launch card (`WelcomeSetup`) replaces it |
+| Bar | `ModelPicker`, voice (built-in by language / `Mes voix` (my voices) / `Enregistrer ou importer une voix…` (record or import a voice); described-voice model: reminder `Voix décrite ci-dessus` (described voice above); model that does not clone: warning), language (if the model has several), model settings + seed (`GenerationParams` of `studio-core`), takes 1 to 4, autoplay, `Synthétiser` (synthesize) |
+| Send | disabled without text, above 8000, model not installed or incompatible, without voice, without voice description; tooltip depending on the reason, shortcut ↵; after sending the text is cleared; from the home page the conversation opens |
 
-## Messages et prises
+## Messages and takes
 
-`AudioAssistantMessage` : modèle, ligne d'état (en file · position N ; chargement du modèle · m:ss ; passage n/total · prise i/N · ~durée restantes ; langue · généré en · heure), une carte par prise
-ou un emplacement en attente (onde animée qui se remplit, « N % »), erreur (encadré), « Synthèse annulée. », pied : Annuler pendant le calcul ; ensuite « Refaire » (nouvelles graines), mêmes graines, reprendre texte et
-réglages dans le composeur (graine fixée), supprimer (confirmation). `TakeCard` : lecture/pause sur le lecteur partagé de l'onglet (une seule prise à la fois), onde cliquable (clavier : flèches, Début, Fin),
-horloge, repères colorés des personnages (clic : saut), « prise N · voix · seed », vitesse (0,75 à 2×, globale), favori, télécharger (WAV), menu (garder comme voix de référence, copier le texte, supprimer la prise).
-La première prise d'un message produite à l'instant démarre seule si la lecture automatique est active (jamais en rouvrant une ancienne conversation, jamais si un autre son joue).
+`AudioAssistantMessage`: model, status line (queued · position N; model loading · m:ss; pass n/total · take i/N · ~remaining duration; language · generated in · time), one card per take
+or a pending slot (animated waveform that fills up, `N %`), error (boxed), `Synthèse annulée.` (synthesis cancelled), footer: Cancel while computing; then `Refaire` (redo: new seeds), same seeds, resume text and
+settings in the composer (seed fixed), delete (confirmation). `TakeCard`: play/pause on the shared player of the tab (a single take at a time), clickable waveform (keyboard: arrows, Home, End),
+clock, coloured character markers (click: jump), `prise N · voix · seed` (take N · voice · seed), speed (0.75 to 2×, global), favourite, download (WAV), menu (keep as reference voice, copy the text, delete the take).
+The first take of a message just produced starts by itself if autoplay is active (never when reopening an old conversation, never if another sound is playing).
 
-## Liste de parité (anciens `AudioHome.tsx`, `AudioComposer.tsx`, `AudioMessage.tsx`, `AudioGallery.tsx`, `VoicePicker.tsx`, `Waveform.tsx`, `lib/audio.ts`, `lib/help.ts`)
+## Parity checklist (former `AudioHome.tsx`, `AudioComposer.tsx`, `AudioMessage.tsx`, `AudioGallery.tsx`, `VoicePicker.tsx`, `Waveform.tsx`, `lib/audio.ts`, `lib/help.ts`)
 
-Cases cochées = vérifiées par la logique testée et le rendu côté serveur (`components/render.smoke.spec.ts`) ; **le rendu visuel et le son restent à valider** (liste en fin de fichier).
+Ticked boxes = checked by the tested logic and the server-side rendering (`components/render.smoke.spec.ts`); **the visual rendering and the sound remain to be validated** (list at the end of the file).
 
-**Accueil**
-- [x] Surtitre « Studio vocal local », titre « Que voulez-vous faire *entendre* ? », sous-titre, halo.
-- [x] Carte du premier lancement (`WelcomeSetup`), composeur « héros » (4 lignes).
-- [x] Quatre textes de départ (Narration, Annonce, Dialogue, Publicité), textes à l'identique ; un clic remplit le composeur et le focalise.
-- [x] « Dernières prises » : trois prises récentes, début du texte au-dessus, lecteur compact.
+**Home**
+- [x] Kicker `Studio vocal local` (local voice studio), title `Que voulez-vous faire *entendre* ?`, subtitle, glow.
+- [x] First-launch card (`WelcomeSetup`), "hero" composer (4 lines).
+- [x] Four starting texts (Narration, Annonce, Dialogue, Publicité), texts identical; one click fills the composer and focuses it.
+- [x] `Dernières prises` (latest takes): three recent takes, beginning of the text above, compact player.
 
-**Composeur** : voir le tableau ci-dessus ; en plus
-- [x] Info-bulles : Style, Description de la voix, Voix, Langue du texte, Longueur du texte (corps dynamique : « environ N caractères… (8 000 au maximum…) »), Dialogue à plusieurs voix (×2), Nombre de prises, Lecture automatique (titre « activée / désactivée »), vitesse et variabilité (`thread.help.speed`, `thread.help.temperature`).
-- [x] Sélecteur de voix : deux onglets (« Voix du modèle » N, « Mes voix » N), lignes avec avatar, nom, ♀/♂, description, onde miniature des voix clonées, coche ; messages vides et d'avertissement ; pied « Enregistrer ou importer une voix… » (ouvre le studio).
-- [x] Sélecteur de langue : liste « Langue du texte » avec coche et code.
-- [x] Réglages : paramètres du modèle (curseur, interrupteur, texte, « Avancé »), graine (aléatoire / fixée, tirer), point « modifié », cadenas.
-- [x] États : modèle en chargement (indicateur), serveur injoignable (« Serveur injoignable — le backend est-il démarré ? »).
-- [x] Raccourcis : ↵ envoie, ⇧↵ ligne, `/` focalise le texte.
+**Composer**: see the table above; in addition
+- [x] Info tips: Style, Description de la voix (voice description), Voix, Langue du texte (text language), Longueur du texte (text length) (dynamic body: `environ N caractères… (8 000 au maximum…)`, "about N characters… (8,000 at most…)"), Dialogue à plusieurs voix (multi-voice dialogue) (×2), Nombre de prises (number of takes), Lecture automatique (autoplay) (title `activée / désactivée`, enabled / disabled), speed and variability (`thread.help.speed`, `thread.help.temperature`).
+- [x] Voice selector: two tabs (`Voix du modèle` (model voices) N, `Mes voix` (my voices) N), rows with avatar, name, ♀/♂, description, miniature waveform of cloned voices, tick; empty and warning messages; footer `Enregistrer ou importer une voix…` (opens the studio).
+- [x] Language selector: list `Langue du texte` with tick and code.
+- [x] Settings: model parameters (slider, switch, text, `Avancé` (advanced)), seed (random / fixed, draw), "modified" dot, padlock.
+- [x] States: model loading (indicator), server unreachable (`Serveur injoignable — le backend est-il démarré ?`, "Server unreachable — is the backend started?").
+- [x] Shortcuts: ↵ sends, ⇧↵ line, `/` focuses the text.
 
 **Messages**
-- [x] Avatar (onde animée pendant le calcul), nom du modèle, ligne d'état (voir plus haut), cartes de prises, emplacements en attente, erreur, annulation.
-- [x] Lecture automatique de la première prise fraîche ; animation « développement » d'une prise de moins de 8 s.
-- [x] Carte : lecture/pause, onde (clic, glisser, clavier), horloge, repères des personnages colorés (jusqu'à 6 couleurs, clic = saut), étiquette, vitesse, favori (cœur plein/vide), téléchargement WAV (`<slug>-<seed>.wav`), menu.
-- [x] Menu : « Garder comme voix de référence » (« Voix créée » pour une voix décrite, « X (copie) » sinon ; message « « X » ajoutée à vos voix » avec « Modifier »), « Copier le texte », « Supprimer la prise » (confirmation « Supprimer cette prise ? » / « Le fichier audio sera supprimé. »).
-- [x] Pied : Annuler ; Refaire (info-bulle « Nouvelles prises (graines aléatoires) »), mêmes graines (info-bulle avec explication), reprendre texte et réglages (« Réglages repris (graine fixée) »), « Supprimer la synthèse » (confirmation « Supprimer cette synthèse ? »).
-- [x] Message de l'utilisateur : copier le texte, reprendre dans le composeur, supprimer (`studio-core`).
-- [x] Temps réel : `studio.message.updated` (prises incluses, formes d'onde comprises : limite d'événement relevée, voir le back), `studio.job.progress`, `studio.job.image` (prise ajoutée), `studio.asset.*`, `studio.queue.updated` (position exacte).
+- [x] Avatar (animated waveform during computation), model name, status line (see above), take cards, pending slots, error, cancellation.
+- [x] Autoplay of the first fresh take; "development" animation of a take under 8 s.
+- [x] Card: play/pause, waveform (click, drag, keyboard), clock, coloured character markers (up to 6 colours, click = jump), label, speed, favourite (filled/empty heart), WAV download (`<slug>-<seed>.wav`), menu.
+- [x] Menu: `Garder comme voix de référence` (keep as reference voice) (`Voix créée` (created voice) for a described voice, `X (copie)` (copy) otherwise; message `« X » ajoutée à vos voix` with `Modifier`), `Copier le texte` (copy the text), `Supprimer la prise` (delete the take) (confirmation `Supprimer cette prise ?` / `Le fichier audio sera supprimé.`).
+- [x] Footer: Cancel; `Refaire` (info tip `Nouvelles prises (graines aléatoires)`, new takes (random seeds)), same seeds (info tip with explanation), resume text and settings (`Réglages repris (graine fixée)`, settings taken over (seed fixed)), `Supprimer la synthèse` (delete the synthesis) (confirmation `Supprimer cette synthèse ?`).
+- [x] User message: copy the text, resume in the composer, delete (`studio-core`).
+- [x] Real time: `studio.message.updated` (takes included, waveforms included: event limit raised, see the back), `studio.job.progress`, `studio.job.image` (take added), `studio.asset.*`, `studio.queue.updated` (exact position).
 
-**Bibliothèque `/audio/bibliotheque`**
-- [x] Titre « Bibliothèque », compteur « N prises », filtre « Filtrer par texte », bouton Favoris ; colonne unique de 760 px.
-- [x] Chaque prise : début du texte (deux lignes) et titre de la conversation au-dessus (clic : ouvre la conversation), carte complète.
-- [x] États : chargement, vide (« Aucune prise audio pour l'instant. », favoris, recherche), erreur avec « Réessayer », pagination infinie, mise à jour en direct (module `media-library`).
+**Library `/audio/bibliotheque`**
+- [x] Title `Bibliothèque` (library), counter `N prises`, filter `Filtrer par texte` (filter by text), Favourites button; single 760 px column.
+- [x] Each take: beginning of the text (two lines) and conversation title above (click: opens the conversation), full card.
+- [x] States: loading, empty (`Aucune prise audio pour l'instant.`, no audio take yet; favourites, search), error with `Réessayer` (retry), infinite pagination, live update (`media-library` module).
 
-**Dépôt audio** (règles de H4.4) : voir `voices` (dépôt d'un son = ouvre le studio de voix).
+**Audio upload** (rules of H4.4): see `voices` (uploading a sound = opens the voice studio).
 
-**Écarts**
-- Réglages du modèle et graine : composant `GenerationParams` de `studio-core` (remonté d'`image-studio` en H4.6) ; son bouton affiche « Réglages » pour l'audio (et la vidéo), comme l'ancienne interface.
-- La langue par défaut suit la langue de l'interface (fr / en), plus le réglage du navigateur.
-- Libellés du favori : « Ajouter aux favoris » / « Retirer des favoris » (comme les images).
-- Lecteur : composants de `common` (`useSharedAudioPlayer`, `Waveform`, `WaveformPending`) ; la vitesse de lecture est partagée par tout l'onglet (comme avant).
-- Les messages d'erreur du serveur, le texte d'aide du modèle (`instruct_help`) et les avis du moteur ne sont pas traduits.
+**Deviations**
+- Model settings and seed: `GenerationParams` component of `studio-core` (moved up from `image-studio` in H4.6); its button shows `Réglages` (settings) for audio (and video), like the former interface.
+- The default language follows the interface language (fr / en), plus the browser setting.
+- Favourite labels: `Ajouter aux favoris` / `Retirer des favoris` (add to / remove from favourites) (like images).
+- Player: components of `common` (`useSharedAudioPlayer`, `Waveform`, `WaveformPending`); the playback speed is shared by the whole tab (as before).
+- The server error messages, the model help text (`instruct_help`) and the engine notices are not translated.
 
-**À valider à l'œil et à l'oreille** : lecture réelle des prises (partage du lecteur entre cartes, lecture automatique, vitesse), forme de l'onde et alignement des repères sur la ligne de temps, animation « développement »,
-onde animée et pourcentage pendant le calcul, mise en page de la carte (largeur, ligne d'étiquette, menu), composeur (ligne de style, panneau du scénario, sélecteurs de voix et de langue, hauteur du champ),
-accueil (textes de départ, « Dernières prises »), bibliothèque (colonne centrée, en-tête), dépôt audio ; génération réelle (clonage, dialogue, voix décrite) et téléchargement WAV.
+**To validate by eye and ear**: real playback of the takes (player sharing between cards, autoplay, speed), waveform shape and alignment of the markers on the timeline, "development" animation,
+animated waveform and percentage during computation, card layout (width, label line, menu), composer (style line, script panel, voice and language selectors, field height),
+home (starting texts, `Dernières prises`), library (centred column, header), audio upload; real generation (cloning, dialogue, described voice) and WAV download.
 
 ## Tests
 
-Un fichier à la fois, depuis `front/`, sous garde mémoire (`render.smoke.spec.ts` : 3 Go) :
+One file at a time, from `front/`, under the memory guard (`render.smoke.spec.ts`: 3 GB):
 
 ```sh
-../docs/migration/tools/guarded_run.sh 3 npx vitest run src/modules/audio-studio/lib/takes.spec.ts
+../scripts-local/guarded_run.sh 3 npx vitest run src/modules/audio-studio/lib/takes.spec.ts
 ```
 
 `lib/{audioText,voiceChoice,composerRules,sendRequest,takes,audioStatus,cloner,audioHelp}.spec.ts`, `state/audioDraftStore.spec.ts`, `locales/locales.spec.ts`,
-`components/render.smoke.spec.ts` (rendu côté serveur de l'accueil, du fil audio, d'une prise et de ses états, du scénario, des sélecteurs, de la bibliothèque de voix et de sa carte ; pas de DOM : interactions, lecture et popovers ne sont pas exercés).
+`components/render.smoke.spec.ts` (server-side rendering of the home page, the audio thread, a take and its states, the script, the selectors, the voice library and its card; no DOM: interactions, playback and popovers are not exercised).

@@ -1,83 +1,83 @@
 # Module `image-studio` (front)
 
-## Rôle
+## Role
 
-L'**accueil** du studio image (titre, carte du premier lancement, composeur « héros », quatre prompts de départ, derniers tirages) et le **composeur** :
-prompt, images de référence (clic, collage, dépôt sur la fenêtre, glisser depuis une vignette), sélecteur de modèle (module `model-catalog`), proportions et définition,
-réglages du modèle générés depuis ses paramètres, graine, nombre d'images, envoi. Le fil de conversation, les messages, la progression et la visionneuse sont dans
-`studio-core`. Back : `back/src/modules/studio-core/README.md` (`POST /api/messages`) et `media-library` (`POST /api/assets`). Tâche H4.3b.
+The **home** of the image studio (title, first-launch card, "hero" composer, four starter prompts, latest prints) and the **composer**:
+prompt, reference images (click, paste, drop on the window, drag from a thumbnail), model selector (module `model-catalog`), proportions and definition,
+model settings generated from its parameters, seed, number of images, send. The conversation thread, the messages, the progress and the viewer are in
+`studio-core`. Back: `back/src/modules/studio-core/README.md` (`POST /api/messages`) and `media-library` (`POST /api/assets`). Task H4.3b.
 
 ## Structure
 
 ```
 image-studio/
-  index.ts                       exports : ImageHome, ImageGallery, Composer, ImageDropLayer, imageStudioAdapter
-  imageStudioAdapter.tsx         ce que le mode image branche sur le fil de studio-core (composeur, génération, reprise d'un prompt)
-  hooks/useSendMessage.ts        envoi (écrit les deux messages au cache ; depuis l'accueil, charge la conversation puis l'ouvre)
-  hooks/useImageDrop.ts          dépôt sur la fenêtre : fichiers (useWindowDrop de `common`) et images de la conversation glissées
-  lib/size.ts                    ASPECTS, QUALITIES, resolveSize (miroir de `resolve_size` du moteur), définitions visibles (testé)
-  lib/params.ts                  paramètres effectifs (définition « Original » et format `auto` avec références), corps `params` d'un message (testé) ; le schéma du formulaire et `GenerationParams` sont dans `studio-core` depuis H4.6
-  lib/composerRules.ts           avis du composeur, rôle d'une référence, modèle multi-images de remplacement, état du bouton Générer (testé)
-  lib/uploadReferences.ts        import des références (filtre d'images, aperçus, HttpService.upload) (testé)
-  lib/sendRequest.ts             corps de POST /api/messages (testé)
-  lib/help.ts                    info-bulles propres à l'image, prompts de départ
-  components/                    ImageHome, ImageGallery (H4.4 : `AssetGallery` de `media-library` + `ImageTile` de `studio-core`), Composer, ReferenceStrip, AspectPicker, CountPicker, DropOverlay (ImageDropLayer)
-  locales/                       locales.fr.json, locales.en.json (clés imageStudio.*)
+  index.ts                       exports: ImageHome, ImageGallery, Composer, ImageDropLayer, imageStudioAdapter
+  imageStudioAdapter.tsx         what the image mode plugs into the studio-core thread (composer, generation, resuming a prompt)
+  hooks/useSendMessage.ts        send (writes the two messages to the cache; from the home, loads the conversation then opens it)
+  hooks/useImageDrop.ts          drop on the window: files (useWindowDrop of `common`) and conversation images dragged in
+  lib/size.ts                    ASPECTS, QUALITIES, resolveSize (mirror of the engine's `resolve_size`), visible definitions (tested)
+  lib/params.ts                  effective parameters ("Original" definition and `auto` format with references), `params` body of a message (tested); the form schema and `GenerationParams` are in `studio-core` since H4.6
+  lib/composerRules.ts           composer notices, role of a reference, replacement multi-image model, state of the Generate button (tested)
+  lib/uploadReferences.ts        import of references (image filter, previews, HttpService.upload) (tested)
+  lib/sendRequest.ts             body of POST /api/messages (tested)
+  lib/help.ts                    image-specific tooltips, starter prompts
+  components/                    ImageHome, ImageGallery (H4.4: `AssetGallery` of `media-library` + `ImageTile` of `studio-core`), Composer, ReferenceStrip, AspectPicker, CountPicker, DropOverlay (ImageDropLayer)
+  locales/                       locales.fr.json, locales.en.json (keys imageStudio.*)
 ```
 
-Montage : `studio-shell/pages/{HomePage,ConversationPage,GalleryPage}.tsx` (pages minces) ; `StudioShell` monte `ImageDropLayer` en mode image.
+Mounting: `studio-shell/pages/{HomePage,ConversationPage,GalleryPage}.tsx` (thin pages); `StudioShell` mounts `ImageDropLayer` in image mode.
 
-## Composeur
+## Composer
 
-| Élément | Comportement |
+| Element | Behavior |
 |---|---|
-| Prompt | Entrée envoie, Maj+Entrée saute une ligne (pas pendant une composition IME), coller des fichiers les importe, le champ grandit jusqu'à 40 % de la fenêtre (`/` le focalise : `registerFocusTarget('composer')`). Placeholder selon les références et le modèle. Dessous, la ligne « À éviter » (`NegativePromptField` de `studio-core`, bord rouge et signe « interdit », plus petite) porte le prompt négatif du modèle, mémorisé par modèle ; Entrée y envoie aussi. Dans la barre du composeur, le bouton ✨ (`EnhancePromptButton` du module `chat`) réécrit le prompt avec le modèle de chat et garde l'original ; le composeur prend aussi le texte qu'une réponse du chat lui envoie (`usePromptHandoff('image', …)`). |
-| Références | Vignettes de 72 px avec leur rôle pour le modèle : « départ » (img2img, la 1re), « image N » (édition multi-images), « visage » puis « départ » (mode `face` : visage suivi par l'IP-Adapter, image de départ facultative), « ignorée » (grisée) ; infobulle explicative ; taille en pixels sous la vignette ; retrait au survol ; réordonnables (glisser une vignette sur une autre, ou « mettre en premier » au survol, `moveReference` du brouillon) : la 1re donne le format « Référence » (la 2e, image de départ, pour un modèle `face` qui en a deux : `sizeReferenceIndex`, miroir du moteur) et l'ordre envoyé au modèle. Imports en cours : aperçu estompé + indicateur. |
-| Avis | Le modèle modifie des images et n'en a aucune ; n'utilise pas les références ; ne part que d'une image ; en accepte N au plus ; ne tourne pas sur cette machine (texte du moteur) ; note du plan (autre chose que « full »). Un bouton « Passer à X (MLX) » propose un modèle qui accepte toutes les images (prêt d'abord, puis le plus léger). |
-| Modèle non prêt | `SetupPrompt` (module `engines`) sous le prompt ; sur l'accueil, la carte du premier lancement (`WelcomeSetup`) la remplace. |
-| Proportions | Bouton « format · LxH » : 10 formats (+ « Référence » = format de la 1re image jointe, avec sa taille affichée sur la tuile, « Libre » = pixels avec arrondi au multiple du modèle et bornes) ; définition Origine (avec référence et « Référence » : résolution de la 1re image, plafonnée à `NATIVE_MAX_MP`, agrandie sans déformation jusqu'au côté minimal du modèle) ; sans image jointe, « Référence » garde la taille de la dernière image faite ainsi (`referenceSize` du brouillon, mémorisée à l'envoi, envoyée en taille libre) / Brouillon 0,5 / Standard 1 / Haute 1,6 / Très haute 2,3 MP, infobulle de chacune ; sortie « L × H px · x MP ». |
-| Réglages | `SchemaParamsPopover` de `common` à partir des `ParamSpec` du modèle (curseur si bornes, interrupteur, texte ; le prompt négatif n'y est plus, il est sous le prompt ; « Avancé » replié ; infobulles de `thread.help.*` + remarque du modèle ; paramètres « avec références » masqués sans référence) ; la graine (aléatoire/fixe, tirer, effacer) est ajoutée après les réglages de base ; le bouton montre les étapes, un cadenas si la graine est fixée, un point si un réglage diffère du défaut. « Valeurs par défaut » libère aussi la graine. |
-| Nombre d'images | 1 à 4, infobulle. |
-| Envoyer | Désactivé sans prompt, pendant un import ou un envoi, modèle non installé ou incompatible, image de référence requise manquante ; infobulle selon la raison, raccourci ↵. Après l'envoi : prompt et références vidés ; depuis l'accueil la conversation s'ouvre. |
+| Prompt | Enter sends, Shift+Enter inserts a line break (not during an IME composition), pasting files imports them, the field grows up to 40 % of the window (`/` focuses it: `registerFocusTarget('composer')`). Placeholder depends on the references and the model. Below it, the `À éviter` (avoid) line (`NegativePromptField` of `studio-core`, red border and a "forbidden" sign, smaller) holds the model's negative prompt, remembered per model; Enter also sends from there. In the composer bar, the ✨ button (`EnhancePromptButton` of the `chat` module) rewrites the prompt with the chat model and keeps the original; the composer also takes the text that a chat reply sends to it (`usePromptHandoff('image', …)`). |
+| References | 72 px thumbnails with their role for the model: `départ` (start) (img2img, the 1st), `image N` (multi-image editing), `visage` (face) then `départ` (start) (`face` mode: face followed by the IP-Adapter, start image optional), `ignorée` (ignored) (greyed out); explanatory tooltip; size in pixels under the thumbnail; removal on hover; reorderable (drag a thumbnail onto another, or `mettre en premier` (move to first) on hover, `moveReference` of the draft): the 1st gives the `Référence` (reference) format (the 2nd, the start image, for a `face` model that has two: `sizeReferenceIndex`, mirror of the engine) and the order sent to the model. Imports in progress: faded preview + indicator. |
+| Notices | The model modifies images and has none; does not use the references; only starts from an image; accepts N at most; does not run on this machine (engine text); plan note (anything other than `full`). A `Passer à X (MLX)` (switch to X (MLX)) button proposes a model that accepts all the images (ready first, then the lightest). |
+| Model not ready | `SetupPrompt` (module `engines`) under the prompt; on the home, the first-launch card (`WelcomeSetup`) replaces it. |
+| Proportions | `format · LxH` button: 10 formats (+ `Référence` = format of the 1st attached image, with its size shown on the tile; `Libre` (free) = pixels rounded to the model's multiple and bounds); definition `Origine` (origin) (with reference and `Référence`: resolution of the 1st image, capped at `NATIVE_MAX_MP`, enlarged without distortion up to the model's minimum side); without an attached image, `Référence` keeps the size of the last image made this way (`referenceSize` of the draft, remembered on send, sent as a free size) / `Brouillon` (draft) 0.5 / `Standard` 1 / `Haute` (high) 1.6 / `Très haute` (very high) 2.3 MP, tooltip for each; output `L × H px · x MP`. |
+| Settings | `SchemaParamsPopover` of `common` from the model's `ParamSpec` (slider if bounds, switch, text; the negative prompt is no longer here, it is under the prompt; `Avancé` (advanced) collapsed; tooltips from `thread.help.*` + the model's remark; "with references" parameters hidden without a reference); the seed (random/fixed, draw, clear) is added after the basic settings; the button shows the steps, a padlock if the seed is fixed, a dot if a setting differs from the default. `Valeurs par défaut` (defaults) also frees the seed. |
+| Number of images | 1 to 4, tooltip. |
+| Send | Disabled without a prompt, during an import or a send, model not installed or incompatible, required reference image missing; tooltip depending on the reason, shortcut ↵. After sending: prompt and references emptied; from the home the conversation opens. |
 
-Paramètres effectifs (`lib/params.ts`) : valeurs par défaut du modèle, puis réglages enregistrés (`cn-composer`, par modèle) ; avec références la définition par défaut est « Origine » et le format `auto` ;
-sans, `auto` retombe sur 1:1. La graine fixée n'est pas conservée entre deux chargements.
+Effective parameters (`lib/params.ts`): the model's default values, then the saved settings (`cn-composer`, per model); with references the default definition is `Origine` and the format `auto`;
+without, `auto` falls back to 1:1. The fixed seed is not kept between two loads.
 
-## Dépôt de fichiers
+## File drop
 
-`useImageDrop` (monté par `ImageDropLayer`, en mode image) : fichiers déposés n'importe où sur la fenêtre (`useWindowDrop`, images seulement, les autres ignorés avec un avertissement) et images de la conversation
-glissées depuis une vignette (type `application/x-cn-asset`) deviennent des références. Surcouche « Déposez vos images » (`DropVeil` de `media-library`). Envoi par `assetsApi.upload` (`HttpService.upload`, champ multipart `files`).
+`useImageDrop` (mounted by `ImageDropLayer`, in image mode): files dropped anywhere on the window (`useWindowDrop`, images only, others ignored with a warning) and conversation images
+dragged from a thumbnail (type `application/x-cn-asset`) become references. Overlay `Déposez vos images` (Drop your images) (`DropVeil` of `media-library`). Sent by `assetsApi.upload` (`HttpService.upload`, multipart field `files`).
 
-## Correspondance avec l'ancienne interface
+## Correspondence with the former interface
 
-| Ancien (`frontend/src/`, supprimé en H6 : `git show 2435ab3:frontend/src/…`) | Nouveau |
+| Former (`frontend/src/`, removed in H6: `git show 2435ab3:frontend/src/…`) | New |
 |---|---|
 | `components/Home.tsx` | `components/ImageHome` |
-| `components/Composer.tsx` : composeur, `RefThumb`, `CountPicker`, avis | `components/Composer`, `ReferenceStrip`, `CountPicker`, `lib/composerRules` |
+| `components/Composer.tsx`: composer, `RefThumb`, `CountPicker`, notices | `components/Composer`, `ReferenceStrip`, `CountPicker`, `lib/composerRules` |
 | `components/AspectPicker.tsx` | `components/AspectPicker`, `lib/size` |
-| `components/ParamsPopover.tsx` | `studio-core/components/GenerationParams` (remonté en H4.6) + `SchemaParamsPopover` (`common`), `studio-core/lib/paramsSchema` |
+| `components/ParamsPopover.tsx` | `studio-core/components/GenerationParams` (moved up in H4.6) + `SchemaParamsPopover` (`common`), `studio-core/lib/paramsSchema` |
 | `lib/size.ts` | `lib/size` |
-| `lib/composer.ts` : `uploadFiles`, `effectiveParams`, `registerComposer`/`focusComposer` | `lib/uploadReferences`, `lib/params`, `studio-shell/lib/focusRegistry` |
-| `App.tsx` : `useFileDrop`, surcouche | `hooks/useImageDrop`, `components/DropOverlay` |
+| `lib/composer.ts`: `uploadFiles`, `effectiveParams`, `registerComposer`/`focusComposer` | `lib/uploadReferences`, `lib/params`, `studio-shell/lib/focusRegistry` |
+| `App.tsx`: `useFileDrop`, overlay | `hooks/useImageDrop`, `components/DropOverlay` |
 | `lib/help.ts` (image) | `lib/help`, locales `imageStudio.help.*` |
-| `lib/api.ts` : `send`, `upload` | `studio-core/services/{messagesApi,assetsApi}` |
+| `lib/api.ts`: `send`, `upload` | `studio-core/services/{messagesApi,assetsApi}` |
 
-## Écarts avec l'ancienne interface
+## Deviations from the former interface
 
-- Le titre du panneau de réglages est « Réglages » (le formulaire commun n'accepte pas de nom de modèle dans son titre) ; le nombre d'étapes, le cadenas de la graine et le point « modifié » sont dans le bouton.
-- « Valeurs par défaut » est repéré à partir de ce que le formulaire commun envoie (tous les champs à leur défaut, au moins deux champs) ; il libère la graine comme l'ancien bouton « Défauts ».
-- Le dépôt de fichiers ne s'applique qu'en mode image (comme avant) ; l'audio a le sien depuis H4.5 (module `voices` : un son ouvre le studio de voix) et la vidéo depuis H4.6 (`video-studio` : images et vidéos vers les emplacements du composeur).
-- Les libellés des réglages d'un modèle et les remarques « Ce modèle : » viennent du moteur (français).
-- Pas de barre de progression de l'envoi des images (l'ancien composeur n'en avait pas non plus pour les images : indicateur seulement).
+- The title of the settings panel is `Réglages` (Settings) (the common form does not accept a model name in its title); the number of steps, the seed padlock and the "modified" dot are in the button.
+- `Valeurs par défaut` (defaults) is detected from what the common form sends (all fields at their default, at least two fields); it frees the seed like the former `Défauts` (defaults) button.
+- File drop only applies in image mode (as before); audio has its own since H4.5 (module `voices`: a sound opens the voice studio) and video since H4.6 (`video-studio`: images and videos to the composer's slots).
+- The labels of a model's settings and the `Ce modèle :` (this model:) remarks come from the engine (French).
+- No progress bar for the upload of images (the former composer had none for images either: indicator only).
 
 ## Tests
 
-Un fichier à la fois, depuis `front/`, sous garde mémoire (`render.smoke.spec.ts` : 3 Go) :
+One file at a time, from `front/`, under memory guard (`render.smoke.spec.ts`: 3 GB):
 
 ```sh
-../docs/migration/tools/guarded_run.sh 3 npx vitest run src/modules/image-studio/lib/size.spec.ts
+../scripts-local/guarded_run.sh 3 npx vitest run src/modules/image-studio/lib/size.spec.ts
 ```
 
-`lib/{size,params,composerRules,uploadReferences,sendRequest}.spec.ts`, `locales/locales.spec.ts`. `components/render.smoke.spec.ts` rend côté serveur (`renderToString`, environnement Node, i18n simulé avec les textes français)
-l'accueil, une conversation, un message utilisateur, des générations dans leurs états, la carte du moteur et la bande de références, avec un cache rempli : il détecte les erreurs d'exécution et les clés de texte brutes,
-mais **ne remplace pas** la validation visuelle (les magasins Zustand y sont lus à leur état initial, le portail de la visionneuse n'est pas rendu).
+`lib/{size,params,composerRules,uploadReferences,sendRequest}.spec.ts`, `locales/locales.spec.ts`. `components/render.smoke.spec.ts` renders server-side (`renderToString`, Node environment, i18n simulated with the French texts)
+the home, a conversation, a user message, generations in their states, the engine card and the reference strip, with a filled cache: it detects runtime errors and raw text keys,
+but **does not replace** the visual validation (the Zustand stores are read at their initial state, the viewer portal is not rendered).

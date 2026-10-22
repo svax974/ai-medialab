@@ -1,141 +1,140 @@
 # Module `chat` (front)
 
-## Rôle
+## Role
 
-Le **mode Chat** : conversation avec un modèle de langage local (exécuté par llama.cpp côté moteur). L'accueil (`/chat`), le **fil** d'une conversation (`/c/:id` quand `mode = 'chat'`),
-le **composeur** (pièces jointes, modèle, instruction système et personas, réglages, recherche web, **outils de création** et leurs commandes `/…`, jauge de contexte, envoi / arrêt), le **rendu** des réponses (Markdown sûr, code coloré,
-réflexion du modèle, appels d'outils, **cartes de génération** (image, vidéo, son), statistiques), les **branches** (régénérer, modifier un message, comparer deux modèles), l'export, la recherche dans les messages et l'état du modèle
-en mémoire. Back : `back/src/modules/chat/README.md` (routes `/api/chat/*`, flux SSE) ; moteur : `engine/app/llm.py`, `engine/app/api/llm.py`. Les conversations (liste, titre, épingle, suppression)
-sont celles de `studio-core` avec `mode = 'chat'` ; les messages de chat sont dans les tables de `back/src/modules/chat` (arbre : `parent_id`).
+The **Chat mode**: conversation with a local language model (run by llama.cpp on the engine side). The home page (`/chat`), the **thread** of a conversation (`/c/:id` when `mode = 'chat'`),
+the **composer** (attachments, model, system instruction and personas, settings, web search, **creation tools** and their `/…` commands, context gauge, send / stop), the **rendering** of answers (safe Markdown, coloured code,
+model reasoning, tool calls, **generation cards** (image, video, sound), statistics), the **branches** (regenerate, edit a message, compare two models), the export, the search in messages and the state of the model
+in memory. Back: `back/src/modules/chat/README.md` (routes `/api/chat/*`, SSE stream); engine: `engine/app/llm.py`, `engine/app/api/llm.py`. Conversations (list, title, pin, deletion)
+are those of `studio-core` with `mode = 'chat'`; chat messages are in the tables of `back/src/modules/chat` (tree: `parent_id`).
 
 ## Structure
 
 ```
 chat/
-  index.ts                          exports : ChatHome, ChatConversationView, LlmStatusChip, useLlmEvents, useChatSearch, chatApi, useChatLiveStore, types
-  types.ts                          ChatMessage, ChatGeneration, CreationModels, ChatSettings, ChatConversation, ToolRun, ChatStreamEvent, LlmStatus... (forme publique de Nest, snake_case)
-  services/chatApi.ts               routes REST (studioRequest) ; `streamAnswer` : fetch + flux SSE (lecture par `readSse` du gabarit) ; chemins des trois façons de demander une réponse
-  services/privateChatBackend.ts    le chat d'une **session privée** : la conversation (réglages et arbre de messages) tenue en mémoire de la page (`private/lib/privateChatMemory.ts`), jamais `localStorage` ni serveur ; `privateChatApi` répond à ce que `chatApi` lit/écrit, `streamPrivateAnswer` remplace `streamAnswer` (appelle `POST /api/private/chat`, mêmes évènements)
-  lib/privateTree.ts                l'arbre de messages en mémoire (frères, branche active, dernière feuille, suppression d'un sous-arbre, historique envoyé au serveur, export) : pur, testé
-  services/answerRunner.ts          `startAnswer` / `stopAnswer` : lance une réponse et l'écrit dans le cache TanStack au fil du flux ; une seule réponse à la fois ; continue si la page est quittée
-  state/chatLiveStore.ts            par conversation : chargement du modèle, erreur, contrôleur d'arrêt ; et l'état du modèle de chat (`llm.status`) (Zustand)
-  state/chatDraftStore.ts           brouillon par conversation (`cn-chat-drafts`, texte seulement), pièces jointes en cours, envoi remis par l'accueil, messages déjà vus (comparaison)
-  state/chatDefaultsStore.ts        réglages de l'accueil = réglages de départ des nouvelles conversations (`cn-chat-defaults`)
-  hooks/useChat.ts                  conversation (requête ; relue tant qu'un message reste `streaming` sans réponse lue ici), réglages (enregistrés 500 ms après la dernière modification), modèle de la conversation, recherche plein texte
-  hooks/useSiblings.ts              lit les réponses sœurs jamais vues (`GET …/siblings`) pour que la comparaison survive à un rechargement ; hooks/useElapsedSeconds.ts : horloge d'une attente
-  hooks/useChatActions.ts           régénérer (même modèle ou un autre), modifier, changer de branche, supprimer, arrêter
-  hooks/useCreationModels.ts        le modèle actif de chaque studio (image, vidéo, audio ; ceux qui sont prêts) : `creation_models` de chaque envoi, régénération et modification
-  hooks/useGenerationSync.ts        relit la conversation quand un évènement `studio.*` concerne le job d'une carte (état, fichiers, suppression), coalescé, jamais pendant qu'une réponse s'écrit
-  hooks/useChatSubmit.ts            envoi du composeur ; depuis l'accueil : crée la conversation, lui donne les réglages de l'accueil, l'ouvre
-  hooks/useAttachments.ts           pièces jointes : vérification, envoi (`/api/chat/attachments`), retrait
-  hooks/useLlmEvents.ts             abonnement à `engine.llm.status` ; hooks/useThrottled.ts, hooks/useModelName.ts
-  lib/creation.ts                   commandes proposées après le `/`, état affiché d'une carte, `creation_models` d'une requête (`withCreation`), bornes du curseur de durée ; lib/generationEvents.ts : quels évènements du studio concernent les cartes ; lib/settingsMerge.ts : fusion des réglages (`tools` partiel)
-  lib/sse.ts                        `toChatEvent` : bloc SSE -> évènement typé (un bloc illisible est ignoré)
-  lib/streamReducer.ts              applique un évènement à la conversation en cache (pur) ; `placeMessage` : une branche nouvelle remplace la suite de l'ancien frère
-  lib/branches.ts                   position parmi les frères (‹ 2/3 ›), réponses à comparer
-  lib/context.ts                    remplissage du contexte, contexte demandé, « le contexte change-t-il ? » (rechargement), texte de chargement
-  lib/presets.ts                    valeurs par défaut du serveur, préréglages, schéma du formulaire de réglages, niveaux de réflexion, personas
-  lib/attachments.ts, errors.ts, markdownSafety.ts, estimate.ts, chatKeys.ts   règles des pièces jointes (noms stockés, nom affiché `displayName`, limites du serveur) ; code d'erreur -> texte et action ; liens et images sûrs ; estimation de tokens ; clés de requête
-  lib/math.ts                       `normalizeMath` : `\( \)`, `\[ \]` et `$x$` écrits `$$…$$` (jamais dans le code, même un bloc encore ouvert ; les montants restent du texte)
-  lib/handoff.ts, selection.ts      réponse (ou sélection) -> prompt sans balisage Markdown ; texte sélectionné dans une réponse
-  lib/enhance.ts                    codes d'échec de ✨ (409 `busy` / `no_model` / `no_engine`, sinon moteur), état du bouton, retour à l'original
+  index.ts                          exports: ChatHome, ChatConversationView, LlmStatusChip, useLlmEvents, useChatSearch, chatApi, useChatLiveStore, types
+  types.ts                          ChatMessage, ChatGeneration, CreationModels, ChatSettings, ChatConversation, ToolRun, ChatStreamEvent, LlmStatus... (public shape of Nest, snake_case)
+  services/chatApi.ts               REST routes (studioRequest); `streamAnswer`: fetch + SSE stream (read by `readSse` of the template); paths of the three ways of requesting an answer
+  services/privateChatBackend.ts    the chat of a **private session**: the conversation (settings and message tree) kept in the page's memory (`private/lib/privateChatMemory.ts`), never `localStorage` nor server; `privateChatApi` answers what `chatApi` reads/writes, `streamPrivateAnswer` replaces `streamAnswer` (calls `POST /api/private/chat`, same events)
+  lib/privateTree.ts                the message tree in memory (siblings, active branch, last leaf, deletion of a subtree, history sent to the server, export): pure, tested
+  services/answerRunner.ts          `startAnswer` / `stopAnswer`: starts an answer and writes it into the TanStack cache as the stream goes; only one answer at a time; continues if the page is left
+  state/chatLiveStore.ts            per conversation: model loading, error, stop controller; and the chat model state (`llm.status`) (Zustand)
+  state/chatDraftStore.ts           draft per conversation (`cn-chat-drafts`, text only), attachments in progress, send handed over by the home page, messages already seen (comparison)
+  state/chatDefaultsStore.ts        home page settings = starting settings of new conversations (`cn-chat-defaults`)
+  hooks/useChat.ts                  conversation (query; re-read while a message remains `streaming` without an answer read here), settings (saved 500 ms after the last change), model of the conversation, full-text search
+  hooks/useSiblings.ts              reads the sibling answers never seen (`GET …/siblings`) so that the comparison survives a reload; hooks/useElapsedSeconds.ts: clock of a wait
+  hooks/useChatActions.ts           regenerate (same model or another), edit, change branch, delete, stop
+  hooks/useCreationModels.ts        the active model of each studio (image, video, audio; those that are ready): `creation_models` of each send, regeneration and edit
+  hooks/useGenerationSync.ts        re-reads the conversation when a `studio.*` event concerns the job of a card (state, files, deletion), coalesced, never while an answer is being written
+  hooks/useChatSubmit.ts            sending from the composer; from the home page: creates the conversation, gives it the home page settings, opens it
+  hooks/useAttachments.ts           attachments: check, upload (`/api/chat/attachments`), removal
+  hooks/useLlmEvents.ts             subscription to `engine.llm.status`; hooks/useThrottled.ts, hooks/useModelName.ts
+  lib/creation.ts                   commands offered after the `/`, displayed state of a card, `creation_models` of a request (`withCreation`), bounds of the duration slider; lib/generationEvents.ts: which studio events concern the cards; lib/settingsMerge.ts: merging of settings (partial `tools`)
+  lib/sse.ts                        `toChatEvent`: SSE block -> typed event (an unreadable block is ignored)
+  lib/streamReducer.ts              applies an event to the cached conversation (pure); `placeMessage`: a new branch replaces the continuation of the old sibling
+  lib/branches.ts                   position among siblings (‹ 2/3 ›), answers to compare
+  lib/context.ts                    context filling, requested context, "does the context change?" (reload), loading text
+  lib/presets.ts                    server defaults, presets, settings form schema, thinking levels, personas
+  lib/attachments.ts, errors.ts, markdownSafety.ts, estimate.ts, chatKeys.ts   attachment rules (stored names, displayed name `displayName`, server limits); error code -> text and action; safe links and images; token estimate; query keys
+  lib/math.ts                       `normalizeMath`: `\( \)`, `\[ \]` and `$x$` written as `$$…$$` (never inside code, even an unclosed block; amounts stay text)
+  lib/handoff.ts, selection.ts      answer (or selection) -> prompt without Markdown markup; text selected in an answer
+  lib/enhance.ts                    failure codes of ✨ (409 `busy` / `no_model` / `no_engine`, otherwise engine), button state, return to the original
   components/                       ChatHome, ChatConversationView, ChatThread, UserMessageView, AssistantMessageView, AssistantBody, CompareView, GenerationCard (+ Generations), GenerationChoice (DurationChoice, VoiceChoice), MessageParts (BranchNav, ReasoningBlock, ToolRuns, StatsLine,
-                                    AttachmentList), Markdown (+ MarkdownRenderer, chargé à la demande, et MathMarkdownRenderer : KaTeX, chargé seulement si une réponse a une formule), SendToMenu, EnhancePromptButton, ChatComposer, ChatSettingsPopover, ContextField, SystemPromptPopover, ContextGauge, ChatStatusLine,
+                                    AttachmentList), Markdown (+ MarkdownRenderer, loaded on demand, and MathMarkdownRenderer: KaTeX, loaded only if an answer has a formula), SendToMenu, EnhancePromptButton, ChatComposer, ChatSettingsPopover, ContextField, SystemPromptPopover, ContextGauge, ChatStatusLine,
                                     ChatErrorNotice, ChatSuggestions, LlmStatusChip, ExportMenu, ChatSearchHits
-  locales/                          locales.fr.json, locales.en.json (clés chat.*)
+  locales/                          locales.fr.json, locales.en.json (keys chat.*)
 ```
 
-Montage : `studio-shell/routes.tsx` (la route `/chat` est chargée à la demande : `pages/ChatHomePage.tsx`), `pages/ConversationPage.tsx` (rend `ChatConversationView`, chargé à la demande, quand la conversation est de mode chat),
-`StudioShell` (monte `useLlmEvents`), `ConversationList` (en mode chat, `ChatSearchHits` sous les titres). Le sélecteur de modèle est `StudioModelPicker` de `studio-core` (type `llm`), qui porte aussi le bouton « Nouveautés ».
-Les cartes de modèles de chat, la carte du moteur llama.cpp et la recherche Hugging Face `kind=llm` sont dans `model-catalog` et `engines` ; la clé Brave Search et la voix par défaut du chat sont dans `settings`.
+Mounting: `studio-shell/routes.tsx` (the `/chat` route is loaded on demand: `pages/ChatHomePage.tsx`), `pages/ConversationPage.tsx` (renders `ChatConversationView`, loaded on demand, when the conversation is in chat mode),
+`StudioShell` (mounts `useLlmEvents`), `ConversationList` (in chat mode, `ChatSearchHits` under the titles). The model picker is `StudioModelPicker` of `studio-core` (type `llm`), which also carries the "New" button (`Nouveautés`).
+The chat model cards, the llama.cpp engine card and the Hugging Face search `kind=llm` are in `model-catalog` and `engines`; the Brave Search key and the default chat voice are in `settings`.
 
 ## Services
 
-| Méthode | Endpoint | Description |
+| Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/conversations` `{ mode: 'chat' }` | crée la conversation (accueil) |
-| `GET` | `/api/chat/conversations/:id` | `ChatConversation` : conversation, réglages, messages de la branche active |
-| `PATCH` | `/api/chat/conversations/:id/settings` | réglages (modèle, instruction système, paramètres, contexte, réflexion, outils) |
-| `POST` | `/api/chat/conversations/:id/messages` | envoi : **flux SSE** (message utilisateur puis réponse) |
-| `POST` | `/api/chat/conversations/:id/messages/:mid/regenerate` | nouvelle réponse sœur, éventuellement d'un autre modèle : **flux SSE** |
-| `POST` | `/api/chat/conversations/:id/messages/:mid/edit` | nouveau message utilisateur sœur et sa réponse : **flux SSE** |
-| `POST` | `/api/chat/conversations/:id/leaf` | change de branche |
-| `DELETE` | `/api/chat/conversations/:id/messages/:mid` | supprime le message et ce qui le suit |
-| `POST` | `/api/chat/attachments` | envoi d'une pièce jointe (multipart) |
-| `GET` | `/api/chat/conversations/:id/export?format=md\|json` | export (téléchargement par lien) |
-| `GET` | `/api/chat/search?q=` | recherche plein texte dans les messages |
-| `GET` | `/api/chat/conversations/:id/messages/:mid/siblings` | `chatApi.siblings` : les sœurs complètes d'une réponse (comparaison après un rechargement) |
-| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `chatApi.confirmGeneration` : lance la génération d'une carte de choix (`{ seconds }` ou `{ voice_id }`) |
-| `POST` | `/api/chat/model/unload` | `chatApi.unloadModel` : décharge le modèle de chat (bouton ⏏ de l'indicateur d'état ; 409 `busy` pendant une réponse) |
-| `POST` | `/api/chat/enhance-prompt` | `chatApi.enhancePrompt` : amélioration d'un prompt de génération, bouton ✨ `EnhancePromptButton` des compositeurs image, audio et vidéo |
+| `POST` | `/api/conversations` `{ mode: 'chat' }` | creates the conversation (home page) |
+| `GET` | `/api/chat/conversations/:id` | `ChatConversation`: conversation, settings, messages of the active branch |
+| `PATCH` | `/api/chat/conversations/:id/settings` | settings (model, system instruction, parameters, context, thinking, tools) |
+| `POST` | `/api/chat/conversations/:id/messages` | send: **SSE stream** (user message then answer) |
+| `POST` | `/api/chat/conversations/:id/messages/:mid/regenerate` | new sibling answer, possibly from another model: **SSE stream** |
+| `POST` | `/api/chat/conversations/:id/messages/:mid/edit` | new sibling user message and its answer: **SSE stream** |
+| `POST` | `/api/chat/conversations/:id/leaf` | changes branch |
+| `DELETE` | `/api/chat/conversations/:id/messages/:mid` | deletes the message and what follows it |
+| `POST` | `/api/chat/attachments` | uploads an attachment (multipart) |
+| `GET` | `/api/chat/conversations/:id/export?format=md\|json` | export (download by link) |
+| `GET` | `/api/chat/search?q=` | full-text search in messages |
+| `GET` | `/api/chat/conversations/:id/messages/:mid/siblings` | `chatApi.siblings`: the complete siblings of an answer (comparison after a reload) |
+| `POST` | `/api/chat/messages/:mid/generations/:gid/confirm` | `chatApi.confirmGeneration`: starts the generation of a choice card (`{ seconds }` or `{ voice_id }`) |
+| `POST` | `/api/chat/model/unload` | `chatApi.unloadModel`: unloads the chat model (⏏ button of the status indicator; 409 `busy` during an answer) |
+| `POST` | `/api/chat/enhance-prompt` | `chatApi.enhancePrompt`: improvement of a generation prompt, ✨ button `EnhancePromptButton` of the image, audio and video composers |
 
-Le flux : `message` (utilisateur, puis assistant créé), `loading`, `delta`, `reasoning`, `tool`, `usage`, puis un seul `done` **ou** `error`. Un flux qui s'arrête sans l'un des deux donne une erreur `closed`
-côté client. **`done` termine la réponse** : l'interface la considère finie à cet évènement (message final et statistiques dans le fil, actions, bouton d'envoi réactivé : `answerRunner` passe le flux « terminé » et
-`anyStreaming` redevient faux). Le flux, lui, **reste lu jusqu'à sa fermeture** quand le serveur écrit un titre automatique (premier échange, titre encore tiré du prompt) : `title` arrive **après** `done`, met le titre à jour dans le
-fil et dans la liste (`studioKeys.conversations`), puis le flux se ferme. Ce flux résiduel ne bloque jamais un nouvel envoi : `startAnswer` l'abandonne (`AbortController`), ce qui fait annuler le titre par le serveur, et la fin du flux abandonné
-ne touche ni la réponse suivante (`isCurrent`) ni le cache de la conversation (pas de relecture après un `done`). Une connexion coupée après `done` laisse la réponse terminée telle quelle. Arrêter = fermer la connexion (`AbortController`) : le serveur garde le texte reçu et marque le message `cancelled`. Les requêtes de flux partent sans jeton d'accès : l'application est en `LOCAL_TRUST`
-(un en-tête `Authorization` n'est ajouté que par `HttpService`, qui ne sait pas lire un refus avec son message). Un refus avant le flux (`400` identifiant, `422` corps, `409`) donne un `ChatError` dont le code est celui que
-le serveur ajoute au refus (`code`) quand il en met un, sinon deviné d'après le statut ; `StudioApiError.code` (`studio-shell/services/studioHttp.ts`) porte ce même code pour les appels JSON.
+The stream: `message` (user, then assistant created), `loading`, `delta`, `reasoning`, `tool`, `usage`, then a single `done` **or** `error`. A stream that stops without either of them gives a `closed` error
+on the client side. **`done` ends the answer**: the interface considers it finished at this event (final message and statistics in the thread, actions, send button re-enabled: `answerRunner` sets the stream "finished" and
+`anyStreaming` becomes false again). The stream, however, **is read until it closes** when the server writes an automatic title (first exchange, title still derived from the prompt): `title` arrives **after** `done`, updates the title in the
+thread and in the list (`studioKeys.conversations`), then the stream closes. This residual stream never blocks a new send: `startAnswer` aborts it (`AbortController`), which makes the server cancel the title, and the end of the aborted stream
+touches neither the next answer (`isCurrent`) nor the conversation cache (no re-read after a `done`). A connection cut after `done` leaves the finished answer as it is. Stopping = closing the connection (`AbortController`): the server keeps the text received and marks the message `cancelled`. Stream requests are sent without an access token: the application runs in `LOCAL_TRUST`
+(an `Authorization` header is only added by `HttpService`, which cannot read a refusal with its message). A refusal before the stream (`400` identifier, `422` body, `409`) gives a `ChatError` whose code is the one
+the server adds to the refusal (`code`) when it sets one, otherwise guessed from the status; `StudioApiError.code` (`studio-shell/services/studioHttp.ts`) carries that same code for JSON calls.
 
-## Comportements
+## Behaviours
 
-- **Une réponse à la fois.** `startAnswer` refuse (message) quand une autre réponse est en cours, dans n'importe quelle conversation ; le moteur n'a qu'un modèle en mémoire. Le composeur remplace « Envoyer » par « Arrêter » pour la
-  conversation qui écrit, et avertit quand une génération d'image, d'audio ou de vidéo tourne (le moteur répond alors `busy`).
-- **Changer le contexte recharge le modèle.** Le cache du contexte est alloué au chargement : le contexte par défaut est de 16 384 tokens (`context_default` du modèle) et le modifier recharge le modèle. Dans le popover des réglages,
-  le champ « Contexte » montre sous lui un avis (icône + texte, rôle `status`) *tant que la valeur saisie diffère du contexte du modèle actuellement chargé* (`llm.status.context_size`, même modèle que celui de la conversation ;
-  la valeur est bornée comme le fait le moteur : `lib/context.ts` `requestedContext`, `contextChangeReloads`). L'avis n'a pas de chiffre de mémoire (aucune route ne l'expose ; le moteur la calcule pour le planificateur) et ne
-  bloque rien. Au prochain envoi qui recharge le modèle, la ligne de statut dit « Rechargement du modèle avec un contexte de N tokens… » (phase `loading`, `chat.status.reloadContext`) au lieu de « Chargement du modèle… ».
-- **Réponse en cours.** Le Markdown est rendu au plus ~12 fois par seconde (`useThrottled`) ; le fil suit le bas tant que le lecteur n'a pas remonté. Les lecteurs d'écran reçoivent une annonce par réponse
-  (`aria-live` coupé sur le fil), pas une par token.
-- **Branches.** Le serveur n'envoie que la branche active. `‹ n/m ›` change de branche (`/leaf`). La **comparaison** montre côte à côte (onglets sous 900 px) les réponses sœurs de modèles différents **que ce navigateur a vues**
-  (`chatDraftStore.seen`, alimenté par chaque conversation chargée et chaque flux) ; après un rechargement de page, `useSiblingsSync` lit une fois les sœurs jamais vues (`GET …/siblings`, valables une minute)
-  pour que la comparaison réapparaisse.
-- **Une réponse qui ne se termine pas.** Arrêter ferme la connexion et le serveur règle le message (`cancelled`) un instant plus tard ; une réponse restée `streaming` côté serveur alors que ce navigateur ne la lit pas
-  (arrêt pas encore réglé, page rechargée en pleine réponse) est relue toutes les 1,5 s, une quarantaine de fois au plus, jusqu'à ce qu'elle soit réglée : elle ne reste jamais bloquée.
-- **Envoyer vers Image / Vidéo / Audio.** `SendToMenu` (sur chaque réponse) envoie la réponse, ou le texte qu'on y a sélectionné, sans balisage Markdown (`lib/handoff.ts`), au compositeur du studio choisi par
-  `usePromptHandoffStore` (`studio-core`, en mémoire seulement) puis ouvre ce studio ; son compositeur le prend à l'affichage (`usePromptHandoff`).
-- **✨ Améliorer le prompt.** `EnhancePromptButton` est monté dans les compositeurs image, audio et vidéo (import direct de ce fichier : le module `chat` n'importe jamais ces studios). Il réécrit le prompt avec le
-  modèle de chat (une horloge s'affiche si le modèle doit se charger), garde l'original (« Rétablir » tant que le prompt est celui qui a été amélioré) et, en cas de refus, explique pourquoi (génération ou réponse en
-  cours, aucun modèle de chat, moteur llama.cpp absent) avec le bouton qui ouvre les modèles ; désactivé tant qu'aucun modèle de chat n'est installé ; un résultat qui arrive après que l'utilisateur a retapé est ignoré.
-- **Outils de création.** Chaque envoi, régénération et modification porte `creation_models` (`useCreationModels` : le modèle **actif** de chaque studio, c'est-à-dire sa sélection, sinon le plus utilisé ou le défaut ; seulement s'il est prêt) quand l'interrupteur 🎨 de la conversation est allumé (`settings.tools.creation`, allumé par défaut ; grisé pour un modèle qui n'appelle pas d'outils ; absent d'une session privée, qui n'a pas ces outils). Le modèle de chat peut alors lancer une image, une vidéo ou un son ; `/image …`, `/video [Ns] …` et `/audio [voix :] …` le font **sans** le modèle de chat (aide sous le composeur dès qu'on tape `/`).
-  Chaque génération est une **carte** (`GenerationCard`) dans la réponse : attente du moteur (le job démarre quand la réponse du chat a rendu la mémoire), chargement puis progression (`useLiveStore`, bouton Annuler), puis le résultat (image : miniature qui ouvre la visionneuse commune ; vidéo et son : lecteur natif), ou l'échec ; « Ouvrir dans le studio » remet le prompt au compositeur de ce studio (`usePromptHandoffStore`). Les fichiers sont aussi dans la médiathèque (origine : la conversation de chat). Sans durée, une vidéo affiche une **carte de choix** (`DurationChoice` : curseur borné par le modèle, défaut pré-rempli) ; un modèle qui exige une voix sans en avoir reçu affiche `VoiceChoice` (liste des voix à échantillon) ; la génération part à la validation (`confirm`).
-  L'état et les fichiers d'une carte viennent du serveur (jamais copiés dans le cache du chat) : `useGenerationSync` relit la conversation sur les évènements `studio.*` de ses jobs.
-- **Brouillon.** Le texte non envoyé est gardé par conversation (`cn-chat-drafts`) ; il est vidé quand le serveur a enregistré le message. Les pièces jointes en cours ne sont pas gardées.
-- **Accueil.** Ses réglages (instruction système, paramètres, contexte, réflexion, recherche web, outils de création) sont les réglages de départ des nouvelles conversations. Le premier envoi crée la conversation, lui applique ces réglages, l'ouvre ;
-  la page de la conversation prend l'envoi en charge (`pending`) une fois la conversation chargée, pour que le flux écrive dans un cache qui existe.
-- **Sûreté du Markdown.** Pas de HTML brut (react-markdown ne le rend pas), liens `http(s)` et `mailto` seulement, ouverts hors de l'application (`rel="noopener noreferrer nofollow"`), **images distantes bloquées** :
-  un bouton « Charger l'image » affiche l'hôte. Le code est coloré par un sous-ensemble de highlight.js (22 langages). **Formules** : KaTeX (`remark-math` + `rehype-katex`, `trust` désactivé : ni lien ni image dans une formule ; une formule illisible s'affiche en couleur d'erreur sans casser la réponse),
-  dans un morceau à part chargé seulement quand le texte en contient (`mayHaveMath`) ; `\( \)`, `\[ \]` et `$x$` sont ramenés à `$$…$$` hors du code, et un montant (`5$`, `$6`) reste du texte.
+- **One answer at a time.** `startAnswer` refuses (with a message) when another answer is in progress, in any conversation; the engine has only one model in memory. The composer replaces "Send" with "Stop" for the conversation that is writing, and warns when an image, audio or video generation is running (the engine then answers `busy`).
+- **Changing the context reloads the model.** The context cache is allocated at loading: the default context is 16,384 tokens (`context_default` of the model) and changing it reloads the model. In the settings popover,
+  the "Context" field shows under it a notice (icon + text, role `status`) *as long as the entered value differs from the context of the model currently loaded* (`llm.status.context_size`, same model as the conversation's;
+  the value is bounded as the engine does it: `lib/context.ts` `requestedContext`, `contextChangeReloads`). The notice has no memory figure (no route exposes it; the engine computes it for the planner) and
+  blocks nothing. At the next send that reloads the model, the status line says "Reloading the model with a context of N tokens…" (phase `loading`, `chat.status.reloadContext`) instead of "Loading the model…".
+- **Answer in progress.** The Markdown is rendered at most ~12 times per second (`useThrottled`); the thread follows the bottom as long as the reader has not scrolled up. Screen readers receive one announcement per answer
+  (`aria-live` off on the thread), not one per token.
+- **Branches.** The server only sends the active branch. `‹ n/m ›` changes branch (`/leaf`). The **comparison** shows side by side (tabs below 900 px) the sibling answers of different models **that this browser has seen**
+  (`chatDraftStore.seen`, fed by each loaded conversation and each stream); after a page reload, `useSiblingsSync` reads once the siblings never seen (`GET …/siblings`, valid for one minute)
+  so that the comparison reappears.
+- **An answer that does not end.** Stopping closes the connection and the server sets the message (`cancelled`) a moment later; an answer still `streaming` on the server while this browser does not read it
+  (stop not yet settled, page reloaded in the middle of an answer) is re-read every 1.5 s, about forty times at most, until it is settled: it is never stuck.
+- **Send to Image / Video / Audio.** `SendToMenu` (on each answer) sends the answer, or the text selected in it, without Markdown markup (`lib/handoff.ts`), to the composer of the chosen studio through
+  `usePromptHandoffStore` (`studio-core`, in memory only), then opens that studio; its composer takes it on display (`usePromptHandoff`).
+- **✨ Improve the prompt.** `EnhancePromptButton` is mounted in the image, audio and video composers (direct import of this file: the `chat` module never imports these studios). It rewrites the prompt with the
+  chat model (a clock is shown if the model has to load), keeps the original (`Rétablir` (Restore) as long as the prompt is the improved one) and, on refusal, explains why (generation or answer
+  in progress, no chat model, llama.cpp engine missing) with the button that opens the models; disabled as long as no chat model is installed; a result that arrives after the user has retyped is ignored.
+- **Creation tools.** Each send, regeneration and edit carries `creation_models` (`useCreationModels`: the **active** model of each studio, that is its selection, otherwise the most used or the default; only if it is ready) when the 🎨 switch of the conversation is on (`settings.tools.creation`, on by default; greyed out for a model that does not call tools; absent from a private session, which does not have these tools). The chat model can then launch an image, a video or a sound; `/image …`, `/video [Ns] …` and `/audio [voice:] …` do it **without** the chat model (help under the composer as soon as you type `/`).
+  Each generation is a **card** (`GenerationCard`) in the answer: waiting for the engine (the job starts when the chat answer has freed the memory), loading then progress (`useLiveStore`, Cancel button), then the result (image: thumbnail that opens the common viewer; video and sound: native player), or the failure; `Ouvrir dans le studio` (Open in studio) hands the prompt back to the composer of that studio (`usePromptHandoffStore`). The files are also in the media library (origin: the chat conversation). Without a duration, a video displays a **choice card** (`DurationChoice`: slider bounded by the model, default pre-filled); a model that requires a voice without having received one displays `VoiceChoice` (list of voices with a sample); the generation starts on validation (`confirm`).
+  The state and files of a card come from the server (never copied into the chat cache): `useGenerationSync` re-reads the conversation on the `studio.*` events of its jobs.
+- **Draft.** Unsent text is kept per conversation (`cn-chat-drafts`); it is cleared when the server has saved the message. Attachments in progress are not kept.
+- **Home page.** Its settings (system instruction, parameters, context, thinking, web search, creation tools) are the starting settings of new conversations. The first send creates the conversation, applies these settings to it, opens it;
+  the conversation page takes the send over (`pending`) once the conversation is loaded, so that the stream writes into a cache that exists.
+- **Markdown safety.** No raw HTML (react-markdown does not render it), `http(s)` and `mailto` links only, opened outside the application (`rel="noopener noreferrer nofollow"`), **remote images blocked**:
+  a "Load image" button (`Charger l'image`) shows the host. The code is coloured by a subset of highlight.js (22 languages). **Formulas**: KaTeX (`remark-math` + `rehype-katex`, `trust` disabled: no link or image in a formula; an unreadable formula is shown in error colour without breaking the answer),
+  in a separate chunk loaded only when the text contains some (`mayHaveMath`); `\( \)`, `\[ \]` and `$x$` are brought back to `$$…$$` outside code, and an amount (`5$`, `$6`) remains text.
 
-## Dépendances
+## Dependencies
 
-`react-markdown` (déjà dans le gabarit), `remark-gfm` 4.0.1 (MIT), `rehype-highlight` 7.0.2 (MIT, avec `lowlight` 3), `highlight.js` 11.12 (BSD-3-Clause), `katex` 0.16.47, `remark-math` 6.0.0 et `rehype-katex` 7.0.1 (MIT ; `katex` est épinglé en 0.16 comme l'exige `rehype-katex`) : déclarées dans `front/package.local.json`. Le Markdown et le code coloré sont dans le morceau
-`MarkdownRenderer`, les formules dans `MathMarkdownRenderer`, tous deux chargés à la demande (poids non mesuré : pas de `vite build` en développement). `@/modules/model-catalog` (modèles, `ModelPicker`), `@/modules/engines` (`SetupPrompt`, `WelcomeSetup`),
-`@/modules/settings` (clé Brave), `@/modules/studio-core` (`StudioModelPicker`, `TitleEditor`, `copyText`, défilement), `@/modules/studio-shell` (conversations, routes, focus, HTTP), `@/modules_shared/common` (SSE, confirm, aide, formulaire par schéma).
+`react-markdown` (already in the template), `remark-gfm` 4.0.1 (MIT), `rehype-highlight` 7.0.2 (MIT, with `lowlight` 3), `highlight.js` 11.12 (BSD-3-Clause), `katex` 0.16.47, `remark-math` 6.0.0 and `rehype-katex` 7.0.1 (MIT; `katex` is pinned to 0.16 as `rehype-katex` requires): declared in `front/package.local.json`. The Markdown and the coloured code are in the
+`MarkdownRenderer` chunk, the formulas in `MathMarkdownRenderer`, both loaded on demand (weight not measured: no `vite build` in development). `@/modules/model-catalog` (models, `ModelPicker`), `@/modules/engines` (`SetupPrompt`, `WelcomeSetup`),
+`@/modules/settings` (Brave key), `@/modules/studio-core` (`StudioModelPicker`, `TitleEditor`, `copyText`, scrolling), `@/modules/studio-shell` (conversations, routes, focus, HTTP), `@/modules_shared/common` (SSE, confirm, help, form from schema).
 
 ## Tests
 
-`lib/*.spec.ts` (flux SSE coupé octet par octet, réducteur, branches, contexte, pièces jointes, réglages, erreurs, liens sûrs, formules, envoi vers un studio, amélioration de prompt), `services/chatApi.spec.ts` (fetch simulé : flux, refus, flux interrompu, annulation),
-`services/chatContract.spec.ts` (**fige le contrat avec le module Nest** : les formes et l'ordre réels des évènements d'un envoi, d'un refus, d'une erreur, d'une régénération, d'une modification et d'un arrêt, les appels, les limites et les bornes de réglages),
-`services/answerRunner.spec.ts` (le cache écrit au fil du flux, brouillon vidé, une réponse à la fois, rechargement du contexte, erreur, arrêt), `state/chatDraftStore.spec.ts`, `hooks/useLlmEvents.spec.ts`,
-`components/render.smoke.spec.ts` (rendu serveur sans DOM : accueil, composeur, fil, comparaison, avis de contexte, erreurs ; les états de stores ne se lisent pas au rendu serveur : les parties présentationnelles
-prennent leurs données en propriétés), `locales/locales.spec.ts`. Aucun test dans un navigateur : le rendu réel des fenêtres, le défilement et le flux face à un vrai serveur ne sont pas vérifiés.
+`lib/*.spec.ts` (SSE stream cut byte by byte, reducer, branches, context, attachments, settings, errors, safe links, formulas, sending to a studio, prompt improvement), `services/chatApi.spec.ts` (simulated fetch: stream, refusal, interrupted stream, cancellation),
+`services/chatContract.spec.ts` (**freezes the contract with the Nest module**: the real shapes and order of the events of a send, a refusal, an error, a regeneration, an edit and a stop, the calls, the limits and the bounds of the settings),
+`services/answerRunner.spec.ts` (the cache written as the stream goes, draft cleared, one answer at a time, context reload, error, stop), `state/chatDraftStore.spec.ts`, `hooks/useLlmEvents.spec.ts`,
+`components/render.smoke.spec.ts` (server-side rendering without DOM: home page, composer, thread, comparison, context notice, errors; store states are not read at server rendering: the presentational parts
+take their data as props), `locales/locales.spec.ts`. No test in a browser: the real rendering of windows, scrolling and the stream against a real server are not verified.
 
-## Limites connues
+## Known limits
 
-- Le contenu d'un message est limité à 200 000 caractères (le serveur refuse au-delà : message d'erreur côté client avant l'envoi) ; la police des formules (KaTeX) pèse 1,1 Mo en trois formats dans le paquet : non mesurée dans le bundle (pas de `vite build` en développement).
-- Les liens externes s'ouvrent avec `target="_blank"` (comme le reste de l'application) : dans la coquille Tauri leur comportement n'a pas été vérifié.
+- The content of a message is limited to 200,000 characters (the server refuses beyond that: error message on the client side before sending); the KaTeX font weighs 1.1 MB in three formats in the package: not measured in the bundle (no `vite build` in development).
+- External links open with `target="_blank"` (like the rest of the application): in the Tauri shell their behaviour has not been verified.
 
-## Chat en session privée (module `private`)
+## Chat in a private session (`private` module)
 
-Pendant une session privée (`isPrivateMode()`), `chatApi` et `streamAnswer` envoient à `services/privateChatBackend.ts` : **rien du chat ne passe par les routes qui enregistrent** (`/api/chat/conversations/*`, refusées par
-`private/lib/privateRouting.ts`). La conversation est un arbre de messages en mémoire de la page (mêmes formes que `ChatMessage`, donc le fil, le composeur, les branches, la comparaison, la régénération et la modification
-sont ceux du chat normal) ; chaque réponse part vers `POST /api/private/chat` avec **tout** l'historique de la branche et les réglages, et revient en évènements (`accepted` : les messages sont ajoutés ; `loading`, `delta`,
-`reasoning`, `tool`, `usage`, `done` / `error`). Un refus avant `accepted` (un `error` sans `id`) ne crée rien. Annuler garde le texte reçu en `cancelled`.
+During a private session (`isPrivateMode()`), `chatApi` and `streamAnswer` send to `services/privateChatBackend.ts`: **nothing of the chat goes through the routes that record** (`/api/chat/conversations/*`, refused by
+`private/lib/privateRouting.ts`). The conversation is a tree of messages in the page's memory (same shapes as `ChatMessage`, so the thread, the composer, the branches, the comparison, the regeneration and the edit
+are those of the normal chat); each answer goes to `POST /api/private/chat` with **the whole** history of the branch and the settings, and comes back as events (`accepted`: the messages are added; `loading`, `delta`,
+`reasoning`, `tool`, `usage`, `done` / `error`). A refusal before `accepted` (an `error` without `id`) creates nothing. Cancelling keeps the text received as `cancelled`.
 
-- **Coquille** : la création (`POST /api/conversations` → `/api/private/conversations`, mode `chat`) donne une coquille côté serveur (titre générique, nombre de messages mis à jour par `PATCH … { message_count }`) pour la liste de la barre latérale ; pas de titre automatique. Renommer, épingler, supprimer passent par les routes de conversations privées ; supprimer oublie aussi l'arbre (`forgetPrivateChat`).
-- **Pièces jointes, ✨** : `/chat/attachments` et `/chat/enhance-prompt` sont routés vers `/api/private/chat/*` (dossier de session, rien de gardé) ; une pièce jointe ôtée avant l'envoi est supprimée de la session ; « Envoyer vers » reste en mémoire (`usePromptHandoffStore`).
-- **Recherche** dans les conversations privées : en mémoire (`privateChatApi.search`). **Export** : un fichier fabriqué dans la page (lien `blob:` révoqué avec la session), jamais téléchargé du serveur.
-- **Recherche web** : éteinte par défaut ; l'activer en privé demande une confirmation (`chat.web.private.*` : les requêtes sortent de la machine).
-- **Fin de session** (quitter, tout effacer, expiration, serveur injoignable) : `forgetPrivateChats()` abandonne les réponses en cours, vide les conversations et les fichiers envoyés, l'état de lecture des réponses, le texte « envoyé vers » et les liens d'export.
-- **Limites** : la conversation n'existe que dans la page (recharger la page la perd, la session privée aussi) ; le modèle de chat reste chargé jusqu'à la fin de la session (le serveur le décharge alors), son cache de prompt est en mémoire de `llama-server`.
+- **Shell**: the creation (`POST /api/conversations` → `/api/private/conversations`, mode `chat`) gives a shell on the server side (generic title, message count updated by `PATCH … { message_count }`) for the sidebar list; no automatic title. Renaming, pinning, deleting go through the private conversation routes; deleting also forgets the tree (`forgetPrivateChat`).
+- **Attachments, ✨**: `/chat/attachments` and `/chat/enhance-prompt` are routed to `/api/private/chat/*` (session folder, nothing kept); an attachment removed before sending is deleted from the session; "Send to" stays in memory (`usePromptHandoffStore`).
+- **Search** in private conversations: in memory (`privateChatApi.search`). **Export**: a file built in the page (`blob:` link revoked with the session), never downloaded from the server.
+- **Web search**: off by default; enabling it in private asks for a confirmation (`chat.web.private.*`: the requests leave the machine).
+- **End of session** (quit, clear all, expiry, server unreachable): `forgetPrivateChats()` aborts the answers in progress, empties the conversations and the sent files, the answer read state, the "sent to" text and the export links.
+- **Limits**: the conversation exists only in the page (reloading the page loses it, and so does the private session); the chat model stays loaded until the end of the session (the server unloads it then), its prompt cache is in `llama-server`'s memory.

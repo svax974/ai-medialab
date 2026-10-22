@@ -41,3 +41,8 @@ modules_shared
 
 # Generated for agents that do not follow @imports (scripts/update_common.sh)
 /AGENTS.md
+
+# Local only: working notes and agent instructions, not published
+/docs/migration/
+/CLAUDE.md
+/AGENTS.md
