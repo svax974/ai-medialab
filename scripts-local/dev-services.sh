@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 # Extra dev service of ai-medialab, started by `scripts/run.sh dev` (hook of the template, see front/.libs/apptemplate/README.md):

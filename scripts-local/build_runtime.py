@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Assembles the Python engine sidecar of the desktop app for one runtime profile.
@@ -207,7 +207,7 @@ def copy_engines(out: Path, profile: dict, build: Path) -> None:
     Not in the repo: they are downloaded from the official release (SHA-256 checked,
     see scripts-local/fetch_sdcpp.py). For a cross-build they go to a build cache."""
     variants = profile.get("sdcpp_variants", [])
-    # Variants the app downloads itself at first launch (README, « Premier lancement »): left out of a release bundle.
+    # Variants the app downloads itself at first launch (`docs/guide.md`, "First launch"): left out of a release bundle.
     skipped = {v for v in os.environ.get("DESKTOP_SKIP_SDCPP_VARIANTS", "").split(",") if v}
     variants = [v for v in variants if v not in skipped]
     (out / "engines").mkdir(parents=True, exist_ok=True)  # the shell always declares this resource folder

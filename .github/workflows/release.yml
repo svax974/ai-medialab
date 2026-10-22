@@ -1,33 +1,48 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
-# UNVERIFIED: this workflow has never run (no access to GitHub Actions). Built from the template's skeleton plus the
-# Python engine sidecar. Only the mac-arm64 profile was ever assembled locally (before the migration to the shell of
-# the template); nothing of this chain was run since.
+# Release pipeline: a tag `vX.Y.Z` builds the desktop packages natively on each OS and attaches them to a DRAFT GitHub
+# release (pre-release while the version is 0.x). Nothing is published until the draft is reviewed and released by hand.
 #
-# Order matters: the engine bundle (scripts-local/build_runtime.py, hook of the `engine` sidecar) is written to
-# desktop/build/engine-bundle, then scripts/desktop/build-desktop.mjs copies it (packaging.extraResources of
-# desktop/desktop.config.json) next to the back, the front and Node, and runs `tauri build`.
-name: build-desktop
+#   macOS (Apple Silicon)  AI MediaLab_<v>_aarch64.dmg
+#   Windows x64            AI MediaLab_<v>_x64-setup.exe  (NSIS installer)
+#   Linux x64              AI MediaLab_<v>_amd64.AppImage and .deb
+#
+# Each job runs `scripts-local/publish.sh __build_target`, the same per-target chain as a local release (engine runtime
+# without PyTorch, light sd.cpp variants, pruned back dependencies, licence collection and copyleft gate, `tauri build`).
+# The version comes from the tag and must equal back/package.json.
+#
+# UNVERIFIED: this workflow has not run on GitHub yet. The macOS chain was assembled locally; Windows and Linux builds were
+# never run on their own hardware (see desktop/runtime/profiles.json). Treat the first tag as a dry run: leave it a draft.
+name: release
 
 on:
-  workflow_dispatch:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to build (x.y.z), must equal back/package.json"
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  VERSION: ${{ github.event.inputs.version || github.ref_name }}
 
 jobs:
   build:
-    name: ${{ matrix.profile }}
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         include:
-          - { profile: mac-arm64,  target: darwin-arm64, runner: macos-14,     experimental: false }
-          - { profile: win-cuda,   target: win-x64,      runner: windows-2022, experimental: false }
-          - { profile: win-rocm,   target: win-x64,      runner: windows-2022, experimental: true }
-          - { profile: linux-cuda, target: linux-x64,    runner: ubuntu-22.04, experimental: false }
+          - { name: macos-arm64, target: darwin-arm64, runner: macos-14 }
+          - { name: windows-x64, target: win-x64, runner: windows-2022 }
+          - { name: linux-x64, target: linux-x64, runner: ubuntu-22.04 }
     defaults:
       run:
         shell: bash
@@ -35,29 +50,103 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-      - uses: astral-sh/setup-uv@v5
+
+      - name: Check the version
+        run: |
+          v="${VERSION#v}"
+          [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.]+)?$ ]] || { echo "invalid version: $VERSION"; exit 1; }
+          pkg="$(node -p "require('./back/package.json').version")"
+          [[ "$v" == "$pkg" ]] || { echo "tag $VERSION != back/package.json $pkg"; exit 1; }
+          echo "RELEASE_VERSION=$v" >> "$GITHUB_ENV"
+
       - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: astral-sh/setup-uv@v5
       - uses: dtolnay/rust-toolchain@stable
-      - name: Dépendances Linux (webkit2gtk)
+
+      - name: Linux system libraries (Tauri, AppImage)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf
-      - name: Back (NestJS)
-        working-directory: back
-        run: npm ci && npm run build
-      - name: Front (React)
-        working-directory: front
-        run: npm ci && npm run build
-      - name: Moteur Python embarqué (${{ matrix.profile }})
-        run: python scripts-local/build_runtime.py --profile ${{ matrix.profile }}
-      - name: Outillage bureau
-        working-directory: desktop
-        run: npm ci
-      - name: Ressources et paquet
-        run: node scripts/desktop/build-desktop.mjs --target ${{ matrix.target }} --bundle
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libfuse2 file
+
+      - name: Build the back and the front
+        run: |
+          source scripts/desktop/common.sh
+          desktop_check_project
+          build_web
+
+      - name: Package (${{ matrix.target }})
+        env:
+          PYTHON: ${{ runner.os == 'Windows' && 'python' || 'python3' }}
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          DESKTOP_SKIP_SDCPP_VARIANTS: cuda,rocm
+        run: |
+          mkdir -p desktop/dist
+          scripts-local/publish.sh __build_target "${{ matrix.target }}" "$RELEASE_VERSION"
+
+      - name: Checksums
+        working-directory: desktop/dist
+        run: |
+          for f in *; do (shasum -a 256 "$f" 2>/dev/null || sha256sum "$f") > "$f.sha256"; done
+          ls -la
+
       - uses: actions/upload-artifact@v4
         with:
-          name: ai-medialab-${{ matrix.profile }}
-          path: desktop/src-tauri/target/release/bundle/**/*
+          name: ai-medialab-${{ matrix.name }}
+          path: desktop/dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')   # a manual run only produces the build artifacts
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: assets
+          merge-multiple: true
+
+      - name: Cut the files over GitHub's 2 GiB asset limit
+        working-directory: assets
+        run: |
+          limit=$((2 * 1024 * 1024 * 1024 - 1))
+          for f in *; do
+            case "$f" in *.sha256) continue ;; esac
+            if [ "$(stat -c %s "$f")" -gt "$limit" ]; then
+              split -b 1900m "$f" "$f.part-"
+              rm "$f"
+              echo "- \`$f\` was cut: download every \`$f.part-*\`, run \`cat $f.part-* > $f\` and check \`$f.sha256\`." >> ../split-notes.md
+            fi
+          done
+          ls -la
+
+      - name: Release notes
+        run: |
+          v="${VERSION#v}"
+          {
+            # The section of CHANGELOG.md for this version, if any
+            awk -v v="$v" '$0 ~ "^## \\[" v "\\]" {on=1; next} /^## \[/ {on=0} on' CHANGELOG.md
+            echo
+            echo "Packages are **not code-signed**: macOS shows a Gatekeeper warning (right-click → Open, or \`xattr -dr com.apple.quarantine \"/Applications/AI MediaLab.app\"\`), Windows shows SmartScreen (More info → Run anyway)."
+            echo "Models and the GPU-specific engines are downloaded by the app on first use. Third-party licences are in the app's \`licenses/\` folder."
+            [ -f split-notes.md ] && { echo; cat split-notes.md; }
+          } > notes.md
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${VERSION#v}"
+          prerelease=""; [[ "$v" == 0.* || "$v" == *-* ]] && prerelease="--prerelease"
+          gh release create "v$v" assets/* --draft $prerelease --verify-tag \
+            --title "AI MediaLab v$v" --notes-file notes.md

@@ -1,4 +1,4 @@
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 # Windows cross-compilation from macOS/Linux with mingw-w64 (brew install mingw-w64).

@@ -2,6 +2,7 @@
   "name": "ai-medialab-back",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "commonjs",
   "scripts": {
     "build": "nest build",

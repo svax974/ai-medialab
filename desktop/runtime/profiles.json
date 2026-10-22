@@ -1,8 +1,8 @@
 {
-  "_comment": "Profils d'exécution embarqués dans l'application. Un installateur = un profil. Index et versions vérifiés le 2026-10-11 (HEAD des index) ; « mac-arm64 » avec PyTorch embarqué a été construit ET testé de bout en bout (aujourd'hui « mac-arm64-full »). Par défaut, PyTorch n'est plus embarqué : pack « torch » à la demande. Les profils win-cuda, win-rocm, linux-cuda et linux-rocm gardent PyTorch embarqué (hors ligne).",
+  "_comment": "Runtime profiles embedded in the application. One installer = one profile. Indexes and versions checked on 2026-10-11 (HEAD of the indexes); “mac-arm64” with embedded PyTorch was built AND tested end to end (today “mac-arm64-full”). By default, PyTorch is no longer embedded: “torch” pack on demand. The win-cuda, win-rocm, linux-cuda and linux-rocm profiles keep PyTorch embedded (offline).",
   "profiles": {
     "mac-arm64": {
-      "label": "macOS Apple Silicon (Metal) — PyTorch et MLX installés à la demande",
+      "label": "macOS Apple Silicon (Metal) — PyTorch and MLX installed on demand",
       "os": "macos",
       "arch": "aarch64",
       "python": "3.12",
@@ -11,13 +11,13 @@
       "extra_index_urls": [],
       "requirements": [],
       "status": "unverified",
-      "notes": "Sans PyTorch ni MLX : runtime léger. Le pack « torch » (PyTorch, diffusers, mflux) s'installe au premier besoin (audio_packs.PACKS['torch']). Profil complet : « mac-arm64-full ».",
+      "notes": "Without PyTorch or MLX: lightweight runtime. The “torch” pack (PyTorch, diffusers, mflux) is installed on first need (audio_packs.PACKS['torch']). Full profile: “mac-arm64-full”.",
       "sdcpp_variants": [
         "metal"
       ]
     },
     "mac-arm64-full": {
-      "label": "macOS Apple Silicon — PyTorch + MLX embarqués (hors ligne dès l'installation)",
+      "label": "macOS Apple Silicon — PyTorch + MLX embedded (offline from installation)",
       "os": "macos",
       "arch": "aarch64",
       "python": "3.12",
@@ -31,7 +31,7 @@
         "torchvision"
       ],
       "status": "verified",
-      "notes": "Variante lourde (≈ 2 Go) : PyTorch/MPS et mflux dans le runtime. La variante par défaut « mac-arm64 » les installe à la demande.",
+      "notes": "Heavy variant (≈ 2 GB): PyTorch/MPS and mflux in the runtime. The default “mac-arm64” profile installs them on demand.",
       "sdcpp_variants": [
         "metal"
       ]
@@ -53,7 +53,7 @@
         "torchvision==0.26.0+cu128"
       ],
       "status": "unverified",
-      "notes": "cu128 couvre Maxwell à Blackwell (RTX 50). Non construit ici (impossible hors Windows).",
+      "notes": "cu128 covers Maxwell to Blackwell (RTX 50). Not built here (impossible outside Windows).",
       "sdcpp_variants": [
         "cuda",
         "vulkan"
@@ -76,7 +76,7 @@
         "torchvision==0.26.0+cu128"
       ],
       "status": "unverified",
-      "notes": "Non construit ici.",
+      "notes": "Not built here.",
       "sdcpp_variants": [
         "vulkan"
       ]
@@ -98,14 +98,14 @@
         "torchvision==0.29.1+rocm7.2"
       ],
       "status": "unverified",
-      "notes": "Roues officielles PyTorch ROCm 7.2. Nécessite le pilote amdgpu/ROCm côté hôte. Non construit ici.",
+      "notes": "Official PyTorch ROCm 7.2 wheels. Requires the amdgpu/ROCm driver on the host. Not built here.",
       "sdcpp_variants": [
         "rocm",
         "vulkan"
       ]
     },
     "win-rocm": {
-      "label": "Windows + AMD Radeon (ROCm 7.2.1, préversion)",
+      "label": "Windows + AMD Radeon (ROCm 7.2.1, preview)",
       "os": "windows",
       "arch": "x86_64",
       "python": "3.12",
@@ -122,14 +122,14 @@
         "https://repo.radeon.com/rocm/windows/rocm-rel-7.2.1/torchvision-0.24.1%2Brocm7.2.1-cp312-cp312-win_amd64.whl"
       ],
       "status": "experimental",
-      "notes": "Pas d'index pip : roues directes hébergées par AMD (repo.radeon.com), Python 3.12 obligatoire, GPU Radeon RX 7000/9000 (+ quelques APU Ryzen AI) selon les notes de version AMD 7.2. Préversion publique ; non construit ici.",
+      "notes": "No pip index: direct wheels hosted by AMD (repo.radeon.com), Python 3.12 required, Radeon RX 7000/9000 GPU (+ some Ryzen AI APUs) according to AMD's 7.2 release notes. Public preview; not built here.",
       "sdcpp_variants": [
         "rocm",
         "vulkan"
       ]
     },
     "win-universal": {
-      "label": "Windows — NVIDIA + AMD + Intel (moteur GGUF : CUDA, ROCm et Vulkan)",
+      "label": "Windows — NVIDIA + AMD + Intel (GGUF engine: CUDA, ROCm and Vulkan)",
       "os": "windows",
       "arch": "x86_64",
       "python": "3.12",
@@ -143,10 +143,10 @@
         "vulkan"
       ],
       "status": "unverified",
-      "notes": "Sans PyTorch : runtime léger (≈ 0,2 Go). PyTorch + diffusers (pack « torch ») et les builds CUDA/ROCm de stable-diffusion.cpp s'installent à la demande ; `scripts-local/publish.sh` n'embarque que Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Jamais exécuté sur Windows."
+      "notes": "Without PyTorch: lightweight runtime (≈ 0.2 GB). PyTorch + diffusers (“torch” pack) and the CUDA/ROCm builds of stable-diffusion.cpp are installed on demand; `scripts-local/publish.sh` only embeds Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Never run on Windows."
     },
     "linux-universal": {
-      "label": "Linux — NVIDIA + AMD + Intel (moteur GGUF : ROCm et Vulkan)",
+      "label": "Linux — NVIDIA + AMD + Intel (GGUF engine: ROCm and Vulkan)",
       "os": "linux",
       "arch": "x86_64",
       "python": "3.12",
@@ -159,7 +159,7 @@
         "vulkan"
       ],
       "status": "unverified",
-      "notes": "Sans PyTorch : runtime léger (≈ 0,2 Go). PyTorch + diffusers (pack « torch ») et les builds CUDA/ROCm de stable-diffusion.cpp s'installent à la demande ; `scripts-local/publish.sh` n'embarque que Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Jamais exécuté sur Linux."
+      "notes": "Without PyTorch: lightweight runtime (≈ 0.2 GB). PyTorch + diffusers (“torch” pack) and the CUDA/ROCm builds of stable-diffusion.cpp are installed on demand; `scripts-local/publish.sh` only embeds Vulkan (DESKTOP_SKIP_SDCPP_VARIANTS). Never run on Linux."
     }
   }
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 """Downloads an official stable-diffusion.cpp build (GGUF engine) into engines/sdcpp/<variant>/.

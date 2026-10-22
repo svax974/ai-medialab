@@ -1,6 +1,7 @@
 {
   "name": "ai-medialab-back",
   "version": "0.1.0",
+  "license": "MIT",
   "scripts": {
     "engine:types": "openapi-typescript ../engine/openapi.json -o src/modules/engine/generated/engineApi.d.ts",
     "desktop:dev": "npm --prefix ../desktop install && DESKTOP_RESOURCES=\"$(cd .. && pwd)\" npm --prefix ../desktop run dev",

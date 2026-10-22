@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 # Builds the desktop packages of every platform and publishes them as a GitHub release.
@@ -21,7 +21,7 @@
 # via scripts/desktop/package-cross.mjs. A file over GitHub's 2 GiB asset limit is cut into parts
 # (<name>.part-aa, .part-ab…, rebuilt with `cat`). The release is created as a draft, filled, then published.
 #
-# Every heavy step runs under docs/migration/tools/guarded_run.sh (memory guard, GUARD_GB, default 5).
+# Every heavy step runs under scripts-local/guarded_run.sh (memory guard, GUARD_GB, default 5).
 # Needs: gh (logged in), node, cargo, uv; Windows from a Mac: mingw-w64 + zip; Linux: running Docker.
 set -euo pipefail
 
@@ -31,7 +31,7 @@ cd "${PROJECT_ROOT}"
 # shellcheck source=../scripts/desktop/common.sh
 source "${PROJECT_ROOT}/scripts/desktop/common.sh"
 
-GUARD="${PROJECT_ROOT}/docs/migration/tools/guarded_run.sh"
+GUARD="${PROJECT_ROOT}/scripts-local/guarded_run.sh"
 GUARD_GB="${GUARD_GB:-5}"
 PART_SIZE="${PART_SIZE:-1900m}"            # under GitHub's 2 GiB asset limit
 PRUNE_NPM=(@base-org/account stripe typescript)   # in back dependencies (template base), imported by no code

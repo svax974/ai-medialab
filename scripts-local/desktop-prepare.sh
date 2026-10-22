@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2026 Stéphane Vaxelaire
+# Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
 # Prepare hook of the desktop build, called by `scripts/app.sh` and `scripts/bundle.sh` (template, see
@@ -18,17 +18,21 @@ case "${TARGET}" in
   *) echo "desktop-prepare: no engine profile for ${TARGET} (desktop/runtime/profiles.json)" >&2; exit 1 ;;
 esac
 PROFILE="${DESKTOP_PROFILE:-${DEFAULT}}"
+PYTHON="${PYTHON:-python3}"   # CI on Windows sets PYTHON=python
 
 cd "$(dirname "$0")/.."
 OUT=desktop/build/engine-bundle
 STAMP="${OUT}/.prepared"
 # Same profile and same dependency files = the Python runtime can be kept.
-KEY="${PROFILE} $(cat engine/pyproject.toml engine/uv.lock desktop/runtime/profiles.json | shasum -a 256 | cut -d' ' -f1)"
+KEY="${PROFILE} $(cat engine/pyproject.toml engine/uv.lock desktop/runtime/profiles.json | (shasum -a 256 2>/dev/null || sha256sum) | cut -d' ' -f1)"
 
 if [ "${DESKTOP_CLEAN:-0}" != 1 ] && [ -f "${STAMP}" ] && [ "$(cat "${STAMP}")" = "${KEY}" ]; then
-  python3 scripts-local/build_runtime.py --profile "${PROFILE}" --refresh-app
+  "${PYTHON}" scripts-local/build_runtime.py --profile "${PROFILE}" --refresh-app
 else
   rm -f "${STAMP}"
-  python3 scripts-local/build_runtime.py --profile "${PROFILE}"
+  "${PYTHON}" scripts-local/build_runtime.py --profile "${PROFILE}"
 fi
+# Licence texts shipped in the app (licenses/ of the resources) + build gate on strong copyleft.
+NODE_VERSION="$(sed -n "s/^export const NODE_VERSION = '\(.*\)';/\1/p" scripts/desktop/lib.mjs)"
+"${PYTHON}" scripts-local/collect_licenses.py --bundle "${OUT}" --node-version "${NODE_VERSION}"
 echo "${KEY}" > "${STAMP}"
