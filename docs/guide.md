@@ -389,8 +389,8 @@ skipped with the reason. Windows and Linux packages are cross-built and **not ve
 
 **Recommended path (CI).** Bump the version everywhere it lives (`back/package.json`, `front/package.json`, `desktop/package.json`,
 `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`, `engine/pyproject.toml`), move the `CHANGELOG.md` entry, commit,
-push, then `git tag v0.1.0 && git push origin v0.1.0`. `.github/workflows/release.yml` builds the macOS `.dmg`, the Windows NSIS
-installer and the Linux `.AppImage` + `.deb` on native runners, collects the third-party licences into the app (`licenses/`, see
+push, then `git tag v0.1.0 && git push origin v0.1.0`. `.github/workflows/release.yml` builds the macOS `.dmg`, the Windows portable
+`.zip` (cross-built from Linux with mingw-w64) and the Linux `.AppImage` + `.deb`, collects the third-party licences into the app (`licenses/`, see
 `scripts-local/collect_licenses.py`; the build fails on GPL/AGPL/SSPL dependencies) and attaches everything, with `.sha256` files, to a
 **draft** release (pre-release while the version is 0.x). Review the draft, test the packages, then publish it by hand. The workflow
 has never run: expect to fix the first run.

@@ -46,7 +46,7 @@ Prebuilt packages are attached to each [GitHub release](https://github.com/svax9
 | Platform | File | Status |
 |---|---|---|
 | macOS 14+, Apple Silicon | `AI MediaLab_<version>_aarch64.dmg` | Built and used by the author |
-| Windows 10/11, x64 | `AI MediaLab_<version>_x64-setup.exe` | **Experimental**: never run on Windows hardware yet |
+| Windows 10/11, x64 | `AI-MediaLab-<version>-win-x64.zip` (portable: extract to a short path such as `C:\App`, run `AI MediaLab.exe`; needs the WebView2 runtime) | **Experimental**: never run on Windows hardware yet |
 | Linux x64 | `AI MediaLab_<version>_amd64.AppImage` (and `.deb`) | **Experimental**: never run on Linux hardware yet |
 
 Each file has a `.sha256` next to it. A package larger than 2 GiB is split into `.part-aa`, `.part-ab`…; the release notes say how to

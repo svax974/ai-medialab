@@ -20,7 +20,7 @@ First public release.
   formulas; Diagrams tab; private generation mode that keeps nothing.
 - Model catalogue and Hugging Face search, download manager with a pre-install confirmation (base data, runtime engine,
   model), memory planner, update advisor.
-- Desktop application (Tauri): macOS Apple Silicon `.dmg`, Windows installer and Linux `.AppImage` built by
+- Desktop application (Tauri): macOS Apple Silicon `.dmg`, Windows portable `.zip` and Linux `.AppImage` built by
   `.github/workflows/release.yml`. English and French interface.
 - Third-party licence texts shipped in the app (`licenses/`) and a build gate that fails on strong copyleft dependencies
   (`scripts-local/collect_licenses.py`).
