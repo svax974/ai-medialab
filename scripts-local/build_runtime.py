@@ -184,7 +184,7 @@ def install_python(version: str, cache: Path, out: Path, target_os: str | None =
         return install_python_cross(target_os, version, cache, out)
     log(f"Python {version} embarquable (python-build-standalone via uv)…")
     cache.mkdir(parents=True, exist_ok=True)
-    run(["uv", "python", "install", version, "--install-dir", cache])
+    run(["uv", "python", "install", version, "--install-dir", cache, "--no-bin"])  # no ~/.local/bin link into the cache
     candidates = sorted(
         (p for p in cache.glob(f"cpython-{version}.*") if p.is_dir() and not p.is_symlink()),
         key=lambda p: p.name,
@@ -234,6 +234,10 @@ def prune_stdlib(py_root: Path, version: str, target_os: str | None = None) -> N
     for pat in ("bin/idle3*", "bin/pydoc3*", "bin/2to3*", "bin/pip*"):
         for f in py_root.glob(pat):
             f.unlink(missing_ok=True)
+    # The interpreter's own pip: never used (installs go through the bundled uv), and a frozen copy ships its CVEs.
+    for pat in ("pip", "pip-*.dist-info"):
+        for d in (lib / "site-packages").glob(pat):
+            shutil.rmtree(d, ignore_errors=True)
 
 
 def read_requirements(profile: dict) -> list[str]:
