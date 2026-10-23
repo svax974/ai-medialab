@@ -383,17 +383,20 @@ Results: `app.sh` opens `desktop/src-tauri/target/release/bundle/macos/AI MediaL
 `~/Library/Application Support/app.aimedialab.studio/logs`); `bundle.sh` copies `AI MediaLab_<version>_aarch64.dmg` and the portable
 archives into `desktop/dist/`. Windows from the Mac requires `brew install mingw-w64`; Linux, Docker started; otherwise the target is
 skipped with the reason. Windows and Linux packages are cross-built and **not verified** on their hardware. The workflow
-`.github/workflows/release.yml` (never run) does the same chain on each OS.
+`.github/workflows/release.yml` does the same chain on each OS.
 
 ### Publishing a release
 
-**Recommended path (CI).** Bump the version everywhere it lives (`back/package.json`, `front/package.json`, `desktop/package.json`,
-`desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml`, `engine/pyproject.toml`), move the `CHANGELOG.md` entry, commit,
+**Recommended path (CI).** Bump the version everywhere it lives (`back/package.local.json` and `front/package.local.json` with
+their generated `package.json`, `desktop/package.json`, the root entry of the three `package-lock.json`,
+`desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml` and `Cargo.lock`, `engine/pyproject.toml` and `uv.lock`,
+`engine/openapi.json`, the `README.md` badge), add the `CHANGELOG.md` entry (it becomes the release notes), commit,
 push, then `git tag v0.1.0 && git push origin v0.1.0`. `.github/workflows/release.yml` builds the macOS `.dmg`, the Windows portable
 `.zip` (cross-built from Linux with mingw-w64) and the Linux `.AppImage` + `.deb`, collects the third-party licences into the app (`licenses/`, see
 `scripts-local/collect_licenses.py`; the build fails on GPL/AGPL/SSPL dependencies) and attaches everything, with `.sha256` files, to a
-**draft** release (pre-release while the version is 0.x). Review the draft, test the packages, then publish it by hand. The workflow
-has never run: expect to fix the first run.
+**draft** release (pre-release while the version is 0.x). Review the draft, test the packages, then publish it by hand
+(`gh release edit v<version> --draft=false`). Used for v0.1.0 and v0.1.1. A job stuck on `apt-get` (Ubuntu mirror) times out
+after 15 min: re-run it with `gh run rerun <run id> --failed`, the jobs that succeeded are kept.
 
 **Local path.** The script below builds on this machine and uploads the release itself.
 
@@ -409,7 +412,7 @@ stable-diffusion.cpp's CUDA and ROCm variants are not embedded (`DESKTOP_SKIP_SD
 back's production dependencies without code (`@base-org/account`, `typescript`; `stripe` stays: `DonationService` of the template requires it) are then removed from `node_modules`.
 GitHub refuses a file larger than 2 GiB: a larger package is split into `<name>.part-aa`, `.part-ab`… (`cat` to reassemble it,
 procedure in the release notes). The release is created as a draft, filled, then published. The `v*` tag also triggers
-`.github/workflows/release.yml` (never run).
+`.github/workflows/release.yml`.
 
 To iterate without packaging: `cd back && npm run desktop:dev` (the repository root serves as resources: `back/dist`, `front/dist`,
 `engine/.venv` created by `uv sync`, system Node; `DESKTOP_RESOURCES`).
