@@ -1,6 +1,6 @@
 {
   "name": "ai-medialab-back",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "scripts": {
     "engine:types": "openapi-typescript ../engine/openapi.json -o src/modules/engine/generated/engineApi.d.ts",

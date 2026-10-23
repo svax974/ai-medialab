@@ -7,7 +7,7 @@
 
 [package]
 name = "desktop-shell"
-version = "0.1.0"
+version = "0.1.1"
 description = "AI MediaLab: desktop shell (Tauri) around the NestJS back and the Python engine sidecar"
 edition = "2021"
 license = "MIT"

@@ -4,6 +4,13 @@ All notable changes per released version. Format: [Keep a Changelog](https://kee
 [Semantic Versioning](https://semver.org/) (0.x: the interfaces may still change). The section of a version is used as the body
 of its GitHub release (`.github/workflows/release.yml`).
 
+## [0.1.1] - 2026-10-23
+
+### Security
+
+- The embedded Python no longer ships pip: its frozen copy (26.1.1) carried CVE-2026-8643 and CVE-2026-13346. The app never
+  used it (engine packs are installed with the bundled `uv`).
+
 ## [0.1.0] - 2026-10-22
 
 First public release.
@@ -32,4 +39,5 @@ First public release.
 - No real `llama-server`, chat model or browser session was used to verify chat, diagrams, private mode and the update
   advisor: they were tested against fake servers.
 
+[0.1.1]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.0
