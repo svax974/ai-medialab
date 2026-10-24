@@ -44,7 +44,7 @@ desktop/
   package.json             # scripts: sync, test, dev, build
   splash/                  # waiting page (index.html) + default fr/en messages (messages.json)
   scripts/sync-tauri-config.mjs   # desktop.config.json -> src-tauri/tauri.conf.json (+ project version)
-  src-tauri/               # Rust shell (config, environment, resources, logs, health, process, splash, downloads, boot)
+  src-tauri/               # Rust shell (config, environment, resources, logs, health, process, splash, downloads, links, boot)
 ```
 
 ## `desktop.config.json`
@@ -119,6 +119,11 @@ Example with a sidecar:
 `<a download>` links are saved to the Downloads folder by the shell, which then fires the `desktop-download` event on
 `window` (`detail: { path, success }`). Mount `useDesktopDownloads()` from `react/common` once in the front layout to get a
 toast (`react/common/README.md`); without it the shell shows a small fallback notification.
+
+## External links
+
+`mailto:`, `sms:`, `tel:` and web addresses outside the local app (`window.open`, `target="_blank"`) are handed to the
+system by the shell (`src-tauri/src/links.rs`); the webview alone ignores them. `file:` and local addresses are never forwarded.
 
 ## Development
 

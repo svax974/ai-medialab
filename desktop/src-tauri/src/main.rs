@@ -17,6 +17,7 @@ mod config;
 mod downloads;
 mod environment;
 mod health;
+mod links;
 mod logs;
 mod process;
 mod resources;
@@ -29,7 +30,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use tauri::{webview::DownloadEvent, window::Color, Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
+use tauri::{webview::{DownloadEvent, NewWindowResponse}, window::Color, Manager, RunEvent, Theme, WebviewUrl, WebviewWindowBuilder};
 
 use config::{parse_config, parse_hex_color, DesktopConfig};
 use process::{install_signal_handlers, stop_all, Processes, SIGNALED};
@@ -106,6 +107,20 @@ fn build_window(app: &tauri::App, cfg: &DesktopConfig) -> tauri::Result<()> {
         .background_color(Color(r, g, b, 255))
         // Otherwise Tauri intercepts dropped files and the UI's HTML5 drag and drop receives nothing.
         .disable_drag_drop_handler()
+        // Mail, SMS and other sites (share menu, links in answers) open in the system, not in the window.
+        .on_navigation(|url| {
+            let external = links::is_external(url);
+            if external {
+                links::open_external(url);
+            }
+            !external
+        })
+        .on_new_window(|url, _features| {
+            if links::is_external(&url) {
+                links::open_external(&url);
+            }
+            NewWindowResponse::Deny
+        })
         .on_download(download_handler(logs_dir, texts, cfg.splash.brand.clone()))
         .build()?;
     Ok(())
