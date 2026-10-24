@@ -15,6 +15,7 @@ import json
 import os
 import sys
 import tempfile
+import tomllib
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +29,10 @@ sys.path.insert(0, str(ROOT / "engine"))
 def render() -> str:
     from app.main import app  # noqa: PLC0415 (after the environment is set)
 
-    return json.dumps(app.openapi(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    schema = app.openapi()
+    # FastAPI reports its own default ("0.1.0"): the release bumps `engine/pyproject.toml`, which is the version of record.
+    schema["info"]["version"] = tomllib.loads((ROOT / "engine" / "pyproject.toml").read_text())["project"]["version"]
+    return json.dumps(schema, indent=2, ensure_ascii=False, sort_keys=True) + "\n"
 
 
 def main() -> int:

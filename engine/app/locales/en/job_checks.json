@@ -3,5 +3,6 @@
   "{} a besoin d'au moins une image de référence.": "{} needs at least one reference image.",
   "{} ne synthétise pas de voix.": "{} does not synthesize voices.",
   "{} a besoin d'une image de départ.": "{} needs a starting image.",
-  "{} a besoin d'une vidéo source.": "{} needs a source video."
+  "{} a besoin d'une vidéo source.": "{} needs a source video.",
+  "{} est un modèle de diagramme : il ne passe pas par la génération de médias.": "{} is a diagram model: it does not go through media generation."
 }
