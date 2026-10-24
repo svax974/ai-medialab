@@ -149,6 +149,17 @@ describe('GenerationQueueService', () => {
     expect(s.engine.submitted()).toEqual(['a1']);
   });
 
+  it('cancels every waiting generation for the emergency stop, and leaves the running one to the engine', async () => {
+    await enqueue('a1');
+    await enqueue('a2');
+    await enqueue('a3');
+    expect(await s.queue.cancelWaiting()).toBe(2);
+    expect(await s.messages.get('a2')).toMatchObject({ status: 'cancelled' });
+    expect(await s.messages.get('a3')).toMatchObject({ status: 'cancelled' });
+    expect(s.queue.snapshot()).toEqual({ current: 'a1', pending: [] });
+    expect(s.engine.paths('post')).not.toContain('/engine/v1/jobs/{job_id}/cancel');
+  });
+
   it('asks the engine to stop the running generation and settles on job.cancelled', async () => {
     await enqueue('a1');
     await enqueue('a2');

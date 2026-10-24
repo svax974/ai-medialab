@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
+export { MemoryMeter } from './components/MemoryMeter'
 export { MachineCard, MachineSummary, StoragePaths } from './components/MachineCard'
 export { useSystemInfo, useEngineStatus, useUnloadEngine } from './hooks/useHardware'
 export { hardwareKeys } from './lib/hardwareKeys'
@@ -15,6 +16,8 @@ export type {
   EngineStatus,
   InstallStatus,
   MemoryBudget,
+  MemoryLive,
+  EmergencyStopResult,
   PackInfo,
   PackInstallState,
   SystemInfo,

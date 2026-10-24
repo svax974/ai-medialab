@@ -177,7 +177,7 @@ fits, and the server refuses to add a variant that does not fit.
 Several models can stay loaded together (a generation model, the chat model, an OCR model) as long as they fit under the **memory ceiling**
 (`Réglages → Général` (Settings → General): automatic = 80 % of the machine's memory, or a slider from 4 GB up to what the safety
 reserve leaves). When a new model does not fit, the idle models used least recently are unloaded first; a model in use never is, and
-the load is refused with the figures if it still does not fit. The memory guard stays in force whatever the ceiling says. A model stays in
+the load is refused with the figures if it still does not fit. The memory guard stays in force whatever the ceiling says. The left panel shows the memory in use (on macOS the same figure as Activity Monitor's "Memory Used"), the system's pressure, the swap and the models held; the red **emergency stop** button kills the running generation, chat reply and OCR reading, cancels the queued jobs and unloads the models, if a model starts to swap the machine. A model stays in
 memory between two uses, then is unloaded after an adjustable delay (`Réglages → Mémoire`) or on demand (indicator at the bottom of the sidebar).
 
 **Memory saving (MLX, enabled by default).** The text encoder of Qwen Image 2.1 (≈ 15 GB) is loaded only while encoding the prompt,

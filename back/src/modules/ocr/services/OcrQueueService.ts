@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { merge, type Subscription } from 'rxjs';
+import { EmergencyStopService } from 'src/modules/engine';
 import { join } from 'path';
 import { tr } from 'src/modules/i18n';
 import { StudioEvents, studioDataDir } from 'src/modules/media-library';
@@ -35,6 +36,7 @@ export class OcrQueueService implements OnModuleDestroy {
   private timer: NodeJS.Timeout | null = null;
   private closed = false;
   private readonly wake: Subscription;
+  private readonly stopOnEmergency: () => void;
 
   constructor(
     private readonly store: OcrStoreService,
@@ -42,14 +44,18 @@ export class OcrQueueService implements OnModuleDestroy {
     private readonly gate: EngineBusyGate,
     private readonly generations: GenerationQueueService,
     private readonly events: StudioEvents,
+    /** The emergency stop ends every reading, waiting or running. */
+    @Optional() private readonly emergency?: EmergencyStopService,
   ) {
     // A reading that waits starts as soon as the gauge is released or the generations are done, not at the next poll.
     this.wake = merge(this.gate.released$, this.generations.idle$).subscribe(() => void this.pump());
+    this.stopOnEmergency = this.emergency?.onStop(() => this.cancelAll()) ?? (() => undefined);
   }
 
   onModuleDestroy(): void {
     this.closed = true;
     this.wake.unsubscribe();
+    this.stopOnEmergency();
     if (this.timer) clearTimeout(this.timer);
     this.current?.abort.abort();
   }
@@ -71,6 +77,17 @@ export class OcrQueueService implements OnModuleDestroy {
       return true;
     }
     return false;
+  }
+
+  /** Ends every reading: the waiting ones are cancelled (rows too), the running one is cut. */
+  async cancelAll(): Promise<number> {
+    const ids = [...this.waiting];
+    for (const id of ids) {
+      this.cancel(id);
+      await this.publish(id, { status: 'cancelled' });
+    }
+    if (this.current) this.current.abort.abort();
+    return ids.length + (this.current ? 1 : 0);
   }
 
   isActive(id: string): boolean {

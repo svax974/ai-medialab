@@ -11,6 +11,7 @@ import TuneRounded from '@mui/icons-material/TuneRounded'
 import ViewInArOutlined from '@mui/icons-material/ViewInArOutlined'
 import { useThemeMode } from '@/modules_shared/common/components/ui/theme/ThemeModeProvider'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
+import { MemoryMeter } from '@/modules/hardware'
 import { EngineCard } from '@/modules/studio-core'
 import { PrivateToggle } from '@/modules/private'
 import { useUpdatesStore } from '@/modules/updates'
@@ -54,6 +55,7 @@ export function SidebarFooter() {
 
   return (
     <Box sx={{ display: 'grid', gap: 1, borderTop: '1px solid var(--line)', p: 1.5 }}>
+      <MemoryMeter />
       <EngineCard />
       <FooterButton icon={<ViewInArOutlined sx={{ fontSize: 16 }} />} label={t('studio.footer.models')} onClick={() => setModelsOpen(true)} />
       <FooterButton icon={<SystemUpdateAltRounded sx={{ fontSize: 16 }} />} label={t('updates.sidebar.button')} onClick={() => openUpdates(true)} />

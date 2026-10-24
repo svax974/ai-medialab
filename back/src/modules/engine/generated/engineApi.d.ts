@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/engine/emergency-stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Emergency Stop
+         * @description Kills every model process (generation worker, chat and OCR servers) and cancels the queued jobs, at once.
+         */
+        post: operations["emergency_stop_engine_v1_engine_emergency_stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/engine/unload": {
         parameters: {
             query?: never;
@@ -482,6 +502,26 @@ export interface paths {
          *     unreadable, shorter than one second or the source is outside the data folder. The source is not removed.
          */
         post: operations["prepare_voice_reference_engine_v1_media_voice_reference_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Live Memory
+         * @description Memory of the machine (as Activity Monitor reads it on macOS), the models held, the ceiling, and what is running.
+         */
+        get: operations["live_memory_engine_v1_memory_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1773,6 +1813,28 @@ export interface operations {
             };
         };
     };
+    emergency_stop_engine_v1_engine_emergency_stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+        };
+    };
     unload_engine_engine_v1_engine_unload_post: {
         parameters: {
             query?: never;
@@ -2501,6 +2563,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    live_memory_engine_v1_memory_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };

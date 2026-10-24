@@ -10,6 +10,7 @@ import { existsSync, mkdtempSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { DataSource } from 'typeorm';
+import { EmergencyStopService } from 'src/modules/engine';
 import { EngineBusyGate } from 'src/modules/studio-core';
 import { buildStudio, type Studio } from 'src/testing/studioHarness';
 import { createTestDataSource } from 'src/testing/testDataSource';
@@ -155,6 +156,25 @@ describe('OcrService', () => {
     open();
     expect((await service.detail(created.id)).status).toBe('cancelled');
     expect(gate.busy).toBe(false);
+  });
+
+  it('ends every reading, waiting or running, on the emergency stop', async () => {
+    const emergency = new EmergencyStopService();
+    const store = new OcrStoreService(dataSource.getRepository(OcrDocumentEntity), dataSource.getRepository(OcrPageEntity));
+    const stoppable = new OcrQueueService(store, client as never, gate, s.queue, s.events, emergency);
+    const svc = new OcrService(store, stoppable, { catalog: async () => ({ ocr: { default_model_id: MODEL.id }, models }) } as never, s.events);
+    let open!: () => void;
+    client.hold = new Promise<void>((resolve) => { open = resolve; });
+    const running = await svc.create({ filePath: file('a.pdf'), originalName: 'a.pdf' }, true);
+    await waitFor(async () => client.requests.length === 1);
+    const waiting = await svc.create({ filePath: file('b.pdf'), originalName: 'b.pdf' }, true);
+    await emergency.announce();
+    await waitFor(async () => (await svc.detail(running.id)).status === 'cancelled');
+    open();
+    expect(await svc.detail(waiting.id)).toMatchObject({ status: 'cancelled' });
+    expect(client.requests).toHaveLength(1);
+    expect(gate.busy).toBe(false);
+    stoppable.onModuleDestroy();
   });
 
   it('cancels a reading that is still waiting', async () => {

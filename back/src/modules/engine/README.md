@@ -20,6 +20,7 @@ Application module (not a shared module); wired in `modules/app/AppModule.ts`, `
 | `EngineClient` | `services/EngineClient.ts` | Typed client (`get/post/put/patch/delete/request`, `openEventStream`, `buildUrl`, `authHeaders`). |
 | `EngineError`, `EngineUnavailableError` | `services/EngineError.ts` | Non-2xx response (`status`, FastAPI `detail`) / engine unreachable or timed out. |
 | `EngineEventRelay` | `services/EngineEventRelay.ts` | Subscription to `/engine/v1/events` with reconnection; relays to `EventStreamService`; server stream `events$`. |
+| `EmergencyStopService` | `services/EmergencyStopService.ts` | Lets the generation queue and the OCR queue register what they do on the emergency stop (empty their waiting line); `HardwareService.emergencyStop` announces it, then asks the engine. Exported; global module. |
 | `SseParser` | `services/sseParser.ts` | Incremental parser of an SSE stream (`event:` / `data:` frames). Exported: the response client of the `chat` module (`EngineLlmClient`) reads the `POST /engine/v1/llm/chat` stream with it. |
 | `EngineHealthContributor` | `services/EngineHealthContributor.ts` | The `engine` contribution to `GET /api/v1/health`. |
 | `engineErrorToHttp` | `services/engineHttpError.ts` | Engine error to HTTP error of a Nest route (status and message relayed; unreachable: 502). |
@@ -102,6 +103,7 @@ engine event publishes on `EventStreamService`:
 | `engine.setup.progress` | `setup.progress` | `SetupState`: `state`, `model_id`, `steps[]` (`kind` base/engine/model, `state`), `current`, `message`, `detail`, `done`, `total`, `rate`, `eta`, `error` | during the installation of what a model requires (one run: base data, engine, model); the current state is replayed at each connection |
 | `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, the chat engine): same shape as `engine.engine.install` | during the installation; the current state is replayed at each connection |
 | `engine.llm.status` | `llm.status` | `LlmStatus`: `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | at each state change of the chat model; replayed at each connection |
+| `engine.memory.sample` | `memory.sample` | `MemoryLive` (see `hardware`): memory, models held, ceiling, what runs | every 2 s while the engine runs (`emergency.monitor`) |
 | `engine.ocr.status` | `ocr.status` | same shape as `llm.status`, for the OCR model's own server | at each state change of the OCR model; replayed at each connection |
 | `engine.models.changed` | `models.changed` | `{}` | end of the PyTorch probe at startup, of a download, of a deletion, of adding or removing a custom model, of a pack or engine (un)installation: the catalogue and `/api/system` must be re-read |
 

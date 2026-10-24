@@ -38,6 +38,28 @@ export interface SystemInfo {
   pack_install: Record<string, unknown>;
 }
 
+/** `GET /api/memory` and the `memory.sample` event (`engine/app/emergency.py` `live`): memory as Activity Monitor reads it, the models held, what runs. */
+export interface MemoryLive {
+  total_gb: number;
+  used_gb: number;
+  used_pct: number;
+  free_gb: number;
+  /** macOS only: what the used part is made of (GB). */
+  breakdown: { app: number; wired: number; compressed: number; cached: number } | null;
+  swap_used_gb: number;
+  swap_total_gb: number;
+  pressure: 'normal' | 'warning' | 'critical';
+  source: 'vm_stat' | 'psutil';
+  budget: { ceiling_gb: number; used_gb: number; models: { model_id: string; name: string; gb: number }[] };
+  activity: { working: boolean; queued: number; loaded: number; can_stop: boolean };
+}
+
+/** `POST /api/engine/emergency-stop`: what was killed and how many waiting jobs were cancelled. */
+export interface EmergencyStopResult {
+  stopped: string[];
+  cancelled: number;
+}
+
 /** `GET /api/status`: the generation worker (one model loaded at a time). */
 export interface EngineStatus {
   state: 'idle' | 'loading' | 'ready' | 'busy';

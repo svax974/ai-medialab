@@ -155,6 +155,12 @@ class MemoryWatchdog:
             return {"min_free_gb": round(free, 1) if free != float("inf") else round(self.read_available(), 1),
                     "peak_worker_gb": round(self._stats["peak_rss"], 1)}
 
+    def stop_process(self, pid: int, reason: str) -> None:
+        """Kills a process tree on purpose (the emergency stop) and records why, so that whoever was waiting for it can say so."""
+        with self._lock:
+            self._trips[pid] = reason
+        kill_tree(pid)
+
     def check(self, pid: int, tick: int = 0) -> str | None:
         """One reading for worker `pid`; kills it and returns the reason when the machine is at risk."""
         free = self.read_available()

@@ -13,6 +13,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
   grouped by period (`Sélectionner` mode: delete several conversations at once), engine card, access to models and settings, "Check for updates" (`Vérifier les mises à jour`) (modal: installed engines then installed models, update per row, per section or global, with progress bars; image / audio / video filter; nothing is updated without a click), dark or light theme.
 - Routes: `/`, `/c/:id`, `/galerie`, `/audio`, `/audio/voix`, `/audio/bibliotheque`, `/video`, `/video/bibliotheque`,
   `/chat`, `/diagrammes`; shortcuts ⌘B, ⌘⇧O, ⌘K, `/`.
+- **Memory gauge** in the left panel: share of memory in use (macOS: as Activity Monitor counts it, app + wired + compressed, never the file cache), system pressure, swap, the models held against the ceiling, updated every 2 s by the engine; **emergency stop** button (with confirmation) that cancels what is queued and kills the running generation, chat and OCR processes to give the memory back. **Unverified** on a real runaway.
 - Subscription to the event stream and translation into cache updates (TanStack Query); fallback to reloading when the
   stream is cut.
 - "Camera darkroom" theme (`front/src/themes/chambre-noire/`): dark "warm black / inactinic red" by default, light

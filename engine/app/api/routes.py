@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .. import audio_packs, memory_budget
+from .. import audio_packs, emergency, memory_budget
 from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
@@ -204,6 +204,18 @@ async def remove_custom_model(model_id: str) -> dict[str, Any]:
 @router.get("/status")
 def engine_status() -> dict[str, Any]:
     return jobs.status()
+
+
+@router.get("/memory")
+async def live_memory() -> dict[str, Any]:
+    """Memory of the machine (as Activity Monitor reads it on macOS), the models held, the ceiling, and what is running."""
+    return await asyncio.to_thread(emergency.live)
+
+
+@router.post("/engine/emergency-stop")
+async def emergency_stop() -> dict[str, Any]:
+    """Kills every model process (generation worker, chat and OCR servers) and cancels the queued jobs, at once."""
+    return await emergency.stop_everything()
 
 
 @router.post("/engine/unload")

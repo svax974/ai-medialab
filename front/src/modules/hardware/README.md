@@ -16,7 +16,9 @@ dialog (H4.2, module `model-catalog`) mounts `MachineCard`/`StoragePaths`, the e
 hardware/
   index.ts                     exports
   types.ts                     SystemInfo (+ engines, packs, pack_install), Accelerator, UnusableGpu, EngineStatus, EngineInfo, PackInfo, installation states
-  services/hardwareApi.ts      system(refresh), status(), unload()
+  services/hardwareApi.ts      system(refresh), status(), memory(), emergencyStop(), unload()
+  components/MemoryMeter.tsx   gauge of the left panel: share in use, pressure, swap, models against their ceiling, emergency stop (confirmation dialog)
+  hooks/useMemoryFeed.ts       one read, then the `engine.memory.sample` events (no polling); state/memoryStore.ts; lib/memoryGauge.ts (tone, thresholds)
   hooks/useHardware.ts         useSystemInfo({ enabled, pollMs }), useEngineStatus(), useUnloadEngine()
   lib/hardwareKeys.ts          TanStack Query keys: ['system'], ['engine-status']
   lib/machine.ts               formatGb (exported), gpuKind, isDiskLow (pure, tested)

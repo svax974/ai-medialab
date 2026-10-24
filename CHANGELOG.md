@@ -12,6 +12,7 @@ of its GitHub release (`.github/workflows/release.yml`).
   DeepSeek-OCR, dots.ocr, Qianfan-OCR, Qwen3-VL 2B, or any OCR GGUF found on Hugging Face), with a card of strengths and limits per
   model, tasks (text, Markdown, table, formula, chart, free instruction), export as Markdown, text or JSON, and an
   "Extract the text" button in the viewer. Unverified with a real model.
+- Memory gauge in the left panel (share in use as Activity Monitor counts it on macOS, pressure, swap, models held) and an emergency stop button that kills the running jobs and models.
 - Setting "Memory ceiling for models" (Settings → General): several models can stay loaded together (generation, chat, OCR) under one
   ceiling, 80 % of the machine by default; the least recently used idle model is unloaded when a new one does not fit.
 

@@ -6,7 +6,7 @@
 import { tr } from 'src/modules/i18n';
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Observable, Subject, Subscription, filter } from 'rxjs';
-import { EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError } from 'src/modules/engine';
+import { EmergencyStopService, EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError } from 'src/modules/engine';
 import { AssetEntity, AssetFileService, AssetService, StudioEvents, nowSeconds } from 'src/modules/media-library';
 import { MessageEntity, MessageStatus } from '../entities/MessageEntity';
 import { mergeProgress, outputToAssetInput, previewToProgress, toBrowserProgress, type ProgressState } from '../mappers/jobEventMapper';
@@ -62,6 +62,8 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     private readonly events: StudioEvents,
     /** Held while a chat reply runs: no job is handed to the engine meanwhile (it would answer 409). */
     @Optional() private readonly gate?: EngineBusyGate,
+    /** The emergency stop empties the waiting line first, so that nothing starts again once the engine killed its worker. */
+    @Optional() private readonly emergency?: EmergencyStopService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -72,6 +74,10 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       this.relay.linkChanges$.pipe(filter((connected) => connected)).subscribe(() => this.serial(() => this.reconcile())),
     );
     if (this.gate) this.subscriptions.push(this.gate.released$.subscribe(() => this.serial(() => this.pump())));
+    if (this.emergency) {
+      const off = this.emergency.onStop(() => this.cancelWaiting());
+      this.subscriptions.push({ unsubscribe: off } as Subscription);
+    }
     if (this.relay.connected) this.serial(() => this.reconcile());
   }
 
@@ -150,6 +156,13 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       }
       throw error;
     }
+  }
+
+  /** Cancels every message still waiting (not the running one: the engine ends it). Returns how many. */
+  async cancelWaiting(): Promise<number> {
+    const ids = this.pending.map((entry) => entry.messageId);
+    for (const id of ids) await this.cancel(id);
+    return ids.length;
   }
 
   /** Runs `task` after the previous one: events and submissions never interleave. Errors are logged, never thrown. */

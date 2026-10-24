@@ -2293,6 +2293,27 @@
         ]
       }
     },
+    "/engine/v1/engine/emergency-stop": {
+      "post": {
+        "description": "Kills every model process (generation worker, chat and OCR servers) and cancels the queued jobs, at once.",
+        "operationId": "emergency_stop_engine_v1_engine_emergency_stop_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Emergency Stop Engine V1 Engine Emergency Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Emergency Stop"
+      }
+    },
     "/engine/v1/engine/unload": {
       "post": {
         "operationId": "unload_engine_engine_v1_engine_unload_post",
@@ -3212,6 +3233,27 @@
         "tags": [
           "voices"
         ]
+      }
+    },
+    "/engine/v1/memory": {
+      "get": {
+        "description": "Memory of the machine (as Activity Monitor reads it on macOS), the models held, the ceiling, and what is running.",
+        "operationId": "live_memory_engine_v1_memory_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Live Memory Engine V1 Memory Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Live Memory"
       }
     },
     "/engine/v1/models": {

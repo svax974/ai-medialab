@@ -91,6 +91,30 @@ export interface MemoryBudget {
   models: { model_id: string; name: string; gb: number }[]
 }
 
+/** `GET /api/memory` and the `engine.memory.sample` event: memory as Activity Monitor reads it (macOS), the models held, what runs. */
+export interface MemoryLive {
+  total_gb: number
+  used_gb: number
+  used_pct: number
+  free_gb: number
+  /** macOS only: what the used part is made of (GB). */
+  breakdown: { app: number; wired: number; compressed: number; cached: number } | null
+  swap_used_gb: number
+  swap_total_gb: number
+  /** The system's own verdict (macOS memory pressure level; elsewhere the share in use stands in). */
+  pressure: 'normal' | 'warning' | 'critical'
+  source: 'vm_stat' | 'psutil'
+  /** Ceiling for the models loaded together and what they take. */
+  budget: { ceiling_gb: number; used_gb: number; models: { model_id: string; name: string; gb: number }[] }
+  activity: { working: boolean; queued: number; loaded: number; can_stop: boolean }
+}
+
+/** `POST /api/engine/emergency-stop`. */
+export interface EmergencyStopResult {
+  stopped: string[]
+  cancelled: number
+}
+
 /** `GET /api/status`: the generation worker (one model loaded at a time). */
 export interface EngineStatus {
   state: 'idle' | 'loading' | 'ready' | 'busy'

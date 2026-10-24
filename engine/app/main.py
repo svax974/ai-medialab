@@ -28,6 +28,7 @@ from .api.updates import updates_router
 from .api.voice_media import voice_media_router
 from .config import MEDIA_DIRS, PRIVATE_DIR, ensure_dirs
 from .downloads import downloads
+from .emergency import monitor as memory_monitor
 from .events import bus
 from .jobs import jobs
 from .llm import llm, ocr_llm
@@ -44,7 +45,9 @@ async def lifespan(app: FastAPI):
     await jobs.start()
     await llm.start()
     await ocr_llm.start()
+    monitor = asyncio.create_task(memory_monitor())
     yield
+    monitor.cancel()
     await downloads.shutdown()
     await llm.shutdown()
     await ocr_llm.shutdown()
