@@ -6,6 +6,16 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+### Added
+
+- Share button on images, diagrams, videos and sounds (tiles, viewer, audio takes): the system share sheet attaches the file itself
+  (Mail, Messages, WhatsApp, X, Facebook, Instagram when installed); without it, Mail / WhatsApp / iMessage (Apple) / X open with the
+  prompt as text.
+
+### Fixed
+
+- Sidebar wider, footer content wraps; the disk-space error separates permanent and temporary space for locally quantized models.
+
 ## [0.1.2] - 2026-10-24
 
 ### Added

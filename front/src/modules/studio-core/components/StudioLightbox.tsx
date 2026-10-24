@@ -25,6 +25,7 @@ import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { useLang, useT } from '@/modules/studio-shell/hooks/useT'
 import { useDeleteAsset, useToggleFavorite } from '../hooks/useAssetActions'
 import { copyText, downloadAsset } from '../lib/clipboard'
+import { ShareButton } from './ShareButton'
 import { addAsReference } from '../lib/draftActions'
 import { viewerActionsMode } from '../lib/viewerActionsMode'
 import { assetModelId, assetPrompt, viewerDetails } from '../lib/viewerDetails'
@@ -174,6 +175,7 @@ export function StudioLightbox({ modeActions, imageActions: ImageActions }: { mo
             <TipIconButton labelId="thread.tile.download" onClick={() => downloadAsset(asset)} sx={{ color: 'inherit' }}>
               <FileDownloadOutlined fontSize="small" />
             </TipIconButton>
+            <ShareButton asset={asset} size="medium" iconSize={20} sx={{ color: 'inherit' }} />
           </>
         )
       }}

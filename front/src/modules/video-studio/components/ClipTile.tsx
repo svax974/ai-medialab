@@ -14,6 +14,7 @@ import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { useToggleFavorite } from '@/modules/studio-core'
 import { downloadAsset } from '@/modules/studio-core/lib/clipboard'
+import { ShareButton } from '@/modules/studio-core/components/ShareButton'
 import type { Asset } from '@/modules/studio-core'
 import { useVideoInputs } from '../hooks/useVideoInputs'
 import { assetRatio } from '../lib/clips'
@@ -43,6 +44,7 @@ export function ClipActions({ asset, onOpen }: { asset: Asset; onOpen?: () => vo
         <TipIconButton labelId="videoStudio.clip.download" tone="default" size="small" onClick={() => downloadAsset(asset)} sx={glass}>
           <FileDownloadOutlined sx={{ fontSize: 16 }} />
         </TipIconButton>
+        <ShareButton asset={asset} tone="default" sx={glass} />
         {onOpen && (
           <TipIconButton labelId="thread.tile.enlarge" tone="default" size="small" onClick={onOpen} sx={glass}>
             <OpenInFullRounded sx={{ fontSize: 16 }} />

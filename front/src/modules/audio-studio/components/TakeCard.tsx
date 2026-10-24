@@ -15,8 +15,9 @@ import { formatClock } from '@/modules_shared/common/components/ui/progress'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { useToggleFavorite, type Asset } from '@/modules/studio-core'
+import { ShareButton } from '@/modules/studio-core/components/ShareButton'
 import { downloadTake } from '../hooks/useTakeActions'
-import { isFreshTake, markerPosition, speakerColors, takeLabel, takeMeta, type TakeLabelPart } from '../lib/takes'
+import { audioDownloadName, isFreshTake, markerPosition, speakerColors, takeLabel, takeMeta, type TakeLabelPart } from '../lib/takes'
 import { RateMenu } from './RateMenu'
 import { TakeMenu } from './TakeMenu'
 
@@ -78,6 +79,7 @@ export function TakeCard({ asset, index = 0, total = 1, compact = false }: { ass
         <TipIconButton labelId="audioStudio.take.download" size="small" onClick={() => downloadTake(asset)} sx={{ width: 28, height: 28 }}>
           <DownloadRounded sx={{ fontSize: 14 }} />
         </TipIconButton>
+        <ShareButton asset={asset} fileName={audioDownloadName(asset)} iconSize={14} sx={{ width: 28, height: 28 }} />
         <TakeMenu asset={asset} />
       </Box>
     </Box>

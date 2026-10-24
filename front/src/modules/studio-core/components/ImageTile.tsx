@@ -16,6 +16,7 @@ import { useToggleFavorite } from '../hooks/useAssetActions'
 import { addAsReference } from '../lib/draftActions'
 import { downloadAsset } from '../lib/clipboard'
 import { assetPrompt } from '../lib/viewerDetails'
+import { ShareButton } from './ShareButton'
 import { ASSET_DRAG_TYPE } from '../lib/assetDrag'
 import type { Asset } from '../types'
 
@@ -36,6 +37,7 @@ export function TileActions({ asset, onOpen }: { asset: Asset; onOpen?: () => vo
         <TipIconButton labelId="thread.tile.download" tone="default" size="small" onClick={() => downloadAsset(asset)} sx={glass}>
           <FileDownloadOutlined sx={{ fontSize: 16 }} />
         </TipIconButton>
+        <ShareButton asset={asset} tone="default" sx={glass} />
         {onOpen && (
           <TipIconButton labelId="thread.tile.enlarge" tone="default" size="small" onClick={onOpen} sx={glass}>
             <OpenInFullRounded sx={{ fontSize: 16 }} />

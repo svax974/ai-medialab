@@ -33,7 +33,7 @@ studio-core/
   lib/viewerActionsMode.ts         mode whose viewer actions apply to an asset (tested)
   lib/draftActions.ts              actions on the draft: use as reference, reuse a prompt, reuse settings (tested)
   lib/scroll.ts                    thread scrolling, title editing (tested)
-  lib/format.ts, clipboard.ts, assetDrag.ts, studioKeys.ts, modeAdapter.ts
+  lib/format.ts, clipboard.ts, share.ts, assetDrag.ts, studioKeys.ts, modeAdapter.ts
   state/liveStore.ts               live progress per message (Zustand)
   state/queueStore.ts              generation queue (current message, pending messages), kept up to date by studio.queue.updated (Zustand)
   (lightboxStore: moved to `media-library`, the gallery opens the same viewer)
@@ -120,6 +120,7 @@ model's remark (`Ce modèle : …` (this model: …), written by the engine, hen
 | `components/Message.tsx`: `UserMessage` | `components/UserMessage` |
 | `Message.tsx`: `AssistantMessage`, `StatusLine`, `MessageFooter` | `components/AssistantMessage`, `StatusLine`, `MessageFooter`, `lib/messageState` |
 | `Message.tsx`: `ImageTile`, `TileActions`, `DevelopingTile` | `components/ImageTile` |
+| `ShareButton` (tiles, viewer, clips, audio takes) | `lib/share`: system share sheet when the window has one (attaches the file), else Mail / WhatsApp / iMessage (Apple only) / X links with the prompt as text; Facebook and Instagram only through the sheet (no link carries a local file) |
 | `Message.tsx`: `copy`, `download` | `lib/clipboard` (`copyText`, `downloadAsset`), `lib/messageState` (`downloadName`) |
 | `components/EngineCard.tsx` | `components/EngineCard`, `lib/engineState` (`useNow`: `hooks/useNow`) |
 | `components/Lightbox.tsx` | `components/StudioLightbox` on the `Lightbox` of `common`; the action bar specific to a mode (video: source, last frame, start image) is provided by `modeActions` (`StudioShell` passes `VideoViewerActions`) |
