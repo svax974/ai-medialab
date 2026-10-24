@@ -177,27 +177,27 @@ class TestEngines:
     def test_a_build_older_than_the_pin_is_an_update(self, tmp_path, monkeypatch):
         self.sdcpp_build(tmp_path, monkeypatch, "master-900-abc")
         monkeypatch.delenv("IMAGEGEN_SDCPP_TAG", raising=False)
-        row = updates._sdcpp_rows(lambda repo: "master-999-zzz")[0]
+        row = updates._sdcpp_rows(lambda repo: "master-1100-zzz")[0]
         assert row["state"] == "update" and row["installed"] == "master-900-abc"
-        assert row["target"] == engine_install.PINNED_TAG and row["upstream"] == "master-999-zzz" and row["variant"] == "metal"
+        assert row["target"] == engine_install.PINNED_TAG and row["upstream"] == "master-1100-zzz" and row["variant"] == "metal"
 
     def test_the_pinned_build_is_current_and_a_newer_upstream_one_is_offered_as_latest(self, tmp_path, monkeypatch):
         self.sdcpp_build(tmp_path, monkeypatch, engine_install.PINNED_TAG)
         monkeypatch.delenv("IMAGEGEN_SDCPP_TAG", raising=False)
-        row = updates._sdcpp_rows(lambda repo: "master-999-zzz")[0]
-        assert row["state"] == "current" and row["upstream"] == "master-999-zzz"
-        assert row["latest"] == {"tag": "master-999-zzz", "regressions": []} and row["advice"] is None
+        row = updates._sdcpp_rows(lambda repo: "master-1100-zzz")[0]
+        assert row["state"] == "current" and row["upstream"] == "master-1100-zzz"
+        assert row["latest"] == {"tag": "master-1100-zzz", "regressions": []} and row["advice"] is None
 
     def test_an_older_build_gets_both_the_tested_update_and_the_latest(self, tmp_path, monkeypatch):
         self.sdcpp_build(tmp_path, monkeypatch, "master-900-abc")
         monkeypatch.delenv("IMAGEGEN_SDCPP_TAG", raising=False)
-        row = updates._sdcpp_rows(lambda repo: "master-999-zzz")[0]
-        assert row["state"] == "update" and row["target"] == engine_install.PINNED_TAG and row["latest"]["tag"] == "master-999-zzz"
+        row = updates._sdcpp_rows(lambda repo: "master-1100-zzz")[0]
+        assert row["state"] == "update" and row["target"] == engine_install.PINNED_TAG and row["latest"]["tag"] == "master-1100-zzz"
 
     def test_a_build_newer_than_the_pin_is_not_downgraded_and_has_no_latest_when_it_is_the_upstream_one(self, tmp_path, monkeypatch):
-        self.sdcpp_build(tmp_path, monkeypatch, "master-999-zzz")
+        self.sdcpp_build(tmp_path, monkeypatch, "master-1100-zzz")
         monkeypatch.delenv("IMAGEGEN_SDCPP_TAG", raising=False)
-        row = updates._sdcpp_rows(lambda repo: "master-999-zzz")[0]
+        row = updates._sdcpp_rows(lambda repo: "master-1100-zzz")[0]
         assert row["state"] == "current" and row["latest"] is None and row["rollback"] is True  # may go back to the pin
 
     def test_a_build_older_than_the_pin_cannot_roll_back(self, tmp_path, monkeypatch):

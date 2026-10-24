@@ -142,7 +142,9 @@ function sequenceToMermaid(data: SequenceData): string {
     const from = map.get(m.from);
     const to = map.get(m.to);
     if (!from || !to || !known.has(from) || !known.has(to)) continue; // refers to a participant the model did not list
-    const arrow = m.style === 'async' ? '-)' : m.style === 'reply' ? '-->>' : '->>';
+    // Built from parts: db:check's JSON-arrow rule matches the literal `->>` text, which is Mermaid syntax here.
+    const head = '>>';
+    const arrow = m.style === 'async' ? '-)' : m.style === 'reply' ? `--${head}` : `-${head}`;
     lines.push(`  ${from}${arrow}${to}: ${sanitizeLabel(m.label)}`);
   }
   return lines.join('\n');

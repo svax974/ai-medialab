@@ -19,7 +19,7 @@ from app.main import app  # noqa: E402
 TOKEN = "s3cret-token"
 URL = "/engine/v1/runtime/settings"
 PUSH = {"keep_alive_minutes": 30, "previews": False, "low_memory": False, "hf_token": "  hf_abc  ",
-        "quantize": {"qwen-image-edit": 4}, "variant": {"wan-2.2-ti2v-5b": "Q8_0"}}
+        "quantize": {"kokoro-82m": 4}, "variant": {"wan-2.2-ti2v-5b": "Q8_0"}}
 
 
 @pytest.fixture()
@@ -60,7 +60,7 @@ def test_response_never_carries_the_token(client):
 def test_unknown_variant_and_quantization_are_422_and_nothing_applies(client):
     assert client.put(URL, json={**PUSH, "variant": {"nope": "Q4"}}).status_code == 422
     assert client.put(URL, json={**PUSH, "variant": {"wan-2.2-ti2v-5b": "zzz"}}).status_code == 422
-    assert client.put(URL, json={**PUSH, "quantize": {"qwen-image-edit": 7}}).status_code == 422
+    assert client.put(URL, json={**PUSH, "quantize": {"kokoro-82m": 7}}).status_code == 422
     assert not runtime_settings.received()
 
 
