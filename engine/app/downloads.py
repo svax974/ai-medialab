@@ -94,9 +94,16 @@ class DownloadManager:
         need_gb = need_gb if need_gb is not None else status["need_gb"]
         free_gb = get_system()["disk"]["free_gb"]
         if need_gb and free_gb < need_gb + 1:
+            where = get_system()["paths"]["models"]
+            temp_gb = 0.0 if refresh else status.get("temp_gb", 0.0)
+            if temp_gb > 0:  # a model quantized locally: the original is downloaded first, then removable
+                raise RuntimeError(
+                    f"Espace disque insuffisant : il faut environ {need_gb:.0f} Go ({need_gb - temp_gb:.0f} Go définitifs + "
+                    f"{temp_gb:.0f} Go temporaires pour le modèle d'origine, à quantifier puis supprimable) et "
+                    f"{free_gb:.0f} Go sont libres ({where})."
+                )
             raise RuntimeError(
-                f"Espace disque insuffisant : il faut environ {need_gb:.0f} Go et {free_gb:.0f} Go sont libres "
-                f"({get_system()['paths']['models']})."
+                f"Espace disque insuffisant : il faut environ {need_gb:.0f} Go et {free_gb:.0f} Go sont libres ({where})."
             )
 
         job = DownloadJob(model_id=model_id)

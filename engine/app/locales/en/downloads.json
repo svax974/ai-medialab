@@ -3,6 +3,7 @@
   "Ce modèle n'a rien à télécharger.": "This model has nothing to download.",
   "Un autre téléchargement est déjà en cours.": "Another download is already in progress.",
   "Espace disque insuffisant : il faut environ {} Go et {} Go sont libres ({}).": "Not enough disk space: about {} GB needed and {} GB free ({}).",
+  "Espace disque insuffisant : il faut environ {} Go ({} Go définitifs + {} Go temporaires pour le modèle d'origine, à quantifier puis supprimable) et {} Go sont libres ({}).": "Not enough disk space: about {} GB needed ({} GB permanent + {} GB temporary for the original model, which is quantized and can then be deleted) and {} GB free ({}).",
   "Ce modèle n'a rien à supprimer.": "This model has nothing to delete.",
   "Un téléchargement est en cours pour ce modèle.": "A download is in progress for this model.",
   "Ce modèle n'a pas de version quantifiée : rien à libérer.": "This model has no quantized version: nothing to free.",
