@@ -498,7 +498,7 @@ export interface paths {
         put?: never;
         /**
          * Export Video
-         * @description A light MP4 of a video (smaller, fewer images per second, low bit rate), kept in the `exports` folder and reused while
+         * @description A light MP4 of a video (smaller, fewer images per second, low bit rate) or a looping GIF of its beginning, kept in the `exports` folder and reused while
          *     the source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed.
          */
         post: operations["export_video_engine_v1_media_video_export_post"];
@@ -1773,6 +1773,13 @@ export interface components {
         };
         /** VideoExportBody */
         VideoExportBody: {
+            /**
+             * Format
+             * @description `gif`: a looping GIF of the beginning of the video, without sound.
+             * @default mp4
+             * @enum {string}
+             */
+            format: "mp4" | "gif";
             /**
              * Max Fps
              * @description Images per second at most.

@@ -367,10 +367,9 @@ def export_size(width: int, height: int, short_side: int) -> tuple[int, int]:
     return max(2, round(width * scale / 2) * 2), max(2, round(height * scale / 2) * 2)
 
 
-def export_video(src: Path, dst: Path, short_side: int, max_fps: int) -> dict:
-    """A light MP4 of a video: shorter side at most `short_side`, at most `max_fps` images per second, low bit rate, the
-    audio kept. Frames are shrunk as they are read, so a long clip never sits in memory at full size.
-    Returns {width, height, fps, bytes}."""
+def _shrunk_frames(src: Path, short_side: int, max_fps: int, max_frames: int | None = None) -> tuple[list, int, int, int]:
+    """(frames uint8 [H, W, 3], width, height, fps) of a video with the shorter side at most `short_side` and at most
+    `max_fps` images per second, shrunk as they are read so a long clip never sits in memory at full size."""
     import numpy as np
 
     info = probe_video(src)
@@ -386,12 +385,49 @@ def export_video(src: Path, dst: Path, short_side: int, max_fps: int) -> dict:
             kept += step
             img = frame.to_image().convert("RGB")
             frames.append(np.asarray(img.resize((width, height), Image.Resampling.LANCZOS)))
+            if max_frames and len(frames) >= max_frames:
+                break
     if not frames:
         raise ValueError("Vidéo vide ou illisible.")
+    return frames, width, height, fps
+
+
+def export_video(src: Path, dst: Path, short_side: int, max_fps: int) -> dict:
+    """A light MP4 of a video: shorter side at most `short_side`, at most `max_fps` images per second, low bit rate, the
+    audio kept. Returns {width, height, fps, bytes}."""
+    import numpy as np
+
+    frames, width, height, fps = _shrunk_frames(src, short_side, max_fps)
     audio, rate = read_audio(src)
     tmp = dst.with_name(dst.stem + ".part" + dst.suffix)
     try:
         encode_mp4(np.stack(frames), fps, tmp, audio, rate, light=True)
+        tmp.replace(dst)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return {"width": width, "height": height, "fps": fps, "bytes": dst.stat().st_size}
+
+
+GIF_MAX_FRAMES = 150  # a GIF has no inter-frame compression: a long clip would weigh tens of MB, so only its beginning is kept
+GIF_COLORS = 192
+
+
+def export_gif(src: Path, dst: Path, short_side: int, max_fps: int) -> dict:
+    """An animated GIF (looping) of the beginning of a video, at most `GIF_MAX_FRAMES` images. One palette is computed from
+    frames spread over the clip, so the colors do not flicker from one image to the next. No sound.
+    Returns {width, height, fps, bytes}."""
+    frames, width, height, fps = _shrunk_frames(src, short_side, max_fps, GIF_MAX_FRAMES)
+    images = [Image.fromarray(arr) for arr in frames]
+    sample = [images[round(i * (len(images) - 1) / 7)] for i in range(8)] if len(images) > 8 else images
+    montage = Image.new("RGB", (width, height * len(sample)))
+    for row, img in enumerate(sample):
+        montage.paste(img, (0, row * height))
+    palette = montage.quantize(colors=GIF_COLORS, method=Image.Quantize.MEDIANCUT)
+    quantized = [img.quantize(palette=palette, dither=Image.Dither.FLOYDSTEINBERG) for img in images]
+    tmp = dst.with_name(dst.stem + ".part" + dst.suffix)
+    try:
+        quantized[0].save(tmp, format="GIF", save_all=True, append_images=quantized[1:], duration=round(1000 / fps),
+                          loop=0, disposal=1, optimize=False)
         tmp.replace(dst)
     finally:
         tmp.unlink(missing_ok=True)

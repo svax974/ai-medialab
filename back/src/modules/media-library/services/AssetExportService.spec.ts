@@ -26,8 +26,14 @@ describe('AssetExportService', () => {
     const { service, post } = build(video);
     await expect(service.exportVideo('a1', 'light')).resolves.toEqual({ url: '/media/exports/clip-360p15.mp4', width: 640, height: 360, fps: 15, bytes: 1234 });
     expect(post).toHaveBeenCalledWith('/engine/v1/media/video-export', expect.objectContaining({
-      body: { source_path: '/data/outputs/clip.mp4', short_side: EXPORT_PRESETS.light.shortSide, max_fps: EXPORT_PRESETS.light.maxFps },
+      body: { source_path: '/data/outputs/clip.mp4', short_side: EXPORT_PRESETS.light.shortSide, max_fps: EXPORT_PRESETS.light.maxFps, format: 'mp4' },
     }));
+  });
+
+  it('asks for a GIF with the GIF presets', async () => {
+    const { service, post } = build(video, { filename: 'clip-320p12.gif', width: 568, height: 320, fps: 12, bytes: 99 });
+    await expect(service.exportVideo('a1', 'gif')).resolves.toMatchObject({ url: '/media/exports/clip-320p12.gif' });
+    expect(post).toHaveBeenCalledWith('/engine/v1/media/video-export', expect.objectContaining({ body: expect.objectContaining({ format: 'gif', short_side: 320, max_fps: 12 }) }));
   });
 
   it('refuses an unknown preset, a missing asset and anything but a video', async () => {

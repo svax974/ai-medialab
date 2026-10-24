@@ -45,7 +45,7 @@ export interface AssetListQuery {
 }
 
 /** Weight of the copy of a video made to be sent. */
-export type VideoPreset = 'light' | 'tiny'
+export type VideoPreset = 'light' | 'tiny' | 'gif' | 'gif-tiny'
 
 export interface VideoCopy {
   url: string

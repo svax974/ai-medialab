@@ -1,7 +1,7 @@
 {
   "mediaLibrary.error.booleanExpected": "{0}: boolean expected.",
   "mediaLibrary.error.exportOnlyVideo": "Only a video can be exported in a lighter version.",
-  "mediaLibrary.error.exportPreset": "preset: \"light\" or \"tiny\" expected.",
+  "mediaLibrary.error.exportPreset": "preset: \"light\", \"tiny\", \"gif\" or \"gif-tiny\" expected.",
   "mediaLibrary.error.imageNotFound": "Image not found.",
   "mediaLibrary.error.noFileReceivedMany": "No file received (field \"files\").",
   "mediaLibrary.error.textExpected": "{0}: text expected."

@@ -27,7 +27,7 @@ export const assetsApi = {
   setFavorite(id: string, favorite: boolean): Promise<Asset> {
     return studioRequest<Asset>('patch', `/assets/${encodeURIComponent(id)}`, { favorite })
   },
-  /** A lighter MP4 of a video (`light` ≈ 360p, `tiny` ≈ 240p), made by the engine; `url` is served like an asset's. */
+  /** A lighter MP4 of a video (`light` ≈ 360p, `tiny` ≈ 240p) or an animated GIF (`gif`, `gif-tiny`), made by the engine; `url` is served like an asset's. */
   exportVideo(id: string, preset: VideoPreset): Promise<VideoCopy> {
     return studioRequest<VideoCopy>('post', `/assets/${encodeURIComponent(id)}/export`, { preset })
   },

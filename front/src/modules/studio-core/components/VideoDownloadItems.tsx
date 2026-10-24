@@ -5,6 +5,7 @@
 
 import { ListItemIcon, MenuItem } from '@mui/material'
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
+import GifBoxOutlined from '@mui/icons-material/GifBoxOutlined'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { downloadAsset } from '../lib/clipboard'
 import { downloadVideoCopy } from '../lib/videoCopy'
@@ -28,6 +29,14 @@ export function videoDownloadItems(asset: Asset, t: ReturnType<typeof useT>, clo
     <MenuItem key="tiny" onClick={run(() => void downloadVideoCopy(asset, 'tiny'))} sx={{ gap: 1.25 }}>
       <ListItemIcon sx={{ minWidth: 0 }}><FileDownloadOutlined sx={{ fontSize: 16 }} /></ListItemIcon>
       {t('thread.export.tiny')}
+    </MenuItem>,
+    <MenuItem key="gif" onClick={run(() => void downloadVideoCopy(asset, 'gif'))} sx={{ gap: 1.25 }}>
+      <ListItemIcon sx={{ minWidth: 0 }}><GifBoxOutlined sx={{ fontSize: 16 }} /></ListItemIcon>
+      {t('thread.export.gif')}
+    </MenuItem>,
+    <MenuItem key="gif-tiny" onClick={run(() => void downloadVideoCopy(asset, 'gif-tiny'))} sx={{ gap: 1.25 }}>
+      <ListItemIcon sx={{ minWidth: 0 }}><GifBoxOutlined sx={{ fontSize: 16 }} /></ListItemIcon>
+      {t('thread.export.gifTiny')}
     </MenuItem>,
   ]
 }

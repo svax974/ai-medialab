@@ -18,7 +18,8 @@ export interface VideoCopyFile {
 
 /** File name of a light copy: the name of the original with the preset before the extension. */
 export function videoCopyName(asset: Parameters<typeof downloadName>[0], preset: VideoPreset): string {
-  return downloadName(asset).replace(/\.mp4$/, `-${preset}.mp4`)
+  const extension = preset.startsWith('gif') ? 'gif' : 'mp4'
+  return downloadName(asset).replace(/\.mp4$/, `-${preset}.${extension}`)
 }
 
 /** Has the engine make the light copy of a video (a notice shows while it works). Throws after telling the user. */
@@ -34,7 +35,7 @@ export async function makeVideoCopy(asset: Asset, preset: VideoPreset): Promise<
   }
 }
 
-/** Downloads the light copy of a video. */
+/** Downloads a light copy (MP4 or GIF) of a video. */
 export async function downloadVideoCopy(asset: Asset, preset: VideoPreset): Promise<void> {
   const copy = await makeVideoCopy(asset, preset).catch(() => null)
   if (!copy) return

@@ -46,7 +46,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 - Composer with three slots (source video, start image, end image), duration (up to 20 s on GGUF
   image-to-video models: chained passes whose length follows the memory measured on the machine; see the README), format and definition, settings, seed,
   number of clips (1 to 2), licence and restricted-access notices; clips with a native player and actions (vary, retry,
-  use as source video, **last frame as start**, favourite, download (original or light 360p / 240p copy to send), share); image and video drop; video
+  use as source video, **last frame as start**, favourite, download (original, light 360p / 240p MP4 or animated GIF to send), share); image and video drop; video
   library.
 
 ### `chat`

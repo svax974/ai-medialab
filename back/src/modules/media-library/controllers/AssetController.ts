@@ -77,7 +77,7 @@ export class AssetController {
     return asset;
   }
 
-  /** A lighter MP4 of a video to send (`preset`: `light` or `tiny`), made by the engine and served under `/media/exports/`. */
+  /** A lighter MP4 (`light`, `tiny`) or an animated GIF (`gif`, `gif-tiny`) of a video to send, made by the engine and served under `/media/exports/`. */
   @Post(':id/export')
   @HttpCode(200)
   exportVideo(@Param('id') id: string, @Body() body: { preset?: unknown }): Promise<AssetExportDto> {

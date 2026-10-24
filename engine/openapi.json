@@ -2208,6 +2208,16 @@
       },
       "VideoExportBody": {
         "properties": {
+          "format": {
+            "default": "mp4",
+            "description": "`gif`: a looping GIF of the beginning of the video, without sound.",
+            "enum": [
+              "mp4",
+              "gif"
+            ],
+            "title": "Format",
+            "type": "string"
+          },
           "max_fps": {
             "description": "Images per second at most.",
             "maximum": 30.0,
@@ -3283,7 +3293,7 @@
     },
     "/engine/v1/media/video-export": {
       "post": {
-        "description": "A light MP4 of a video (smaller, fewer images per second, low bit rate), kept in the `exports` folder and reused while\nthe source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed.",
+        "description": "A light MP4 of a video (smaller, fewer images per second, low bit rate) or a looping GIF of its beginning, kept in the `exports` folder and reused while\nthe source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed.",
         "operationId": "export_video_engine_v1_media_video_export_post",
         "requestBody": {
           "content": {

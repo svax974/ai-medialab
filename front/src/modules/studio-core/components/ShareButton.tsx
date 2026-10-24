@@ -16,6 +16,7 @@ import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { downloadName } from '../lib/messageState'
 import { hasSystemShare, loadShareFile, openShareTarget, shareTargets, shareWithSystem, type ShareTargetId } from '../lib/share'
+import type { VideoPreset } from '@/modules/media-library/types'
 import { makeVideoCopy } from '../lib/videoCopy'
 import { assetPrompt } from '../lib/viewerDetails'
 import type { Asset } from '../types'
@@ -69,10 +70,10 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
 
   // The copy is made after the click: the system sheet may refuse it without a fresh user gesture (not verified), in
   // which case the user downloads the light version from the video menu and attaches it.
-  const shareLight = async () => {
+  const shareCopy = async (preset: VideoPreset) => {
     close()
     try {
-      const copy = await makeVideoCopy(asset, 'light')
+      const copy = await makeVideoCopy(asset, preset)
       await shareWithSystem(await loadShareFile(copy.url, copy.name), text)
     } catch {
       toast.error(t('thread.share.failed'))
@@ -92,9 +93,15 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
           </MenuItem>
         )}
         {system && asset.media === 'video' && (
-          <MenuItem onClick={() => void shareLight()} sx={{ gap: 1.25 }}>
+          <MenuItem onClick={() => void shareCopy('light')} sx={{ gap: 1.25 }}>
             <ListItemIcon sx={{ minWidth: 0 }}><IosShareRounded sx={{ fontSize: 16 }} /></ListItemIcon>
             <ListItemText primary={t('thread.share.system.light')} />
+          </MenuItem>
+        )}
+        {system && asset.media === 'video' && (
+          <MenuItem onClick={() => void shareCopy('gif')} sx={{ gap: 1.25 }}>
+            <ListItemIcon sx={{ minWidth: 0 }}><IosShareRounded sx={{ fontSize: 16 }} /></ListItemIcon>
+            <ListItemText primary={t('thread.share.system.gif')} />
           </MenuItem>
         )}
         {system && <Divider sx={{ my: '4px' }} />}

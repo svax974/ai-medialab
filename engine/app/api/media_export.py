@@ -1,16 +1,18 @@
 # Copyright (c) 2026 Stéphane Vaxelaire - Web3c
 # SPDX-License-Identifier: MIT
 
-"""Route only the NestJS server calls (mounted under `/engine/v1` with the token): a lighter copy of a produced video,
-made to be sent by mail or message. The caller owns the assets; the engine only converts a file of the data folder."""
+"""Route only the NestJS server calls (mounted under `/engine/v1` with the token): a lighter copy of a produced video
+(MP4, or a GIF), made to be sent by mail or message. The caller owns the assets; the engine only converts a file of the data folder."""
 
 from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any
+from pathlib import Path
+from typing import Any, Literal
 
 from fastapi import APIRouter, HTTPException
+from PIL import Image
 from pydantic import BaseModel, Field
 
 from .. import config, media
@@ -25,6 +27,7 @@ class VideoExportBody(BaseModel):
     source_path: str = Field(description="Video file inside the data folder; left in place.")
     short_side: int = Field(ge=120, le=1080, description="Shorter side of the copy, in pixels (never above the source's).")
     max_fps: int = Field(ge=4, le=30, description="Images per second at most.")
+    format: Literal["mp4", "gif"] = Field(default="mp4", description="`gif`: a looping GIF of the beginning of the video, without sound.")
 
 
 class VideoExport(BaseModel):
@@ -37,9 +40,19 @@ class VideoExport(BaseModel):
 
 def _prune(keep: str) -> None:
     now = time.time()
-    for entry in config.EXPORTS_DIR.glob("*.mp4"):
+    for entry in (*config.EXPORTS_DIR.glob("*.mp4"), *config.EXPORTS_DIR.glob("*.gif")):
         if entry.name != keep and now - entry.stat().st_mtime > EXPORT_KEEP_SECONDS:
             entry.unlink(missing_ok=True)
+
+
+def _described(target: Path, body: VideoExportBody) -> dict[str, Any]:
+    """Size and weight of a copy made earlier (the frame rate of a GIF is the one asked for)."""
+    if body.format == "gif":
+        with Image.open(target) as gif:
+            width, height = gif.size
+        return {"width": width, "height": height, "fps": body.max_fps, "bytes": target.stat().st_size}
+    info = media.probe_video(target)
+    return {"width": info["width"], "height": info["height"], "fps": round(info["fps"]), "bytes": target.stat().st_size}
 
 
 def _export(body: VideoExportBody) -> dict[str, Any]:
@@ -47,14 +60,14 @@ def _export(body: VideoExportBody) -> dict[str, Any]:
     if not source.is_file():
         raise HTTPException(422, "Fichier introuvable.")
     config.EXPORTS_DIR.mkdir(parents=True, exist_ok=True)
-    name = f"{source.stem}-{body.short_side}p{body.max_fps}.mp4"
+    name = f"{source.stem}-{body.short_side}p{body.max_fps}.{body.format}"
     target = config.EXPORTS_DIR / name
     try:
         if not (target.is_file() and target.stat().st_mtime >= source.stat().st_mtime):
-            result = media.export_video(source, target, body.short_side, body.max_fps)
+            make = media.export_gif if body.format == "gif" else media.export_video
+            result = make(source, target, body.short_side, body.max_fps)
         else:
-            info = media.probe_video(target)
-            result = {"width": info["width"], "height": info["height"], "fps": round(info["fps"]), "bytes": target.stat().st_size}
+            result = _described(target, body)
     except media.FfmpegMissing as exc:
         raise HTTPException(422, str(exc)) from None
     except Exception:
@@ -65,6 +78,6 @@ def _export(body: VideoExportBody) -> dict[str, Any]:
 
 @media_export_router.post("/media/video-export", response_model=VideoExport)
 async def export_video(body: VideoExportBody) -> dict[str, Any]:
-    """A light MP4 of a video (smaller, fewer images per second, low bit rate), kept in the `exports` folder and reused while
+    """A light MP4 of a video (smaller, fewer images per second, low bit rate) or a looping GIF of its beginning, kept in the `exports` folder and reused while
     the source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed."""
     return await asyncio.to_thread(_export, body)
