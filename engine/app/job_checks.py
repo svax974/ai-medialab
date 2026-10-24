@@ -24,6 +24,8 @@ def check_generation(model_id: str, reference_media: list[str]) -> dict[str, Any
         raise ValueError(str(exc)) from None
     if spec.kind == "llm":
         raise ValueError(f"{spec.name} est un modèle de chat : il ne génère ni image, ni audio, ni vidéo.")
+    if spec.kind == "ocr":
+        raise ValueError(f"{spec.name} est un modèle de lecture de texte : il ne génère ni image, ni audio, ni vidéo.")
     if spec.kind == "diagram":
         # Diagram models never go through the media job queue: they answer one-shot structured-JSON requests
         # (`POST /api/diagrams/generate`, see `back/src/modules/diagrams`), and have no `engine` class to load here.

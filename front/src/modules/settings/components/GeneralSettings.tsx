@@ -13,6 +13,7 @@ import { ChatVoiceField } from './ChatVoiceField'
 import { HfTokenField } from './HfTokenField'
 import { KeepAliveControl } from './KeepAliveControl'
 import { LanguageField } from './LanguageField'
+import { MemoryLimitField } from './MemoryLimitField'
 import { SectionText, SectionTitle, SwitchRow } from './SettingsSection'
 
 function ShortcutList() {
@@ -74,6 +75,7 @@ export function GeneralSettings() {
             </Box>
             <KeepAliveControl value={settings.keep_alive_minutes} onChange={(minutes) => save.mutate({ keep_alive_minutes: minutes })} />
           </section>
+          <MemoryLimitField />
           <SwitchRow
             title={t('settings.previews.title')}
             description={t('settings.previews.description')}

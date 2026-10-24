@@ -43,7 +43,7 @@ class ParamSpec:
 
 
 Backend = Literal["mlx", "torch", "sdcpp", "llamacpp", "pack", "demo"]
-Kind = Literal["image", "audio", "video", "llm", "diagram"]
+Kind = Literal["image", "audio", "video", "llm", "diagram", "ocr"]
 
 
 @dataclass
@@ -134,6 +134,28 @@ class LlmCaps:
 
 
 @dataclass
+class OcrCaps:
+    """What the OCR tab can offer for a text-reading model (a vision model run by llama.cpp, see `llm.py`).
+
+    `tasks` maps a task id (`text`, `markdown`, `table`, `formula`, `chart`) to the exact prompt the model was trained on; an
+    empty prompt means the model reads the image alone. A model that follows any instruction (`free_prompt`) also takes the
+    user's own. `strengths` and `weaknesses` are shown on the model's card, so that the choice is informed."""
+
+    tasks: dict[str, str] = field(default_factory=dict)
+    default_task: str = "text"
+    free_prompt: bool = False
+    languages: str = ""
+    strengths: list[str] = field(default_factory=list)
+    weaknesses: list[str] = field(default_factory=list)
+    # Longest answer for one page: a model that loops on a hard page is cut there.
+    max_tokens: int = 8192
+    # Sampling the model's authors recommend (OCR is read, not written: no randomness).
+    sampling: dict[str, float] = field(default_factory=lambda: {"temperature": 0.0})
+    # Markers the model adds around its text (grounding boxes...), removed from the answer (regular expressions).
+    strip: list[str] = field(default_factory=list)
+
+
+@dataclass
 class HfSource:
     """A Hugging Face repo (or part of one) a model depends on, or a locally produced artifact (`kind="derived"`):
     weights quantized once from such a repo and saved under `DERIVED_DIR`, never re-derived at load time."""
@@ -202,11 +224,12 @@ class ModelSpec:
     precision: str = ""
     # Added by the user from Hugging Face (see engines/custom.py).
     custom: bool = False
-    # "image" (image generation), "audio" (TTS, transcription), "video" or "llm" (chat).
+    # "image" (image generation), "audio" (TTS, transcription), "video", "llm" (chat), "diagram" or "ocr" (text reading).
     kind: Kind = "image"
     audio: AudioCaps | None = None
     video: VideoCaps | None = None
     llm: LlmCaps | None = None
+    ocr: OcrCaps | None = None
     # Engine-specific options (pipeline class, argument names...).
     options: dict[str, Any] = field(default_factory=dict)
     # Models spread over several repos (e.g. GGUF + encoder + VAE); takes precedence over hf_repo.

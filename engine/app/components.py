@@ -171,9 +171,9 @@ def in_use(component_id: str) -> str | None:
     """Why the component cannot be removed right now (French), or None: a model of it is loaded, or it is installing."""
     from .engine_install import installer as sdcpp_installer
     from .jobs import jobs
-    from .llm import llm
+    from .llm import managers
 
-    if component_id == LLAMACPP and llm.server is not None and llm.server.alive:
+    if component_id == LLAMACPP and any(m.server is not None and m.server.alive for m in managers()):
         return "Le moteur de chat est en cours d'utilisation : déchargez le modèle d'abord."
     if jobs.worker and jobs.worker.alive:
         from .engines import get_spec

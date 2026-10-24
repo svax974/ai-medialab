@@ -1,0 +1,13 @@
+{
+  "« {} » n'est pas un modèle de lecture de texte.": "\"{}\" is not a text-reading model.",
+  "« {} » ne suit pas de consigne libre : choisissez l'une de ses tâches.": "\"{}\" does not follow free instructions: choose one of its tasks.",
+  "La consigne est vide.": "The instruction is empty.",
+  "« {} » ne propose pas la tâche « {} ».": "\"{}\" does not offer the task \"{}\".",
+  "PDF refusé : plus de 200 Mo.": "PDF refused: over 200 MB.",
+  "Format non pris en charge : image (png, jpg, webp, gif) ou PDF.": "Unsupported format: image (png, jpg, webp, gif) or PDF.",
+  "PDF illisible (abîmé ou protégé par un mot de passe).": "Unreadable PDF (damaged or password-protected).",
+  "Page hors du document ({} pages) : {}.": "Page outside the document ({} pages): {}.",
+  "Aucune page à lire.": "No page to read.",
+  "{} pages au plus par lecture.": "At most {} pages per reading.",
+  "Une image n'a qu'une page.": "An image has only one page."
+}

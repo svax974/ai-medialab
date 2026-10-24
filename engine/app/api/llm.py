@@ -31,7 +31,7 @@ from pydantic import BaseModel, Field
 from .. import llamacpp
 from ..events import bus
 from ..i18n import localize
-from ..llm import LlmError, llm
+from ..llm import LlmError, llm, ocr_llm
 
 llm_router = APIRouter(prefix="/llm", tags=["llm"])
 llamacpp_router = APIRouter(prefix="/engines/llamacpp", tags=["llm"])
@@ -170,7 +170,7 @@ async def cancel_runtime_install() -> dict[str, Any]:
 @llamacpp_router.delete("")
 async def uninstall_runtime() -> dict[str, Any]:
     """Removes llama.cpp (409 while the chat model is loaded or an install runs)."""
-    if llm.server is not None and llm.server.alive:
+    if any(m.server is not None and m.server.alive for m in (llm, ocr_llm)):
         raise HTTPException(409, "Le moteur de chat est en cours d'utilisation : déchargez le modèle d'abord.")
     if llamacpp.installer.running:
         raise HTTPException(409, "Une installation est en cours.")

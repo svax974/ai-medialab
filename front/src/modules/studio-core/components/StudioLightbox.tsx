@@ -144,10 +144,10 @@ export type ViewerModeActions = Partial<Record<StudioMode, ComponentType<{ asset
 
 /**
  * The media viewer (common `Lightbox`) wired to the studio: use as reference (or, in a mode that has its own actions, those),
- * favorite (`F`), download, details panel (`I`) with prompt, model, size, seed, steps..., open the conversation, delete.
+ * `imageActions`: what another module adds for an image (the OCR tab's "extract the text"), favorite (`F`), download, details panel (`I`) with prompt, model, size, seed, steps..., open the conversation, delete.
  * Mounted once by the shell; opened with `useLightboxStore().show(items, index)`.
  */
-export function StudioLightbox({ modeActions }: { modeActions?: ViewerModeActions }) {
+export function StudioLightbox({ modeActions, imageActions: ImageActions }: { modeActions?: ViewerModeActions; imageActions?: ComponentType<{ asset: Asset }> }) {
   const { open, items, index, setIndex, close } = useLightboxStore()
   const mode = useStudioStore((s) => s.mode)
   const toggle = useToggleFavorite()
@@ -165,6 +165,7 @@ export function StudioLightbox({ modeActions }: { modeActions?: ViewerModeAction
         return (
           <>
             <ModeActions asset={asset} modeActions={modeActions} mode={mode} />
+            {ImageActions && asset.media === 'image' && <ImageActions asset={asset} />}
             {asset.kind === 'generated' && (
               <TipIconButton labelId={asset.favorite ? 'thread.tile.unfavorite' : 'thread.tile.favorite'} kbd="F" active={asset.favorite} onClick={() => toggle.mutate(asset)} sx={{ color: asset.favorite ? 'var(--safe)' : 'inherit' }}>
                 {asset.favorite ? <FavoriteRounded fontSize="small" /> : <FavoriteBorderRounded fontSize="small" />}

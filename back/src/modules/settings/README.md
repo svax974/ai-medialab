@@ -28,10 +28,10 @@ Labels: `back/src/locales/custom.fr.json` and `custom.en.json` (keys `custom.set
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/settings` | Admin | Public settings: `keep_alive_minutes`, `previews`, `low_memory`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`, `chat_voice_id`. Secrets are **never** returned. |
+| `GET` | `/api/settings` | Admin | Public settings: `keep_alive_minutes`, `previews`, `low_memory`, `memory_limit_gb`, `quantize`, `variant`, `has_hf_token`, `has_brave_api_key`, `chat_voice_id`. Secrets are **never** returned. |
 | `PUT` | `/api/settings` | Admin | Subset of the same keys + `hf_token` and `brave_api_key` (text of 512 characters at most; `''` removes it); `chat_voice_id`: id of a library voice (text of 512 characters at most, `''`: none). Returns the public state. |
 
-`PUT` errors: 422 if a type is wrong (`keep_alive_minutes` integer from -1 to 1440, booleans, maps `model_id -> integer|null` and `model_id -> text`); 422 relayed from the engine (unknown model or quantization); 409 relayed from the engine (changing the quantization of the loaded model during a generation). In these cases **nothing is saved**.
+`PUT` errors: 422 if a type is wrong (`keep_alive_minutes` integer from -1 to 1440, `memory_limit_gb` a number from 0 (automatic) to 4096, booleans, maps `model_id -> integer|null` and `model_id -> text`); 422 relayed from the engine (unknown model or quantization); 409 relayed from the engine (changing the quantization of the loaded model during a generation). In these cases **nothing is saved**.
 
 ## Passing settings to the engine
 
@@ -50,6 +50,7 @@ None (table `config` of `common`).
 | Configuration key | Former key | Type | Default | Role |
 |---|---|---|---|---|
 | `studio_keepAliveMinutes` | `keep_alive_minutes` | number | 10 | Inactivity before unloading the model; -1 never, 0 after each generation. |
+| `studio_memoryLimitGb` | `memory_limit_gb` | number | 0 | Ceiling (GB) for the models loaded together; 0 = automatic (80 % of the machine); the engine never goes above what its safety reserve leaves (`engine/app/memory_budget.py`). |
 | `studio_previews` | `previews` | boolean | true | Intermediate previews of the images. |
 | `studio_lowMemory` | `low_memory` | boolean | true | Frees the text encoder after the prompt is encoded. |
 | `studio_quantize` | `quantize` | json (masked) | `{}` | `model_id` to quantization bits (written by the models dialog, H4.2). |

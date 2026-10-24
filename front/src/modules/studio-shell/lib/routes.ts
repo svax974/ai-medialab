@@ -17,6 +17,8 @@ export type StudioRouteName =
   | 'video-library'
   | 'chat-home'
   | 'diagram-home'
+  | 'ocr-home'
+  | 'ocr-document'
 
 export interface StudioRouteDef {
   name: StudioRouteName
@@ -39,6 +41,8 @@ export const STUDIO_ROUTES: readonly StudioRouteDef[] = [
   { name: 'video-library', path: '/video/bibliotheque', mode: 'video', titleKey: 'studio.page.videoLibrary.title' },
   { name: 'chat-home', path: '/chat', mode: 'chat', titleKey: 'studio.page.chatHome.title' },
   { name: 'diagram-home', path: '/diagrammes', mode: 'diagram', titleKey: 'studio.page.diagramHome.title' },
+  { name: 'ocr-home', path: '/ocr', mode: 'ocr', titleKey: 'studio.page.ocrHome.title' },
+  { name: 'ocr-document', path: '/ocr/:id', mode: 'ocr', titleKey: 'studio.page.ocrDocument.title' },
 ]
 
 export const studioPaths = {
@@ -52,6 +56,8 @@ export const studioPaths = {
   videoLibrary: '/video/bibliotheque',
   chatHome: '/chat',
   diagramHome: '/diagrammes',
+  ocrHome: '/ocr',
+  ocrDocument: (id: string) => `/ocr/${id}`,
 } as const
 
 export interface StudioRouteMatch {
@@ -79,7 +85,8 @@ export function modeOfRoute(match: StudioRouteMatch | null, conversationMode: St
 export function homePathForMode(mode: StudioMode): string {
   if (mode === 'chat') return studioPaths.chatHome
   if (mode === 'diagram') return studioPaths.diagramHome
+  if (mode === 'ocr') return studioPaths.ocrHome
   return mode === 'audio' ? studioPaths.audioHome : mode === 'video' ? studioPaths.videoHome : studioPaths.home
 }
 
-export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes' }
+export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr' }

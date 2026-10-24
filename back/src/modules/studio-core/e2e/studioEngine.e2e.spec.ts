@@ -70,7 +70,7 @@ const until = async (what: string, check: () => Promise<boolean> | boolean, time
     const client = new EngineClient(config);
     await until('the engine to answer', async () => (await client.get('/engine/v1/status').catch(() => null)) !== null);
     await client.put('/engine/v1/runtime/settings', {
-      body: { keep_alive_minutes: -1, previews: true, low_memory: true, hf_token: '', quantize: {}, variant: {} },
+      body: { keep_alive_minutes: -1, previews: true, low_memory: true, memory_limit_gb: 0, hf_token: '', quantize: {}, variant: {} },
     });
     relay = new EngineEventRelay(client, { publish: () => undefined } as never, config);
     relay.start();

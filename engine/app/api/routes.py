@@ -23,7 +23,7 @@ from ..engines import MODELS, custom, get_spec
 from ..events import bus
 from ..jobs import jobs, load_settings
 from ..llamacpp import installer as llamacpp_installer
-from ..llm import llm
+from ..llm import llm, ocr_llm
 from ..setup_runner import setup_runner
 from ..system import get_system
 
@@ -272,6 +272,7 @@ async def events(request: Request) -> StreamingResponse:
             yield f"event: pack.install\ndata: {json.dumps(pack_installer.public())}\n\n"
             yield f"event: llamacpp.install\ndata: {json.dumps(llamacpp_installer.public())}\n\n"
             yield f"event: llm.status\ndata: {json.dumps(llm.status())}\n\n"
+            yield f"event: ocr.status\ndata: {json.dumps(ocr_llm.status())}\n\n"
             yield f"event: setup.progress\ndata: {json.dumps(setup_runner.public())}\n\n"
             while True:
                 if await request.is_disconnected():

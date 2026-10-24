@@ -39,6 +39,7 @@ export const settingsKeys = {
 export const SETTINGS_HELP = {
   language: { titleId: 'settings.help.language.title', bodyId: 'settings.help.language.body', tipId: 'settings.help.language.tip' },
   keepAlive: { titleId: 'settings.help.keepAlive.title', bodyId: 'settings.help.keepAlive.body' },
+  memoryLimit: { titleId: 'settings.help.memoryLimit.title', bodyId: 'settings.help.memoryLimit.body', tipId: 'settings.help.memoryLimit.tip' },
   previews: { titleId: 'settings.help.previews.title', bodyId: 'settings.help.previews.body' },
   lowMemory: { titleId: 'settings.help.lowMemory.title', bodyId: 'settings.help.lowMemory.body', tipId: 'settings.help.lowMemory.tip' },
   hfToken: { titleId: 'settings.help.hfToken.title', bodyId: 'settings.help.hfToken.body', tipId: 'settings.help.hfToken.tip' },

@@ -23,7 +23,7 @@ describe('modelSelectionStore', () => {
   it('remembers the model of each kind separately', () => {
     useModelSelectionStore.getState().select('audio', 'kokoro')
     useModelSelectionStore.getState().select('image', 'sdxl')
-    expect(useModelSelectionStore.getState().selected).toEqual({ image: 'sdxl', audio: 'kokoro', video: null, llm: null, diagram: null })
+    expect(useModelSelectionStore.getState().selected).toEqual({ image: 'sdxl', audio: 'kokoro', video: null, llm: null, diagram: null, ocr: null })
     useModelSelectionStore.getState().select('llm', 'qwen')
     expect(useModelSelectionStore.getState().selected.llm).toBe('qwen')
   })

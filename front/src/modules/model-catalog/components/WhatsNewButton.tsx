@@ -23,7 +23,7 @@ export const WhatsNewButton = memo(function WhatsNewButton({ kind }: { kind: Tre
   // Scoped out for v1: "diagram" models are the same GGUF chat checkpoints under another catalog entry (see
   // engine/app/engines/diagram_models.py), not their own Hugging Face family to search or rank by novelty. Every
   // hook below still runs (never make a hook conditional): `enabled: armed` below just keeps it from ever fetching.
-  const scoped = kind !== 'diagram'
+  const scoped = kind !== 'diagram' && kind !== 'ocr'
   const t = useT()
   const [open, setOpen] = useState(false)
   const [armed, setArmed] = useState(false)

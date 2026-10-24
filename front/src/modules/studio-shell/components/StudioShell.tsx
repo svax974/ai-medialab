@@ -22,6 +22,7 @@ import { UpdatesDialog, useUpdatesPrefs, useUpdateRunner } from '@/modules/updat
 import { PrivateBanner, PrivateHost, usePrivateStore } from '@/modules/private'
 import { ImageDropLayer } from '@/modules/image-studio'
 import { useVoiceEvents, VoiceDropLayer, VoiceStudioDialog } from '@/modules/voices'
+import { ExtractTextAction } from '@/modules/ocr-studio'
 import { VideoDropLayer, VideoViewerActions } from '@/modules/video-studio'
 import { StudioLightbox, useStudioEvents, type ViewerModeActions } from '@/modules/studio-core'
 import { Sidebar } from './Sidebar'
@@ -80,7 +81,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
       />
       <UpdatesDialog />
       <LocalAiLaunchDialog suppressed={privateActive} extraOption={{ label: t('engines.localAi.launch.autoAdvice'), defaultChecked: true, onApply: setAutoAdvice }} />
-      <StudioLightbox modeActions={VIEWER_ACTIONS} />
+      <StudioLightbox modeActions={VIEWER_ACTIONS} imageActions={ExtractTextAction} />
       {mode === 'image' && <ImageDropLayer />}
       {mode === 'audio' && <VoiceDropLayer />}
       {mode === 'video' && <VideoDropLayer />}

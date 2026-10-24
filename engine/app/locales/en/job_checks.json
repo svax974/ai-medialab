@@ -4,5 +4,6 @@
   "{} ne synthétise pas de voix.": "{} does not synthesize voices.",
   "{} a besoin d'une image de départ.": "{} needs a starting image.",
   "{} a besoin d'une vidéo source.": "{} needs a source video.",
-  "{} est un modèle de diagramme : il ne passe pas par la génération de médias.": "{} is a diagram model: it does not go through media generation."
+  "{} est un modèle de diagramme : il ne passe pas par la génération de médias.": "{} is a diagram model: it does not go through media generation.",
+  "{} est un modèle de lecture de texte : il ne génère ni image, ni audio, ni vidéo.": "{} is a text-reading model: it does not generate images, audio or video."
 }

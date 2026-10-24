@@ -102,6 +102,7 @@ engine event publishes on `EventStreamService`:
 | `engine.setup.progress` | `setup.progress` | `SetupState`: `state`, `model_id`, `steps[]` (`kind` base/engine/model, `state`), `current`, `message`, `detail`, `done`, `total`, `rate`, `eta`, `error` | during the installation of what a model requires (one run: base data, engine, model); the current state is replayed at each connection |
 | `engine.llamacpp.install` | `llamacpp.install` | `EngineInstallState` (llama.cpp, the chat engine): same shape as `engine.engine.install` | during the installation; the current state is replayed at each connection |
 | `engine.llm.status` | `llm.status` | `LlmStatus`: `state` (`idle`, `loading`, `ready`, `generating`), `model_id`, `variant`, `context_size`, `vision`, `pid`, `started_at`, `last_error` | at each state change of the chat model; replayed at each connection |
+| `engine.ocr.status` | `ocr.status` | same shape as `llm.status`, for the OCR model's own server | at each state change of the OCR model; replayed at each connection |
 | `engine.models.changed` | `models.changed` | `{}` | end of the PyTorch probe at startup, of a download, of a deletion, of adding or removing a custom model, of a pack or engine (un)installation: the catalogue and `/api/system` must be re-read |
 
 The name `engine.engine.install` is not a typo: prefix `engine.` + event `engine.install`. The relay is generic: every engine event

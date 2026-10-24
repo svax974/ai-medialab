@@ -17,10 +17,11 @@ const MODE_LABELS: Record<StudioMode, string> = {
   video: 'studio.mode.video',
   chat: 'studio.mode.chat',
   diagram: 'studio.mode.diagram',
+  ocr: 'studio.mode.ocr',
 }
 
 /**
- * Five tabs share the sidebar (≈ 51 px each): icon above label, and no MUI `minWidth` (90 px), which pushed the last tab out of
+ * Six tabs share the sidebar (≈ 43 px each): icon above label, and no MUI `minWidth` (90 px), which pushed the last tab out of
  * the clipped row.
  */
 const TAB_SX = {

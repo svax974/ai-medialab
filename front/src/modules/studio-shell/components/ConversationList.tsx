@@ -11,12 +11,12 @@ import { formatMonth, groupConversations, periodLabelKey } from '../lib/periods'
 import { homePathForMode, matchStudioRoute } from '../lib/routes'
 import { useConversationActions, useConversationList } from '../hooks/useConversations'
 import { useLang, useT } from '../hooks/useT'
-import type { StudioMode } from '../types'
+import type { ConversationMode } from '../types'
 import { ChatSearchHits } from '@/modules/chat/components/ChatSearchHits'
 import { ConversationItem } from './ConversationItem'
 import { SelectionBar } from './SelectionBar'
 
-const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
+const DELETE_MEDIA_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.delete.media.image',
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
@@ -24,7 +24,7 @@ const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
   diagram: 'studio.conversation.delete.media.diagram',
 }
 
-const EMPTY_KEYS: Record<StudioMode, string> = {
+const EMPTY_KEYS: Record<ConversationMode, string> = {
   image: 'studio.list.empty.image',
   audio: 'studio.list.empty.audio',
   video: 'studio.list.empty.video',
@@ -41,7 +41,7 @@ function Note({ children }: { children: React.ReactNode }) {
  * switches to selection mode: ticked conversations are deleted together; only the ones still listed count (a search
  * or a mode change never deletes something that is out of sight).
  */
-export function ConversationList({ mode, query }: { mode: StudioMode; query: string }) {
+export function ConversationList({ mode, query }: { mode: ConversationMode; query: string }) {
   const t = useT()
   const lang = useLang()
   const { pathname } = useLocation()

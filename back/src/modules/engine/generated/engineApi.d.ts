@@ -611,6 +611,65 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/ocr/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read
+         * @description Streams the reading (`text/event-stream`, events above). Refusals that come before any byte are plain HTTP errors:
+         *     404 unknown model, 422 not an OCR model, unreadable file, unknown task, pages outside the document, 409 engine or model not
+         *     installed, a media generation or another reply running.
+         */
+        post: operations["read_engine_v1_ocr_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/ocr/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Ocr Status */
+        get: operations["ocr_status_engine_v1_ocr_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/ocr/unload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Unload
+         * @description Unloads the OCR model (409 while a page is being read).
+         */
+        post: operations["unload_engine_v1_ocr_unload_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/runtime/settings": {
         parameters: {
             query?: never;
@@ -1262,6 +1321,32 @@ export interface components {
             kind: string;
             /** Name */
             name: string;
+        };
+        /** OcrBody */
+        OcrBody: {
+            /** Model Id */
+            model_id: string;
+            /**
+             * Pages
+             * @description Pages of a PDF to read, from 1; all when absent.
+             */
+            pages?: number[] | null;
+            /**
+             * Path
+             * @description Absolute path of an image or a PDF inside the data folder.
+             */
+            path: string;
+            /**
+             * Prompt
+             * @description The instruction of a `custom` task.
+             */
+            prompt?: string | null;
+            /**
+             * Task
+             * @default default
+             * @enum {string}
+             */
+            task: "default" | "text" | "markdown" | "table" | "formula" | "chart" | "custom";
         };
         /** PurgeBody */
         PurgeBody: {
@@ -2669,6 +2754,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_engine_v1_ocr_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OcrBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ocr_status_engine_v1_ocr_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmStatus"];
+                };
+            };
+        };
+    };
+    unload_engine_v1_ocr_unload_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LlmStatus"];
                 };
             };
         };

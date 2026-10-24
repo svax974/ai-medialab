@@ -17,6 +17,8 @@ describe('matchStudioRoute', () => {
       ['/video', 'video-home'],
       ['/video/bibliotheque', 'video-library'],
       ['/chat', 'chat-home'],
+      ['/diagrammes', 'diagram-home'],
+      ['/ocr', 'ocr-home'],
     ]
     for (const [path, name] of cases) expect(matchStudioRoute(path)?.route.name, path).toBe(name)
   })
@@ -25,6 +27,7 @@ describe('matchStudioRoute', () => {
     expect(matchStudioRoute('/c/abc-123')).toMatchObject({ id: 'abc-123', route: { name: 'conversation' } })
     expect(matchStudioRoute('/c/abc-123/')?.id).toBe('abc-123')
     expect(matchStudioRoute('/audio/')?.route.name).toBe('audio-home')
+    expect(matchStudioRoute('/ocr/doc-1')).toMatchObject({ id: 'doc-1', route: { name: 'ocr-document', mode: 'ocr' } })
   })
 
   it('does not match other pages', () => {
@@ -35,7 +38,7 @@ describe('matchStudioRoute', () => {
 
   it('builds paths that match back', () => {
     expect(matchStudioRoute(studioPaths.conversation('x1'))?.id).toBe('x1')
-    for (const route of STUDIO_ROUTES.filter((r) => r.name !== 'conversation')) expect(matchStudioRoute(route.path)?.route.name).toBe(route.name)
+    for (const route of STUDIO_ROUTES.filter((r) => r.name !== 'conversation' && r.name !== 'ocr-document')) expect(matchStudioRoute(route.path)?.route.name).toBe(route.name)
   })
 })
 
@@ -55,6 +58,7 @@ describe('homePathForMode', () => {
     expect(homePathForMode('video')).toBe('/video')
     expect(homePathForMode('chat')).toBe('/chat')
     expect(homePathForMode('diagram')).toBe('/diagrammes')
-    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes' })
+    expect(homePathForMode('ocr')).toBe('/ocr')
+    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr' })
   })
 })

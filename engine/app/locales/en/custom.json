@@ -19,5 +19,10 @@
   "≈ {} Go de poids ({}), {} Go à télécharger.": "≈ {} GB of weights ({}), {} GB to download.",
   "Variante {} du dépôt {}, exécutée comme {} (mêmes encodeur de texte et VAE).": "{0} variant from the {1} repository, run as {2} (same text encoder and VAE).",
   "Modèle de conversation du dépôt {} ({}), exécuté par llama.cpp. Ses capacités exactes ne sont pas connues : le cache de contexte est estimé largement.": "Chat model from the {} repository ({}), run by llama.cpp. Its exact capabilities are unknown: the context cache is generously estimated.",
-  "≈ {} Go de poids ({}) et ≈ {} Go de cache et de tampons.": "≈ {} GB of weights ({}) and ≈ {} GB of cache and buffers."
+  "≈ {} Go de poids ({}) et ≈ {} Go de cache et de tampons.": "≈ {} GB of weights ({}) and ≈ {} GB of cache and buffers.",
+  "un modèle d'OCR a besoin de son projecteur multimodal (fichier mmproj)": "an OCR model needs its multimodal projector (mmproj file)",
+  "Modèle de lecture de texte du dépôt {} ({}), exécuté par llama.cpp. Ses consignes exactes ne sont pas connues : celles de l'OCR sont génériques, à vérifier sur votre document.": "Text-reading model of the {} repo ({}), run by llama.cpp. Its exact prompts are unknown: the OCR ones are generic, check them on your document.",
+  "Choisi par vous sur Hugging Face": "Picked by you on Hugging Face",
+  "Capacités et consignes inconnues : à tester sur votre document": "Capabilities and prompts unknown: try it on your document",
+  "Peut répondre à côté si la consigne ne correspond pas à son entraînement": "May answer off target if the prompt does not match its training"
 }

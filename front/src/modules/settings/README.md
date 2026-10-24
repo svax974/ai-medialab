@@ -39,6 +39,8 @@ Mounted by `StudioShell` (`settingsOpen` of the Zustand store); opened by the "S
 
 ## Tooltips
 
+`MemoryLimitField` (General tab): ceiling for the models loaded together, automatic (80 % of the machine) or a slider from 4 GB to what the reserve leaves, with the models in memory now (`lib/memoryLimit.ts` repeats the engine's reserve rule, `engine/app/memory_guard.py`).
+
 Texts of `frontend/src/lib/help.ts` (removed in H6) (`keep_alive`, `previews`, `low_memory`) repeated identically in French
 (`settings.help.*`), translated into English; `hfToken` is new (the old interface had none).
 

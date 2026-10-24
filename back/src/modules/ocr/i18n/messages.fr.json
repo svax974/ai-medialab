@@ -1,0 +1,21 @@
+{
+  "ocr.error.notFound": "Lecture introuvable.",
+  "ocr.error.format": "Fichier non pris en charge : une image (png, jpg, webp, gif) ou un PDF est attendu.",
+  "ocr.error.noFile": "Aucun fichier reçu (champ « file ») ni « asset_id ».",
+  "ocr.error.assetNotImage": "Cet élément de la bibliothèque n'est pas une image.",
+  "ocr.error.engineDown": "Le moteur ne répond pas : attendez qu'il démarre, puis réessayez.",
+  "ocr.error.noModel": "Aucun modèle d'OCR disponible : ouvrez Modèles et téléchargez-en un.",
+  "ocr.error.unknownModel": "Modèle d'OCR inconnu.",
+  "ocr.error.noEngine": "Le moteur de chat (llama.cpp) n'est pas installé : ouvrez Modèles pour l'installer.",
+  "ocr.error.modelNotDownloaded": "Le modèle « {0} » n'est pas encore téléchargé : ouvrez Modèles pour le télécharger.",
+  "ocr.error.task": "Tâche inconnue.",
+  "ocr.error.taskNotOffered": "« {0} » ne propose pas cette tâche.",
+  "ocr.error.noFreePrompt": "« {0} » ne suit pas de consigne libre : choisissez l'une de ses tâches.",
+  "ocr.error.emptyPrompt": "La consigne est vide.",
+  "ocr.error.promptTooLong": "La consigne est limitée à {0} caractères.",
+  "ocr.error.pages": "Pages : écrivez des numéros et des plages comme « 1-3, 5 ».",
+  "ocr.error.stillRunning": "Cette lecture attend ou court encore : annulez-la d'abord.",
+  "ocr.error.notRunning": "Cette lecture n'est plus en cours.",
+  "ocr.error.interrupted": "L'application s'est arrêtée pendant cette lecture : relancez-la.",
+  "ocr.error.unexpected": "La lecture s'est arrêtée de façon inattendue : relancez-la."
+}

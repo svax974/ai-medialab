@@ -20,6 +20,6 @@ export function EnginesPanel({ kind, models }: { kind: ModelKind; models: ModelI
   if (!system) return null
   // "diagram" models are llama.cpp/GGUF, like "llm" (same engine binary, see engine/app/engines/diagram_models.py),
   // not an image-diffusion engine.
-  if (kind === 'llm' || kind === 'diagram') return <LlamacppCard system={system} />
+  if (kind === 'llm' || kind === 'diagram' || kind === 'ocr') return <LlamacppCard system={system} />
   return kind === 'image' ? <EnginesCard system={system} /> : <PacksCard system={system} kind={kind} models={models} />
 }

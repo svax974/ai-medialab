@@ -5,9 +5,9 @@
 
 /** Shapes relayed from the engine (`engine/app/catalog.py`, `downloads.py`, `hf_search.py`). The engine owns them. */
 
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram';
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram' | 'ocr';
 /** Kinds `GET /api/hf/search` accepts (the kinds of the catalog: nothing else reaches the engine). */
-export const HUB_SEARCH_KINDS: readonly ModelKind[] = ['image', 'audio', 'video', 'llm'];
+export const HUB_SEARCH_KINDS: readonly ModelKind[] = ['image', 'audio', 'video', 'llm', 'ocr'];
 export type InstallState = 'installed' | 'partial' | 'missing';
 
 export interface DownloadProgress {
@@ -47,6 +47,19 @@ export interface LlmCapabilities {
   active_params_b: number | null;
 }
 
+/** What an OCR model offers (`engine/app/engines/base.py` `OcrCaps`): its tasks with their prompts, and an honest card of strengths and limits. */
+export interface OcrCapabilities {
+  /** Task id (`text`, `markdown`, `table`, `formula`, `chart`) -> the prompt the model was trained on (empty: the image alone). */
+  tasks: Record<string, string>;
+  default_task: string;
+  /** Follows any instruction (the `custom` task). */
+  free_prompt: boolean;
+  languages: string;
+  strengths: string[];
+  weaknesses: string[];
+  max_tokens: number;
+}
+
 /** One entry of `GET /api/models` (the capability blocks `audio`/`video`/`params` are passed through untouched). */
 export interface ModelInfo {
   id: string;
@@ -59,6 +72,8 @@ export interface ModelInfo {
   video?: { [key: string]: unknown } | null;
   /** What a chat model can do (`engine/app/engines/base.py` `LlmCaps`); null for the other kinds. */
   llm?: LlmCapabilities | null;
+  /** What an OCR model offers; null for the other kinds. */
+  ocr?: OcrCapabilities | null;
   engine_pack: string | null;
   engine_name: string | null;
   engine_detail: string;
@@ -107,6 +122,7 @@ export interface ModelCatalog extends KindSummary {
   video: KindSummary;
   llm: KindSummary;
   diagram: KindSummary;
+  ocr: KindSummary;
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {});

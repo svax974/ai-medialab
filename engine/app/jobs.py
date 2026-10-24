@@ -420,9 +420,9 @@ class JobManager:
             self.worker = None
             await w.stop()
 
-        from .llm import llm
+        from .llm import any_generating
 
-        if llm.generating:  # a chat reply is being written: its model stays, this job fails with the reason
+        if any_generating():  # a chat or OCR reply is being written: its model stays, this job fails with the reason
             refused = "Une réponse de chat est en cours : relancez la génération quand elle est terminée."
             self._finish(job, "failed", refused)
             return False

@@ -70,6 +70,16 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
   diagram type, theme. No job queue: a generation is a one-off call (text, then render), like the
   "Improve the prompt" button of the chat. **Unverified**: real rendering, real model.
 
+### `ocr-studio`
+- **OCR** tab (`/ocr`): drop or paste an image or a PDF (200 MB at most), pick a model, a task (text, Markdown document, table, formula,
+  chart, or a free instruction for the models that follow one), the pages of a PDF ("1-3, 5"), and start. The reading runs in the background,
+  page by page, with progress; the original sits next to the text of the page chosen; copy a page or everything, export as
+  Markdown, text or JSON, run again (another model, task or pages), cancel, delete. The readings are kept (sidebar list with search on title
+  and text). "Extract the text" button in the viewer for an image of the library.
+- Each model has a card with its **strengths and limits**, its languages and licence; models not downloaded yet are offered and installed
+  on demand like the others; Hugging Face search for other OCR models. **Unverified**: no real model, no browser. The `/ocr` command of the chat
+  is not built.
+
 ### `private`: private generation
 - "Private generation" button (padlock, purple banner and frame): ephemeral session for image, audio, video **and chat** with no history, result or
   prompt kept (no database row, files in a session folder erased on exit, after 30 min of inactivity, on shutdown and on the startup sweep; media without cache; drafts and usage counters not written; logs without content; video measurements not recorded; `sd-cli` prompts passed by file when the binary allows it). Limits announced in the interface: OS memory and swap file,
@@ -115,7 +125,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 ### `settings` and `hardware`
 - "Settings" (`Réglages`) dialog in three tabs. **Engines**: all downloadable components (base data, engines) with their state,
   the space used, and deletion (which also deletes the installed models that depend on them, named in the confirmation). **Models**:
-  the catalogue by category (chat, audio, image, video) with state and deletion. **General**: interface language (French or English; on first launch, the system one, English by default), model unload delay, previews, memory saving, optional Hugging Face token and Brave Search key, default chat voice, "Local AI at launch" invitation, reminder
+  the catalogue by category (chat, audio, image, video) with state and deletion. **General**: interface language (French or English; on first launch, the system one, English by default), model unload delay, memory ceiling for the models loaded together (automatic = 80 % of the machine, or a slider), previews, memory saving, optional Hugging Face token and Brave Search key, default chat voice, "Local AI at launch" invitation, reminder
   of the shortcuts; each setting has a tooltip. "This machine" card (chip or GPU, memory, models disk, unusable GPUs).
 
 ## Server (`back/src/modules/`)
@@ -131,6 +141,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 | `model-catalog` | Catalogue, downloads, custom models, Hugging Face search (delegated to the engine) |
 | `engines` | Engine and pack installers (delegated to the engine) |
 | `chat` | Message tree (`chat_messages`, settings per conversation), SSE response stream to the LLM engine, web tools (DuckDuckGo / Brave, guard against internal addresses), automatic title, prompt improvement, export, search, attachments, unloading and siblings of a message; occupancy gauge shared with the generation queue |
+| `ocr` | Readings of images and PDFs by an OCR model: background queue (one at a time, engine gauge), `ocr_documents` and `ocr_pages`, files `<data>/ocr/<id>/`, export, search, `studio.ocr.*` events |
 | `diagrams` | Diagram generation by one-off LLM call (schema-constrained JSON → Mermaid, never a job), generic messages of `studio-core` (`diagram` mode), PNG render attached as a generated asset once received from the front |
 | `private` | In-memory private session (conversations and messages without database), session folder, shared queue, stateless private chat, cleanup (end of session, delay, startup) |
 | `updates` | Update detection (engines, models), launch, untested version, advisor and recorded advisories (`update_advisories`) |
@@ -156,14 +167,15 @@ TypeORM migrations.
   `docs/guide.md`).
 - **Chat (LLM)**: llama.cpp engine installed from the application (`llama-server`, GGUF, 127.0.0.1 only, API key per launch), 11 models
   verified on Hugging Face (from 0.7 to 17.7 GB: Qwen3, Gemma 4, Ministral 3, gpt-oss, LFM2.5…), Hugging Face "LLM" search, normalised SSE stream
-  (reasoning, tool calls, statistics), a single model in memory with the generations, prompt cache capped at 1 GB. **Unverified**: no real
+  (reasoning, tool calls, statistics), several models in memory together under a ceiling (chat, OCR, generation), prompt cache capped at 1 GB. **Unverified**: no real
   `llama-server`.
 - **Diagrams**: reuses the same models and GGUF files as Chat under a separate catalogue (`diagram_models.py`,
   `kind="diagram"`), via `/engine/v1/llm/chat` (schema-constrained JSON, no diffusion job); no
   Hugging Face search nor dedicated "What's new" section (they are the same models). **Unverified**: no real `llama-server`.
+- **OCR**: 7 models (GLM-OCR, PaddleOCR-VL 1.6, LightOnOCR 2, DeepSeek-OCR, dots.ocr, Qianfan-OCR, Qwen3-VL 2B) run by llama.cpp in a server of their own, PDF pages rasterized by pypdfium2, prompts and markers per model (`ocr_models.py`, `ocr.py`), Hugging Face "OCR" search (`ocr-gguf` family). **Unverified**: no real `llama-server`.
 - Hugging Face novelties (`hf_trending.py`), update advisor (`update_advisor.py`), private session of jobs (`private_session.py`).
 - Memory planner (argued refusal of a model that does not fit), memory guard (refusal to load when free memory
-  is missing, model stopped before the machine saturates, measurement per job: `ARCHITECTURE.md`), one model loaded at a time, unloading after
+  is missing, model stopped before the machine saturates, measurement per job: `ARCHITECTURE.md`), models loaded together under a global ceiling (least recently used idle one unloaded first), unloading after
   inactivity, immediate cancellation, downloads in a dedicated process (resume, cancellation).
 - Custom Hugging Face models (recipes in `engine-state.json`), thumbnails and media polling.
 

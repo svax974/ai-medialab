@@ -207,5 +207,9 @@
   "models.help.llmContext.body": "Quantité de texte (en milliers de tokens) que le modèle peut garder en tête : conversation, documents joints. Le chat s'ouvre avec un contexte plus court ; l'agrandir demande plus de mémoire.",
   "models.manage.installed": "Installé · {0}",
   "models.manage.partial": "Téléchargement incomplet · {0}",
-  "models.manage.missing": "Non téléchargé"
+  "models.manage.missing": "Non téléchargé",
+  "models.tabs.ocr": "Modèles d'OCR",
+  "models.hub.placeholder.ocr": "ex. glm ocr, paddleocr, dots ocr…",
+  "models.hub.help.ocr": "Modèles de vision au format GGUF faits pour lire le texte des images et des documents, que llama.cpp peut exécuter.",
+  "models.hub.task.ocr": "OCR"
 }

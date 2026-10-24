@@ -80,6 +80,15 @@ export interface SystemInfo {
   engines: Record<string, EngineInfo>
   packs: Record<string, PackInfo>
   pack_install: PackInstallState
+  /** Memory budget of the models (`engine/app/memory_budget.py`): the ceiling in force and what is loaded now. */
+  memory: MemoryBudget
+}
+
+export interface MemoryBudget {
+  ceiling_gb: number
+  used_gb: number
+  /** Least recently used first. */
+  models: { model_id: string; name: string; gb: number }[]
 }
 
 /** `GET /api/status`: the generation worker (one model loaded at a time). */

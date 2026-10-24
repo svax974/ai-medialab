@@ -4,6 +4,17 @@ All notable changes per released version. Format: [Keep a Changelog](https://kee
 [Semantic Versioning](https://semver.org/) (0.x: the interfaces may still change). The section of a version is used as the body
 of its GitHub release (`.github/workflows/release.yml`).
 
+## [Unreleased]
+
+### Added
+
+- OCR tab: read the text of an image or a PDF (multi-page) with a local OCR model (GLM-OCR, PaddleOCR-VL 1.6, LightOnOCR 2,
+  DeepSeek-OCR, dots.ocr, Qianfan-OCR, Qwen3-VL 2B, or any OCR GGUF found on Hugging Face), with a card of strengths and limits per
+  model, tasks (text, Markdown, table, formula, chart, free instruction), export as Markdown, text or JSON, and an
+  "Extract the text" button in the viewer. Unverified with a real model.
+- Setting "Memory ceiling for models" (Settings → General): several models can stay loaded together (generation, chat, OCR) under one
+  ceiling, 80 % of the machine by default; the least recently used idle model is unloaded when a new one does not fit.
+
 ## [0.1.1] - 2026-10-23
 
 ### Security

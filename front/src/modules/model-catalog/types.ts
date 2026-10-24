@@ -4,7 +4,7 @@
  */
 
 /** What a model produces: pictures, speech/transcription, clips, or text (chat, run by llama.cpp). */
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram'
+export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram' | 'ocr'
 export type InstallState = 'installed' | 'partial' | 'missing'
 export type ReferenceMode = 'none' | 'init' | 'multi' | 'face'
 
@@ -168,8 +168,23 @@ export interface ModelInfo {
   precision: string
   /** Model added from Hugging Face by the user. */
   custom: boolean
+  /** What an OCR model offers (`engine/app/engines/base.py` `OcrCaps`); null for the other kinds. */
+  ocr?: OcrCapabilities | null
   variants: ModelVariant[]
   variant: string
+}
+
+/** What an OCR model offers: its tasks, and an honest card of strengths and limits. */
+export interface OcrCapabilities {
+  /** Task id (`text`, `markdown`, `table`, `formula`, `chart`) -> the prompt the model was trained on (empty: the image alone). */
+  tasks: Record<string, string>
+  default_task: string
+  /** Follows any instruction (the `custom` task). */
+  free_prompt: boolean
+  languages: string
+  strengths: string[]
+  weaknesses: string[]
+  max_tokens: number
 }
 
 export interface KindSummary {
@@ -185,10 +200,11 @@ export interface ModelCatalog extends KindSummary {
   video: KindSummary
   llm?: KindSummary
   diagram?: KindSummary
+  ocr?: KindSummary
 }
 
 export type HubFamily = 'gguf-variant' | 'sd-diffusers' | 'sdxl-lora' | 'qwen3-tts' | 'whisper-ct2' | (string & {})
-export type HubTask = 'image' | 'tts' | 'stt' | 'video' | 'llm'
+export type HubTask = 'image' | 'tts' | 'stt' | 'video' | 'llm' | 'ocr'
 
 export interface HubResult {
   repo: string

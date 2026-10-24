@@ -18,6 +18,7 @@ import { SHORTCUT_LABELS } from '../lib/shortcuts'
 import { useT } from '../hooks/useT'
 import { useStudioStore } from '../state/studioStore'
 import type { StudioMode } from '../types'
+import { OcrSidebarList } from '@/modules/ocr-studio'
 import { ConversationList } from './ConversationList'
 import { Mark } from './Mark'
 import { ModeSwitch } from './ModeSwitch'
@@ -51,6 +52,9 @@ const NAV: Record<StudioMode, NavEntry[]> = {
   ],
   diagram: [
     { route: 'diagram-home', to: studioPaths.diagramHome, labelKey: 'studio.nav.newDiagram', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
+  ],
+  ocr: [
+    { route: 'ocr-home', to: studioPaths.ocrHome, labelKey: 'studio.nav.newOcr', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
   ],
   audio: [
     { route: 'audio-home', to: studioPaths.audioHome, labelKey: 'studio.nav.newAudio', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
@@ -101,7 +105,7 @@ export function Sidebar() {
       </Box>
 
       <SearchField onSearch={setQuery} />
-      <ConversationList mode={mode} query={query} />
+      {mode === 'ocr' ? <OcrSidebarList query={query} /> : <ConversationList mode={mode} query={query} />}
       <SidebarFooter />
     </Box>
   )

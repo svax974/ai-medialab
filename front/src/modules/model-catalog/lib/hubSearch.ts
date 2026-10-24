@@ -56,6 +56,7 @@ export const HUB_PLACEHOLDER_KEY: Record<ModelKind, string> = {
   // Unreachable: HubSearch returns null for "diagram" (no Hugging Face family of its own, see HubSearch.tsx). Kept
   // so this Record stays exhaustive over ModelKind.
   diagram: 'models.hub.placeholder.llm',
+  ocr: 'models.hub.placeholder.ocr',
 }
 export const HUB_HELP_KEY: Record<ModelKind, string> = {
   image: 'models.hub.help.image',
@@ -63,6 +64,7 @@ export const HUB_HELP_KEY: Record<ModelKind, string> = {
   video: 'models.hub.help.video',
   llm: 'models.hub.help.llm',
   diagram: 'models.hub.help.llm',
+  ocr: 'models.hub.help.ocr',
 }
 export const HUB_TASK_KEY: Record<HubResult['task'], string> = {
   image: 'models.hub.task.image',
@@ -70,4 +72,5 @@ export const HUB_TASK_KEY: Record<HubResult['task'], string> = {
   stt: 'models.hub.task.stt',
   video: 'models.hub.task.video',
   llm: 'models.hub.task.llm',
+  ocr: 'models.hub.task.ocr',
 }

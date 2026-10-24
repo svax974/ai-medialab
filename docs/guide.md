@@ -174,8 +174,11 @@ cannot be added. When opening a result, each variant (quantization) is also test
 rule as the models in the list: those that do not fit are struck through with the numbers, the preselection is a variant that
 fits, and the server refuses to add a variant that does not fit.
 
-Only one model is loaded at a time; it stays in memory between two generations, then is unloaded after an adjustable delay
-(`Réglages → Mémoire` (Settings → Memory)) or on demand (indicator at the bottom of the sidebar).
+Several models can stay loaded together (a generation model, the chat model, an OCR model) as long as they fit under the **memory ceiling**
+(`Réglages → Général` (Settings → General): automatic = 80 % of the machine's memory, or a slider from 4 GB up to what the safety
+reserve leaves). When a new model does not fit, the idle models used least recently are unloaded first; a model in use never is, and
+the load is refused with the figures if it still does not fit. The memory guard stays in force whatever the ceiling says. A model stays in
+memory between two uses, then is unloaded after an adjustable delay (`Réglages → Mémoire`) or on demand (indicator at the bottom of the sidebar).
 
 **Memory saving (MLX, enabled by default).** The text encoder of Qwen Image 2.1 (≈ 15 GB) is loaded only while encoding the prompt,
 then released; VAE decoding is done in tiles. Measured on a 36 GB Mac: ≈ 9 GB resident (transient peak ≈ 24 GB while encoding a new
@@ -194,7 +197,7 @@ The interface adapts on its own: selector, sliders, rules on reference images, i
 ## Audio: speech synthesis, cloning, scenarios
 
 The **Image / Audio** switch (top of the left panel) toggles the application between the two studios; conversations, downloads,
-queue and memory are shared (only one model loaded at a time).
+queue and memory are shared (models loaded together under the memory ceiling).
 
 - **Voices**: built-in voices per model, **cloning** from a recording (browser microphone or file), **voice creation from a
   description** (Qwen3-TTS VoiceDesign). Voices are kept in *Mes voix* (My voices); any generated take can be added to them
@@ -233,7 +236,7 @@ short path when the venv is deep.
 ## Video: generation and editing
 
 The **Image / Audio / Video** switch opens the video studio, built like the image studio: conversations, queue, progress and
-cancellation, gallery, downloads and memory shared (only one model loaded at a time).
+cancellation, gallery, downloads and memory shared (models loaded together under the memory ceiling).
 
 - **Compose**: prompt, starting image (and ending image for models that support it), source video to edit, duration, format,
   definition, steps, seed, number of clips (1–2). The number of frames is rounded to what the model accepts.
@@ -317,6 +320,38 @@ Hugging Face on 2026-10-15, and any GGUF repository can be added from the "LLM" 
   recorded and to be verified.
 - **Not verified**: no real `llama-server` or chat model has been launched; the described behavior was tested with fake servers.
   The first real test will confirm server startup, streaming and GPU detection.
+
+## OCR: reading the text of images and PDFs
+
+The **OCR** tab reads an image or a PDF with a vision model run by llama.cpp (same engine as the chat, installed from `Modèles`), in a
+server of its own: it can stay loaded next to the chat model when both fit under the memory ceiling. Pick a **task** (text, Markdown
+document, table, formula, chart) or, with the models that follow any instruction, your own; for a PDF, the pages ("1-3, 5"). A PDF is
+read page by page (each page is drawn at 2000 px on its longest side, then removed), the text of each page arrives as it is read.
+The sampling is fixed to the authors' recommendation (temperature 0: OCR is read, not written); a page the model loops on is cut at its
+maximum length (8192 tokens by default) and marked as possibly truncated.
+
+Models (sizes and licences read on the Hub on 2026-10-24; scores are OmniDocBench from the model cards or press, to compare models on
+the same pages, not on yours):
+
+| Model | Weights | Licence | For | Limits |
+|---|---|---|---|---|
+| GLM-OCR | ≈ 1.3 GB | MIT | tables, formulas, code, stamps; the default | 8 languages; one task at a time, no whole-page Markdown |
+| PaddleOCR-VL 1.6 | ≈ 1.7 GB | Apache 2.0 | 109 languages, photos, charts; best open score (≈ 96) | made for regions of a page: on a dense full page the reading order is less reliable; llama.cpp support reported as possibly lowering results |
+| LightOnOCR 2 1B | ≈ 1.0 GB | Apache 2.0 | whole page in one pass, French and European languages, forms, receipts | 11 languages; no task choice; 16 k context |
+| DeepSeek-OCR | ≈ 3.3 GB | MIT | dense pages, long documents, Markdown | 8 k context; recent llama.cpp needed |
+| dots.ocr | ≈ 3.0 GB | MIT | 100+ languages, tables, formulas | text task only here; no published OmniDocBench score found |
+| Qianfan-OCR | ≈ 4.7 GB | Apache 2.0 | document to Markdown, key information extraction, charts, by instruction | heaviest; follows free instructions, so check what it returns |
+| Qwen3-VL 2B | ≈ 2.1 GB | Apache 2.0 | a free instruction on the document, handwriting and scenes | less precise than a dedicated model on dense pages; may paraphrase |
+
+Not in the list on purpose: **HunyuanOCR** (licence `tencent-hunyuan-community`, which by Tencent's usual terms does not cover the European
+Union: to read before use; it can still be added from the Hugging Face search), **Chandra OCR 2** (modified OpenRAIL-M, restricted commercial
+use, third-party GGUF only), **olmOCR 2** (7.7 B, third-party GGUF only), **Indra OCR** (1 M parameters, ONNX on CPU, not a vision model: it needs
+its own runtime, not built). Other OCR models: search `OCR` in `Modèles → OCR` (repos whose name or tags say OCR, with their multimodal
+projector); their prompts are unknown, so they get generic ones and follow free instructions: try them on your document.
+
+**Unverified**: nothing here was run against a real model or in a browser (fake servers only); the prompts are the ones the model
+cards document. First tries to make, lightest first: GLM-OCR on a clean page, then a photo, then a two-page PDF; watch the free memory
+when the chat model is loaded too.
 
 ## Repository structure
 

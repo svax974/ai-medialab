@@ -9,6 +9,8 @@ export interface Settings {
   keep_alive_minutes: number
   previews: boolean
   low_memory: boolean
+  /** Ceiling (GB) for the models loaded together; 0: automatic (80 % of the machine). */
+  memory_limit_gb: number
   has_hf_token: boolean
   /** A Brave Search key is saved (the chat's web search uses Brave instead of DuckDuckGo). Never returned itself. */
   has_brave_api_key: boolean

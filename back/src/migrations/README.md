@@ -9,6 +9,7 @@ Versioned migrations of the Nest database (SQLite; Postgres is not a target of t
 | `1792061048743-UpdateAdvisories.ts` | The update advisor: `update_advisories` (advisories recorded on an engine or model update: verdict, summary, cited findings, sources, model used), one index per item and date. |
 | `1792058442183-ChatTables.ts` | The chat: `chat_messages` (message tree, cascading foreign keys to the conversation and the parent message) and `chat_conversation_settings` (settings and active leaf of each chat conversation). |
 | `1792070000000-ChatGenerations.ts` | The chat creation tools: column `chat_messages.generations` (JSON, nullable: existing messages do not change). |
+| `1792831506395-OcrTables.ts` | The OCR tab: `ocr_documents` (one reading: file, model, task, status, progress) and `ocr_pages` (the text of each page, cascading foreign key). New tables only. |
 
 ## Usage
 

@@ -21,7 +21,7 @@ State of the machine and of the engine, **delegated to the Python engine** by th
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| `GET` | `/api/system?refresh=` | Admin | Hardware: OS, memory, accelerators, unusable GPUs, disk, folders; plus `engines`, `packs`, `pack_install` (state of the engines and packs, read by the front of the `engines` module; the installations themselves are in `back/src/modules/engines/README.md`). Answers without waiting for the engine's PyTorch probe (a subprocess launched once at startup, several seconds): while it runs, `torch.pending` is `true` and `engines.torch` is unavailable ("detection in progress"), then the engine publishes `models.changed`. `refresh=true` runs the detection again, keeping the probe result. |
+| `GET` | `/api/system?refresh=` | Admin | Hardware: OS, memory, accelerators, unusable GPUs, disk, folders; plus `memory` (the memory ceiling in force, what the models loaded now take and which they are: `engine/app/memory_budget.py`), `engines`, `packs`, `pack_install` (state of the engines and packs, read by the front of the `engines` module; the installations themselves are in `back/src/modules/engines/README.md`). Answers without waiting for the engine's PyTorch probe (a subprocess launched once at startup, several seconds): while it runs, `torch.pending` is `true` and `engines.torch` is unavailable ("detection in progress"), then the engine publishes `models.changed`. `refresh=true` runs the detection again, keeping the probe result. |
 | `GET` | `/api/status` | Admin | Generation worker: `state`, `model_id`, `quantize`, queue, last error. |
 | `POST` | `/api/engine/unload` | Admin | Unloads the model; 409 (relayed) during a generation. |
 

@@ -17,24 +17,24 @@ import { homePathForMode, studioPaths } from '../lib/routes'
 import { resolveMediaUrl } from '../services/studioHttp'
 import { useConversationActions } from '../hooks/useConversations'
 import { useLang, useT } from '../hooks/useT'
-import type { ConversationSummary, StudioMode } from '../types'
+import type { ConversationSummary, ConversationMode } from '../types'
 import { ModeIcon } from './modeIcons'
 
-const META_KEYS: Record<StudioMode, string> = {
+const META_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.meta.image',
   audio: 'studio.conversation.meta.audio',
   video: 'studio.conversation.meta.video',
   chat: 'studio.conversation.meta.chat',
   diagram: 'studio.conversation.meta.diagram',
 }
-const DELETE_MEDIA_KEYS: Record<StudioMode, string> = {
+const DELETE_MEDIA_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.delete.media.image',
   audio: 'studio.conversation.delete.media.audio',
   video: 'studio.conversation.delete.media.video',
   chat: 'studio.conversation.delete.media.chat',
   diagram: 'studio.conversation.delete.media.diagram',
 }
-const DELETE_MESSAGE_KEYS: Record<StudioMode, string> = {
+const DELETE_MESSAGE_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.delete.message',
   audio: 'studio.conversation.delete.message',
   video: 'studio.conversation.delete.message',

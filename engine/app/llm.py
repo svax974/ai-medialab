@@ -117,6 +117,10 @@ def completion_payload(spec: ModelSpec, request: dict[str, Any], messages: list[
                 "max_tokens", "seed", "stop"):
         if params.get(key) is not None:
             payload[key] = params[key]
+    if spec.ocr:  # OCR is read, not written: the authors' sampling, and a cap against a page the model loops on
+        for key, value in spec.ocr.sampling.items():
+            payload.setdefault(key, value)
+        payload.setdefault("max_tokens", spec.ocr.max_tokens)
     tools = request.get("tools")
     if tools:
         if not spec.llm or not spec.llm.tools:
@@ -369,7 +373,10 @@ def _read_stream(port: int, key: str, payload: dict[str, Any], put: Callable[[tu
 class LlmManager:
     """Loads, serves and unloads the chat model. See the module docstring for the memory rules."""
 
-    def __init__(self) -> None:
+    def __init__(self, role: str = "llm", kinds: tuple[str, ...] = ("llm", "diagram"), slot: str = "chat") -> None:
+        # `role` names the status event (`llm.status`, `ocr.status`); `kinds` the models this server takes; `slot` its key in
+        # the memory budget. Each role has its own `llama-server`, so the chat and the OCR model can be loaded together.
+        self.role, self.kinds, self.slot = role, kinds, slot
         self.server: Server | None = None
         self.state = "idle"  # idle | loading | ready | generating
         self.last_error: str | None = None
@@ -402,6 +409,10 @@ class LlmManager:
     def generating(self) -> bool:
         return self._chatting
 
+    def _others_generating(self) -> bool:
+        """A reply is being written by another server (chat and OCR share the GPU: one at a time)."""
+        return any(manager.generating for manager in managers() if manager is not self)
+
     def status(self) -> dict[str, Any]:
         s = self.server
         loaded = bool(s and s.alive)
@@ -412,7 +423,7 @@ class LlmManager:
                 "last_error": self.last_error}
 
     def _publish(self) -> None:
-        bus.publish("llm.status", self.status())
+        bus.publish(f"{self.role}.status", self.status())
 
     def _set(self, state: str) -> None:
         self.state = state
@@ -427,8 +438,9 @@ class LlmManager:
 
         spec = MODELS.get(model_id)
         # "diagram" models reuse this same one-shot completion endpoint (same GGUF files as their "llm" counterpart,
-        # see engines/diagram_models.py): structured JSON for the Diagrams tab, not a conversational chat.
-        if spec is None or spec.kind not in ("llm", "diagram"):
+        # see engines/diagram_models.py): structured JSON for the Diagrams tab, not a conversational chat. "ocr" models
+        # have a server of their own (`ocr_llm`) so that they can stay loaded next to the chat model.
+        if spec is None or spec.kind not in self.kinds:
             raise LlmNotFound("Modèle de chat inconnu.") if spec is None else LlmError(f"« {spec.name} » n'est pas un modèle de chat.")
         spec = get_spec(model_id)
         if llamacpp.installed_binary() is None:
@@ -436,7 +448,7 @@ class LlmManager:
         downloads.invalidate()
         if downloads.status(spec)["state"] != "installed":
             raise LlmBusy(f"Le modèle « {spec.name} » n'est pas (entièrement) téléchargé. Ouvrez Modèles pour le télécharger.")
-        if self._chatting:
+        if self._chatting or self._others_generating():
             raise LlmBusy("Une réponse est déjà en cours de génération.")
         if jobs.current or jobs.pending:
             raise LlmBusy("Une génération de médias est en cours : attendez sa fin ou annulez-la avant de discuter.")
@@ -471,7 +483,7 @@ class LlmManager:
                 raise LlmBusy("Une génération de médias est en cours : attendez sa fin ou annulez-la avant de discuter.")
             await self._stop_locked()
             need = memory_need_gb(spec, ctx)
-            refused = await memory_budget.make_room(need, CHAT_SLOT, spec.name) or self._preflight(spec, ctx)
+            refused = await memory_budget.make_room(need, self.slot, spec.name) or self._preflight(spec, ctx)
             if refused:
                 self.last_error = refused
                 raise LlmError(refused)
@@ -587,7 +599,7 @@ class LlmManager:
     async def chat(self, spec: ModelSpec, request: dict[str, Any], payload: dict[str, Any]) -> AsyncIterator[dict[str, Any]]:
         """Events of one reply (`payload` from `prepare`), loading the model first when needed. Leaving the loop (the client
         went away) stops the generation and leaves the server loaded and ready."""
-        if self._chatting:  # checked and set with no await in between: two requests cannot both pass
+        if self._chatting or self._others_generating():  # checked and set with no await in between: two requests cannot both pass
             yield {"type": "error", "code": "busy", "message": "Une réponse est déjà en cours de génération."}
             return
         self._chatting = True
@@ -678,5 +690,24 @@ def _plan(spec: ModelSpec, system: dict[str, Any]) -> dict[str, Any]:
 
 
 llm = LlmManager()
-CHAT_SLOT = "chat"  # key of the chat server in the memory budget
-memory_budget.register(memory_budget.Slot(CHAT_SLOT, lambda: llm.resident(), lambda: llm.generating, lambda: llm.stop()))
+ocr_llm = LlmManager("ocr", ("ocr",), "ocr")
+MANAGERS = (llm, ocr_llm)  # one reply at a time across all of them: the GPU is shared
+
+
+def manager_for(model_id: str) -> LlmManager:
+    """The server that runs a model: the OCR one for an OCR model, the chat one otherwise (it then refuses what it cannot take)."""
+    spec = MODELS.get(model_id)
+    return ocr_llm if spec is not None and spec.kind == "ocr" else llm
+
+
+def managers() -> tuple[LlmManager, LlmManager]:
+    """The servers, read at call time (a test swaps one)."""
+    return llm, ocr_llm
+
+
+def any_generating() -> bool:
+    return any(manager.generating for manager in managers())
+
+
+memory_budget.register(memory_budget.Slot("chat", lambda: llm.resident(), lambda: llm.generating, lambda: llm.stop()))
+memory_budget.register(memory_budget.Slot("ocr", lambda: ocr_llm.resident(), lambda: ocr_llm.generating, lambda: ocr_llm.stop()))

@@ -16,9 +16,9 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `CONTRIBUTING.md`, `SECURITY.md` | How to contribute; how to report a vulnerability |
 | `FEATURES.md` | Inventory of what is built, per module (and what is not) |
 | `ARCHITECTURE.md` (this file) | Processes, Nest ↔ engine contract, event flow, data and migrations, desktop, resting memory, engine plan |
-| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `private`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `ocr`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | TypeORM migrations of Nest's database: usage, generation, verification |
-| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
+| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `ocr-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |
 | `desktop/README.md` | Desktop shell (Tauri): configuration, launch, packaging, signing, CI |
 | `engine/openapi.json` | Contract of the engine's internal API (**generated**: `scripts-local/export_engine_openapi.py`) |
@@ -26,7 +26,7 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `THIRD_PARTY_LICENSES.md` | Licences of the components and the models |
 | `front/.libs/apptemplate/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Template conventions and launcher (outside this repository: submodules) |
 
-*Last verified against source: 2026-10-16 (chat creation tools) and 2026-10-15 (Chat and Private generation modes, update advisor). The sections on chat and private mode describe code tested with fake servers: no real `llama-server` or browser.*
+*Last verified against source: 2026-10-24 (memory ceiling, OCR), 2026-10-16 (chat creation tools) and 2026-10-15 (Chat and Private generation modes, update advisor). The sections on chat and private mode describe code tested with fake servers: no real `llama-server` or browser.*
 
 ## Overview: four processes
 
@@ -56,8 +56,9 @@ Ownership rules that structure everything else:
 - **The engine has no application state.** It knows neither conversation, nor message, nor voice, nor persistent setting: a job
   arrives with everything it needs, the output events describe what was produced, Nest records it.
 - **Nest never runs a model.** It delegates to the engine through a typed client.
-- **One model loaded at a time, one generation at a time** (unified memory), enforced by the engine; the queue that decides "which
-  message next" is in Nest (`back/src/modules/studio-core/README.md`).
+- **One generation at a time** (the GPU is shared). **Several models may stay loaded together** as long as they fit under one ceiling for the
+  whole application (`memory_budget.py`, setting Settings → General): a media worker, the chat model and an OCR model. The queue that
+  decides "which message next" is in Nest (`back/src/modules/studio-core/README.md`).
 
 ## Nest ↔ engine contract
 
@@ -190,6 +191,16 @@ A private session is **ephemeral** and never goes through `app.db`: Nest keeps i
 shapes as normal conversations, so that the front reuses its components), the generation queue is **shared** with normal mode (one generation at a time) and the files of a generation live in `private/<session>/`, served without cache and erased at the end. The engine receives a `private_dir` field on its jobs: it refuses a folder outside the session, keeps no trace of the job and sanitizes its errors. Private chat is **stateless** (the browser sends back the whole history). What the session guarantees, what it cannot guarantee (virtual memory, backups,
 SSD, captures) and the detailed design: `back/src/modules/private/README.md` and `front/src/modules/private/README.md`.
 
+## OCR
+
+The OCR tab reads the text of an image or a PDF with a vision model run by llama.cpp (`engine/app/engines/ocr_models.py`), in its own
+`llama-server` (`llm.ocr_llm`) so that it stays loaded next to the chat model when both fit under the memory ceiling. The engine owns
+the reading (`engine/app/ocr.py`, `POST /engine/v1/ocr/read`, SSE stream: PDF pages rasterized one at a time by pypdfium2, prompt of
+the model's task, markers removed); Nest owns what is kept (`back/src/modules/ocr/`: tables `ocr_documents` and `ocr_pages`, files in
+`<data>/ocr/<id>/`) and runs a reading in the background, one at a time, holding `EngineBusyGate`; the browser follows it with the
+`studio.ocr.updated` events. A reading is not a conversation: it does not go through `studio-core`. Models, tasks, strengths and
+limits: `docs/guide.md`, section "OCR"; Hugging Face search: family `ocr-gguf` (`hf_search.py`).
+
 ## Chat and generations (creation tools)
 
 The chat model (or a `/image`, `/video`, `/audio` command) can launch a generation of the studios without leaving the conversation. The path
@@ -237,7 +248,9 @@ engine/app/
   system.py          GPU, memory, disk detection; memory planner
   memory_guard.py    memory guard: check before loading, worker monitoring, stop before saturation
   engine_install.py, audio_packs.py, audiocpp.py, llamacpp.py   installers (GGUF engine, audio and video packs, audio.cpp, llama.cpp)
-  llm.py             chat server (`llama-server`: start, memory arbiter, normalized SSE stream); engines/llm_models.py: chat catalogue
+  llm.py             chat and OCR servers (`llama-server`: start, normalized SSE stream); engines/llm_models.py: chat catalogue; engines/ocr_models.py: OCR catalogue
+  memory_budget.py   ceiling of the models loaded together and eviction of the least recently used idle one
+  ocr.py             reading of an image or a PDF (tasks, prompts, page by page); api/ocr.py: routes
   update_advisor.py, hf_trending.py, private_session.py, video_memory.py   update advisor, Hugging Face novelties, private session, video pass length
   runtime_settings.py  settings pushed by Nest (memory only); engine_state.py  the engine's own state (JSON file)
   legacy_data.py     recovery of the former data folder; events.py  event bus
@@ -260,7 +273,8 @@ or restarts the machine. The protections, from the furthest upstream to the last
 | Watchdog | `memory_guard.MemoryWatchdog`, thread of the engine's main process, 5 readings per second | as long as a worker lives: below the reserve, or if macOS signals a critical memory pressure, kills the worker **and its subprocesses** (`sd-cli`); the job fails with "Stopped by the memory protection: …" |
 | Former worker stopped before the next | `jobs.py` (`_ensure_worker`, `stop`) | a single model in memory; the stop waits for the end of the process, even when forced |
 | Peaks of a generation | `diffusers_engine.py` (`tune_vae`, `_from_pretrained`), `sdcpp_engine.py` (`VAE_TILING_FROM`) | VAE in 512 px tiles, without float32 copy outside float16; weights loaded directly onto the GPU of a Mac; `--vae-tiling` of `sd-cli` from 1 Mpx |
-| Chat server | `llm.py`, `jobs.py`, `memory_guard.py` | a single model in memory for the whole application: loading an LLM stops the generation worker and vice versa (409 on the refused side); `preflight` (weights + estimated context cache); the memory guard watches the pid of `llama-server`; prompt cache in RAM capped at 1 GiB (`--cache-ram`, 8 GiB by default) |
+| Ceiling | `memory_budget.py` (setting `memory_limit_gb`, pushed by Nest) | the models loaded together (worker, chat server, OCR server) must fit under one ceiling (80 % of the machine by default, never above what the reserve leaves): before loading, `make_room` unloads the idle models used least recently until the new one fits, or refuses with the figures (a model in use is never unloaded). A separate graphics card cannot be summed: every other model is unloaded as before. A model runs one at a time (no generation while a reply is written) |
+| Chat and OCR servers | `llm.py` (`LlmManager`: `llm`, `ocr_llm`), `jobs.py`, `memory_guard.py` | one `llama-server` per role, each watched by its own watchdog; `preflight` (weights + estimated context cache); prompt cache in RAM capped at 1 GiB (`--cache-ram`, 8 GiB by default) |
 | Record | engine journal, line `[memory] job …` | free memory at its lowest and peak of the model's processes, for each job |
 | Length of video passes | `video_memory.py`, `sdcpp_video_engine.py` (`_generate_chained`) | a long clip of the GGUF image → video models without sound is made in chained passes whose length follows the memory **measured on this machine**: short trial at the first use of a model (a priori cautious), then longer and longer passes (never more than 1.6 times the largest pass already measured) as long as the forecast fits in the available memory minus the reserve. Each pass records the memory actually consumed (`video-memory.json` of the data folder: a cache of measurements, not application data); `sd-cli --max-vram` receives this budget (build 956 or newer, `IMAGEGEN_SDCPP_MAX_VRAM=off` removes it) |
 

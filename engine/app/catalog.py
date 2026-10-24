@@ -29,6 +29,8 @@ VIDEO_STARTER_ORDER = ["wan-2.2-ti2v-5b-gguf", "wan-2.2-ti2v-5b", "cogvideox-2b"
 LLM_STARTER_ORDER = ["llm-qwen3-4b-instruct-2507", "llm-gemma-4-e4b", "llm-qwen3-8b", "llm-lfm2.5-1.2b"]
 # Diagrams: same preference as chat (these are the same GGUF files, see engines/diagram_models.py).
 DIAGRAM_STARTER_ORDER = ["diagram-qwen3-4b-instruct-2507", "diagram-qwen3-8b", "diagram-gemma-4-12b", "diagram-gpt-oss-20b"]
+# OCR: the lightest model that reads documents well and is under a permissive licence first, the multilingual one next.
+OCR_STARTER_ORDER = ["ocr-glm-ocr", "ocr-paddleocr-vl-1.6", "ocr-lightonocr-2-1b", "ocr-qianfan-ocr"]
 
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
@@ -231,4 +233,5 @@ def describe_models() -> dict[str, Any]:
     video = pick("video", VIDEO_STARTER_ORDER)
     llm = pick("llm", LLM_STARTER_ORDER)
     diagram = pick("diagram", DIAGRAM_STARTER_ORDER)
-    return {"models": models, **image, "audio": audio, "video": video, "llm": llm, "diagram": diagram}
+    ocr = pick("ocr", OCR_STARTER_ORDER)
+    return {"models": models, **image, "audio": audio, "video": video, "llm": llm, "diagram": diagram, "ocr": ocr}

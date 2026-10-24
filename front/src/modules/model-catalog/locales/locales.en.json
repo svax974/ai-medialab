@@ -207,5 +207,9 @@
   "models.help.llmContext.body": "How much text (in thousands of tokens) the model can keep in mind: conversation, attached documents. The chat opens with a shorter context; enlarging it needs more memory.",
   "models.manage.installed": "Installed · {0}",
   "models.manage.partial": "Incomplete download · {0}",
-  "models.manage.missing": "Not downloaded"
+  "models.manage.missing": "Not downloaded",
+  "models.tabs.ocr": "OCR models",
+  "models.hub.placeholder.ocr": "e.g. glm ocr, paddleocr, dots ocr…",
+  "models.hub.help.ocr": "Vision models in GGUF format made to read the text of images and documents, which llama.cpp can run.",
+  "models.hub.task.ocr": "OCR"
 }

@@ -56,6 +56,13 @@ the Hugging Face search passes `kind=llm`; the catalogue carries an `llm` block 
 (a state saved before it existed has none: read as "none"). The current mode gives the type of the initial tab through `modelKindOfMode` (chat → `llm`). Usage (`useModelUsage`) only counts the generations
 of media: chat models are not ranked by usage.
 
+## OCR models (`kind: 'ocr'`)
+
+Sixth type, for the OCR tab (`ocr-studio` module): vision GGUF models run by llama.cpp in a server of their own
+(`engine/app/engines/ocr_models.py`). `ModelInfo.ocr` carries their tasks, languages and an honest card (strengths, limits) shown by the
+composer. The tab "Modèles d'OCR" lists them (not downloaded ones included, installed on demand), the Hugging Face search finds repos
+whose name or tags say OCR (family `ocr-gguf`); no « What's new » section (the trending ranking covers four kinds).
+
 ## Diagram models (`kind: 'diagram'`)
 
 Fifth type, for the Diagrams tab (`diagram-studio` module): the **same** GGUF language models as `kind: 'llm'`

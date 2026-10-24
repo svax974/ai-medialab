@@ -19,6 +19,8 @@ how to run are accepted:
                    stable-diffusion.cpp; recipes saved before that ran it with diffusers and still do
     llm-gguf       a language model in GGUF (one file or split in shards, optionally with its multimodal projector),
                    chatted with through llama.cpp
+    ocr-gguf       a vision model in GGUF made to read text (its name or tags say OCR): the same recipe as a language
+                   model, offered by the OCR tab with the generic prompts
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ from typing import Any
 from .. import engine_state
 from ..config import DATA_DIR
 from . import audio_specs, gguf_models, llm_models, torch_models, video_gguf, video_specs
-from .base import AudioCaps, HfSource, LlmCaps, ModelSpec, ParamSpec, PresetVoice
+from .base import AudioCaps, HfSource, LlmCaps, ModelSpec, OcrCaps, ParamSpec, PresetVoice
 
 SETTINGS_KEY = "custom_models"
 
@@ -319,8 +321,29 @@ def _llm_gguf(r: dict[str, Any]) -> ModelSpec:
     return spec
 
 
+def _ocr_gguf(r: dict[str, Any]) -> ModelSpec:
+    """A text-reading model of the Hub: built like a language model (its projector is required), read by the OCR tab. Its prompts
+    are unknown, so it gets the generic ones and follows free instructions; its card says so."""
+    spec = _llm_gguf(r)
+    if not spec.llm or not spec.llm.vision:
+        raise ValueError("un modèle d'OCR a besoin de son projecteur multimodal (fichier mmproj)")
+    spec.kind, spec.family = "ocr", "OCR"
+    spec.llm = dataclasses.replace(spec.llm, tools=False, reasoning="none")
+    spec.description = (f"Modèle de lecture de texte du dépôt {r['repo']} ({r['precision']}), exécuté par llama.cpp. Ses consignes "
+                        "exactes ne sont pas connues : celles de l'OCR sont génériques, à vérifier sur votre document.")
+    spec.tags = ["Hugging Face", "GGUF", "OCR"]
+    spec.ocr = OcrCaps(
+        tasks={"text": "Read all the text in this image and write it out exactly, keeping the line breaks. Answer with the text only.",
+               "markdown": "Convert this document image to Markdown. Keep headings, lists and tables (as Markdown tables). "
+                           "Answer with the Markdown only, without comments."},
+        default_task="markdown", free_prompt=True, languages="inconnues",
+        strengths=["Choisi par vous sur Hugging Face"],
+        weaknesses=["Capacités et consignes inconnues : à tester sur votre document", "Peut répondre à côté si la consigne ne correspond pas à son entraînement"])
+    return spec
+
+
 BUILDERS = {"gguf-variant": _gguf_variant, "sd-diffusers": _sd_diffusers, "sdxl-lora": _sdxl_lora, "qwen3-tts": _qwen3_tts, "whisper-ct2": _whisper,
-            "video-diffusers": _video_diffusers, "video-gguf": _video_gguf, "llm-gguf": _llm_gguf}
+            "video-diffusers": _video_diffusers, "video-gguf": _video_gguf, "llm-gguf": _llm_gguf, "ocr-gguf": _ocr_gguf}
 
 
 def build(recipe: dict[str, Any]) -> ModelSpec:

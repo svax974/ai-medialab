@@ -14,6 +14,7 @@ export type {
   EngineInstallState,
   EngineStatus,
   InstallStatus,
+  MemoryBudget,
   PackInfo,
   PackInstallState,
   SystemInfo,

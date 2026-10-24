@@ -79,5 +79,9 @@
   "studio.conversation.meta.diagram": "{0} gén. · {1}",
   "studio.conversation.delete.media.diagram": "diagrammes",
   "studio.page.diagramHome.title": "Nouveau diagramme",
-  "studio.error.requestFailed": "La requête a échoué."
+  "studio.error.requestFailed": "La requête a échoué.",
+  "studio.mode.ocr": "OCR",
+  "studio.nav.newOcr": "Nouvelle lecture",
+  "studio.page.ocrHome.title": "Nouvelle lecture",
+  "studio.page.ocrDocument.title": "Lecture"
 }

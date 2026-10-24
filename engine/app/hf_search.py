@@ -32,15 +32,16 @@ FAMILY_LABEL = {
     "video-diffusers": "Vidéo",
     "video-gguf": "Vidéo GGUF",
     "llm-gguf": "Chat (GGUF)",
+    "ocr-gguf": "OCR (GGUF)",
 }
 TASK = {"gguf-variant": "image", "sd-diffusers": "image", "sdxl-lora": "image", "qwen3-tts": "tts", "whisper-ct2": "stt",
-        "video-diffusers": "video", "video-gguf": "video", "llm-gguf": "llm"}
+        "video-diffusers": "video", "video-gguf": "video", "llm-gguf": "llm", "ocr-gguf": "ocr"}
 # Engine (backend, audio pack) that runs each family, as the presets declare it.
 FAMILY_ENGINE: dict[str, tuple[str, str | None]] = {
     "gguf-variant": ("sdcpp", None), "video-gguf": ("sdcpp", None), "sd-diffusers": ("torch", None),
     "sdxl-lora": ("torch", None),
     "video-diffusers": ("torch", None), "qwen3-tts": ("pack", "qwen3"), "whisper-ct2": ("pack", "speech"),
-    "llm-gguf": ("llamacpp", None),
+    "llm-gguf": ("llamacpp", None), "ocr-gguf": ("llamacpp", None),
 }
 # Repos quantized in a format the Python Qwen3-TTS engine can't load.
 _NOT_TORCH = re.compile(r"gguf|mlx|onnx|gptq|awq|bnb|[-_ ](?:4|8)-?bit|int[48]|fp8", re.I)
@@ -52,6 +53,8 @@ NOT_LLM_TASKS = {"text-to-image", "text-to-video", "image-to-video", "image-to-i
                  "sentence-similarity", "text-to-speech", "text-to-audio", "automatic-speech-recognition",
                  "audio-to-audio", "fill-mask", "token-classification", "zero-shot-classification"}
 _NOT_A_CHAT = re.compile(r"embed|rerank", re.I)
+# A vision GGUF repo made to read text (GLM-OCR, DeepSeek-OCR, dots.ocr...): offered by the OCR tab, not by the chat.
+_OCR_NAME = re.compile(r"ocr", re.I)
 # Auxiliary files of an LLM repo that are not the model: drafts for speculative decoding.
 _AUX_GGUF = re.compile(r"(^|/)(mtp|dflash|eagle\d*)[-_]|/MTP/", re.I)
 _SHARD = re.compile(r"-0*\d+-of-0*\d+(?=\.gguf$)", re.I)
@@ -95,7 +98,8 @@ def classify(repo: str, tags: list[str]) -> tuple[str, dict[str, Any]] | None:
     if "ctranslate2" in ts and "whisper" in repo.lower() and not _NOT_TORCH.search(repo):
         return "whisper-ct2", {}
     if "gguf" in ts and ts & LLM_TASKS and not ts & NOT_LLM_TASKS and not _NOT_A_CHAT.search(repo):
-        return "llm-gguf", {"base": next(iter(_tag_values(tags, "base_model:quantized:")), "")}
+        base = {"base": next(iter(_tag_values(tags, "base_model:quantized:")), "")}
+        return ("ocr-gguf" if _OCR_NAME.search(repo) or "ocr" in ts else "llm-gguf"), base
     return None
 
 
@@ -124,7 +128,7 @@ def listing_precisions(family: str, repo: str, filenames: list[str], params: dic
         ggufs = [f for f in filenames if f.endswith(".gguf") and "mmproj" not in f.lower()
                  and (family == "gguf-variant" or "/" not in f)]
         return sorted({quant_from_name(f) or "GGUF" for f in ggufs}, key=_quant_rank)
-    if family == "llm-gguf":
+    if family in ("llm-gguf", "ocr-gguf"):
         groups = group_gguf_files({f: 0 for f in filenames})
         return sorted({g["label"] for g in groups}, key=_quant_rank)
     if family == "whisper-ct2":
@@ -146,7 +150,9 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
                             "expand": ["downloads", "likes", "tags", "siblings", "safetensors"]}
     if q:
         base["search"] = q
-    if kind == "llm":
+    if kind == "ocr":
+        qs = [{**base, "filter": "gguf", "pipeline_tag": "image-text-to-text", "search": f"{q} ocr".strip()}]
+    elif kind == "llm":
         qs = [{**base, "filter": "gguf", "pipeline_tag": task} for task in sorted(LLM_TASKS)]
     elif kind == "image":
         qs = [{**base, "filter": f"diffusers:{p}", "pipeline_tag": "text-to-image"} for p in SD_PIPELINES]
@@ -165,7 +171,7 @@ def _queries(kind: str, q: str) -> list[dict[str, Any]]:
 
 
 def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
-    if kind not in ("image", "audio", "video", "llm"):
+    if kind not in ("image", "audio", "video", "llm", "ocr"):
         raise HubError("Type de modèle inconnu.")
     api = _api()
 
@@ -186,6 +192,8 @@ def search(kind: str, q: str, limit: int = 24) -> list[dict[str, Any]]:
         if cls is None:
             continue
         family, details = cls
+        if (family == "ocr-gguf") != (kind == "ocr") and family in ("llm-gguf", "ocr-gguf"):
+            continue  # a text-reading repo belongs to the OCR search, any other language model to the chat's
         seen[m.id] = {
             "repo": m.id, "family": family, "family_label": FAMILY_LABEL[family], "task": TASK[family],
             "downloads": m.downloads or 0, "likes": m.likes or 0,
@@ -313,7 +321,7 @@ def _inspect(repo: str) -> dict[str, Any]:
     out: dict[str, Any] = {"repo": repo, "family": family, "family_label": FAMILY_LABEL[family], "license": license_,
                            "notes": [], "options": [], **engine_compat(*FAMILY_ENGINE[family])}
 
-    if family == "llm-gguf":
+    if family in ("llm-gguf", "ocr-gguf"):
         return _inspect_llm(info, files, out)
 
     if family == "gguf-variant":
@@ -496,7 +504,7 @@ def make_recipe(repo: str, key: str) -> dict[str, Any]:
         who = " ".join(words) or repo.split("/")[0]
         return {**base, "id": slug(repo, opt["label"]), "template": info["template"]["id"], "file": opt["file"],
                 "name": f"{who} {opt['label']}"}
-    if family == "llm-gguf":
+    if family in ("llm-gguf", "ocr-gguf"):
         return {**base, "id": slug(repo, opt["label"]), "name": f"{_title(repo)} {opt['label']}".strip(),
                 "file": opt["file"], "files": opt["files"], "mmproj": opt.get("mmproj"), "mmproj_gb": opt.get("mmproj_gb", 0),
                 "context_max": opt.get("context_max")}

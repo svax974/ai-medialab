@@ -1154,6 +1154,68 @@
         "title": "ModelRef",
         "type": "object"
       },
+      "OcrBody": {
+        "properties": {
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "maxItems": 300,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pages of a PDF to read, from 1; all when absent.",
+            "title": "Pages"
+          },
+          "path": {
+            "description": "Absolute path of an image or a PDF inside the data folder.",
+            "title": "Path",
+            "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The instruction of a `custom` task.",
+            "title": "Prompt"
+          },
+          "task": {
+            "default": "default",
+            "enum": [
+              "default",
+              "text",
+              "markdown",
+              "table",
+              "formula",
+              "chart",
+              "custom"
+            ],
+            "title": "Task",
+            "type": "string"
+          }
+        },
+        "required": [
+          "model_id",
+          "path"
+        ],
+        "title": "OcrBody",
+        "type": "object"
+      },
       "PurgeBody": {
         "properties": {
           "files": {
@@ -3456,6 +3518,89 @@
           }
         },
         "summary": "Free Bf16 Source"
+      }
+    },
+    "/engine/v1/ocr/read": {
+      "post": {
+        "description": "Streams the reading (`text/event-stream`, events above). Refusals that come before any byte are plain HTTP errors:\n404 unknown model, 422 not an OCR model, unreadable file, unknown task, pages outside the document, 409 engine or model not\ninstalled, a media generation or another reply running.",
+        "operationId": "read_engine_v1_ocr_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OcrBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read",
+        "tags": [
+          "ocr"
+        ]
+      }
+    },
+    "/engine/v1/ocr/status": {
+      "get": {
+        "operationId": "ocr_status_engine_v1_ocr_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Ocr Status",
+        "tags": [
+          "ocr"
+        ]
+      }
+    },
+    "/engine/v1/ocr/unload": {
+      "post": {
+        "description": "Unloads the OCR model (409 while a page is being read).",
+        "operationId": "unload_engine_v1_ocr_unload_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LlmStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Unload",
+        "tags": [
+          "ocr"
+        ]
       }
     },
     "/engine/v1/runtime/settings": {

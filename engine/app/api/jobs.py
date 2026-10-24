@@ -25,7 +25,7 @@ from ..engines import get_spec
 from ..job_checks import MAX_COUNT, check_generation
 from ..job_plans import JobRequest
 from ..jobs import jobs
-from ..llm import llm
+from ..llm import llm, ocr_llm
 from ..media import VIDEO_EXTENSIONS, FfmpegMissing, is_video_upload, make_thumb, probe_video, save_upload, video_thumb
 from ..private_session import inside, session_dir, subfolder
 
@@ -138,7 +138,7 @@ def submit_job(body: JobSubmit) -> dict[str, Any]:
         raise HTTPException(422, str(exc)) from None
     if spec.kind != body.kind:
         raise HTTPException(422, f"{spec.name} est un modèle {spec.kind}, pas {body.kind}.")
-    if llm.generating:
+    if llm.generating or ocr_llm.generating:
         raise HTTPException(409, "Une réponse de chat est en cours : attendez sa fin avant de lancer une génération.")
     if len(body.params.get("seeds") or []) > MAX_COUNT:
         raise HTTPException(422, f"{MAX_COUNT} résultats au plus par job.")

@@ -106,6 +106,9 @@ The scan runs again on each of them in CI and fails on a strong copyleft licence
 | Chat models: Qwen3 1.7B, Qwen3 4B Instruct 2507, Qwen3 8B, Qwen3.8 27B; Gemma 4 (E4B, 12B, 26B A4B); Ministral 3 8B; gpt-oss 20B | Apache-2.0 (licences read in the metadata of the Hugging Face repositories on 2026-10-15) |
 | Chat models: LFM 2.5 1.2B and 8B A1B (Liquid AI) | LFM Open License v1.0: free commercial use under USD 10 million annual revenue (threshold read in the `LICENSE` file of the repository; the details of section 5 have not been re-read) |
 | Chat models added from Hugging Face | that of the repository, read when added and displayed in the selector |
+| OCR models: GLM-OCR (Z.ai), dots.ocr (Rednote), DeepSeek-OCR | MIT (licences read in the metadata of the Hugging Face repositories of the models on 2026-10-24; GGUF conversions by ggml-org) |
+| OCR models: PaddleOCR-VL 1.6 (Baidu, official GGUF), LightOnOCR 2 1B (LightOn), Qianfan-OCR (Baidu), Qwen3-VL 2B (Qwen) | Apache-2.0 (same source and date) |
+| pypdfium2 (PDF page rendering of the OCR tab), with PDFium | BSD-3-Clause / Apache-2.0 |
 | FLUX 3 Image Klein (Black Forest Labs), GGUF conversion by AtomicChat | FLUX Kommunity License (text read in the `LICENSE.md` of the repository on 2026-10-24): non-commercial use, or commercial use of the outputs under US$5M of annual revenue with a content filter or a review of the outputs; the weights are downloaded by the user, not redistributed; its Qwen3-VL-4B-Instruct text encoder is Apache-2.0 |
 | Image models | variable: see the licence indicated per model (some are non-commercial, e.g. Qwen Image 2.1 "Research") |
 
