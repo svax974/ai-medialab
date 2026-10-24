@@ -143,7 +143,9 @@ TypeORM migrations.
 
 - **Images**: MLX (Apple Silicon), PyTorch + diffusers (CUDA, ROCm, MPS; installed on demand by the "torch" pack, outside the
   installer), GGUF through stable-diffusion.cpp (Metal, CUDA, ROCm,
-  Vulkan); text to image, image to image, instruction-based editing; "Demo" model without GPU (`IMAGEGEN_DEMO=1`).
+  Vulkan); text to image, image to image, instruction-based editing (GGUF catalogue: Z-Image Turbo, Qwen Image 2.1, Qwen Image
+  Edit, FLUX 3 Image Klein: text to image and editing with up to 4 references, licence FLUX Kommunity, `min_build` 968 of
+  stable-diffusion.cpp, refused with a reinstall hint on an older build); "Demo" model without GPU (`IMAGEGEN_DEMO=1`).
 - **Specialised SDXL**: LoRAs loaded on SDXL (adjustable strength, trigger words added to the prompt), including two pixel-art
   ones with "Crisp pixels" post-processing, including "Pixel Art XL · Face" which follows the face of a photo (IP-Adapter, optional start image); fine-tuned models RealVisXL, Juggernaut XL, DreamShaper XL Turbo, Animagine XL with
   their recommended scheduler. **Unverified**: no real generation.

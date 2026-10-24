@@ -2,6 +2,7 @@
   "settings.error.object": "{0} doit être un objet.",
   "settings.error.entry": "{0}.{1} : {2} attendu.",
   "settings.error.body": "Corps JSON attendu.",
+  "settings.error.memoryLimit": "memory_limit_gb : nombre entre 0 et {0} attendu (0 = automatique).",
   "settings.error.keepAlive": "keep_alive_minutes : entier entre {0} et {1} attendu.",
   "settings.error.boolean": "{0} : booléen attendu.",
   "settings.error.text": "{0} : texte attendu.",

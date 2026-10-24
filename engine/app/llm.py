@@ -7,11 +7,11 @@ The engine keeps no conversation: Nest sends the whole history with every reques
 normalised events back (`ChatEvents` below). The server is a long-lived process of its own (one model, one chat at a time,
 `--parallel 1`) listening on 127.0.0.1 only, behind a random API key that never leaves this module.
 
-Memory is shared with the image, audio and video workers, so ONE model lives in memory at a time for the whole
-application (see `ARCHITECTURE.md`, "Memory safety nets"):
+Memory is shared with the image, audio and video workers and with the other servers: the models loaded together must fit
+under the global ceiling (`memory_budget.py`, see `ARCHITECTURE.md`, "Memory safety nets"):
 
-- before a chat model loads, the generation worker is stopped (refused with `LlmBusy` while a generation or a queued one is
-  running); before a generation loads its worker, the chat server is stopped (`jobs.py`, `api/jobs.py`);
+- before a chat model loads, `memory_budget.make_room` unloads the idle models that would not fit next to it (refused with
+  `LlmBusy` while a generation or a queued one is running); a generation does the same for the chat server (`jobs.py`);
 - `memory_guard.preflight` checks the memory free right now against the weights, the KV cache of the requested context and
   llama.cpp's buffers (`engines/llm_models.memory_need_gb`);
 - a `MemoryWatchdog` watches the server's process tree and kills it before the machine runs out.
@@ -37,7 +37,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, AsyncIterator, Callable
 
-from . import config, llamacpp, memory_guard
+from . import config, llamacpp, memory_budget, memory_guard
 from .engines import MODELS, get_spec
 from .engines.base import ModelSpec
 from .engines.llm_models import memory_need_gb
@@ -288,8 +288,10 @@ def http_post_json(port: int, path: str, payload: dict[str, Any], key: str, time
 class Server:
     """A running `llama-server`: its process, address, key and the last lines of its log (for the error message)."""
 
-    def __init__(self, proc: asyncio.subprocess.Process, spec: ModelSpec, port: int, key: str, ctx: int, vision: bool) -> None:
+    def __init__(self, proc: asyncio.subprocess.Process, spec: ModelSpec, port: int, key: str, ctx: int, vision: bool,
+                 need_gb: float = 0.0) -> None:
         self.proc, self.spec, self.port, self.key, self.ctx, self.vision = proc, spec, port, key, ctx, vision
+        self.need_gb = need_gb  # weights, KV cache and buffers: what the memory budget counts
         self.model_id, self.variant = spec.id, spec.variant
         self.started_at = time.time()
         self.tail: deque[str] = deque(maxlen=40)
@@ -374,12 +376,20 @@ class LlmManager:
         self._lock = asyncio.Lock()  # one load at a time
         self._chatting = False  # one request at a time (`--parallel 1`)
         self.private_used = False  # a private reply ran since the model loaded: its unloading leaves no log line (private_session.py)
+        self.last_used = time.time()  # end of the last reply: which model the memory budget unloads first
         self._idle_task: asyncio.Task | None = None
         self.guard = memory_guard.MemoryWatchdog(self._watched_pid)
 
     def _watched_pid(self) -> int | None:
         s = self.server
         return s.proc.pid if s and s.alive else None
+
+    def resident(self) -> memory_budget.Resident | None:
+        """The model the server holds, as the memory budget counts it."""
+        s = self.server
+        if not (s and s.alive):
+            return None
+        return memory_budget.Resident(s.model_id, s.spec.name, s.need_gb, self.last_used)
 
     async def start(self) -> None:
         self.guard.start()
@@ -460,9 +470,8 @@ class LlmManager:
             if jobs.current or jobs.pending:
                 raise LlmBusy("Une génération de médias est en cours : attendez sa fin ou annulez-la avant de discuter.")
             await self._stop_locked()
-            if jobs.worker:
-                await jobs.unload()  # one model in memory: the generation worker leaves first
-            refused = self._preflight(spec, ctx)
+            need = memory_need_gb(spec, ctx)
+            refused = await memory_budget.make_room(need, CHAT_SLOT, spec.name) or self._preflight(spec, ctx)
             if refused:
                 self.last_error = refused
                 raise LlmError(refused)
@@ -487,7 +496,7 @@ class LlmManager:
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, cwd=str(found[1].parent),
             env={**os.environ, "LLAMA_API_KEY": key, "NO_COLOR": "1"})
         self.guard.begin_job()
-        server = Server(proc, spec, port, key, ctx, bool(paths.get("mmproj")))
+        server = Server(proc, spec, port, key, ctx, bool(paths.get("mmproj")), memory_need_gb(spec, ctx))
         self.server = server
         try:
             await self._wait_healthy(server, emit)
@@ -609,6 +618,7 @@ class LlmManager:
             if load is not None and not load.done():
                 load.cancel()
             self._chatting = False
+            self.last_used = time.time()
             if self.server and self.server.alive:
                 self._set("ready")
                 self.schedule_idle_unload()
@@ -668,3 +678,5 @@ def _plan(spec: ModelSpec, system: dict[str, Any]) -> dict[str, Any]:
 
 
 llm = LlmManager()
+CHAT_SLOT = "chat"  # key of the chat server in the memory budget
+memory_budget.register(memory_budget.Slot(CHAT_SLOT, lambda: llm.resident(), lambda: llm.generating, lambda: llm.stop()))

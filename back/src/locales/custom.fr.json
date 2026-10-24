@@ -17,6 +17,8 @@
   "custom.legal.usageConditions.placeholder": "À compléter — contactez  à .",
   "custom.settings.description": "Réglages du studio : mémoire, aperçus et accès Hugging Face.",
   "custom.settings.keepAliveMinutes": "Garder le modèle chargé (minutes)",
+  "custom.settings.memoryLimitGb": "Plafond de mémoire des modèles (Go)",
+  "custom.settings.memoryLimitGb.description": "Mémoire maximale que les modèles chargés ensemble peuvent prendre (chat, OCR, génération) ; 0 laisse l'application utiliser 80 % de la machine. Quand un nouveau modèle ne tient pas, les modèles inactifs les moins récents sont déchargés.",
   "custom.settings.keepAliveMinutes.description": "Durée d'inactivité avant de décharger le modèle ; -1 ne le décharge jamais, 0 le décharge après chaque génération.",
   "custom.settings.previews": "Aperçus pendant la génération",
   "custom.settings.previews.description": "Affiche des aperçus intermédiaires des images en cours de génération.",

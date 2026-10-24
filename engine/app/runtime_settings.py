@@ -13,7 +13,7 @@ from __future__ import annotations
 import threading
 from typing import Any
 
-STUDIO_KEYS = ("keep_alive_minutes", "previews", "low_memory", "quantize", "variant", "hf_token")
+STUDIO_KEYS = ("keep_alive_minutes", "previews", "low_memory", "quantize", "variant", "hf_token", "memory_limit_gb")
 
 _lock = threading.Lock()
 _pushed: dict[str, Any] | None = None

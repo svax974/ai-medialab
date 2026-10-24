@@ -1,4 +1,5 @@
 {
   "Le moteur GGUF installé (version {}) est trop ancien pour la vidéo sur Mac : il faut la version {} ou plus récente. Réinstallez le moteur depuis l'écran « Modèles ».": "The installed GGUF engine (version {}) is too old for video on Mac: version {} or newer is required. Reinstall the engine from the \"Models\" screen.",
-  "Le moteur GGUF (stable-diffusion.cpp) n'est pas installé.": "The GGUF engine (stable-diffusion.cpp) is not installed."
+  "Le moteur GGUF (stable-diffusion.cpp) n'est pas installé.": "The GGUF engine (stable-diffusion.cpp) is not installed.",
+  "Le moteur GGUF installé (version {}) est trop ancien pour ce modèle : il faut la version {} ou plus récente. Réinstallez le moteur depuis l'écran « Modèles ».": "The installed GGUF engine (version {}) is too old for this model: version {} or newer is required. Reinstall the engine from the \"Models\" screen."
 }

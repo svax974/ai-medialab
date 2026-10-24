@@ -3,9 +3,9 @@
 
 """Generation queue and worker process lifecycle (server side).
 
-One generation at a time (the GPU is shared) and one model loaded at a time (unified memory
-can't hold two). The model stays loaded between generations and is unloaded after a
-configurable idle delay.
+One generation at a time (the GPU is shared). The model stays loaded between generations and is unloaded after a
+configurable idle delay, or earlier when another model needs its place under the global memory ceiling
+(`memory_budget.py`): the worker can stay loaded next to the chat model when both fit.
 
 The manager is stateless with respect to the studio: it runs `JobRequest`s (see `job_plans.py`) and reports
 `job.started`, `job.progress`, `job.preview`, `job.output`, `job.done`, `job.failed` and `job.cancelled` events to the
@@ -24,7 +24,7 @@ from collections import OrderedDict
 from pathlib import Path
 from typing import Any
 
-from . import audio_packs, memory_guard, runtime_settings
+from . import audio_packs, memory_budget, memory_guard, runtime_settings
 from .audio_worker import AudioWorkerHandle
 from .config import PREVIEWS_DIR
 from .engines import get_spec
@@ -41,6 +41,7 @@ DEFAULT_SETTINGS: dict[str, Any] = {
     "keep_alive_minutes": 10,  # -1 = never unload, 0 = unload after each generation
     "previews": True,
     "low_memory": True,  # free the text encoder after encoding the prompt
+    "memory_limit_gb": 0,  # ceiling for the models loaded together (`memory_budget.py`); 0 = 80 % of the machine
     "quantize": {},  # model_id -> bits (None = full precision)
     "variant": {},  # model_id -> chosen quantization (a `Variant` key)
 }
@@ -118,6 +119,9 @@ class WorkerHandle:
             await asyncio.to_thread(self.process.join, 5)
 
 
+MEDIA_SLOT = "media"  # key of the generation worker in the memory budget
+
+
 def _pid(worker: Any) -> int | None:
     """Process id of a worker handle (image process or pack subprocess), None when there is none."""
     process = getattr(worker, "process", None)
@@ -138,6 +142,7 @@ class JobManager:
         self.state = "idle"  # idle | loading | ready | busy
         self.current: str | None = None
         self.load_started_at: float | None = None
+        self.last_used = time.time()  # end of the last job: which model the memory budget unloads first
         self.last_error: str | None = None
         self.progress: dict[str, dict] = {}  # job_id -> latest progress state
         self._cancel_requested: set[str] = set()
@@ -150,6 +155,17 @@ class JobManager:
     def _watched_pid(self) -> int | None:
         w = self.worker
         return _pid(w) if w and w.alive else None
+
+    def resident(self) -> memory_budget.Resident | None:
+        """The model the worker holds, as the memory budget counts it."""
+        w = self.worker
+        if not (w and w.alive):
+            return None
+        spec = get_spec(w.model_id)
+        return memory_budget.Resident(w.model_id, spec.name, spec.weights_gb or 0.0, self.last_used)
+
+    def busy(self) -> bool:
+        return self.current is not None or bool(self.pending)
 
     async def start(self) -> None:
         self._loop = asyncio.get_running_loop()
@@ -257,6 +273,7 @@ class JobManager:
                     print(f"[memory] job {job_id} : mémoire libre au plus bas {stats['min_free_gb']} Go, "
                           f"processus du modèle au plus haut {stats['peak_worker_gb']} Go", flush=True)
                 self.current = None
+                self.last_used = time.time()
                 self._cancel_requested.discard(job_id)
                 if self.worker and self.worker.alive:
                     self.state = "ready"
@@ -409,10 +426,10 @@ class JobManager:
             refused = "Une réponse de chat est en cours : relancez la génération quand elle est terminée."
             self._finish(job, "failed", refused)
             return False
-        await llm.stop()  # one model in memory: the chat model leaves before the worker loads
 
         spec = get_spec(model_id)
-        refused = self._memory_preflight(spec)
+        # Other models stay loaded while they fit under the global ceiling; the oldest idle ones leave otherwise.
+        refused = await memory_budget.make_room(spec.weights_gb, MEDIA_SLOT, spec.name) or self._memory_preflight(spec)
         if refused:
             self.last_error = refused
             self._finish(job, "failed", refused)
@@ -536,3 +553,4 @@ class JobManager:
 
 
 jobs = JobManager()
+memory_budget.register(memory_budget.Slot(MEDIA_SLOT, lambda: jobs.resident(), lambda: jobs.busy(), lambda: jobs.unload()))

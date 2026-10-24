@@ -93,6 +93,15 @@ def video_unsupported(binary: Path, variant: str) -> str | None:
     return None
 
 
+def model_unsupported(binary: Path, min_build: int | None) -> str | None:
+    """French error when this build predates the architecture of a model (`options["min_build"]`), else None."""
+    number = build_number(binary)
+    if min_build and number is not None and number < min_build:
+        return (f"Le moteur GGUF installé (version {number}) est trop ancien pour ce modèle : il faut la version "
+                f"{min_build} ou plus récente. Réinstallez le moteur depuis l'écran « Modèles ».")
+    return None
+
+
 def find_variants() -> dict[str, Path]:
     found: dict[str, Path] = {}
     for root in engines_roots():

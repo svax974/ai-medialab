@@ -117,6 +117,7 @@ backend is chosen from the detected GPU — CUDA on NVIDIA, ROCm on AMD, Metal o
 | **Qwen Image 2.1** | PyTorch | Text → image, **editing**, RGBA | up to 10 images | 33 GB (32 GB of bf16 weights) |
 | **Z-Image Turbo** (Apache 2.0) | **GGUF** | Fast text → image (8 steps) | — | **6.7 GB** |
 | **Z-Image Turbo** (Apache 2.0) | PyTorch | same, full precision | — | 33 GB |
+| **FLUX 3 Image Klein** (FLUX Kommunity) | **GGUF** | Text → image (16 steps), editing by description | up to 4 images | **7.3 GB** |
 | **Stable Diffusion XL** | PyTorch | Text → image, img2img; fits on 8 GB | 1 starting image | 6.5 GB |
 | **Pixel Art XL**, **Pixel Art Redmond** (LoRA on SDXL) | PyTorch | Pixel art, `Pixels nets` (sharp pixels) | 1 starting image | SDXL + 0.16 GB |
 | **Pixel Art XL · Visage** (LoRA + IP-Adapter on SDXL) | PyTorch | Pixel art portrait from a photo | face + optional starting image | SDXL + 3.3 GB |
@@ -130,6 +131,18 @@ Measured on an M3 Max (36 GB) with Metal, Q4_K weights: Z-Image Turbo, 3.2 s per
 loading included); Qwen Image 2.1, 5.8 s per step at 576×576 (129 s for 20 steps, text rendered correctly in the image) and 149 s
 when editing with guidance 1 — which does not follow the instruction well: the application therefore applies a guidance of 4 when
 editing (338 s, instruction followed). No Vulkan/CUDA/ROCm measurement could be made here.
+
+FLUX 3 Image Klein GGUF (AD-Q5_K + Qwen3-VL 4B encoder AD-Q4_K, Metal, 512×512, 16 steps, CFG 1, measured on 2026-10-24 on the
+same M3 Max with `master-999`): 49 s of sampling (≈ 3 s per step), 61 s per image in all, peak 7.3 GB. Editing with one reference:
+103 to 179 s on three runs (6 to 11 s per step), peak 7.6 to 8.0 GB. Following the instruction is uneven (three tests, one seed
+each): a short instruction ("the same fox, now in a desert") returned the reference almost unchanged; a caption describing the whole
+final scene replaced the background and kept the subject (fox in a desert); the same kind of caption for a cat moved to a red sofa
+changed only a corner of the picture. Creation needs a full-scene caption too (a short prompt gives a generic picture), so the
+composers' ✨ button is the way to write prompts for this model. Needs stable-diffusion.cpp `master-968` or newer (`master-956`
+fails at load with `get sd version from file failed`); FlashAttention, 1024×1024 and more than one reference were not measured.
+Licence (read in the `LICENSE.md` of the GGUF repository): commercial use of the images only under US$5M of annual revenue (affiliates
+included), with a content filter or a review of the outputs; military, surveillance and biometric uses are prohibited. The
+application downloads the files from Hugging Face on the user's machine and redistributes nothing.
 
 Qwen Image Edit GGUF (Q4_K_M, Metal, 576×576): 935 s in 20 steps, **479 s in 12 steps** (equivalent quality, default value), i.e.
 about 40 s per step — 3 to 4 times slower than Qwen Image 2.1 (a 20-billion-parameter model versus 7). Memory: ≈ 18 GB for
@@ -245,7 +258,7 @@ family (LTX-2.3 `distilled-1.1` remains available without an account), full Bern
 is too heavy, so we keep the render-only version.
 
 **Engines.** Video preferably goes through the **GGUF** engine (`sd-cli -M vid_gen`, stable-diffusion.cpp, pinned version
-`master-956`), hence on Metal, CUDA, ROCm and Vulkan with 4-bit quantized weights; `sd-cli` does not produce MP4, so the
+`master-999`), hence on Metal, CUDA, ROCm and Vulkan with 4-bit quantized weights; `sd-cli` does not produce MP4, so the
 application converts its output (and LTX's sound) into MP4 H.264 + AAC with FFmpeg (PyAV; on Mac, the VideoToolbox hardware
 encoder; build and license: `docs/components/ffmpeg.md`). On Mac, an `sd-cli` build older than `master-745` is refused (Wan did
 not work on it). PyTorch + diffusers versions remain as an alternative (CogVideoX exists only there). **Kiwi-Edit and Bernini** need
@@ -450,7 +463,7 @@ re-reads the repository before adding it.
 | Audio · Whisper | faster-whisper models (CTranslate2) | `speech` pack |
 
 Refused with an explanation: restricted-access repositories, `.bin`/`.ckpt` formats, unloadable quantized models (GGUF/MLX/ONNX of
-Qwen3-TTS), unsupported architectures (Flux, SD3…). A "recipe" (repository, file, family) is saved in the engine's own state
+Qwen3-TTS), unsupported architectures (Flux other than the catalogue's FLUX 3 Image Klein, SD3…). A "recipe" (repository, file, family) is saved in the engine's own state
 (`engine-state.json`, data folder); the model appears in the lists with the mention *Hugging Face* and can be removed.
 The **precision** shown (Q4_K, bf16, fp16…) comes from the GGUF file name or the safetensors header, read remotely without
 downloading the file.

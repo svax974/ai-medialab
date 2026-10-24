@@ -17,6 +17,8 @@
   "custom.legal.usageConditions.placeholder": "To be completed — contact  at .",
   "custom.settings.description": "Studio settings: memory, previews and Hugging Face access.",
   "custom.settings.keepAliveMinutes": "Keep the model loaded (minutes)",
+  "custom.settings.memoryLimitGb": "Memory ceiling for models (GB)",
+  "custom.settings.memoryLimitGb.description": "Most memory the models loaded together may take (chat, OCR, generation); 0 lets the application use 80 % of the machine. When a new model does not fit, the least recently used idle ones are unloaded.",
   "custom.settings.keepAliveMinutes.description": "Idle time before the model is unloaded; -1 never unloads it, 0 unloads it after each generation.",
   "custom.settings.previews": "Previews while generating",
   "custom.settings.previews.description": "Shows intermediate previews of images being generated.",

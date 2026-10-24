@@ -9,12 +9,14 @@ import { tr } from 'src/modules/i18n';
 
 export const KEEP_ALIVE_MIN = -1;
 export const KEEP_ALIVE_MAX = 1440;
+export const MEMORY_LIMIT_MAX = 4096;
 const MAX_KEY_LENGTH = 512;
 
 export const DEFAULT_SETTINGS: StudioSettings = {
   keep_alive_minutes: 10,
   previews: true,
   low_memory: true,
+  memory_limit_gb: 0,
   quantize: {},
   variant: {},
   hf_token: '',
@@ -41,7 +43,7 @@ function parseMap<T>(name: string, value: unknown, valid: (v: unknown) => v is T
 export function parseSettingsPatch(body: unknown): SettingsPatch {
   if (!isRecord(body)) return fail(tr('settings.error.body'));
   const patch: SettingsPatch = {};
-  const { keep_alive_minutes: keep, previews, low_memory: low, hf_token: token, brave_api_key: brave, chat_voice_id: chatVoice, quantize, variant } = body;
+  const { keep_alive_minutes: keep, previews, low_memory: low, memory_limit_gb: memoryLimit, hf_token: token, brave_api_key: brave, chat_voice_id: chatVoice, quantize, variant } = body;
   if (keep != null) {
     if (typeof keep !== 'number' || !Number.isInteger(keep) || keep < KEEP_ALIVE_MIN || keep > KEEP_ALIVE_MAX) {
       fail(tr('settings.error.keepAlive', [KEEP_ALIVE_MIN, KEEP_ALIVE_MAX]));
@@ -50,6 +52,12 @@ export function parseSettingsPatch(body: unknown): SettingsPatch {
   }
   if (previews != null) patch.previews = typeof previews === 'boolean' ? previews : fail(tr('settings.error.boolean', ['previews']));
   if (low != null) patch.low_memory = typeof low === 'boolean' ? low : fail(tr('settings.error.boolean', ['low_memory']));
+  if (memoryLimit != null) {
+    if (typeof memoryLimit !== 'number' || !Number.isFinite(memoryLimit) || memoryLimit < 0 || memoryLimit > MEMORY_LIMIT_MAX) {
+      fail(tr('settings.error.memoryLimit', [MEMORY_LIMIT_MAX]));
+    }
+    patch.memory_limit_gb = memoryLimit;
+  }
   if (token != null) patch.hf_token = typeof token === 'string' ? token.trim() : fail(tr('settings.error.text', ['hf_token']));
   if (brave != null) patch.brave_api_key = typeof brave === 'string' && brave.length <= MAX_KEY_LENGTH ? brave.trim() : fail(tr('settings.error.textMax', ['brave_api_key', MAX_KEY_LENGTH]));
   if (chatVoice != null) patch.chat_voice_id = typeof chatVoice === 'string' && chatVoice.length <= MAX_KEY_LENGTH ? chatVoice.trim() : fail(tr('settings.error.textMax', ['chat_voice_id', MAX_KEY_LENGTH]));

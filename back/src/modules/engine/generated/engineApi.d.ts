@@ -1301,6 +1301,11 @@ export interface components {
              */
             low_memory: boolean;
             /**
+             * Memory Limit Gb
+             * @default 0
+             */
+            memory_limit_gb: number;
+            /**
              * Previews
              * @default true
              */

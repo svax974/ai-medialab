@@ -9,6 +9,8 @@ export interface StudioSettings {
   keep_alive_minutes: number;
   previews: boolean;
   low_memory: boolean;
+  /** Ceiling (GB) for the models loaded together; 0 = automatic (80 % of the machine's memory). */
+  memory_limit_gb: number;
   /** `model_id` -> quantization bits (null = full precision). */
   quantize: Record<string, number | null>;
   /** `model_id` -> chosen quantization (a variant key). */

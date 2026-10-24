@@ -154,6 +154,49 @@ QWEN_EDIT_GGUF = ModelSpec(
     },
 )
 
+K_GGUF = ("AtomicChat/FLUX-3-Image-Klein-GGUF", "FLUX-3-Image-Klein-AD-Q5_K.gguf")
+K_LLM = ("AtomicChat/FLUX-3-Image-Klein-GGUF", "text_encoders/Qwen3-VL-4B-Instruct-AD-Q4_K.gguf")
+K_VAE = ("AtomicChat/FLUX-3-Image-Klein-GGUF", "vae/ae.safetensors")  # Black Forest Labs' file, unchanged
+
+KLEIN_GGUF = ModelSpec(
+    id="flux-3-image-klein-gguf",
+    name="FLUX 3 Image Klein",
+    family="FLUX",
+    description="Texte → image et édition d'images avec références (5,6 milliards de paramètres, distillé en 16 étapes), "
+    "de Black Forest Labs. Rédigez le prompt comme une description de scène complète (le bouton ✨ le fait pour vous) : "
+    "un prompt court donne une image générique. Version quantifiée (Q5) : ≈ 7 Go, sans PyTorch. Licence FLUX Kommunity "
+    "(usage commercial réservé aux structures sous 5 M$ de chiffre d'affaires annuel, qui doivent filtrer ou relire les images).",
+    engine=ENGINE,
+    backend="sdcpp",
+    reference_mode="multi",
+    max_references=4,
+    params=[
+        ParamSpec("steps", "Étapes", "int", 16, 4, 50, 1, "Le modèle est distillé pour 16 étapes."),
+        ParamSpec("guidance", "Guidance (CFG)", "float", 1.0, 1.0, 8.0, 0.5,
+                  "1 = désactivé (recommandé pour ce modèle distillé).", advanced=True),
+    ],
+    size_multiple=16,
+    min_side=256,
+    max_side=2048,
+    default_quantize=None,
+    quantize_options=[],
+    sources=[src(K_GGUF, 4.44), src(K_LLM, 2.49), src(K_VAE, 0.34)],
+    download_size_gb=7.27,
+    license="FLUX Kommunity (non commercial, ou commercial sous 5 M$ de chiffre d'affaires annuel)",  # Qualifying Users must filter or review outputs (§2.e)
+    weights_gb=7.27,
+    largest_component_gb=4.44,
+    memory_hint="≈ 7,3 Go de poids (Q5), pic mesuré ≈ 8 Go à 512×512 (avec une référence) sur un Mac Apple Silicon de 36 Go "
+    "(non mesuré sur moins de mémoire). Environ 3 s par étape à 512×512, 6 à 11 s avec une référence.",
+    tags=["texte→image", "édition", "multi-références", "GGUF", "FLUX Kommunity"],
+    options={
+        "files": {"diffusion-model": K_GGUF, "llm": K_LLM, "vae": K_VAE},
+        "min_build": 968,  # first stable-diffusion.cpp release with FLUX 3 (leejet/stable-diffusion.cpp#2143)
+        "cli_args": ["--sampling-method", "euler"],
+        "fa_variants": [],  # FlashAttention not measured on this architecture
+        "guidance_arg": "--cfg-scale",
+    },
+)
+
 # Offered quantizations (diffusion file sizes, in GB). Only the chosen one is downloaded; the text
 # encoder and VAE are shared by all of them.
 
@@ -188,4 +231,7 @@ _gguf_variants(QWEN_EDIT_GGUF, "unsloth/Qwen-Image-Edit-2511-GGUF", "qwen-image-
                 ("Q6_K", 16.85), ("Q8_0", 21.76)],
                "Q4_K_M")
 
-SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN_EDIT_GGUF]
+_gguf_variants(KLEIN_GGUF, "AtomicChat/FLUX-3-Image-Klein-GGUF", "FLUX-3-Image-Klein-{}.gguf",
+               [("AD-Q4_K", 3.65), ("AD-Q5_K", 4.44), ("Q8_0", 5.99)], "AD-Q5_K")
+
+SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN_EDIT_GGUF, KLEIN_GGUF]

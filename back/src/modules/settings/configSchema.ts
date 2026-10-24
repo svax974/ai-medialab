@@ -44,6 +44,15 @@ export const settingsConfigSchema: ModuleConfigSchema = {
       group: 'performance',
     },
     {
+      key: 'studio_memoryLimitGb',
+      label: 'custom.settings.memoryLimitGb',
+      description: 'custom.settings.memoryLimitGb.description',
+      type: 'number',
+      defaultValue: 0,
+      group: 'performance',
+      validation: { min: 0, max: 4096 },
+    },
+    {
       key: 'studio_quantize',
       label: 'custom.settings.quantize',
       type: 'json',

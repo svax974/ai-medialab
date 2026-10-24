@@ -25,6 +25,14 @@ describe('parseSettingsPatch', () => {
     expect(() => parseSettingsPatch({ chat_voice_id: 4 })).toThrow();
   });
 
+  it('accepts a memory ceiling from 0 (automatic) up and refuses a negative or absurd one', () => {
+    expect(parseSettingsPatch({ memory_limit_gb: 0 })).toEqual({ memory_limit_gb: 0 });
+    expect(parseSettingsPatch({ memory_limit_gb: 24.5 })).toEqual({ memory_limit_gb: 24.5 });
+    expect(() => parseSettingsPatch({ memory_limit_gb: -1 })).toThrow(UnprocessableEntityException);
+    expect(() => parseSettingsPatch({ memory_limit_gb: 99999 })).toThrow(UnprocessableEntityException);
+    expect(() => parseSettingsPatch({ memory_limit_gb: '8' })).toThrow(UnprocessableEntityException);
+  });
+
   it('accepts the model maps', () => {
     expect(parseSettingsPatch({ quantize: { m: 4, n: null }, variant: { m: 'Q4_K_M' } })).toEqual({
       quantize: { m: 4, n: null },
@@ -63,6 +71,6 @@ describe('applyPatch / toPublic', () => {
     expect(pub).not.toHaveProperty('hf_token');
     expect(pub.has_hf_token).toBe(true);
     expect(toPublic(DEFAULT_SETTINGS).has_hf_token).toBe(false);
-    expect(Object.keys(pub).sort()).toEqual(['chat_voice_id', 'has_brave_api_key', 'has_hf_token', 'keep_alive_minutes', 'low_memory', 'previews', 'quantize', 'variant']);
+    expect(Object.keys(pub).sort()).toEqual(['chat_voice_id', 'has_brave_api_key', 'has_hf_token', 'keep_alive_minutes', 'low_memory', 'memory_limit_gb', 'previews', 'quantize', 'variant']);
   });
 });

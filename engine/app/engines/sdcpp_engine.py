@@ -11,6 +11,7 @@ seconds, the files being in the disk cache); a resident server mode would be pos
     files            role -> (repo, file): diffusion-model, llm, vae, llm_vision... (Hugging Face cache)
     vision_for_refs  roles only added when reference images are given (e.g. llm_vision)
     cli_args         fixed arguments (e.g. ["--sampling-method", "euler"])
+    min_build        oldest stable-diffusion.cpp release that knows the architecture (e.g. 968 for FLUX 3)
     fa_variants      builds for which FlashAttention is enabled (--diffusion-fa)
     guidance_arg     guidance option (default --cfg-scale)
     edit_guidance    guidance used when editing (references) if the user left the default (1)
@@ -31,7 +32,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from ..sdcpp import prompt_args
+from ..sdcpp import model_unsupported, prompt_args
 from .base import Engine, GenerationCancelled, GenerationRequest, Hooks
 
 # From this many pixels the VAE works in tiles (`--vae-tiling`): encoding the references and decoding the result at
@@ -70,6 +71,8 @@ class SdcppEngine(Engine):
             raise RuntimeError(eng.get("reason") or "Moteur GGUF indisponible.")
         self.binary = Path(eng["binary"])
         self.variant = eng["variant"]
+        if err := model_unsupported(self.binary, self.spec.options.get("min_build")):
+            raise RuntimeError(err)
         self.paths: dict[str, str] = {}
         for role, (repo, filename) in self.spec.options["files"].items():
             try:

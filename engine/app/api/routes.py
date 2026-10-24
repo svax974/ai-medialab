@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from .. import audio_packs
+from .. import audio_packs, memory_budget
 from ..catalog import describe_models
 from ..downloads import downloads
 from ..audio_packs import installer as pack_installer
@@ -49,7 +49,8 @@ def system_info(refresh: bool = False) -> dict[str, Any]:
                **{k: v for k, v in audio_packs.engine_info(p.id).items() if k in ("installable", "reason")}}
         for p in audio_packs.PACKS.values()
     }
-    return {**info, "engines": engines, "packs": packs, "pack_install": pack_installer.public()}
+    return {**info, "engines": engines, "packs": packs, "pack_install": pack_installer.public(),
+            "memory": memory_budget.snapshot()}  # live too: the ceiling and the models held right now
 
 
 @router.post("/engines/pack/{pack_id}/install")
@@ -217,6 +218,7 @@ class SettingsPatch(BaseModel):
     keep_alive_minutes: int | None = None
     previews: bool | None = None
     low_memory: bool | None = None
+    memory_limit_gb: float | None = None
     hf_token: str | None = None
     quantize: dict[str, int | None] | None = None
     variant: dict[str, str] | None = None

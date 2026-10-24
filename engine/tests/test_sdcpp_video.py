@@ -555,7 +555,7 @@ class TestBuilds:
         from app import engine_install as ei
 
         monkeypatch.delenv("IMAGEGEN_SDCPP_TAG", raising=False)
-        assert ei.default_tag() == ei.PINNED_TAG == "master-956-1b0ba10"
+        assert ei.default_tag() == ei.PINNED_TAG == "master-999-e0ed724"
         monkeypatch.setenv("IMAGEGEN_SDCPP_TAG", "latest")
         assert ei.default_tag() == "latest"
 

@@ -23,6 +23,7 @@ class RuntimeSettings(BaseModel):
     keep_alive_minutes: int = 10
     previews: bool = True
     low_memory: bool = True
+    memory_limit_gb: float = 0  # ceiling for the models loaded together (GB); 0: automatic, 80 % of the machine
     hf_token: str = ""
     quantize: dict[str, int | None] = Field(default_factory=dict)
     variant: dict[str, str] = Field(default_factory=dict)

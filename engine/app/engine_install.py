@@ -34,10 +34,12 @@ from .config import ENGINES_DIR
 from .events import bus
 
 REPO = "leejet/stable-diffusion.cpp"
-# Release the app installs. "latest" is not used: the video models need Metal Wan support (from master-745) and the
-# memory manager regressed for Wan 2.2 / LTX between master-864 and master-899 (issue #1976), so we pin a build that
-# was checked. `IMAGEGEN_SDCPP_TAG=latest` (or any release tag) overrides it.
-PINNED_TAG = "master-956-1b0ba10"
+# Release the app installs. "latest" is not used: the video models need Metal Wan support (from master-745), FLUX 3
+# Klein needs master-968, and the memory manager regressed for Wan 2.2 / LTX between master-864 and master-899
+# (issue #1976, fixed by PR #2181, first released in master-995), so we pin a build that was checked. master-999 was
+# run on a Mac (Metal) with Klein and with Wan 2.2 5B (same time and memory as master-956); LTX and the CUDA, ROCm
+# and Vulkan builds were not re-run. `IMAGEGEN_SDCPP_TAG=latest` (or any release tag) overrides it.
+PINNED_TAG = "master-999-e0ed724"
 DOWNLOAD_PREFIX = f"https://github.com/{REPO}/releases/download/"
 
 # (os, variant) -> release asset patterns: the first is the build, any others are add-ons.
@@ -51,10 +53,10 @@ ASSETS: dict[tuple[str, str], list[str]] = {
     ("linux", "rocm"): [r"-bin-Linux-.*-x86_64-rocm-.*\.zip$"],
     ("linux", "cpu"): [r"-bin-Linux-[^-]*-[^-]*-x86_64\.zip$"],
 }
-# Rough sizes in MB (release master-956), to show before downloading.
+# Rough sizes in MB (release master-999), to show before downloading.
 APPROX_MB: dict[tuple[str, str], int] = {
-    ("macos", "metal"): 35, ("windows", "vulkan"): 30, ("windows", "cuda"): 900, ("windows", "rocm"): 259,
-    ("windows", "cpu"): 18, ("linux", "vulkan"): 37, ("linux", "rocm"): 285, ("linux", "cpu"): 26,
+    ("macos", "metal"): 37, ("windows", "vulkan"): 30, ("windows", "cuda"): 900, ("windows", "rocm"): 264,
+    ("windows", "cpu"): 18, ("linux", "vulkan"): 37, ("linux", "rocm"): 296, ("linux", "cpu"): 27,
 }
 
 

@@ -1222,6 +1222,11 @@
             "title": "Low Memory",
             "type": "boolean"
           },
+          "memory_limit_gb": {
+            "default": 0,
+            "title": "Memory Limit Gb",
+            "type": "number"
+          },
           "previews": {
             "default": true,
             "title": "Previews",

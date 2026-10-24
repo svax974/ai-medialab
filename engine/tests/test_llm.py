@@ -18,7 +18,7 @@ os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 import httpx  # noqa: E402
 import pytest  # noqa: E402
 
-from app import config, llm as llm_module, llamacpp, memory_guard  # noqa: E402
+from app import config, llm as llm_module, llamacpp, memory_budget, memory_guard  # noqa: E402
 from app.engines import MODELS  # noqa: E402
 from app.engines.base import LlmCaps  # noqa: E402
 from app.llm import ChatEvents, LlmBusy, LlmError, LlmManager, LlmNotFound, build_command, iter_sse  # noqa: E402
@@ -372,22 +372,45 @@ class TestMemoryRules:
         with pytest.raises(LlmBusy):
             env.manager.precheck("llm-qwen3-8b")
 
-    def test_the_generation_worker_leaves_before_the_chat_model_loads(self, env):
+    def _tight_ceiling(self, env, *model_ids):
+        """A ceiling that holds any one of the models but never two of them together."""
+        from app.engines import get_spec
+        from app.engines.llm_models import memory_need_gb
+
+        sizes = [memory_need_gb(get_spec(i), get_spec(i).llm.context_default) if get_spec(i).llm else get_spec(i).weights_gb
+                 for i in model_ids]
+        env.monkeypatch.setattr("app.memory_budget.ceiling_gb", lambda machine=None: max(sizes) + 0.1)
+
+    def test_the_generation_worker_leaves_before_the_chat_model_loads_when_both_do_not_fit(self, env):
         calls = []
 
         async def unload():
             calls.append("unload")
             env.monkeypatch.setattr("app.jobs.jobs.worker", None)
 
+        self._tight_ceiling(env, "z-image-turbo-gguf", "llm-qwen3-4b-instruct-2507")
         env.monkeypatch.setattr("app.jobs.jobs.worker", SimpleNamespace(alive=True, model_id="z-image-turbo-gguf"))
         env.monkeypatch.setattr("app.jobs.jobs.unload", unload)
         assert run(env, lambda: reply(env))[-1]["type"] == "done" and calls == ["unload"]
 
-    def test_the_chat_model_leaves_before_a_generation_worker_loads_and_a_reply_in_progress_blocks_it(self, env):
+    def test_the_generation_worker_stays_loaded_next_to_the_chat_model_when_both_fit(self, env):
+        calls = []
+
+        async def unload():
+            calls.append("unload")
+
+        env.monkeypatch.setattr("app.jobs.jobs.worker", SimpleNamespace(alive=True, model_id="z-image-turbo-gguf"))
+        env.monkeypatch.setattr("app.jobs.jobs.unload", unload)
+        assert run(env, lambda: reply(env))[-1]["type"] == "done" and calls == []
+
+    def test_the_chat_model_leaves_before_a_generation_worker_loads_when_both_do_not_fit_and_a_reply_in_progress_blocks_it(self, env):
         from app.job_plans import JobRequest
         from app.jobs import JobManager
 
         env.monkeypatch.setattr(llm_module, "llm", env.manager)
+        self._tight_ceiling(env, "z-image-turbo-gguf", "llm-qwen3-4b-instruct-2507")
+        env.monkeypatch.setattr("app.memory_budget._slots", {
+            "chat": memory_budget.Slot("chat", env.manager.resident, lambda: env.manager.generating, env.manager.stop)})
         job = JobRequest(job_id="j1", model_id="z-image-turbo-gguf", prompt="x", params={})
 
         async def scenario():

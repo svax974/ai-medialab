@@ -1,0 +1,4 @@
+{
+  "« {} » demande ≈ {} Go, au-dessus du plafond de mémoire des modèles ({} Go). Relevez-le dans Réglages ou choisissez un modèle plus léger.": "\"{}\" needs ≈ {} GB, above the memory ceiling for models ({} GB). Raise it in Settings or pick a lighter model.",
+  "Pas assez de place sous le plafond de mémoire des modèles ({} Go) pour charger « {} » ({} Go) : {} est en cours d'utilisation. Attendez sa fin ou relevez le plafond dans Réglages.": "Not enough room under the memory ceiling for models ({} GB) to load \"{}\" ({} GB): {} is in use. Wait for it to finish or raise the ceiling in Settings."
+}
