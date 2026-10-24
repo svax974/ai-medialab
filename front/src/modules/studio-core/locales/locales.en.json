@@ -119,6 +119,8 @@
   "thread.share.subject": "Made with AI MediaLab",
   "thread.share.textOnly": "The services above receive the text (prompt) only: download the file to attach it.",
   "thread.share.failed": "This file could not be shared.",
+  "thread.attach.computer": "From this computer…",
+  "thread.attach.generated": "From the generated images…",
   "thread.export.original": "Original",
   "thread.export.light": "Light version (360p, to send)",
   "thread.export.tiny": "Extra-light version (240p)",

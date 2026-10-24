@@ -6,10 +6,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Box, ButtonBase, CircularProgress, Tooltip } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
-import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
-import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { HelpBody, helpTooltipSlotProps } from '@/modules_shared/common/components/ui/help'
 import { SetupPrompt } from '@/modules/engines'
 import { useActiveModel, useModels, useWelcomeModel, useModelSelectionStore, type ModelInfo } from '@/modules/model-catalog'
@@ -17,7 +15,7 @@ import { pickerBackendKey } from '@/modules/model-catalog/lib/catalogFormat'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { EnhancePromptButton } from '@/modules/chat/components/EnhancePromptButton'
-import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, useImageDraftStore, usePromptHandoff } from '@/modules/studio-core'
+import { AttachButton, GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, useImageDraftStore, usePromptHandoff } from '@/modules/studio-core'
 import { useSendMessage } from '../hooks/useSendMessage'
 import { composerNotices, multiAlternative, placeholderKey, sendState } from '../lib/composerRules'
 import { attachHelp } from '../lib/help'
@@ -128,9 +126,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>
         <Tooltip title={<HelpBody {...attachHelp(t)} />} placement="top" enterDelay={350} slotProps={helpTooltipSlotProps}>
           <Box component="span" sx={{ display: 'inline-flex' }}>
-            <TipIconButton labelId="imageStudio.attach.aria" tone="default" onClick={() => filePicker.current?.click()} sx={{ width: 32, height: 32 }}>
-              <AttachFileRounded sx={{ fontSize: 16 }} />
-            </TipIconButton>
+            <AttachButton labelId="imageStudio.attach.aria" onBrowse={() => filePicker.current?.click()} onPickAssets={draft.addReferences} />
           </Box>
         </Tooltip>
         <input

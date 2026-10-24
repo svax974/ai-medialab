@@ -6,17 +6,15 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { Box, ButtonBase, CircularProgress, Tooltip } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
-import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { HelpBody, InfoTip, helpTooltipSlotProps } from '@/modules_shared/common/components/ui/help'
-import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { SetupPrompt } from '@/modules/engines'
 import { GatedNotice, LicenseWarning, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { EnhancePromptButton } from '@/modules/chat/components/EnhancePromptButton'
-import { GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, usePromptHandoff } from '@/modules/studio-core'
+import { AttachButton, GenerationParams, LabelTooltip, NegativePromptField, StudioModelPicker, usePromptHandoff } from '@/modules/studio-core'
 import { useVideoComposer } from '../hooks/useVideoComposer'
 import { useVideoInputs } from '../hooks/useVideoInputs'
 import { placeholderKey } from '../lib/composerRules'
@@ -55,7 +53,7 @@ function SendButton({ enabled, sending, tipKey, onSend }: { enabled: boolean; se
 function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conversationId: string | null; hero: boolean }) {
   const t = useT()
   const composer = useVideoComposer(model, conversationId)
-  const { importFiles } = useVideoInputs()
+  const { importFiles, assignAsset } = useVideoInputs()
   const { draft, params, state } = composer
   usePromptHandoff('video', draft.setPrompt)
   const caps = model.video!
@@ -116,9 +114,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>
         <Tooltip title={<HelpBody {...VIDEO_HELP.attach} />} placement="top" enterDelay={350} slotProps={helpTooltipSlotProps}>
           <Box component="span" sx={{ display: 'inline-flex' }}>
-            <TipIconButton labelId="videoStudio.attach.aria" tone="default" onClick={() => filePicker.current?.click()} sx={{ width: 32, height: 32 }}>
-              <AttachFileRounded sx={{ fontSize: 16 }} />
-            </TipIconButton>
+            <AttachButton labelId="videoStudio.attach.aria" onBrowse={() => filePicker.current?.click()} onPickAssets={(assets) => assets.slice(0, 2).forEach(assignAsset)} />
           </Box>
         </Tooltip>
         <input

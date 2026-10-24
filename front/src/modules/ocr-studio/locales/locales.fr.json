@@ -7,6 +7,7 @@
   "ocrStudio.drop.aria": "Choisir ou déposer un fichier à lire",
   "ocrStudio.drop.title": "Déposez une image ou un PDF, ou cliquez pour choisir",
   "ocrStudio.drop.hint": "PNG, JPG, WebP, GIF ou PDF · 200 Mo au plus · vous pouvez aussi coller une image",
+  "ocrStudio.drop.generated": "ou choisir une image générée",
   "ocrStudio.drop.remove": "Retirer le fichier",
   "ocrStudio.file.unsupported": "Format non pris en charge : une image (png, jpg, webp, gif) ou un PDF est attendu.",
   "ocrStudio.file.tooBig": "Fichier trop gros : 200 Mo au plus.",

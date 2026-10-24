@@ -8,10 +8,12 @@ import { Box, ButtonBase, CircularProgress, MenuItem, Select } from '@mui/materi
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
 import CloseRounded from '@mui/icons-material/CloseRounded'
+import PhotoLibraryOutlined from '@mui/icons-material/PhotoLibraryOutlined'
 import { useNavigate } from 'react-router-dom'
 import { SetupPrompt } from '@/modules/engines'
 import { useActiveModel, useModels, type ModelInfo } from '@/modules/model-catalog'
-import { StudioModelPicker } from '@/modules/studio-core'
+import { AssetPickerDialog } from '@/modules/media-library/components/AssetPickerDialog'
+import { assetToFile, StudioModelPicker } from '@/modules/studio-core'
 import { studioPaths } from '@/modules/studio-shell/lib/routes'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { useCreateOcr } from '../hooks/useOcr'
@@ -25,6 +27,7 @@ function DropZone({ file, onFile }: { file: File | null; onFile: (file: File | n
   const t = useT()
   const input = useRef<HTMLInputElement>(null)
   const [over, setOver] = useState(false)
+  const [picking, setPicking] = useState(false)
   const problem = file ? fileProblem(file) : null
   const take = useCallback((files: FileList | null) => onFile(files?.[0] ?? null), [onFile])
   return (
@@ -54,8 +57,17 @@ function DropZone({ file, onFile }: { file: File | null; onFile: (file: File | n
         <>
           <Box sx={{ fontSize: 14.5, color: 'var(--ink)' }}>{t('ocrStudio.drop.title')}</Box>
           <Box sx={{ fontSize: 12, color: 'var(--faint)' }}>{t('ocrStudio.drop.hint')}</Box>
+          <ButtonBase
+            onClick={(event) => { event.stopPropagation(); setPicking(true) }}
+            onKeyDown={(event) => event.stopPropagation()}
+            sx={{ mt: '4px', gap: '6px', borderRadius: '8px', px: 1, py: '2px', fontSize: 12.5, color: 'var(--safe)', '&:hover': { textDecoration: 'underline' } }}
+          >
+            <PhotoLibraryOutlined sx={{ fontSize: 15 }} />
+            {t('ocrStudio.drop.generated')}
+          </ButtonBase>
         </>
       )}
+      <AssetPickerDialog open={picking} onClose={() => setPicking(false)} multiple={false} onPick={([asset]) => asset && void assetToFile(asset).then(onFile)} />
       {problem && <Box role="alert" sx={{ fontSize: 12.5, color: 'var(--danger)' }}>{t(problem)}</Box>}
     </Box>
   )

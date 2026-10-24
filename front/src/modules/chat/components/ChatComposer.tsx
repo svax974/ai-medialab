@@ -6,7 +6,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Box, ButtonBase, CircularProgress } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
-import AttachFileRounded from '@mui/icons-material/AttachFileRounded'
 import PaletteOutlined from '@mui/icons-material/PaletteOutlined'
 import StopRounded from '@mui/icons-material/StopRounded'
 import TravelExploreOutlined from '@mui/icons-material/TravelExploreOutlined'
@@ -17,7 +16,7 @@ import { SetupPrompt } from '@/modules/engines'
 import { useEngineStatus } from '@/modules/hardware'
 import { GatedNotice, useModels, useWelcomeModel } from '@/modules/model-catalog'
 import { useSettings } from '@/modules/settings'
-import { LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
+import { assetToFile, AttachButton, LabelTooltip, StudioModelPicker } from '@/modules/studio-core'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { contextUsage, requestedContext } from '../lib/context'
@@ -184,9 +183,7 @@ export function ChatComposer({ conversationId, hero = false }: { conversationId:
       {model.compatible && !model.ready && !(hero && welcomeShown) && <Box sx={{ mb: '6px' }}><SetupPrompt model={model} /></Box>}
       {model.gated && <Box sx={{ mx: 2, mb: '6px' }}><GatedNotice model={model} /></Box>}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>
-        <TipIconButton labelId="chat.attach.tip" tone="default" onClick={() => filePicker.current?.click()} sx={{ width: 32, height: 32 }}>
-          <AttachFileRounded sx={{ fontSize: 16 }} />
-        </TipIconButton>
+        <AttachButton labelId="chat.attach.tip" onBrowse={() => filePicker.current?.click()} onPickAssets={(assets) => void Promise.all(assets.map(assetToFile)).then(add)} />
         <input ref={filePicker} type="file" multiple hidden aria-label={t('chat.attach.tip')} accept={model.llm?.vision ? 'image/png,image/jpeg,image/webp,image/gif,text/*,.md,.json,.csv,.py,.js,.ts,.tsx,.jsx,.go,.rs,.java,.c,.cpp,.h,.sh,.sql,.yml,.yaml,.toml' : 'text/*,.md,.json,.csv,.py,.js,.ts,.tsx,.jsx,.go,.rs,.java,.c,.cpp,.h,.sh,.sql,.yml,.yaml,.toml'} onChange={(event) => { files(event.target.files); event.target.value = '' }} />
         <StudioModelPicker model={model} onSelect={(m) => update({ model_id: m.id })} />
         <SystemPromptPopover value={settings.system_prompt} onChange={(system_prompt) => update({ system_prompt })} />

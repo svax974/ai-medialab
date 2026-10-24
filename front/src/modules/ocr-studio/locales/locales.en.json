@@ -7,6 +7,7 @@
   "ocrStudio.drop.aria": "Choose or drop a file to read",
   "ocrStudio.drop.title": "Drop an image or a PDF, or click to choose",
   "ocrStudio.drop.hint": "PNG, JPG, WebP, GIF or PDF · 200 MB at most · you can also paste an image",
+  "ocrStudio.drop.generated": "or pick a generated image",
   "ocrStudio.drop.remove": "Remove the file",
   "ocrStudio.file.unsupported": "Unsupported format: an image (png, jpg, webp, gif) or a PDF is expected.",
   "ocrStudio.file.tooBig": "File too big: 200 MB at most.",

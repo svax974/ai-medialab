@@ -71,7 +71,7 @@ Ticked boxes = checked by the tested logic (`lib/*.spec.ts`) and the server-side
 **Composer**
 - [x] Three slots (source video, start or reference image, end image), displayed according to the model; required as a warning, `option` (optional) otherwise; tooltip (name, required / optional, explanation, state for this model, reference role, tip); click, drag and drop on the slot, paste.
 - [x] Upload with real progress (percentage and bar); thumbnail (opens the lightbox), label (`source` with icon, `départ` (start), `réf.` (ref.), `fin` (end)), greyed `ignorée`, remove button on hover.
-- [x] Paperclip with its tooltip (images and videos, several files); paste files into the prompt.
+- [x] Paperclip with its tooltip (a menu: files from the computer, or generated images picked in the library, the first two taking the free slots); paste files into the prompt.
 - [x] Prompt: Enter sends, Shift+Enter adds a line (not during an IME composition), the field grows up to 40 % of the window (`/` focuses it), three help texts depending on the case (editing, from an image, scene).
 - [x] Model not ready: `SetupPrompt`; on the home page the first-launch card replaces it. Licence (warning) and restricted access below the prompt.
 - [x] Notices: model incompatible (engine text), plan note, source required, start required, end without start, start / end / source ignored, English (with "?"), soundtrack (with "?").

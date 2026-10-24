@@ -8,6 +8,7 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ### Added
 
+- Generated images can be added from the paperclip of the image, video and chat composers (menu "from the generated images", a picker with search and favorites, several images at once) and from the OCR drop zone.
 - Light copy of a video to send: download (clip menu, viewer) or share it as a 360p or 240p MP4 with fewer images per second and a low
   bit rate, or as an animated GIF (320p or 200p, first 150 images, no sound), made by the engine from the original (generation sizes below 480p stay off: Wan only draws noise there).
 - Share button on images, diagrams, videos and sounds (tiles, viewer, audio takes): the system share sheet attaches the file itself

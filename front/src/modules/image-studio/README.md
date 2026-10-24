@@ -3,7 +3,7 @@
 ## Role
 
 The **home** of the image studio (title, first-launch card, "hero" composer, four starter prompts, latest prints) and the **composer**:
-prompt, reference images (click, paste, drop on the window, drag from a thumbnail), model selector (module `model-catalog`), proportions and definition,
+prompt, reference images (paperclip menu: computer or generated images, paste, drop on the window, drag from a thumbnail), model selector (module `model-catalog`), proportions and definition,
 model settings generated from its parameters, seed, number of images, send. The conversation thread, the messages, the progress and the viewer are in
 `studio-core`. Back: `back/src/modules/studio-core/README.md` (`POST /api/messages`) and `media-library` (`POST /api/assets`). Task H4.3b.
 

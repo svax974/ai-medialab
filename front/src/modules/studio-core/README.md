@@ -121,6 +121,7 @@ model's remark (`Ce modèle : …` (this model: …), written by the engine, hen
 | `Message.tsx`: `AssistantMessage`, `StatusLine`, `MessageFooter` | `components/AssistantMessage`, `StatusLine`, `MessageFooter`, `lib/messageState` |
 | `Message.tsx`: `ImageTile`, `TileActions`, `DevelopingTile` | `components/ImageTile` |
 | `VideoDownloadButton`, `lib/videoCopy` (clips, viewer, footer menu of the video studio) | Download of a video: original, a light MP4 copy (360p / 240p) or an animated GIF (320p / 200p), made by `POST /api/assets/:id/export`; the share menu of a video also shares the light copy |
+| `AttachButton`, `lib/assetFile` (`assetToFile`) | The paperclip of the image, video and chat composers: a menu "from this computer" / "from the generated images" (`media-library/AssetPickerDialog`); the OCR source has the same choice as a link under its drop zone. Chat and OCR take the picked image as a `File` |
 | `ShareButton` (tiles, viewer, clips, audio takes) | `lib/share`: system share sheet when the window has one (attaches the file), else Mail / WhatsApp / iMessage (Apple only) / X links with the prompt as text; Facebook and Instagram only through the sheet (no link carries a local file) |
 | `Message.tsx`: `copy`, `download` | `lib/clipboard` (`copyText`, `downloadAsset`), `lib/messageState` (`downloadName`) |
 | `components/EngineCard.tsx` | `components/EngineCard`, `lib/engineState` (`useNow`: `hooks/useNow`) |
