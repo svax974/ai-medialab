@@ -3,9 +3,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
-import type { Asset } from '../types'
-
 export type ShareTargetId = 'mail' | 'whatsapp' | 'messages' | 'x'
 
 export interface ShareTarget {
@@ -37,9 +34,9 @@ export function hasSystemShare(): boolean {
   return typeof navigator.share === 'function' && typeof navigator.canShare === 'function'
 }
 
-/** Reads the media into a `File` for the share sheet. */
-export async function loadShareFile(asset: Asset, name: string): Promise<File> {
-  const response = await fetch(resolveMediaUrl(asset.url))
+/** Reads the media into a `File` for the share sheet (`url`: an asset's, or a light copy's, already resolved). */
+export async function loadShareFile(url: string, name: string): Promise<File> {
+  const response = await fetch(url)
   if (!response.ok) throw new Error(`HTTP ${response.status}`)
   const blob = await response.blob()
   return new File([blob], name, { type: blob.type })

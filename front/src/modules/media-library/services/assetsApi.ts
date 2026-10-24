@@ -4,7 +4,7 @@
  */
 
 import { studioRequest, studioUpload, type StudioUploadOptions } from '@/modules/studio-shell/services/studioHttp'
-import type { Asset, AssetListQuery, AssetPage } from '../types'
+import type { Asset, AssetListQuery, AssetPage, VideoCopy, VideoPreset } from '../types'
 
 /**
  * `/api/assets*` (Nest, module `media-library`): the gallery pages (generated assets, newest first, cursor `before`),
@@ -26,6 +26,10 @@ export const assetsApi = {
   },
   setFavorite(id: string, favorite: boolean): Promise<Asset> {
     return studioRequest<Asset>('patch', `/assets/${encodeURIComponent(id)}`, { favorite })
+  },
+  /** A lighter MP4 of a video (`light` ≈ 360p, `tiny` ≈ 240p), made by the engine; `url` is served like an asset's. */
+  exportVideo(id: string, preset: VideoPreset): Promise<VideoCopy> {
+    return studioRequest<VideoCopy>('post', `/assets/${encodeURIComponent(id)}/export`, { preset })
   },
   remove(id: string): Promise<{ ok: true }> {
     return studioRequest<{ ok: true }>('delete', `/assets/${encodeURIComponent(id)}`)

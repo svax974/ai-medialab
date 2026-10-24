@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommonModule } from 'src/modules_shared/common/CommonModule';
 import { AssetController } from './controllers/AssetController';
 import { AssetEntity } from './entities/AssetEntity';
+import { AssetExportService } from './services/AssetExportService';
 import { AssetFileService } from './services/AssetFileService';
 import { AssetService } from './services/AssetService';
 import { StudioEventLimitsModule } from './StudioEventLimitsModule';
@@ -17,7 +18,7 @@ import { StudioEvents } from './services/StudioEvents';
 @Module({
   imports: [CommonModule, StudioEventLimitsModule, TypeOrmModule.forFeature([AssetEntity])],
   controllers: [AssetController],
-  providers: [AssetService, AssetFileService, StudioEvents],
+  providers: [AssetService, AssetFileService, AssetExportService, StudioEvents],
   exports: [TypeOrmModule, AssetService, AssetFileService, StudioEvents],
 })
 export class MediaLibraryModule {}

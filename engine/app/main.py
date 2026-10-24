@@ -19,6 +19,7 @@ from .api.auth import require_engine_token
 from .api.jobs import jobs_router
 from .api.language import LanguageMiddleware, LocalizedJSONResponse, localized_http_exception
 from .api.llm import llamacpp_router, llm_router
+from .api.media_export import media_export_router
 from .api.ocr import ocr_router
 from .api.routes import router
 from .api.runtime import runtime_router
@@ -57,7 +58,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AI MediaLab engine", lifespan=lifespan, default_response_class=LocalizedJSONResponse)
 app.add_middleware(LanguageMiddleware)
 app.add_exception_handler(HTTPException, localized_http_exception)
-for engine_router in (router, runtime_router, jobs_router, voice_media_router, updates_router, llm_router, llamacpp_router, ocr_router,
+for engine_router in (router, runtime_router, jobs_router, voice_media_router, media_export_router, updates_router, llm_router, llamacpp_router, ocr_router,
                trending_router, setup_router):
     app.include_router(engine_router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
 

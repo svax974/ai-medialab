@@ -241,6 +241,15 @@ def read_video_with_audio(path: Path):
     with av.open(str(path)) as container:
         frames = np.stack([f.to_ndarray(format="rgb24") for f in container.decode(video=0)]) \
             if any(s.type == "video" for s in container.streams) else np.zeros((0, 0, 0, 3), np.uint8)
+    audio, rate = read_audio(path)
+    return frames, audio, rate
+
+
+def read_audio(path: Path):
+    """(audio float32 [channels, samples], sample rate) of a media file, (None, None) when it has no audio track."""
+    av = load_av()
+    import numpy as np
+
     chunks, rate = [], None
     with av.open(str(path)) as container:
         if any(s.type == "audio" for s in container.streams):
@@ -254,7 +263,7 @@ def read_video_with_audio(path: Path):
                     arr = arr.astype(np.float32) / 32768.0
                 chunks.append(arr.astype(np.float32))
     audio = np.concatenate(chunks, axis=1) if chunks else None
-    return frames, audio, (int(rate) if audio is not None and rate else None)
+    return audio, (int(rate) if audio is not None and rate else None)
 
 
 def video_thumb(src: Path, asset_id: str, folder: Path | None = None) -> str:
@@ -273,22 +282,26 @@ def video_thumb(src: Path, asset_id: str, folder: Path | None = None) -> str:
 H264_ENCODERS = ("h264_videotoolbox", "libopenh264", "libx264")
 
 
-def _h264_settings(name: str, width: int, height: int, fps: int) -> tuple[dict[str, str], int]:
-    """(encoder options, bit rate in bit/s, 0 = the encoder's own quality setting) for one H.264 encoder."""
+def _h264_settings(name: str, width: int, height: int, fps: int, light: bool = False) -> tuple[dict[str, str], int]:
+    """(encoder options, bit rate in bit/s, 0 = the encoder's own quality setting) for one H.264 encoder.
+
+    `light`: a file made to be sent (about 0.07 bit per pixel per frame), not to be kept."""
     if name == "libx264":
-        return {"crf": "18", "preset": "medium"}, 0
+        return {"crf": "29" if light else "18", "preset": "medium"}, 0
     # No CRF outside x264: a generous bit rate (0.25 bit per pixel per frame, at least 2 Mbit/s) keeps details.
+    if light:
+        return ({"profile": "high"} if name == "h264_videotoolbox" else {}), max(120_000, int(width * height * fps * 0.07))
     bit_rate = max(2_000_000, int(width * height * fps * 0.25))
     return ({"profile": "high"} if name == "h264_videotoolbox" else {}), bit_rate
 
 
 @functools.lru_cache(maxsize=32)
-def h264_encoder(width: int, height: int, fps: int) -> tuple[str, dict[str, str], int]:
+def h264_encoder(width: int, height: int, fps: int, light: bool = False) -> tuple[str, dict[str, str], int]:
     """First encoder of `H264_ENCODERS` this FFmpeg build has and that opens at this size: (name, options, bit rate)."""
     av = load_av()
 
     for name in H264_ENCODERS:
-        options, bit_rate = _h264_settings(name, width, height, fps)
+        options, bit_rate = _h264_settings(name, width, height, fps, light)
         try:
             ctx = av.CodecContext.create(name, "w")
             ctx.width, ctx.height, ctx.pix_fmt = width, height, "yuv420p"
@@ -301,7 +314,7 @@ def h264_encoder(width: int, height: int, fps: int) -> tuple[str, dict[str, str]
     raise RuntimeError("Aucun encodeur H.264 disponible dans cette version de FFmpeg.")
 
 
-def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None = None) -> None:
+def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None = None, light: bool = False) -> None:
     """Write H.264 (yuv420p, encoder from `h264_encoder`) frames, with an optional AAC track (FFmpeg's native
     encoder), as a web-friendly MP4.
 
@@ -313,7 +326,7 @@ def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None
     _, height, width, _ = frames.shape
     container = av.open(str(path), mode="w", options={"movflags": "+faststart"})
     try:
-        name, options, bit_rate = h264_encoder(width, height, int(fps))
+        name, options, bit_rate = h264_encoder(width, height, int(fps), light)
         stream = container.add_stream(name, rate=int(fps))
         stream.width, stream.height, stream.pix_fmt = width, height, "yuv420p"
         stream.options = dict(options)
@@ -346,3 +359,40 @@ def encode_mp4(frames, fps: int, path: Path, audio=None, sample_rate: int | None
                 container.mux(packet)
     finally:
         container.close()
+
+
+def export_size(width: int, height: int, short_side: int) -> tuple[int, int]:
+    """Even (width, height) whose shorter side is `short_side` (never larger than the source), same aspect."""
+    scale = min(1.0, short_side / min(width, height))
+    return max(2, round(width * scale / 2) * 2), max(2, round(height * scale / 2) * 2)
+
+
+def export_video(src: Path, dst: Path, short_side: int, max_fps: int) -> dict:
+    """A light MP4 of a video: shorter side at most `short_side`, at most `max_fps` images per second, low bit rate, the
+    audio kept. Frames are shrunk as they are read, so a long clip never sits in memory at full size.
+    Returns {width, height, fps, bytes}."""
+    import numpy as np
+
+    info = probe_video(src)
+    width, height = export_size(info["width"], info["height"], short_side)
+    fps = max(1, min(max_fps, round(info["fps"] or max_fps)))
+    step = (info["fps"] or fps) / fps  # source frames per kept frame (1 when the rate is already low enough)
+    av = load_av()
+    frames, kept = [], 0.0
+    with av.open(str(src)) as container:
+        for index, frame in enumerate(container.decode(video=0)):
+            if index + 1e-6 < kept:
+                continue
+            kept += step
+            img = frame.to_image().convert("RGB")
+            frames.append(np.asarray(img.resize((width, height), Image.Resampling.LANCZOS)))
+    if not frames:
+        raise ValueError("Vidéo vide ou illisible.")
+    audio, rate = read_audio(src)
+    tmp = dst.with_name(dst.stem + ".part" + dst.suffix)
+    try:
+        encode_mp4(np.stack(frames), fps, tmp, audio, rate, light=True)
+        tmp.replace(dst)
+    finally:
+        tmp.unlink(missing_ok=True)
+    return {"width": width, "height": height, "fps": fps, "bytes": dst.stat().st_size}

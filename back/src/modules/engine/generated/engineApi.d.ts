@@ -487,6 +487,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/media/video-export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Export Video
+         * @description A light MP4 of a video (smaller, fewer images per second, low bit rate), kept in the `exports` folder and reused while
+         *     the source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed.
+         */
+        post: operations["export_video_engine_v1_media_video_export_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/media/voice-reference": {
         parameters: {
             query?: never;
@@ -1734,6 +1755,40 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VideoExport */
+        VideoExport: {
+            /** Bytes */
+            bytes: number;
+            /**
+             * Filename
+             * @description File of the `exports` media folder (`/media/exports/<filename>`).
+             */
+            filename: string;
+            /** Fps */
+            fps: number;
+            /** Height */
+            height: number;
+            /** Width */
+            width: number;
+        };
+        /** VideoExportBody */
+        VideoExportBody: {
+            /**
+             * Max Fps
+             * @description Images per second at most.
+             */
+            max_fps: number;
+            /**
+             * Short Side
+             * @description Shorter side of the copy, in pixels (never above the source's).
+             */
+            short_side: number;
+            /**
+             * Source Path
+             * @description Video file inside the data folder; left in place.
+             */
+            source_path: string;
+        };
         /** VoiceReference */
         VoiceReference: {
             /** Duration */
@@ -2538,6 +2593,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Transcription"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    export_video_engine_v1_media_video_export_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VideoExportBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VideoExport"];
                 };
             };
             /** @description Validation Error */

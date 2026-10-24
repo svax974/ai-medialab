@@ -21,6 +21,7 @@ Status (task H4.3a): entities, DTOs, mapper and service (H2), plus the routes `/
 | Module | `StudioEventLimitsModule.ts` | **Global** module that provides `EVENT_STREAM_OPTIONS` to the shared stream: `maxEventBytes` = 256 KB instead of 16 KB (see "Event size"). |
 | Utilities | `utils/uploadStorage.ts` | `uploadStorage` (multer on disk, `uploads/tmp_<aléa>`) and `decodeUploadName`, shared with `audio-studio`. |
 | Controller | `controllers/AssetController.ts` | `/api/assets*`. |
+| Service | `services/AssetExportService.ts` | Light copy of a video (presets `light`, `tiny`). |
 | Utilities | `utils/dataDir.ts` | Data folder shared with the engine (`APP_DATA_DIR`, otherwise `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
 | Types | `types/assetTypes.ts` | `CreateAssetInput`, `ListAssetsQuery`. |
 | Utilities | `utils/ids.ts` | `newId()` (sortable id: 11 hex digits of the timestamp in ms + 10 random, format of the former `new_id`), `nowSeconds()` (seconds, float). |
@@ -46,6 +47,7 @@ Administrator (`local-trust` included), plain JSON, same URLs and shapes as the 
 | `POST` | `/api/assets` (multipart, field `files`, 50 files and 500 MB each at most) | list of `upload` assets | 422 (no file, unreadable image or video: `Image illisible : nom` (unreadable image: name)), 413 |
 | `GET` | `/api/assets?kind=&media=&favorites=&q=&before=&limit=` | `{ items, next_before }` (gallery, most recent first) | |
 | `PATCH` | `/api/assets/:id` `{ favorite }` | asset; publishes `asset.updated` | 404 `Image introuvable.` (image not found), 422 |
+| `POST` | `/api/assets/:id/export` `{ preset: 'light' \| 'tiny' }` | `{ url, width, height, fps, bytes }`: a light MP4 of a video (360p at 15 images/s, or 240p at 12), made by the engine (`POST /engine/v1/media/video-export`) in its `exports` folder, served as `/media/exports/<file>` and reused while the video is unchanged | 404, 422 (not a video, unknown preset, FFmpeg missing) |
 | `DELETE` | `/api/assets/:id` | `{ ok: true }`; row, file and thumbnail deleted; publishes `asset.deleted` `{ id, message_id, conversation_id }` | 404 |
 
 **Upload**: multer writes the raw file to `<données>/uploads/tmp_<aléa>` (no copy in memory: a video can weigh 500 MB), then the engine transforms it (`POST /engine/v1/media/ingest`: image re-encoded as PNG, EXIF orientation applied, transparency flattened, 4096 px at most; video kept, dimensions, duration and fps read; WebP thumbnail) and deletes the raw file; Nest records the row with the id and the rendered file names. The original name is re-read as UTF-8 (multer reads it as latin1).

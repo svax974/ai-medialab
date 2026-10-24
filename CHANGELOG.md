@@ -8,6 +8,8 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ### Added
 
+- Light copy of a video to send: download (clip menu, viewer) or share it as a 360p or 240p MP4 with fewer images per second and a low
+  bit rate, made by the engine from the original (generation sizes below 480p stay off: Wan only draws noise there).
 - Share button on images, diagrams, videos and sounds (tiles, viewer, audio takes): the system share sheet attaches the file itself
   (Mail, Messages, WhatsApp, X, Facebook, Instagram when installed); without it, Mail / WhatsApp / iMessage (Apple) / X open with the
   prompt as text.

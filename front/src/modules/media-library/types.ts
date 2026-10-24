@@ -43,3 +43,14 @@ export interface AssetListQuery {
   before?: number | null
   limit?: number
 }
+
+/** Weight of the copy of a video made to be sent. */
+export type VideoPreset = 'light' | 'tiny'
+
+export interface VideoCopy {
+  url: string
+  width: number
+  height: number
+  fps: number
+  bytes: number
+}

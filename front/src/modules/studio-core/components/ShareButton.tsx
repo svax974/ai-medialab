@@ -11,10 +11,12 @@ import SmsOutlined from '@mui/icons-material/SmsOutlined'
 import WhatsApp from '@mui/icons-material/WhatsApp'
 import X from '@mui/icons-material/X'
 import { toast } from 'react-toastify'
+import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { downloadName } from '../lib/messageState'
 import { hasSystemShare, loadShareFile, openShareTarget, shareTargets, shareWithSystem, type ShareTargetId } from '../lib/share'
+import { makeVideoCopy } from '../lib/videoCopy'
 import { assetPrompt } from '../lib/viewerDetails'
 import type { Asset } from '../types'
 
@@ -51,7 +53,7 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
   const open = (event: React.MouseEvent<HTMLElement>) => {
     setAnchor(event.currentTarget)
     // Read the media while the menu is open: the share sheet must be called right after the click.
-    if (system && !file.current) file.current = loadShareFile(asset, name)
+    if (system && !file.current) file.current = loadShareFile(resolveMediaUrl(asset.url), name)
     file.current?.catch(() => (file.current = null))
   }
   const close = () => setAnchor(null)
@@ -59,7 +61,19 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
   const shareFile = async () => {
     close()
     try {
-      await shareWithSystem(await (file.current ?? loadShareFile(asset, name)), text)
+      await shareWithSystem(await (file.current ?? loadShareFile(resolveMediaUrl(asset.url), name)), text)
+    } catch {
+      toast.error(t('thread.share.failed'))
+    }
+  }
+
+  // The copy is made after the click: the system sheet may refuse it without a fresh user gesture (not verified), in
+  // which case the user downloads the light version from the video menu and attaches it.
+  const shareLight = async () => {
+    close()
+    try {
+      const copy = await makeVideoCopy(asset, 'light')
+      await shareWithSystem(await loadShareFile(copy.url, copy.name), text)
     } catch {
       toast.error(t('thread.share.failed'))
     }
@@ -75,6 +89,12 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
           <MenuItem onClick={() => void shareFile()} sx={{ gap: 1.25 }}>
             <ListItemIcon sx={{ minWidth: 0 }}><IosShareRounded sx={{ fontSize: 16 }} /></ListItemIcon>
             <ListItemText primary={t('thread.share.system')} secondary={t('thread.share.system.hint')} />
+          </MenuItem>
+        )}
+        {system && asset.media === 'video' && (
+          <MenuItem onClick={() => void shareLight()} sx={{ gap: 1.25 }}>
+            <ListItemIcon sx={{ minWidth: 0 }}><IosShareRounded sx={{ fontSize: 16 }} /></ListItemIcon>
+            <ListItemText primary={t('thread.share.system.light')} />
           </MenuItem>
         )}
         {system && <Divider sx={{ my: '4px' }} />}

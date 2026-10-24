@@ -31,6 +31,8 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 OUTPUTS_DIR = DATA_DIR / "outputs"
 THUMBS_DIR = DATA_DIR / "thumbs"
 PREVIEWS_DIR = DATA_DIR / "previews"
+# Lighter copies of produced videos for sending (media.export_video), recreated on demand.
+EXPORTS_DIR = DATA_DIR / "exports"
 # Private generation (private_session.py): one random folder per session, never listed in MEDIA_DIRS (its own mount).
 PRIVATE_DIR = DATA_DIR / "private"
 
@@ -42,6 +44,7 @@ MEDIA_DIRS = {
     "outputs": OUTPUTS_DIR,
     "thumbs": THUMBS_DIR,
     "previews": PREVIEWS_DIR,
+    "exports": EXPORTS_DIR,
 }
 
 

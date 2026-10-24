@@ -25,6 +25,7 @@
   "videoStudio.footer.menu.asSourceN": "Utiliser le clip {0} comme vidéo source",
   "videoStudio.footer.menu.download": "Télécharger le clip",
   "videoStudio.footer.menu.downloadN": "Télécharger le clip {0}",
+  "videoStudio.footer.menu.downloadLightN": "Télécharger le clip {0} en version légère",
   "videoStudio.footer.menu.lastFrame": "Dernière image comme départ",
   "videoStudio.footer.menu.lastFrameN": "Dernière image du clip {0} comme départ",
   "videoStudio.footer.reuse": "Reprendre ces réglages dans le composer",

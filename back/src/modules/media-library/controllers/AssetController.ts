@@ -14,6 +14,7 @@ import { NoTransportCrypt } from 'src/modules_shared/common/decorators/NoTranspo
 import { AdminOnlyInterceptor } from 'src/modules_shared/common/interceptors/AdminOnlyInterceptor';
 import { AssetDto } from '../dto/AssetDto';
 import { AssetPageDto } from '../dto/AssetListItemDto';
+import { AssetExportService, type AssetExportDto } from '../services/AssetExportService';
 import { AssetFileService } from '../services/AssetFileService';
 import { AssetService } from '../services/AssetService';
 import { StudioEvents } from '../services/StudioEvents';
@@ -32,6 +33,7 @@ export class AssetController {
   constructor(
     private readonly assets: AssetService,
     private readonly files: AssetFileService,
+    private readonly exports: AssetExportService,
     private readonly events: StudioEvents,
   ) {}
 
@@ -73,6 +75,13 @@ export class AssetController {
     if (!asset) throw new NotFoundException(tr('mediaLibrary.error.imageNotFound'));
     this.events.publish('asset.updated', asset);
     return asset;
+  }
+
+  /** A lighter MP4 of a video to send (`preset`: `light` or `tiny`), made by the engine and served under `/media/exports/`. */
+  @Post(':id/export')
+  @HttpCode(200)
+  exportVideo(@Param('id') id: string, @Body() body: { preset?: unknown }): Promise<AssetExportDto> {
+    return this.exports.exportVideo(id, body?.preset);
   }
 
   @Delete(':id')

@@ -18,6 +18,7 @@ import SubdirectoryArrowRightRounded from '@mui/icons-material/SubdirectoryArrow
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { useMessageActions } from '@/modules/studio-core/hooks/useMessageActions'
 import { copyText, downloadAsset } from '@/modules/studio-core/lib/clipboard'
+import { downloadVideoCopy } from '@/modules/studio-core/lib/videoCopy'
 import { isActive } from '@/modules/studio-core/lib/messageState'
 import { HelpTooltip } from '@/modules/studio-core'
 import type { Message } from '@/modules/studio-core'
@@ -55,6 +56,10 @@ function MoreMenu({ message, onDelete }: { message: Message; onDelete: () => voi
           <MenuItem key={`${clip.id}-download`} onClick={run(() => downloadAsset(clip))} sx={{ gap: 1.25 }}>
             <ListItemIcon sx={{ minWidth: 0 }}><FileDownloadOutlined sx={{ fontSize: 16 }} /></ListItemIcon>
             {many ? t('videoStudio.footer.menu.downloadN', [index + 1]) : t('videoStudio.footer.menu.download')}
+          </MenuItem>,
+          <MenuItem key={`${clip.id}-light`} onClick={run(() => void downloadVideoCopy(clip, 'light'))} sx={{ gap: 1.25 }}>
+            <ListItemIcon sx={{ minWidth: 0 }}><FileDownloadOutlined sx={{ fontSize: 16 }} /></ListItemIcon>
+            {many ? t('videoStudio.footer.menu.downloadLightN', [index + 1]) : t('thread.export.light')}
           </MenuItem>,
         ])}
         {message.outputs.length > 0 && <Divider sx={{ my: '4px' }} />}

@@ -2172,6 +2172,70 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VideoExport": {
+        "properties": {
+          "bytes": {
+            "title": "Bytes",
+            "type": "integer"
+          },
+          "filename": {
+            "description": "File of the `exports` media folder (`/media/exports/<filename>`).",
+            "title": "Filename",
+            "type": "string"
+          },
+          "fps": {
+            "title": "Fps",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "width",
+          "height",
+          "fps",
+          "bytes"
+        ],
+        "title": "VideoExport",
+        "type": "object"
+      },
+      "VideoExportBody": {
+        "properties": {
+          "max_fps": {
+            "description": "Images per second at most.",
+            "maximum": 30.0,
+            "minimum": 4.0,
+            "title": "Max Fps",
+            "type": "integer"
+          },
+          "short_side": {
+            "description": "Shorter side of the copy, in pixels (never above the source's).",
+            "maximum": 1080.0,
+            "minimum": 120.0,
+            "title": "Short Side",
+            "type": "integer"
+          },
+          "source_path": {
+            "description": "Video file inside the data folder; left in place.",
+            "title": "Source Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_path",
+          "short_side",
+          "max_fps"
+        ],
+        "title": "VideoExportBody",
+        "type": "object"
+      },
       "VoiceReference": {
         "properties": {
           "duration": {
@@ -3214,6 +3278,48 @@
         "summary": "Transcribe Clip",
         "tags": [
           "voices"
+        ]
+      }
+    },
+    "/engine/v1/media/video-export": {
+      "post": {
+        "description": "A light MP4 of a video (smaller, fewer images per second, low bit rate), kept in the `exports` folder and reused while\nthe source is unchanged. 422 when the file is missing, unreadable, outside the data folder, or FFmpeg is not installed.",
+        "operationId": "export_video_engine_v1_media_video_export_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoExportBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoExport"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Video",
+        "tags": [
+          "media"
         ]
       }
     },

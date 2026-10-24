@@ -6,14 +6,13 @@
 import { Box } from '@mui/material'
 import FavoriteBorderRounded from '@mui/icons-material/FavoriteBorderRounded'
 import FavoriteRounded from '@mui/icons-material/FavoriteRounded'
-import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import MovieOutlined from '@mui/icons-material/MovieOutlined'
 import OpenInFullRounded from '@mui/icons-material/OpenInFullRounded'
 import SubdirectoryArrowRightRounded from '@mui/icons-material/SubdirectoryArrowRightRounded'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { useToggleFavorite } from '@/modules/studio-core'
-import { downloadAsset } from '@/modules/studio-core/lib/clipboard'
+import { VideoDownloadButton } from '@/modules/studio-core/components/VideoDownloadButton'
 import { ShareButton } from '@/modules/studio-core/components/ShareButton'
 import type { Asset } from '@/modules/studio-core'
 import { useVideoInputs } from '../hooks/useVideoInputs'
@@ -41,9 +40,7 @@ export function ClipActions({ asset, onOpen }: { asset: Asset; onOpen?: () => vo
         <TipIconButton labelId="videoStudio.clip.lastFrame" tone="default" size="small" onClick={() => void continueFromLastFrame(asset)} sx={glass}>
           <SubdirectoryArrowRightRounded sx={{ fontSize: 16 }} />
         </TipIconButton>
-        <TipIconButton labelId="videoStudio.clip.download" tone="default" size="small" onClick={() => downloadAsset(asset)} sx={glass}>
-          <FileDownloadOutlined sx={{ fontSize: 16 }} />
-        </TipIconButton>
+        <VideoDownloadButton asset={asset} labelId="videoStudio.clip.download" tone="default" sx={glass} />
         <ShareButton asset={asset} tone="default" sx={glass} />
         {onOpen && (
           <TipIconButton labelId="thread.tile.enlarge" tone="default" size="small" onClick={onOpen} sx={glass}>
