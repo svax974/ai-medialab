@@ -58,7 +58,7 @@ export function WhatsNewDialog({ kind, open, onClose }: Props) {
           <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1.5 }}>
             <ToggleButtonGroup size="small" exclusive value={days} aria-label={t('models.new.window')} onChange={(_event, value: number | null) => value && setDays(value)}>
               {[...WINDOWS].sort((a, b) => a - b).map((w) => (
-                <ToggleButton key={w} value={w} sx={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11 }}>{t('models.new.window.days', [w])}</ToggleButton>
+                <ToggleButton key={w} value={w} sx={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 11, '&.Mui-selected, &.Mui-selected:hover': { bgcolor: 'var(--accent-soft)', color: 'var(--accent-strong)', fontWeight: 600 } }}>{t('models.new.window.days', [w])}</ToggleButton>
               ))}
             </ToggleButtonGroup>
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 1, fontSize: 11.5, color: 'var(--faint)' }}>
