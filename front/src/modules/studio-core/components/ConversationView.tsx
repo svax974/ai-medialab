@@ -16,6 +16,7 @@ import { useT } from '@/modules/studio-shell/hooks/useT'
 import { StudioApiError } from '@/modules/studio-shell/services/studioHttp'
 import { useStudioStore } from '@/modules/studio-shell/state/studioStore'
 import type { ModeAdapters } from '../lib/modeAdapter'
+import { useOverlayHeight } from '../hooks/useOverlayHeight'
 import { isNearBottom, scrollAction } from '../lib/scroll'
 import { TitleEditor } from './TitleEditor'
 import { UserMessage } from './UserMessage'
@@ -35,6 +36,7 @@ export function ConversationView({ id, adapters }: { id: string; adapters: ModeA
   const lastCount = useRef(0)
   const [atBottom, setAtBottom] = useState(true)
   const sidebarOpen = useStudioStore((s) => s.sidebarOpen)
+  const [composerRef, composerHeight] = useOverlayHeight()
 
   useLayoutEffect(() => {
     lastCount.current = 0
@@ -91,7 +93,7 @@ export function ConversationView({ id, adapters }: { id: string; adapters: ModeA
       </Box>
 
       <Box ref={scrollRef} onScroll={(event) => setAtBottom(isNearBottom(event.currentTarget))} sx={{ minHeight: 0, flex: 1, overflowY: 'auto' }}>
-        <Box sx={{ mx: 'auto', display: 'grid', width: '100%', maxWidth: WIDTH, gap: 3.5, px: 2.5, pb: 24, pt: 4 }}>
+        <Box sx={{ mx: 'auto', display: 'grid', width: '100%', maxWidth: WIDTH, gap: 3.5, px: 2.5, pb: `${Math.max(composerHeight + 24, 96)}px`, pt: 4 }}>
           {adapter
             ? messages.map((message) =>
                 message.role === 'user' ? (
@@ -107,7 +109,7 @@ export function ConversationView({ id, adapters }: { id: string; adapters: ModeA
       </Box>
 
       {adapter && (
-        <Box sx={{ pointerEvents: 'none', position: 'absolute', inset: 'auto 0 0 0', background: 'linear-gradient(to top, var(--bg), color-mix(in oklab, var(--bg) 90%, transparent), transparent)', pb: 2, pt: 5 }}>
+        <Box ref={composerRef} sx={{ pointerEvents: 'none', position: 'absolute', inset: 'auto 0 0 0', background: 'linear-gradient(to top, var(--bg), color-mix(in oklab, var(--bg) 90%, transparent), transparent)', pb: 2, pt: 5 }}>
           <Box sx={{ pointerEvents: 'auto', position: 'relative', mx: 'auto', width: '100%', maxWidth: WIDTH, px: 2.5 }}>
             {!atBottom && (
               <TipIconButton

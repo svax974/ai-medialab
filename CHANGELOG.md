@@ -16,6 +16,7 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ### Fixed
 
+- The end of a conversation is no longer hidden under the composer: the thread keeps the room of the composer's real height (video, with attachments or a negative prompt), in the generation studios and the chat.
 - Sidebar wider, footer content wraps; the disk-space error separates permanent and temporary space for locally quantized models.
 
 ## [0.1.2] - 2026-10-24

@@ -12,6 +12,7 @@ import PushPinOutlined from '@mui/icons-material/PushPinOutlined'
 import { toast } from 'react-toastify'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { TitleEditor } from '@/modules/studio-core/components/TitleEditor'
+import { useOverlayHeight } from '@/modules/studio-core/hooks/useOverlayHeight'
 import { isNearBottom, scrollAction } from '@/modules/studio-core/lib/scroll'
 import { useConversation } from '@/modules/studio-shell/hooks/useConversations'
 import { useT } from '@/modules/studio-shell/hooks/useT'
@@ -46,6 +47,7 @@ export function ChatConversationView({ id }: { id: string }) {
   const lastCount = useRef(0)
   const [atBottom, setAtBottom] = useState(true)
   const sidebarOpen = useStudioStore((s) => s.sidebarOpen)
+  const [composerRef, composerHeight] = useOverlayHeight()
 
   useLayoutEffect(() => {
     lastCount.current = 0
@@ -106,11 +108,11 @@ export function ChatConversationView({ id }: { id: string }) {
         </Box>
       </Box>
       <Box ref={scrollRef} onScroll={(event) => setAtBottom(isNearBottom(event.currentTarget))} sx={{ minHeight: 0, flex: 1, overflowY: 'auto' }}>
-        <Box sx={{ mx: 'auto', display: 'grid', width: '100%', maxWidth: WIDTH, px: 2.5, pb: 28, pt: 4 }}>
+        <Box sx={{ mx: 'auto', display: 'grid', width: '100%', maxWidth: WIDTH, px: 2.5, pb: `${Math.max(composerHeight + 24, 112)}px`, pt: 4 }}>
           <ChatThread conversationId={id} data={data} />
         </Box>
       </Box>
-      <Box sx={{ pointerEvents: 'none', position: 'absolute', inset: 'auto 0 0 0', background: 'linear-gradient(to top, var(--bg), color-mix(in oklab, var(--bg) 90%, transparent), transparent)', pb: 2, pt: 5 }}>
+      <Box ref={composerRef} sx={{ pointerEvents: 'none', position: 'absolute', inset: 'auto 0 0 0', background: 'linear-gradient(to top, var(--bg), color-mix(in oklab, var(--bg) 90%, transparent), transparent)', pb: 2, pt: 5 }}>
         <Box sx={{ pointerEvents: 'auto', position: 'relative', mx: 'auto', width: '100%', maxWidth: WIDTH, px: 2.5 }}>
           {!atBottom && (
             <TipIconButton labelId="thread.scrollBottom" tone="default" onClick={() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })} sx={{ position: 'absolute', top: -48, left: '50%', zIndex: 10, transform: 'translateX(-50%)', width: 36, height: 36, border: '1px solid var(--line-strong)', backgroundColor: 'var(--surface-2)', color: 'var(--ink-2)', animation: 'var(--animate-fade)' }}>
