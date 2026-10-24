@@ -1008,6 +1008,12 @@ export interface components {
              * @description Tokens of context; clamped to the model's range. The model reloads when it changes.
              */
             context_size?: number | null;
+            /**
+             * Force Memory
+             * @description Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).
+             * @default false
+             */
+            force_memory: boolean;
             /** Messages */
             messages: components["schemas"]["ChatMessage"][];
             /** Model Id */
@@ -1254,6 +1260,11 @@ export interface components {
         JobState: {
             /** Error */
             error?: string | null;
+            /**
+             * Error Code
+             * @description `memory`: refused by the free-memory check; resubmit with `force_memory` to go on anyway.
+             */
+            error_code?: string | null;
             /** Job Id */
             job_id: string;
             /** Outputs */
@@ -1364,6 +1375,12 @@ export interface components {
         };
         /** OcrBody */
         OcrBody: {
+            /**
+             * Force Memory
+             * @description Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).
+             * @default false
+             */
+            force_memory: boolean;
             /** Model Id */
             model_id: string;
             /**

@@ -344,9 +344,14 @@ class TestMemoryRules:
     def test_not_enough_free_memory_refuses_before_anything_starts(self, env):
         env.monkeypatch.setattr(memory_guard, "available_gb", lambda: 6.0)
         events = run(env, lambda: reply(env, "llm-qwen3-8b"))
-        assert events[-1]["type"] == "error" and events[-1]["code"] == "refused"
+        assert events[-1]["type"] == "error" and events[-1]["code"] == "memory"  # the caller may offer to go on anyway
         assert "Mémoire insuffisante" in events[-1]["message"] and "6,0 Go libres" in events[-1]["message"]
         assert log_events(env, "start") == []  # nothing was launched
+
+    def test_going_on_anyway_skips_that_check_only(self, env):
+        env.monkeypatch.setattr(memory_guard, "available_gb", lambda: 6.0)
+        events = run(env, lambda: reply(env, "llm-qwen3-8b", force_memory=True))
+        assert events[-1]["type"] == "done" and len(log_events(env, "start")) == 1
 
     def test_a_graphics_card_with_its_own_memory_skips_the_unified_memory_check(self, env):
         discrete = {**MAC36, "accelerators": [{"vendor": "nvidia", "backend": "cuda", "memory_gb": 24.0, "unified": False}]}

@@ -31,10 +31,15 @@ export function useChatActions(conversationId: string, settings: ChatSettings | 
   }
   const fail = (error: Error) => void toast.error(error.message)
 
-  const regenerate = (message: ChatMessage, modelId?: string) => {
+  const regenerate = (message: ChatMessage, modelId?: string, forceMemory = false) => {
     const target = modelId ?? message.model_id ?? model?.id
     if (!target) return
-    startAnswer(queryClient, conversationId, { path: answerPaths.regenerate(conversationId, message.id), body: { model_id: target, ...withCreation(settings, creation) }, modelId: target, requestedContext: context })
+    startAnswer(queryClient, conversationId, { path: answerPaths.regenerate(conversationId, message.id), body: { model_id: target, ...(forceMemory ? { force_memory: true } : {}), ...withCreation(settings, creation) }, modelId: target, requestedContext: context })
+  }
+  /** After a refusal for lack of free memory: asks to be sure, then writes the same answer again without that check. */
+  const continueAnyway = async (message: ChatMessage) => {
+    const ok = await confirm({ titleId: 'thread.forceMemory.title', messageId: 'thread.forceMemory.description', confirmLabelId: 'thread.forceMemory.confirm', danger: true })
+    if (ok) regenerate(message, undefined, true)
   }
   const edit = (message: ChatMessage, content: string) => {
     const target = message.model_id ?? model?.id ?? ''
@@ -47,5 +52,5 @@ export function useChatActions(conversationId: string, settings: ChatSettings | 
     const ok = await confirm({ titleId: 'chat.delete.title', messageId: 'chat.delete.message', confirmLabelId: 'chat.delete.confirm', danger: true })
     if (ok) chatApi.removeMessage(conversationId, message.id).then(setConversation, fail)
   }
-  return { regenerate, edit, switchBranch, remove, stop: () => stopAnswer(conversationId) }
+  return { regenerate, continueAnyway, edit, switchBranch, remove, stop: () => stopAnswer(conversationId) }
 }

@@ -31,6 +31,8 @@ export const ocrDir = (id: string): string => join(studioDataDir(), 'ocr', id);
 export class OcrQueueService implements OnModuleDestroy {
   private readonly logger = new Logger(OcrQueueService.name);
   private readonly waiting: string[] = [];
+  /** Readings the user confirmed going on with despite the engine's free-memory check. */
+  private readonly forced = new Set<string>();
   private current: { id: string; abort: AbortController } | null = null;
   private running = false;
   private timer: NodeJS.Timeout | null = null;
@@ -60,7 +62,8 @@ export class OcrQueueService implements OnModuleDestroy {
     this.current?.abort.abort();
   }
 
-  enqueue(id: string): void {
+  enqueue(id: string, forceMemory = false): void {
+    if (forceMemory) this.forced.add(id);
     if (!this.waiting.includes(id) && this.current?.id !== id) this.waiting.push(id);
     void this.pump();
   }
@@ -121,10 +124,10 @@ export class OcrQueueService implements OnModuleDestroy {
     if (!doc) return;
     const abort = new AbortController();
     this.current = { id, abort };
-    await this.publish(id, { status: 'running', error: null });
+    await this.publish(id, { status: 'running', error: null, errorCode: null });
     try {
       for await (const event of this.client.read(
-        { model_id: doc.modelId, path: join(ocrDir(id), doc.sourceFile), task: doc.task, prompt: doc.prompt, pages: doc.pages },
+        { model_id: doc.modelId, path: join(ocrDir(id), doc.sourceFile), task: doc.task, prompt: doc.prompt, pages: doc.pages, ...(this.forced.has(id) ? { force_memory: true } : {}) },
         abort.signal,
       )) {
         if (await this.apply(doc, event)) break;
@@ -151,7 +154,7 @@ export class OcrQueueService implements OnModuleDestroy {
         await this.end(doc.id, 'done', null);
         return true;
       case 'error':
-        await this.end(doc.id, 'failed', event.message);
+        await this.end(doc.id, 'failed', event.message, event.code === 'memory' ? 'memory' : null);
         return true;
       default:
         return false;
@@ -164,8 +167,9 @@ export class OcrQueueService implements OnModuleDestroy {
     return tr('ocr.error.unexpected');
   }
 
-  private async end(id: string, status: 'done' | 'failed' | 'cancelled', error: string | null): Promise<void> {
-    await this.publish(id, { status, error });
+  private async end(id: string, status: 'done' | 'failed' | 'cancelled', error: string | null, errorCode: string | null = null): Promise<void> {
+    this.forced.delete(id);
+    await this.publish(id, { status, error, errorCode });
   }
 
   private async publish(id: string, patch: Partial<OcrDocumentEntity>): Promise<void> {

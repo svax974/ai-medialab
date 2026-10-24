@@ -73,6 +73,8 @@ export class GenerationService {
     if (!original || original.role !== 'assistant') throw new NotFoundException(tr('studioCore.error.generationNotFound'));
     const params: Record<string, unknown> = { ...original.params, ...(input.params ?? {}) };
     const count = Number(params.count ?? 1) || 1;
+    if (input.forceMemory) params.force_memory = true;
+    else delete params.force_memory;
     if (!input.keepSeed) params.seed = null;
     params.seeds = input.keepSeed ? (original.params.seeds ?? null) : seedsFor(params, count);
     const modelId = input.modelId ?? original.model_id ?? '';

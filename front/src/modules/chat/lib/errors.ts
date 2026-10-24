@@ -5,7 +5,7 @@
 
 import type { ChatErrorCode } from '../types'
 
-export type ChatErrorAction = 'install-engine' | 'choose-model' | 'raise-context' | 'retry'
+export type ChatErrorAction = 'install-engine' | 'choose-model' | 'raise-context' | 'retry' | 'continue-anyway'
 
 export interface ChatErrorInfo {
   /** Locale key of the help text (the server's message is shown under it when it adds something). */
@@ -22,6 +22,7 @@ const INFO: Record<ChatErrorCode, ChatErrorInfo> = {
   upstream: { key: 'chat.error.upstream', action: 'retry' },
   closed: { key: 'chat.error.closed', action: 'retry' },
   invalid: { key: 'chat.error.invalid', action: null },
+  memory: { key: 'chat.error.memory', action: 'continue-anyway' },
 }
 
 /** What to tell the user for an error code of the answer stream, and the action that fixes it. */

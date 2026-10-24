@@ -239,7 +239,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       case 'job.cancelled':
         return this.endCurrent('cancelled', null);
       case 'job.failed':
-        return this.endCurrent('error', typeof data.error === 'string' ? data.error : tr('studioCore.job.generationFailed'));
+        return this.endCurrent('error', typeof data.error === 'string' ? data.error : tr('studioCore.job.generationFailed'), typeof data.code === 'string' ? data.code : null);
       default:
     }
   }
@@ -276,17 +276,17 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
   }
 
   /** The running job ended: settle its message, free the engine slot and submit the next generation. */
-  private async endCurrent(status: Extract<MessageStatus, 'done' | 'error' | 'cancelled'>, error: string | null): Promise<void> {
+  private async endCurrent(status: Extract<MessageStatus, 'done' | 'error' | 'cancelled'>, error: string | null, errorCode: string | null = null): Promise<void> {
     const entry = this.current;
     if (!entry) return;
     this.current = null;
-    await this.finishMessage(entry.messageId, status, error);
+    await this.finishMessage(entry.messageId, status, error, errorCode);
     await this.pump();
   }
 
-  private async finishMessage(messageId: string, status: MessageStatus, error: string | null): Promise<void> {
+  private async finishMessage(messageId: string, status: MessageStatus, error: string | null, errorCode: string | null = null): Promise<void> {
     this.progress.delete(messageId);
-    await this.updateMessage(messageId, { status, error, finishedAt: nowSeconds() });
+    await this.updateMessage(messageId, { status, error, errorCode, finishedAt: nowSeconds() });
   }
 
   /** Updates a message and tells the browser; a message deleted meanwhile is ignored. */
@@ -326,13 +326,13 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
     if (!record) return this.endCurrent('error', interruptedByEngine());
     for (const output of record.outputs) await this.registerOutput(entry, output);
     const ended = this.endOf(record);
-    if (ended) await this.endCurrent(ended.status, ended.error);
+    if (ended) await this.endCurrent(ended.status, ended.error, ended.errorCode);
   }
 
-  private endOf(record: EngineJobState): { status: 'done' | 'error' | 'cancelled'; error: string | null } | null {
-    if (record.state === 'done') return { status: 'done', error: null };
-    if (record.state === 'cancelled') return { status: 'cancelled', error: null };
-    if (record.state === 'failed') return { status: 'error', error: record.error ?? tr('studioCore.job.generationFailed') };
+  private endOf(record: EngineJobState): { status: 'done' | 'error' | 'cancelled'; error: string | null; errorCode: string | null } | null {
+    if (record.state === 'done') return { status: 'done', error: null, errorCode: null };
+    if (record.state === 'cancelled') return { status: 'cancelled', error: null, errorCode: null };
+    if (record.state === 'failed') return { status: 'error', error: record.error ?? tr('studioCore.job.generationFailed'), errorCode: record.error_code ?? null };
     return null;
   }
 }

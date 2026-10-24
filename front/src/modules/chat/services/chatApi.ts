@@ -92,9 +92,9 @@ export const answerPaths = {
   edit: (id: string, messageId: string) => `${base(id)}/messages/${enc(messageId)}/edit`,
 }
 
-export type AnswerBody = SendBody | { model_id?: string } | { content: string; attachments?: { name: string }[] }
+export type AnswerBody = SendBody | { model_id?: string; force_memory?: boolean } | { content: string; attachments?: { name: string }[] }
 
-const CODES: readonly ChatErrorCode[] = ['busy', 'no_model', 'no_engine', 'context_exceeded', 'refused', 'upstream', 'closed', 'invalid']
+const CODES: readonly ChatErrorCode[] = ['busy', 'no_model', 'no_engine', 'context_exceeded', 'refused', 'upstream', 'closed', 'invalid', 'memory']
 
 async function refusal(response: Response): Promise<ChatError> {
   let message = `HTTP ${response.status}`

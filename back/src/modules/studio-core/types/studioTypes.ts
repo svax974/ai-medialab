@@ -58,6 +58,7 @@ export interface CreateMessageInput {
 export interface UpdateMessageInput {
   status?: MessageStatus;
   error?: string | null;
+  errorCode?: string | null;
   params?: Record<string, unknown>;
   modelId?: string | null;
   startedAt?: number | null;

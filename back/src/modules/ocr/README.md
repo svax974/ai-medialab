@@ -37,7 +37,7 @@ Tous **administrateur**, JSON simple (`NoTransportCrypt`).
 | `POST` | `/api/ocr/documents` | Multipart `file` (image ou PDF, 200 Mo au plus) **ou** `asset_id` (image de la bibliothèque), plus `model_id`, `task`, `prompt`, `pages` (« 1-3, 5 »). Répond la lecture `queued`. 409 modèle absent ou non téléchargé, moteur absent ; 404 modèle inconnu ; 422 format, tâche non offerte, consigne vide, pages mal écrites |
 | `GET` | `/api/ocr/documents/:id` | Lecture et pages lues |
 | `POST` | `/api/ocr/documents/:id/cancel` | Annule (en attente : tout de suite ; en cours : le moteur s'arrête, les pages lues restent). 409 si elle n'est plus en cours |
-| `POST` | `/api/ocr/documents/:id/retry` | Relance (modèle, tâche, consigne, pages au choix) ; vide les pages. 409 si elle court encore |
+| `POST` | `/api/ocr/documents/:id/retry` | Relance (modèle, tâche, consigne, pages au choix ; `force_memory` : continuer malgré le refus `error_code: memory` du contrôle de mémoire libre, après confirmation) ; vide les pages. 409 si elle court encore |
 | `DELETE` | `/api/ocr/documents/:id` | Supprime lignes et dossier |
 | `GET` | `/api/ocr/documents/:id/export?format=txt\|md\|json` | Téléchargement du texte |
 | `GET` | `/api/ocr/documents/:id/source` | Le fichier d'origine (aperçu) |

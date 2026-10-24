@@ -20,6 +20,8 @@ export interface LoadingState {
 export interface StreamFailure {
   code: ChatErrorCode
   message: string
+  /** The answer that failed (what "Continue anyway" regenerates). */
+  id?: string
 }
 
 /** An answer being written, per conversation: what the thread draws around the messages (loading, stop, error). */

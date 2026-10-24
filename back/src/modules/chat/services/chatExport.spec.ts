@@ -12,7 +12,7 @@ const conversation = { id: 'c', title: 'Les élans du Nord', mode: 'chat' } as C
 const settings = { model_id: 'llm-a', system_prompt: 'Sois bref.\nSois clair.', params: {}, context_size: null, reasoning: 'auto', tools: { web: false }, leaf_id: null } as ChatSettings;
 const message = (over: Partial<ChatMessage>): ChatMessage => ({
   id: 'm', conversation_id: 'c', parent_id: null, role: 'user', content: 'Bonjour', reasoning: null, tool_runs: [], generations: [], attachments: [], model_id: null, params: null,
-  status: 'done', error: null, stats: null, created_at: 1_700_000_000, sibling_ids: ['m'], sibling_index: 0, ...over,
+  status: 'done', error: null, error_code: null, stats: null, created_at: 1_700_000_000, sibling_ids: ['m'], sibling_index: 0, ...over,
 });
 
 describe('exports', () => {

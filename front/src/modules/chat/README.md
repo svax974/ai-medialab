@@ -35,7 +35,7 @@ chat/
   lib/branches.ts                   position among siblings (‹ 2/3 ›), answers to compare
   lib/context.ts                    context filling, requested context, "does the context change?" (reload), loading text
   lib/presets.ts                    server defaults, presets, settings form schema, thinking levels, personas
-  lib/attachments.ts, errors.ts, markdownSafety.ts, estimate.ts, chatKeys.ts   attachment rules (stored names, displayed name `displayName`, server limits); error code -> text and action; safe links and images; token estimate; query keys
+  lib/attachments.ts, errors.ts, markdownSafety.ts, estimate.ts, chatKeys.ts   attachment rules (stored names, displayed name `displayName`, server limits); error code -> text and action (`memory`: "Continue anyway" after a confirmation); safe links and images; token estimate; query keys
   lib/math.ts                       `normalizeMath`: `\( \)`, `\[ \]` and `$x$` written as `$$…$$` (never inside code, even an unclosed block; amounts stay text)
   lib/handoff.ts, selection.ts      answer (or selection) -> prompt without Markdown markup; text selected in an answer
   lib/enhance.ts                    failure codes of ✨ (409 `busy` / `no_model` / `no_engine`, otherwise engine), button state, return to the original

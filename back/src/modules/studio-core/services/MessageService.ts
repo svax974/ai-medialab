@@ -101,6 +101,7 @@ export class MessageService {
         params: input.params ?? {},
         status: input.status ?? 'done',
         error: null,
+        errorCode: null,
         createdAt: input.createdAt ?? nowSeconds(),
         startedAt: null,
         finishedAt: null,

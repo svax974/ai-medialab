@@ -38,6 +38,7 @@ class OcrBody(BaseModel):
     task: Literal["default", "text", "markdown", "table", "formula", "chart", "custom"] = "default"
     prompt: str | None = Field(default=None, max_length=4000, description="The instruction of a `custom` task.")
     pages: list[int] | None = Field(default=None, max_length=ocr.MAX_PAGES, description="Pages of a PDF to read, from 1; all when absent.")
+    force_memory: bool = Field(default=False, description="Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).")
 
 
 @ocr_router.get("/status", response_model=LlmStatus)
@@ -68,7 +69,7 @@ async def read(body: OcrBody) -> StreamingResponse:
 
     async def stream() -> AsyncIterator[str]:
         try:
-            async for event in ocr.read(spec, Path(source), body.task, body.prompt, body.pages):
+            async for event in ocr.read(spec, Path(source), body.task, body.prompt, body.pages, body.force_memory):
                 yield sse(event)
         except LlmError as exc:
             yield sse({"type": "error", "code": "refused", "message": str(exc)})

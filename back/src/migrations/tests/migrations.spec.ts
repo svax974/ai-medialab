@@ -79,7 +79,13 @@ describe('TypeORM migrations on an empty in-memory SQLite database', () => {
       await dataSource.runMigrations();
       const tableNames = async (): Promise<string[]> =>
         (await dataSource.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")).map((r: { name: string }) => r.name);
-      await dataSource.undoLastMigration(); // the latest one only: the OCR tables go, the rest stays
+      await dataSource.undoLastMigration(); // the latest one only: `messages.error_code` goes, the rest stays
+      for (const table of ['messages', 'chat_messages', 'ocr_documents']) {
+        const columns = (await dataSource.query(`PRAGMA table_info(${table})`)).map((r: { name: string }) => r.name);
+        expect(columns).not.toContain('error_code');
+      }
+      expect(await tableNames()).toContain('ocr_documents');
+      await dataSource.undoLastMigration(); // then the OCR tables go
       expect(await tableNames()).not.toContain('ocr_documents');
       expect(await tableNames()).not.toContain('ocr_pages');
       expect(await tableNames()).toContain('chat_messages');

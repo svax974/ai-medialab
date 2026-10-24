@@ -78,6 +78,7 @@ export interface ChatMessage {
   params: Record<string, unknown> | null
   status: ChatStatus
   error: string | null
+  error_code?: string | null
   stats: ChatStats | null
   created_at: number
   /** Siblings (same parent and role) in creation order, itself included. */
@@ -122,7 +123,7 @@ export interface ChatConversation {
   messages: ChatMessage[]
 }
 
-export type ChatErrorCode = 'busy' | 'no_model' | 'no_engine' | 'context_exceeded' | 'refused' | 'upstream' | 'closed' | 'invalid'
+export type ChatErrorCode = 'busy' | 'no_model' | 'no_engine' | 'context_exceeded' | 'refused' | 'upstream' | 'closed' | 'invalid' | 'memory'
 
 /** Events of the answer stream (`event: <type>` + JSON `data`), see the contract. */
 export type ChatStreamEvent =

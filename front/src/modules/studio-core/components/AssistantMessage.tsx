@@ -3,12 +3,12 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { Box } from '@mui/material'
+import { Box, Button } from '@mui/material'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
 import { useModels } from '@/modules/model-catalog'
 import { Mark } from '@/modules/studio-shell/components/Mark'
 import { useT } from '@/modules/studio-shell/hooks/useT'
-import type { MessageKind } from '../hooks/useMessageActions'
+import { useMessageActions, type MessageKind } from '../hooks/useMessageActions'
 import { buildSlots, developingFilter, isActive, isFresh, messageRatio, progressFraction, tileLayout } from '../lib/messageState'
 import { useLightboxStore } from '@/modules/media-library/state/lightboxStore'
 import { useLiveStore } from '../state/liveStore'
@@ -28,6 +28,7 @@ export function AssistantMessage({ message }: { message: Message; siblings?: rea
   const { data: catalog } = useModels()
   const progress = useLiveStore((s) => s.progress[message.id])
   const show = useLightboxStore((s) => s.show)
+  const { confirmContinueAnyway } = useMessageActions()
   const model = catalog?.models.find((m) => m.id === message.model_id)
   const active = isActive(message.status)
   const ratio = messageRatio(message.params)
@@ -59,7 +60,14 @@ export function AssistantMessage({ message }: { message: Message; siblings?: rea
         {message.status === 'error' && (
           <Box role="alert" sx={{ mt: '4px', display: 'flex', maxWidth: 576, alignItems: 'flex-start', gap: '10px', borderRadius: '12px', border: '1px solid color-mix(in oklab, var(--danger) 30%, transparent)', backgroundColor: 'color-mix(in oklab, var(--danger) 10%, transparent)', px: 1.75, py: 1.25, fontSize: 13, lineHeight: 1.6, color: 'var(--ink-2)' }}>
             <ReportProblemOutlined sx={{ mt: '2px', fontSize: 16, flexShrink: 0, color: 'var(--danger)' }} />
-            <Box component="span" sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>{message.error ?? t('thread.error.unknown')}</Box>
+            <Box sx={{ minWidth: 0, display: 'grid', gap: 1 }}>
+              <Box component="span" sx={{ overflowWrap: 'anywhere' }}>{message.error ?? t('thread.error.unknown')}</Box>
+              {message.error_code === 'memory' && (
+                <Box>
+                  <Button size="small" variant="outlined" color="warning" onClick={() => void confirmContinueAnyway(message)}>{t('thread.forceMemory.button')}</Button>
+                </Box>
+              )}
+            </Box>
           </Box>
         )}
         {message.status === 'cancelled' && message.outputs.length === 0 && (

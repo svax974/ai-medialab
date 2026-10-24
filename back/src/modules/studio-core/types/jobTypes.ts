@@ -50,4 +50,6 @@ export interface RetryInput {
   modelId?: string;
   params?: Record<string, unknown>;
   keepSeed: boolean;
+  /** The user confirmed going on after the free-memory check refused the load. */
+  forceMemory: boolean;
 }

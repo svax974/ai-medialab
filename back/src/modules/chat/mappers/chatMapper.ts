@@ -51,6 +51,7 @@ export function toChatMessage(entity: ChatMessageEntity, groups: Map<string, str
     params: entity.params,
     status: entity.status,
     error: entity.error,
+    error_code: entity.errorCode ?? null,
     stats: entity.stats,
     created_at: entity.createdAt,
     sibling_ids: siblings,

@@ -39,7 +39,8 @@ describe('parseSendBody', () => {
 describe('other bodies', () => {
   it('regenerate: an optional model', () => {
     expect(parseRegenerateBody(undefined)).toEqual({ modelId: undefined });
-    expect(parseRegenerateBody({ model_id: 'llm-b' })).toEqual({ modelId: 'llm-b' });
+    expect(parseRegenerateBody({ model_id: 'llm-b' })).toEqual({ modelId: 'llm-b', forceMemory: false });
+    expect(parseRegenerateBody({ force_memory: true }).forceMemory).toBe(true);
     expect(() => parseRegenerateBody({ model_id: 3 })).toThrow(UnprocessableEntityException);
   });
 

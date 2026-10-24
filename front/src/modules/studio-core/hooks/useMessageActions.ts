@@ -27,7 +27,8 @@ export function useMessageActions() {
     queryClient.setQueryData<ConversationDetail>(studioKeys.conversation(message.conversation_id), (conversation) => (conversation ? upsertMessage(conversation, message) : conversation))
 
   const retry = useMutation({
-    mutationFn: ({ id, keepSeed }: { id: string; keepSeed?: boolean }) => messagesApi.retry(id, keepSeed ? { keep_seed: true } : {}),
+    mutationFn: ({ id, keepSeed, forceMemory }: { id: string; keepSeed?: boolean; forceMemory?: boolean }) =>
+      messagesApi.retry(id, { ...(keepSeed ? { keep_seed: true } : {}), ...(forceMemory ? { force_memory: true } : {}) }),
     onSuccess: cacheMessage,
     onError: showError,
   })
@@ -46,5 +47,16 @@ export function useMessageActions() {
     if (ok) remove.mutate(message.id)
   }
 
-  return { retry, cancel, remove, confirmRemove }
+  /** After a refusal for lack of free memory: asks to be sure, then runs the same generation without that check. */
+  const confirmContinueAnyway = async (message: Pick<Message, 'id'>): Promise<void> => {
+    const ok = await confirm({
+      titleId: 'thread.forceMemory.title',
+      messageId: 'thread.forceMemory.description',
+      confirmLabelId: 'thread.forceMemory.confirm',
+      danger: true,
+    })
+    if (ok) retry.mutate({ id: message.id, keepSeed: true, forceMemory: true })
+  }
+
+  return { retry, cancel, remove, confirmRemove, confirmContinueAnyway }
 }

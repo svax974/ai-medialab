@@ -120,6 +120,7 @@ class WorkerHandle:
 
 
 MEDIA_SLOT = "media"  # key of the generation worker in the memory budget
+MEMORY_REFUSED = "memory"  # `error_code` of a job the free-memory check refused (see `JobState.error_code`)
 
 
 def _pid(worker: Any) -> int | None:
@@ -197,6 +198,7 @@ class JobManager:
             raise ValueError(f"Le job {job.job_id} est déjà en file ou en cours.")
         self.history.pop(job.job_id, None)
         job.state = "queued"
+        job.force_memory = bool(job.params.pop("force_memory", False))
         self.jobs[job.job_id] = job
         self.pending.append(job.job_id)
         self.queue.put_nowait(job.job_id)
@@ -208,7 +210,7 @@ class JobManager:
         if job is None:
             return self.history.get(job_id)
         return {
-            "job_id": job.job_id, "state": job.state, "error": job.error, "outputs": list(job.outputs),
+            "job_id": job.job_id, "state": job.state, "error": job.error, "error_code": job.error_code, "outputs": list(job.outputs),
             "queue_position": self.pending.index(job_id) if job_id in self.pending else None,
             "progress": dict(job.progress) or None,
         }
@@ -258,7 +260,7 @@ class JobManager:
                 self._idle_task.cancel()
                 self._idle_task = None
             self.current = job_id
-            self.guard.begin_job()
+            self.guard.begin_job(relaxed=job.force_memory)
             try:
                 await self._process(job)
             except asyncio.CancelledError:
@@ -429,10 +431,13 @@ class JobManager:
 
         spec = get_spec(model_id)
         # Other models stay loaded while they fit under the global ceiling; the oldest idle ones leave otherwise.
-        refused = await memory_budget.make_room(spec.weights_gb, MEDIA_SLOT, spec.name) or self._memory_preflight(spec)
+        refused = await memory_budget.make_room(spec.weights_gb, MEDIA_SLOT, spec.name)
+        code = None
+        if not refused and not job.force_memory and (refused := self._memory_preflight(spec)):
+            code = MEMORY_REFUSED
         if refused:
             self.last_error = refused
-            self._finish(job, "failed", refused)
+            self._finish(job, "failed", refused, code)
             return False
 
         self.state = "loading"
@@ -529,21 +534,21 @@ class JobManager:
         print(f"[private] job {job.job_id} : échec (détails non journalisés)" if job.private_dir else evt.get("trace", ""),
               flush=True)
 
-    def _finish(self, job: JobRequest, state: str, error: str | None = None) -> None:
+    def _finish(self, job: JobRequest, state: str, error: str | None = None, code: str | None = None) -> None:
         """Ends a job (`done`, `failed` or `cancelled`): keeps its outcome, cleans the previews, tells the sink.
 
         A private job leaves no outcome behind: it is not in the history of finished jobs."""
         self.progress.pop(job.job_id, None)
-        job.state, job.error = state, error
+        job.state, job.error, job.error_code = state, error, code
         self.jobs.pop(job.job_id, None)
         if not job.private_dir:
-            self.history[job.job_id] = {"job_id": job.job_id, "state": state, "error": error,
+            self.history[job.job_id] = {"job_id": job.job_id, "state": state, "error": error, "error_code": code,
                                         "outputs": list(job.outputs), "queue_position": None, "progress": None}
             while len(self.history) > HISTORY_SIZE:
                 self.history.popitem(last=False)
         delete_previews(job.job_id, session_dir(job.private_dir) / "previews" if job.private_dir else None)  # never re-created
         name = {"done": "job.done", "failed": "job.failed", "cancelled": "job.cancelled"}[state]
-        self._emit(job, name, {"error": error} if state == "failed" else {"outputs": len(job.outputs)})
+        self._emit(job, name, {"error": error, "code": code} if state == "failed" else {"outputs": len(job.outputs)})
 
     def _publish_progress(self, job: JobRequest) -> None:
         self._emit(job, "job.progress", dict(job.progress))

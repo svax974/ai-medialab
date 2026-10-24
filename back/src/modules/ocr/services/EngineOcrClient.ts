@@ -24,6 +24,8 @@ export interface OcrReadRequest {
   task: OcrTask;
   prompt?: string | null;
   pages?: number[] | null;
+  /** Go on although the free-memory check refused the load (the user confirmed). */
+  force_memory?: boolean;
 }
 
 const detailOf = (text: string): string => {

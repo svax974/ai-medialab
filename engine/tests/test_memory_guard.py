@@ -21,10 +21,18 @@ def test_reserve_is_eight_percent_with_a_floor():
 
 
 def test_preflight_refuses_with_the_numbers():
-    assert memory_guard.preflight(10, 20, 36, "SDXL") is None
-    msg = memory_guard.preflight(10, 12, 36, "SDXL")
+    assert memory_guard.preflight(10, 20, 36, "SDXL", pressure=2) is None
+    msg = memory_guard.preflight(10, 12, 36, "SDXL", pressure=2)
     assert msg and "12,0 Go libres" in msg and "« SDXL »" in msg and "2,9 Go de réserve" in msg
     assert memory_guard.preflight(None, 1, 36, "Démo") is None
+
+
+def test_under_normal_pressure_a_model_that_leaves_a_small_margin_is_allowed():
+    # 11 GB free + inactive, normal pressure: a 9 GB model passes (a Mac hands inactive memory out on demand)...
+    assert memory_guard.preflight(9, 11, 36, "FLUX", pressure=memory_guard.PRESSURE_NORMAL) is None
+    # ...but not once the pressure rises, nor when even the small margin is gone.
+    assert memory_guard.preflight(9, 11, 36, "FLUX", pressure=2)
+    assert memory_guard.preflight(10, 11, 36, "FLUX", pressure=memory_guard.PRESSURE_NORMAL)
 
 
 def _worker_with_child() -> subprocess.Popen:
@@ -51,13 +59,13 @@ def test_the_watchdog_kills_the_whole_worker_tree_when_memory_runs_low():
         guard = memory_guard.MemoryWatchdog(lambda: proc.pid, reserve=3.0, read_available=lambda: free["gb"],
                                             read_pressure=lambda: 1)
         assert guard.check(proc.pid) is None and proc.poll() is None
-        free["gb"] = 2.0
+        free["gb"] = 1.0
         reason = guard.check(proc.pid)
-        assert reason and "protection mémoire" in reason and "2,0 Go libres" in reason
+        assert reason and "protection mémoire" in reason and "1,0 Go libres" in reason
         assert guard.tripped(proc.pid) == reason
         proc.wait(timeout=5)
         assert all(not k.is_running() or k.status() == psutil.STATUS_ZOMBIE for k in kids)
-        assert guard.job_stats()["min_free_gb"] == 2.0
+        assert guard.job_stats()["min_free_gb"] == 1.0
     finally:
         if proc.poll() is None:
             proc.kill()
@@ -110,3 +118,16 @@ def test_tune_vae_tiles_from_512_and_drops_the_float32_copy_outside_float16():
     tune_vae(fp16, "torch.float16")  # float16 overflows: the float32 copy stays
     assert fp16.config.force_upcast is True
     tune_vae(None, "torch.bfloat16")
+
+
+def test_a_confirmed_job_is_only_killed_close_to_the_limit():
+    guard = memory_guard.MemoryWatchdog(lambda: None, reserve=3.0, read_available=lambda: 1.0, read_pressure=lambda: 1)
+    proc = subprocess.Popen([sys.executable, "-c", "import time;time.sleep(30)"])
+    try:
+        guard.begin_job(relaxed=True)
+        assert guard.check(proc.pid) is None and proc.poll() is None  # 1 GB free: fine for a job the user confirmed
+        guard.read_available = lambda: 0.3
+        assert guard.check(proc.pid) is not None
+        proc.wait(timeout=5)
+    finally:
+        proc.kill()

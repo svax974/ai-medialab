@@ -17,7 +17,7 @@ studio-core/
                                    GET /messages/model-usage
   services/assetsApi.ts            (moved to `media-library` in H4.4; types `Asset`, `AssetPage` re-exported by `types.ts`)
   hooks/useStudioEvents.ts         subscription to the studio.* topics and application to the cache (mounted by StudioShell)
-  hooks/useMessageActions.ts       retry, cancel, delete (confirmation)
+  hooks/useMessageActions.ts       retry, cancel, delete (confirmation), "Continue anyway" (confirmation, then retry with `force_memory`) after a `memory` error code
   hooks/useAssetActions.ts         favorite, delete from the viewer
   components/StudioModelPicker.tsx model picker of the composers, sorted by usage (`ModelPicker` + `useModelUsage` of `model-catalog`; the `model-usage` key is invalidated here at the end or on deletion of a generation), follows the `Nouveautés` button (`WhatsNewButton` of `model-catalog`) (`onSelect`: what a choice does in addition, for example the chat that keeps the model in the conversation settings; the chat also uses it, for the `llm` type)
   components/NegativePromptField.tsx line `À éviter` (avoid) under the prompt (image, video) for the models that have a `negative_prompt`,

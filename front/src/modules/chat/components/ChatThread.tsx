@@ -64,7 +64,7 @@ export function ChatThread({ conversationId, data }: { conversationId: string; d
         ),
       )}
       {stream?.loading && <ChatStatusLine stream={stream} />}
-      {stream?.error && <ChatErrorNotice conversationId={conversationId} failure={stream.error} onRaiseContext={raiseContext} />}
+      {stream?.error && <ChatErrorNotice conversationId={conversationId} failure={stream.error} onRaiseContext={raiseContext} onContinueAnyway={(id) => { const failed = messages.find((m) => m.id === id); if (failed) void actions.continueAnyway(failed) }} />}
     </Box>
   )
 }

@@ -51,7 +51,7 @@ function handle(queryClient: QueryClient, conversationId: string, request: Answe
     void queryClient.invalidateQueries({ queryKey: studioKeys.conversations })
     void queryClient.invalidateQueries({ queryKey: studioKeys.conversation(conversationId) })
   }
-  if (event.type === 'error') live.fail(conversationId, { code: event.code, message: event.message })
+  if (event.type === 'error') live.fail(conversationId, { code: event.code, message: event.message, ...(event.id ? { id: event.id } : {}) })
 }
 
 /**

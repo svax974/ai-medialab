@@ -108,16 +108,16 @@ def select_pages(total: int, wanted: list[int] | None) -> list[int]:
     return chosen
 
 
-def page_request(image: Path, prompt: str) -> dict[str, Any]:
+def page_request(image: Path, prompt: str, force_memory: bool = False) -> dict[str, Any]:
     parts: list[dict[str, Any]] = [{"type": "image_url", "image_url": {"url": str(image)}}]
     if prompt:  # a model such as LightOnOCR reads the image alone
         parts.append({"type": "text", "text": prompt})
-    return {"messages": [{"role": "user", "content": parts}], "reasoning": "off"}
+    return {"messages": [{"role": "user", "content": parts}], "reasoning": "off", "force_memory": force_memory}
 
 
-async def read_page(spec: ModelSpec, image: Path, prompt: str, forward: Any) -> dict[str, Any]:
+async def read_page(spec: ModelSpec, image: Path, prompt: str, forward: Any, force_memory: bool = False) -> dict[str, Any]:
     """One page through the model: `{text, truncated, usage}`, or the error event that stopped it."""
-    request = page_request(image, prompt)
+    request = page_request(image, prompt, force_memory)
     payload = ocr_llm.prepare(spec, request)
     text, truncated, usage = "", False, {}
     async for event in ocr_llm.chat(spec, request, payload):
@@ -135,7 +135,8 @@ async def read_page(spec: ModelSpec, image: Path, prompt: str, forward: Any) -> 
     return {"text": clean(spec, text), "truncated": truncated, "usage": usage}
 
 
-async def read(spec: ModelSpec, source: Path, task: str, prompt: str | None, pages: list[int] | None) -> AsyncIterator[dict[str, Any]]:
+async def read(spec: ModelSpec, source: Path, task: str, prompt: str | None, pages: list[int] | None,
+               force_memory: bool = False) -> AsyncIterator[dict[str, Any]]:
     """Events of one reading. Checks that can fail (file, task, pages) have already run in `prepare`."""
     plan = prepare(spec, source, task, prompt, pages)
     tmp = config.DATA_DIR / "ocr-tmp" / uuid.uuid4().hex
@@ -151,7 +152,7 @@ async def read(spec: ModelSpec, source: Path, task: str, prompt: str | None, pag
                 image = await asyncio.to_thread(render_page, pdf, index, tmp)
             else:
                 image = source
-            answer = await read_page(spec, image, plan["prompt"], queue.put_nowait)
+            answer = await read_page(spec, image, plan["prompt"], queue.put_nowait, force_memory)
             while not queue.empty():
                 yield queue.get_nowait()
             if "error" in answer:

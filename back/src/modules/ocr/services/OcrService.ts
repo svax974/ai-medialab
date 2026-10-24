@@ -21,7 +21,7 @@ const IMAGE_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif']);
 const MAX_PROMPT = 4000;
 
 /** What a reading changes when it is started again: the model, the task, the instruction, the pages. */
-export type RetryOverrides = Partial<Pick<CreateOcrInput, 'modelId' | 'task' | 'prompt' | 'pages'>>;
+export type RetryOverrides = Partial<Pick<CreateOcrInput, 'modelId' | 'task' | 'prompt' | 'pages'>> & { forceMemory?: boolean };
 
 function sourceKindOf(path: string): OcrSourceKind {
   const extension = extname(path).toLowerCase();
@@ -97,9 +97,9 @@ export class OcrService implements OnApplicationBootstrap {
     await this.store.clearPages(id);
     const row = await this.store.update(id, {
       modelId: model.id, modelName: model.name, task, prompt: prompt || null, pages: overrides.pages === undefined ? doc.pages : overrides.pages,
-      status: 'queued', error: null, pagesDone: 0, pagesTotal: 0,
+      status: 'queued', error: null, errorCode: null, pagesDone: 0, pagesTotal: 0,
     });
-    this.queue.enqueue(id);
+    this.queue.enqueue(id, overrides.forceMemory);
     const dto = toDocumentDto(row as OcrDocumentEntity);
     this.events.publish('ocr.updated', dto);
     return dto;

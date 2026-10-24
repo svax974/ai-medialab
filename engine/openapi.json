@@ -231,6 +231,12 @@
             "description": "Tokens of context; clamped to the model's range. The model reloads when it changes.",
             "title": "Context Size"
           },
+          "force_memory": {
+            "default": false,
+            "description": "Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).",
+            "title": "Force Memory",
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/ChatMessage"
@@ -875,6 +881,18 @@
             ],
             "title": "Error"
           },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`memory`: refused by the free-memory check; resubmit with `force_memory` to go on anyway.",
+            "title": "Error Code"
+          },
           "job_id": {
             "title": "Job Id",
             "type": "string"
@@ -1156,6 +1174,12 @@
       },
       "OcrBody": {
         "properties": {
+          "force_memory": {
+            "default": false,
+            "description": "Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).",
+            "title": "Force Memory",
+            "type": "boolean"
+          },
           "model_id": {
             "title": "Model Id",
             "type": "string"

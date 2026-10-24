@@ -52,6 +52,7 @@ function overridesOf(body: Body): RetryOverrides {
     task: optionalTask(body.task),
     prompt: body.prompt === undefined ? undefined : (optionalText(body.prompt, 'prompt') ?? ''),
     ...(pages === undefined ? {} : { pages }),
+    ...(body.force_memory === true ? { forceMemory: true } : {}),
   };
 }
 

@@ -29,9 +29,10 @@ export const ocrApi = {
     return studioRequest<OcrDocument>('post', `/ocr/documents/${encodeURIComponent(id)}/cancel`)
   },
   /** Starts a finished reading again, optionally with another model, task, instruction or pages (`pages`: "1-3, 5", empty for all). */
-  retry(id: string, change: { modelId?: string; task?: OcrTask; prompt?: string; pages?: string } = {}): Promise<OcrDocument> {
+  retry(id: string, change: { modelId?: string; task?: OcrTask; prompt?: string; pages?: string; forceMemory?: boolean } = {}): Promise<OcrDocument> {
     return studioRequest<OcrDocument>('post', `/ocr/documents/${encodeURIComponent(id)}/retry`, {
       model_id: change.modelId, task: change.task, prompt: change.prompt, pages: change.pages,
+      ...(change.forceMemory ? { force_memory: true } : {}),
     })
   },
   remove(id: string): Promise<{ ok: true }> {

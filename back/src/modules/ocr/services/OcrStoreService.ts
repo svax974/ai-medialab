@@ -18,7 +18,7 @@ export function toPageDto(page: OcrPageEntity): OcrPageDto {
 export function toDocumentDto(doc: OcrDocumentEntity): OcrDocumentDto {
   return {
     id: doc.id, title: doc.title, source_kind: doc.sourceKind, document_pages: doc.documentPages, pages: doc.pages,
-    model_id: doc.modelId, model_name: doc.modelName, task: doc.task, prompt: doc.prompt, status: doc.status, error: doc.error,
+    model_id: doc.modelId, model_name: doc.modelName, task: doc.task, prompt: doc.prompt, status: doc.status, error: doc.error, error_code: doc.errorCode ?? null,
     progress: { done: doc.pagesDone, total: doc.pagesTotal }, created_at: doc.createdAt, updated_at: doc.updatedAt,
     source_url: `/api/ocr/documents/${doc.id}/source`,
   };

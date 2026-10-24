@@ -269,6 +269,19 @@ def test_a_load_error_fails_the_job_with_the_reason():
     assert dict(job.events)["job.failed"]["error"] == job.error and manager.last_error == "boom"
 
 
+def test_a_job_refused_for_lack_of_free_memory_carries_a_code_and_can_be_forced(monkeypatch):
+    monkeypatch.setattr(JobManager, "_memory_preflight", lambda self, spec: "Mémoire insuffisante : test.")
+    manager, job = JobManager(), make_job()
+    asyncio.run(run(manager, job, until=lambda: job.state == "failed"))
+    assert job.error_code == "memory" and dict(job.events)["job.failed"]["code"] == "memory"
+    assert manager.describe("j1")["error_code"] == "memory" and not FakeWorker.instances
+
+    manager, forced = JobManager(), make_job("j2", params={"seeds": [11], "steps": 2, "aspect": "1:1", "megapixels": 0.1,
+                                                          "force_memory": True})
+    asyncio.run(run(manager, forced, until=lambda: forced.state == "done"))
+    assert forced.state == "done" and forced.error_code is None and "force_memory" not in forced.params
+
+
 def test_a_worker_killed_by_the_memory_guard_says_why(monkeypatch):
     from types import SimpleNamespace
 

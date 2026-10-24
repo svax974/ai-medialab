@@ -64,6 +64,7 @@ export class PrivateChatService implements OnModuleInit {
     if (sink.signal.aborted) stop();
     this.current = abort;
     const state = new ReplyState(Date.now(), async () => undefined);
+    state.forceMemory = body.forceMemory;
     let accepted = false;
     try {
       const model = await this.models.resolve(body.settings.model_id);

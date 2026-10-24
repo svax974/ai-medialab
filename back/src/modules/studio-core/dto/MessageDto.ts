@@ -20,6 +20,8 @@ export class MessageDto {
   params: Record<string, unknown>;
   status: MessageStatus;
   error: string | null;
+  /** `memory`: the free-memory check refused the load; `POST /api/messages/:id/retry` with `force_memory` goes on anyway. */
+  error_code: string | null;
   created_at: number;
   started_at: number | null;
   finished_at: number | null;

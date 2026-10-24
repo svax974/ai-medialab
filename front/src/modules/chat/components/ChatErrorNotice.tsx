@@ -16,10 +16,12 @@ interface Props {
   failure: StreamFailure
   /** Doubles the context of the conversation (the action of `context_exceeded`). */
   onRaiseContext: () => void
+  /** "Continue anyway" (the action of `memory`): confirms, then writes the failed answer again without the memory check. */
+  onContinueAnyway: (messageId: string) => void
 }
 
 /** An answer that could not be written: what it means in plain words, the server's own message, and the action that helps. */
-export function ChatErrorNotice({ conversationId, failure, onRaiseContext }: Props) {
+export function ChatErrorNotice({ conversationId, failure, onRaiseContext, onContinueAnyway }: Props) {
   const t = useT()
   const setModelsOpen = useStudioStore((s) => s.setModelsOpen)
   const info = chatErrorInfo(failure.code)
@@ -27,6 +29,7 @@ export function ChatErrorNotice({ conversationId, failure, onRaiseContext }: Pro
   const act = (action: ChatErrorAction) => {
     if (action === 'install-engine' || action === 'choose-model') setModelsOpen(true)
     else if (action === 'raise-context') onRaiseContext()
+    else if (action === 'continue-anyway' && failure.id) onContinueAnyway(failure.id)
     dismiss()
     if (action === 'retry') focusTarget('composer')
   }

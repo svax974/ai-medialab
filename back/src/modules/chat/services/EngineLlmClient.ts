@@ -10,7 +10,7 @@ import { ChatError, type ChatErrorCode } from '../types/chatTypes';
 
 /** Body of `POST /engine/v1/llm/chat`, typed from the engine's OpenAPI schema. */
 /** `private`: a reply of the private session (the engine then leaves no log line about the model); the caller may leave it out. */
-export type LlmChatRequest = Omit<EngineSchemas['schemas']['ChatBody'], 'private'> & { private?: boolean };
+export type LlmChatRequest = Omit<EngineSchemas['schemas']['ChatBody'], 'private' | 'force_memory'> & { private?: boolean; force_memory?: boolean };
 
 export interface LlmToolCall {
   id: string;
@@ -38,7 +38,7 @@ export type LlmEvent =
   | { type: 'done'; finish_reason: 'stop' | 'length' | 'tool_calls' }
   | { type: 'error'; code: ChatErrorCode; message: string; n_prompt_tokens?: number; n_ctx?: number };
 
-const ENGINE_CODES: ChatErrorCode[] = ['refused', 'busy', 'context_exceeded', 'upstream', 'closed'];
+const ENGINE_CODES: ChatErrorCode[] = ['refused', 'busy', 'context_exceeded', 'upstream', 'closed', 'memory'];
 
 /**
  * A refusal the engine sends before any byte of the stream (plain HTTP status), as a chat error. The engine words its detail in

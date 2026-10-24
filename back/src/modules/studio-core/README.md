@@ -67,7 +67,7 @@ have Nest's shape (`{ statusCode, message }`) with the same statuses and the sam
 | `DELETE` | `/api/conversations/:id` | `{ ok: true }`; stops the generations, deletes messages, assets and files; publishes `conversation.deleted` | (idempotent) |
 | `POST` | `/api/messages` `{ conversation_id?, prompt, model_id, params?, reference_ids?, count? }` | `{ conversation_id, user_message, assistant_message }` (the assistant message is `queued`) | 404 conversation, 422 (empty prompt or > 8000, unknown model, reference not found, engine refusal: `a besoin d'une image de référence` (needs a reference image)…) |
 | `GET` | `/api/messages/model-usage` | `{ counts: { "<model id>": n } }`: generations completed (`done`) per model, to rank the model selectors | – |
-| `POST` | `/api/messages/:id/retry` `{ model_id?, params?, keep_seed? }` | the new `queued` message; publishes `message.updated` | 404, 422 |
+| `POST` | `/api/messages/:id/retry` `{ model_id?, params?, keep_seed?, force_memory? }` | the new `queued` message (`force_memory`: skips the engine's free-memory check, after the user confirmed); publishes `message.updated` | 404, 422 |
 | `POST` | `/api/messages/:id/cancel` | `{ ok: true }` | 409 `Cette génération n'est plus en cours.` (this generation is no longer running) |
 | `DELETE` | `/api/messages/:id` | `{ ok: true, deleted: [ids] }` (a prompt takes its generations with it); publishes `message.deleted` and `conversation.updated` | 404 |
 | `GET` | `/api/queue` | `{ current, queue }`: the message in progress and the waiting messages in execution order (H4.4) | |

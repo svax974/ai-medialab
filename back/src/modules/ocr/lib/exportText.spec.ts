@@ -9,7 +9,7 @@ import { exportFileName, exportReading } from './exportText';
 
 const doc = (texts: string[]): OcrDocumentDetailDto => ({
   id: 'd', title: 'Facture.pdf', source_kind: 'pdf', document_pages: texts.length, pages: null, model_id: 'm', model_name: 'M', task: 'default', prompt: null,
-  status: 'done', error: null, progress: { done: texts.length, total: texts.length }, created_at: 1, updated_at: 2, source_url: '/x',
+  status: 'done', error: null, error_code: null, progress: { done: texts.length, total: texts.length }, created_at: 1, updated_at: 2, source_url: '/x',
   pages_read: texts.map((text, i) => ({ index: i + 1, text, truncated: false, tokens: null })),
 });
 

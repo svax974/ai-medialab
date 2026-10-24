@@ -97,13 +97,18 @@ export function parseSendBody(body: unknown): SendBody {
 
 export interface RegenerateBody {
   modelId?: string | undefined;
+  /** The user confirmed going on after the free-memory check refused the load. */
+  forceMemory?: boolean | undefined;
   creationModels?: CreationModels | undefined;
 }
 
 export function parseRegenerateBody(body: unknown): RegenerateBody {
   if (body == null) return { modelId: undefined, creationModels: undefined };
   if (!isRecord(body)) return unprocessable(tr('chat.validation.jsonBody'));
-  return { modelId: body.model_id == null ? undefined : parseModelId(body.model_id), creationModels: parseCreationModels(body.creation_models) };
+  return {
+    modelId: body.model_id == null ? undefined : parseModelId(body.model_id), creationModels: parseCreationModels(body.creation_models),
+    forceMemory: body.force_memory === true,
+  };
 }
 
 export interface EditBody {

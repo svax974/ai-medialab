@@ -64,7 +64,19 @@ def _macos_pressure() -> Callable[[], int] | None:
     return read
 
 
+PRESSURE_NORMAL = 1
 PRESSURE_CRITICAL = 4
+# While macOS reports normal pressure, "available" (free + inactive) is memory it hands out on demand: only this much
+# has to stay free. Above normal pressure the full reserve applies again.
+NORMAL_PRESSURE_RESERVE_GB = 1.5
+FORCED_FLOOR_GB = 0.6  # watchdog floor of a job the user confirmed despite the check (a critical pressure still kills it)
+_pressure_reader = _macos_pressure()
+
+
+def reserve_for(total_gb: float, pressure: int | None) -> float:
+    """The reserve to keep free given macOS's pressure level (None: unknown, as on Linux and Windows: the full reserve)."""
+    full = reserve_gb(total_gb)
+    return min(full, NORMAL_PRESSURE_RESERVE_GB) if pressure == PRESSURE_NORMAL else full
 
 
 def tree_rss_gb(pid: int) -> float:
@@ -102,11 +114,15 @@ def fmt_gb(value: float) -> str:
     return f"{value:.1f}".replace(".", ",")
 
 
-def preflight(need_gb: float | None, free_gb: float, machine_gb: float, name: str) -> str | None:
-    """Why loading `need_gb` of weights now would put the machine at risk (message to show), or None."""
+def preflight(need_gb: float | None, free_gb: float, machine_gb: float, name: str, pressure: int | None = None) -> str | None:
+    """Why loading `need_gb` of weights now would put the machine at risk (message to show), or None.
+
+    `free_gb` is what the system can hand out (free + inactive + purgeable); `pressure` the macOS level, read here when unset."""
     if not need_gb:
         return None
-    reserve = reserve_gb(machine_gb)
+    if pressure is None and _pressure_reader:
+        pressure = _pressure_reader()
+    reserve = reserve_for(machine_gb, pressure)
     if free_gb - need_gb >= reserve:
         return None
     return (f"Mémoire insuffisante pour charger « {name} » maintenant : {fmt_gb(free_gb)} Go libres, il en faut "
@@ -127,6 +143,7 @@ class MemoryWatchdog:
         self.reserve = reserve if reserve is not None else reserve_gb(total_gb())
         self.read_available = read_available
         self.read_pressure = read_pressure if read_pressure is not None else _macos_pressure()
+        self.relaxed = False
         self._trips: dict[int, str] = {}
         self._lock = threading.Lock()
         self._stats = {"min_free": float("inf"), "peak_rss": 0.0}
@@ -145,9 +162,11 @@ class MemoryWatchdog:
         with self._lock:
             return self._trips.get(pid) if pid is not None else None
 
-    def begin_job(self) -> None:
+    def begin_job(self, relaxed: bool = False) -> None:
+        """`relaxed`: the user chose to go on despite the free-memory check, so only the last GB or a critical pressure kills."""
         with self._lock:
             self._stats = {"min_free": float("inf"), "peak_rss": 0.0}
+            self.relaxed = relaxed
 
     def job_stats(self) -> dict[str, float]:
         with self._lock:
@@ -171,10 +190,13 @@ class MemoryWatchdog:
             rss = tree_rss_gb(pid)
             with self._lock:
                 self._stats["peak_rss"] = max(self._stats["peak_rss"], rss)
-        if free >= self.reserve and pressure < PRESSURE_CRITICAL:
+        floor = min(self.reserve, reserve_for(total_gb(), pressure)) if self.read_pressure else self.reserve
+        if self.relaxed:
+            floor = min(floor, FORCED_FLOOR_GB)
+        if free >= floor and pressure < PRESSURE_CRITICAL:
             return None
-        why = (f"la mémoire de la machine allait manquer ({fmt_gb(free)} Go libres, réserve de {fmt_gb(self.reserve)} Go)"
-               if free < self.reserve else "macOS signale une pression mémoire critique")
+        why = (f"la mémoire de la machine allait manquer ({fmt_gb(free)} Go libres, réserve de {fmt_gb(floor)} Go)"
+               if free < floor else "macOS signale une pression mémoire critique")
         reason = (f"Arrêté par la protection mémoire : {translate(why)}. Le modèle a été déchargé pour protéger la machine. "
                   "Essayez une définition plus petite, moins d'images à la fois, une quantification plus forte, ou "
                   "fermez des applications gourmandes.")

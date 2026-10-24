@@ -87,6 +87,7 @@ class JobState(BaseModel):
     job_id: str
     state: Literal["queued", "loading", "running", "done", "failed", "cancelled"]
     error: str | None = None
+    error_code: str | None = Field(default=None, description="`memory`: refused by the free-memory check; resubmit with `force_memory` to go on anyway.")
     outputs: list[JobOutput] = Field(default_factory=list)
     queue_position: int | None = None
     progress: dict[str, Any] | None = None

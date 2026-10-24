@@ -44,16 +44,18 @@ export function parseCreateMessage(body: unknown): CreateGenerationInput {
 
 /** Validates the body of `POST /api/messages/:id/retry`. */
 export function parseRetry(body: unknown): RetryInput {
-  if (body == null) return { keepSeed: false };
+  if (body == null) return { keepSeed: false, forceMemory: false };
   if (!isRecord(body)) return fail(tr('studioCore.error.jsonBodyExpected'));
-  const { model_id: modelId, params, keep_seed: keepSeed } = body;
+  const { model_id: modelId, params, keep_seed: keepSeed, force_memory: forceMemory } = body;
   if (modelId != null && typeof modelId !== 'string') fail(tr('studioCore.error.textExpected', ['model_id']));
   if (params != null && !isRecord(params)) fail(tr('studioCore.error.objectExpected', ['params']));
   if (keepSeed != null && typeof keepSeed !== 'boolean') fail(tr('studioCore.error.booleanExpected', ['keep_seed']));
+  if (forceMemory != null && typeof forceMemory !== 'boolean') fail(tr('studioCore.error.booleanExpected', ['force_memory']));
   return {
     modelId: (modelId as string | null | undefined) || undefined,
     params: (params as Record<string, unknown> | null | undefined) ?? undefined,
     keepSeed: Boolean(keepSeed),
+    forceMemory: Boolean(forceMemory),
   };
 }
 

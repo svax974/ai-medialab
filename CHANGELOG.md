@@ -8,6 +8,13 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ### Added
 
+- A generation refused for lack of free memory shows "Continue anyway" (with a confirmation): the job is retried without that check;
+  the memory watchdog still stops it at critical pressure or below 0.6 GB free. Image, audio and video generations, chat replies
+  (also in a private session) and OCR readings.
+- Memory protection under macOS: while the memory pressure is normal, only 1.5 GB (instead of 8 % of the RAM) has to stay free
+  next to a model being loaded, so a 9-10 GB model loads on a 36 GB Mac with ≈ 11 GB free + inactive.
+- A GGUF model that needs a newer stable-diffusion.cpp than the installed one (FLUX 3 Klein) is no longer a load error: the model
+  card, the picker and the setup prompt offer "Update the engine" and download it (`engine_outdated` in the model list).
 - OCR tab: read the text of an image or a PDF (multi-page) with a local OCR model (GLM-OCR, PaddleOCR-VL 1.6, LightOnOCR 2,
   DeepSeek-OCR, dots.ocr, Qianfan-OCR, Qwen3-VL 2B, or any OCR GGUF found on Hugging Face), with a card of strengths and limits per
   model, tasks (text, Markdown, table, formula, chart, free instruction), export as Markdown, text or JSON, and an

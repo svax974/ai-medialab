@@ -65,6 +65,10 @@ export class ChatMessageEntity {
   @Column({ type: 'text', nullable: true })
   error: string | null;
 
+  /** `memory`: the engine's free-memory check refused the load ("Continue anyway" regenerates with `force_memory`). */
+  @Column({ name: 'error_code', type: 'varchar', nullable: true })
+  errorCode: string | null;
+
   @Column({ type: jsonColumnType(), nullable: true })
   stats: ChatStats | null;
 

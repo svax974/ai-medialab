@@ -30,8 +30,9 @@ describe('parseCreateMessage', () => {
 
 describe('parseRetry', () => {
   it('accepts an empty body and the three options', () => {
-    expect(parseRetry(undefined)).toEqual({ keepSeed: false });
-    expect(parseRetry({ model_id: 'm2', params: { steps: 5 }, keep_seed: true })).toEqual({ modelId: 'm2', params: { steps: 5 }, keepSeed: true });
+    expect(parseRetry(undefined)).toEqual({ keepSeed: false, forceMemory: false });
+    expect(parseRetry({ model_id: 'm2', params: { steps: 5 }, keep_seed: true })).toEqual({ modelId: 'm2', params: { steps: 5 }, keepSeed: true, forceMemory: false });
+    expect(parseRetry({ force_memory: true }).forceMemory).toBe(true);
   });
 
   it('refuses wrong types', () => {

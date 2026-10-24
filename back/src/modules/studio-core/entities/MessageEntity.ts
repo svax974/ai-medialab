@@ -54,6 +54,10 @@ export class MessageEntity {
   @Column({ type: 'text', nullable: true })
   error: string | null;
 
+  /** Why the engine refused or failed the job, when the user can act on it (`memory`: free-memory check, "go on anyway"). */
+  @Column({ name: 'error_code', type: 'varchar', nullable: true })
+  errorCode: string | null;
+
   @Column({ name: 'created_at', type: 'float' })
   createdAt: number;
 

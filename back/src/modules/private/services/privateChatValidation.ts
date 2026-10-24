@@ -37,6 +37,8 @@ export interface PrivateChatBody {
   replyId: string;
   messages: PrivateChatMessage[];
   settings: ChatSettings;
+  /** The user confirmed going on after the free-memory check refused the load. */
+  forceMemory: boolean;
 }
 
 function parseAttachments(value: unknown): PrivateAttachmentRef[] {
@@ -75,5 +77,5 @@ export function parsePrivateChatBody(body: unknown): PrivateChatBody {
   if (messages[messages.length - 1].role !== 'user') return unprocessable(tr('private.error.lastMessageUser'));
   if (messages.reduce((sum, m) => sum + m.content.length, 0) > MAX_HISTORY_CHARS) return unprocessable(tr('private.error.conversationTooLong'));
   const patch = body.settings === undefined ? {} : parseSettingsPatch(body.settings);
-  return { replyId: body.reply_id, messages, settings: { ...DEFAULT_CHAT_SETTINGS, ...patch, params: { ...patch.params }, tools: { web: Boolean(patch.tools?.web), creation: false }, leaf_id: null } };
+  return { replyId: body.reply_id, messages, forceMemory: body.force_memory === true, settings: { ...DEFAULT_CHAT_SETTINGS, ...patch, params: { ...patch.params }, tools: { web: Boolean(patch.tools?.web), creation: false }, leaf_id: null } };
 }

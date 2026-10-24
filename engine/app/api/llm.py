@@ -79,6 +79,7 @@ class ChatBody(BaseModel):
     reasoning: Literal["auto", "off", "low", "medium", "high"] = "auto"
     response_format: dict[str, Any] | None = Field(
         default=None, description="Constrained JSON answer, as llama-server takes it: {type: 'json_object' | 'json_schema', schema?}.")
+    force_memory: bool = Field(default=False, description="Go on although the free-memory check refused the load (after an error `code: memory` and the user's confirmation).")
     private: bool = Field(default=False, description="A private session's reply: unloading the model afterwards leaves no log line.")
 
 

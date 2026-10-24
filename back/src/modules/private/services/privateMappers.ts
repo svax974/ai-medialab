@@ -48,6 +48,7 @@ export function toPrivateMessageDto(
     params: message.params,
     status: message.status,
     error: message.error,
+    error_code: null, // a private generation has no "go on anyway": nothing of it is kept
     created_at: message.createdAt,
     started_at: message.startedAt,
     finished_at: message.finishedAt,

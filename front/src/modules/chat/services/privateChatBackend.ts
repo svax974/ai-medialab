@@ -32,7 +32,7 @@ const enc = encodeURIComponent
 const MAX_SNIPPET = 160
 const SEARCH_LIMIT = 50
 
-export type PrivateAnswerBody = SendBody | { model_id?: string } | { content: string; attachments?: { name: string }[] }
+export type PrivateAnswerBody = SendBody | { model_id?: string; force_memory?: boolean } | { content: string; attachments?: { name: string }[] }
 
 /** What `streamAnswer` is asked: the path of the persistent route it replaces says which of the three answers it is. */
 export interface AnswerTarget {
@@ -158,6 +158,8 @@ interface Turn {
   /** Whether it is created by this request (a send, an edit) rather than already in the tree. */
   userIsNew: boolean
   assistant: ChatMessage
+  /** The user confirmed going on after the free-memory check refused the load. */
+  forceMemory?: boolean
 }
 
 function blank(chat: PrivateChat, conversationId: string, fields: Partial<ChatMessage> & Pick<ChatMessage, 'role'>): ChatMessage {
@@ -181,7 +183,7 @@ function plan(chat: PrivateChat, target: AnswerTarget, body: PrivateAnswerBody):
     const old = messages.get(target.messageId ?? '')
     const user = old?.parent_id ? messages.get(old.parent_id) : undefined
     if (!old || old.role !== 'assistant' || !user) throw new ChatError('Seule une réponse du modèle peut être régénérée.', 'invalid')
-    return { user, userIsNew: false, assistant: blank(chat, target.conversationId, { ...answer, parent_id: user.id }) }
+    return { user, userIsNew: false, forceMemory: 'force_memory' in body && body.force_memory === true, assistant: blank(chat, target.conversationId, { ...answer, parent_id: user.id }) }
   }
   const content = (body as { content?: string }).content ?? ''
   let parent: string | null
@@ -331,6 +333,7 @@ async function read(chat: PrivateChat, turn: Turn, signal: AbortSignal, emit: Em
     reply_id: turn.assistant.id,
     messages: historyTo(new Map([...chat.messages, ...(turn.userIsNew ? [[turn.user.id, turn.user] as const] : [])]), turn.user.id),
     settings: serverSettings(chat.settings, model),
+    ...(turn.forceMemory ? { force_memory: true } : {}),
   }
   let response: Response
   try {

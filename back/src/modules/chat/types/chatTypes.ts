@@ -88,6 +88,8 @@ export interface ChatMessage {
   params: Record<string, unknown> | null;
   status: ChatStatus;
   error: string | null;
+  /** `memory`: the free-memory check refused the load; regenerate with `force_memory` to go on anyway. */
+  error_code: string | null;
   stats: ChatStats | null;
   /** Epoch seconds. */
   created_at: number;
@@ -132,7 +134,7 @@ export interface ChatConversation {
 /** An attachment as stored in the message row: the public fields plus nothing the browser must not know. */
 export type StoredAttachment = Omit<ChatAttachment, 'url'>;
 
-export type ChatErrorCode = 'busy' | 'no_model' | 'no_engine' | 'context_exceeded' | 'refused' | 'upstream' | 'closed' | 'invalid';
+export type ChatErrorCode = 'busy' | 'no_model' | 'no_engine' | 'context_exceeded' | 'refused' | 'upstream' | 'closed' | 'invalid' | 'memory';
 
 /** A failure that ends a reply: `code` is the one of the SSE `error` event. */
 export class ChatError extends Error {

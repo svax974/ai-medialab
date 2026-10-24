@@ -11,6 +11,7 @@ import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined'
 import ReplayRounded from '@mui/icons-material/ReplayRounded'
 import StopRounded from '@mui/icons-material/StopRounded'
 import { toast } from 'react-toastify'
+import { confirm } from '@/modules_shared/common/components/ui/confirm'
 import { useNavigate } from 'react-router-dom'
 import { studioPaths } from '@/modules/studio-shell/lib/routes'
 import { useT } from '@/modules/studio-shell/hooks/useT'
@@ -81,6 +82,17 @@ function pageNumbers(doc: OcrDocumentDetail): number[] {
   return [...new Set([...wanted, ...doc.pages_read.map((p) => p.index)])].sort((a, b) => a - b)
 }
 
+/** After a refusal for lack of free memory: asks to be sure, then runs the reading again without that check. */
+function ContinueAnyway({ id }: { id: string }) {
+  const t = useT()
+  const { retry } = useOcrActions()
+  const go = async () => {
+    const ok = await confirm({ titleId: 'thread.forceMemory.title', messageId: 'thread.forceMemory.description', confirmLabelId: 'thread.forceMemory.confirm', danger: true })
+    if (ok) retry.mutate({ id, change: { forceMemory: true } })
+  }
+  return <Button size="small" variant="outlined" color="warning" disabled={retry.isPending} onClick={() => void go()}>{t('thread.forceMemory.button')}</Button>
+}
+
 function Header({ doc }: { doc: OcrDocumentDetail }) {
   const t = useT()
   const navigate = useNavigate()
@@ -136,7 +148,12 @@ export function OcrResult({ id }: { id: string }) {
     <Box sx={{ display: 'flex', minHeight: 0, flex: 1, flexDirection: 'column', gap: 1.5, p: { xs: 2, md: 3 } }}>
       <Header doc={doc} />
       <Progress doc={doc} />
-      {doc.error && <Box role="alert" sx={{ borderRadius: '12px', border: '1px solid color-mix(in oklab, var(--danger) 40%, transparent)', px: 1.5, py: 1.25, fontSize: 13, color: 'var(--ink)' }}>{doc.error}</Box>}
+      {doc.error && (
+        <Box role="alert" sx={{ display: 'grid', gap: 1, justifyItems: 'start', borderRadius: '12px', border: '1px solid color-mix(in oklab, var(--danger) 40%, transparent)', px: 1.5, py: 1.25, fontSize: 13, color: 'var(--ink)' }}>
+          {doc.error}
+          {doc.error_code === 'memory' && <ContinueAnyway id={doc.id} />}
+        </Box>
+      )}
       {pages.length > 1 && (
         <Box role="tablist" aria-label={t('ocrStudio.result.pages')} sx={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
           {pages.map((n) => {

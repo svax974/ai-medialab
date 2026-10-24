@@ -49,6 +49,8 @@ export class ReplyState {
   reasoning = '';
   toolRuns: ToolRun[] = [];
   generations: StoredGeneration[] = [];
+  /** The user confirmed going on after the free-memory check refused the load. */
+  forceMemory = false;
   promptTokens = 0;
   completionTokens = 0;
   tokensPerSecond: number | null = null;
@@ -149,7 +151,7 @@ export class ChatReplyService implements OnModuleDestroy {
     const answer = await this.store.requireMessage(conversationId, messageId);
     if (answer.role !== 'assistant' || !answer.parentId) throw new UnprocessableEntityException(tr('chat.error.onlyAssistantRegenerate'));
     const user = await this.store.requireMessage(conversationId, answer.parentId);
-    await this.run(conversationId, sink, body.modelId, { kind: 'answer', user }, body.creationModels);
+    await this.run(conversationId, sink, body.modelId, { kind: 'answer', user }, body.creationModels, body.forceMemory);
   }
 
   /** A new version of a user message (a sibling of `messageId`) and its answer. Attachments omitted: the original ones stay. */
@@ -188,6 +190,7 @@ export class ChatReplyService implements OnModuleDestroy {
 
   private async run(
     conversationId: string, sink: ReplySink, requestedModel: string | undefined, plan: TurnPlan, creationModels?: CreationModels,
+    forceMemory = false,
   ): Promise<void> {
     if (this.queue.occupied) return this.refuse(sink, new ChatError('busy', busyGeneration()));
     await this.gate.preempt(); // a title still being written gives the engine up: it never makes a request busy
@@ -198,7 +201,7 @@ export class ChatReplyService implements OnModuleDestroy {
       const model = await this.models.resolve(requestedModel ?? settings.model_id);
       const turn = await this.open(conversationId, settings, model, plan, sink);
       generating = true; // `generate` releases the gauge itself when the reply ends
-      await this.generate(conversationId, settings, model, turn, sink, creationModels);
+      await this.generate(conversationId, settings, model, turn, sink, creationModels, forceMemory);
     } catch (error) {
       if (!(error instanceof ChatError)) throw error;
       this.refuse(sink, error);
@@ -241,7 +244,7 @@ export class ChatReplyService implements OnModuleDestroy {
   private async generate(
     conversationId: string, settings: ChatSettings, model: ResolvedModel,
     turn: { user: ChatMessageEntity; assistant: ChatMessageEntity; wasDefaultTitle: boolean; firstExchange: boolean }, sink: ReplySink,
-    creationModels?: CreationModels,
+    creationModels?: CreationModels, forceMemory = false,
   ): Promise<void> {
     const abort = new AbortController();
     const stop = () => abort.abort();
@@ -251,6 +254,7 @@ export class ChatReplyService implements OnModuleDestroy {
     const run = { conversationId, abort, titling: false };
     this.active.set(id, run);
     const state = new ReplyState(Date.now(), (fields) => this.store.updateMessage(id, fields));
+    state.forceMemory = forceMemory;
     let finished = false;
     try {
       const history = await buildHistory(settings.system_prompt, await this.store.path(conversationId, turn.user.id), {
@@ -285,17 +289,18 @@ export class ChatReplyService implements OnModuleDestroy {
     if (!known) this.logger.error(`chat reply failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`);
     const code = known ? error.code : 'upstream';
     const message = known ? error.message : tr('chat.error.replyFailed');
-    await state.flush({ status: 'error', stats: state.stats(), error: message }).catch(() => undefined);
+    await state.flush({ status: 'error', stats: state.stats(), error: message, errorCode: code === 'memory' ? 'memory' : null }).catch(() => undefined);
     sink.emit('error', { code, message, id });
   }
 
   // Rounds (the model answers, calls tools, answers again) ------------------------------------------------------------
 
-  private request(settings: ChatSettings, model: ResolvedModel, messages: EngineChatMessage[], tools: Record<string, unknown>[], isPrivate: boolean): LlmChatRequest {
+  private request(settings: ChatSettings, model: ResolvedModel, messages: EngineChatMessage[], tools: Record<string, unknown>[], isPrivate: boolean, forceMemory = false): LlmChatRequest {
     const { seed, ...sampling } = settings.params;
     return {
       model_id: model.id,
       ...(isPrivate ? { private: true } : {}),
+      ...(forceMemory ? { force_memory: true } : {}),
       messages,
       params: { ...sampling, ...(seed === null || seed === undefined ? {} : { seed }) },
       ...(settings.context_size ? { context_size: settings.context_size } : {}),
@@ -320,7 +325,7 @@ export class ChatReplyService implements OnModuleDestroy {
       const calls: LlmToolCall[] = [];
       const before = state.content.length;
       if (round > 0 && state.content) this.append(state, id, sink, 'delta', '\n\n');
-      for await (const event of this.llm.chat(this.request(settings, model, messages, round < MAX_TOOL_ROUNDS ? offered : [], isPrivate), signal)) {
+      for await (const event of this.llm.chat(this.request(settings, model, messages, round < MAX_TOOL_ROUNDS ? offered : [], isPrivate, state.forceMemory), signal)) {
         if (event.type === 'loading') sink.emit('loading', { phase: event.phase, model_id: event.model_id, ...(event.elapsed_s !== undefined ? { elapsed_s: event.elapsed_s } : {}) });
         else if (event.type === 'delta') this.append(state, id, sink, 'delta', event.content);
         else if (event.type === 'reasoning') this.append(state, id, sink, 'reasoning', event.content);

@@ -145,7 +145,7 @@ const until = async (what: string, check: () => Promise<boolean> | boolean, time
   it('retries a generation and deletes it: the engine removes the files', async () => {
     const created = await s.generations.create({ conversationId: null, prompt: 'Un phare', modelId: 'demo', params, referenceIds: [], count: 1 });
     await until('the first generation', settled(created.assistant_message.id));
-    const again = await s.generations.retry(created.assistant_message.id, { keepSeed: false });
+    const again = await s.generations.retry(created.assistant_message.id, { keepSeed: false, forceMemory: false });
     await until('the retry', settled(again.id));
     const retried = await s.messages.get(again.id);
     expect(retried).toMatchObject({ status: 'done', parent_id: created.user_message.id });

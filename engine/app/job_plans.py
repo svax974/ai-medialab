@@ -46,6 +46,8 @@ class JobRequest:
     # Runtime state, owned by the JobManager.
     state: str = "queued"  # queued | loading | running | done | failed | cancelled
     error: str | None = None
+    error_code: str | None = None  # `memory` when the free-memory check refused the load (the caller may offer to go on anyway)
+    force_memory: bool = False  # the user confirmed: skip that check, and let the watchdog act only close to the limit
     outputs: list[dict[str, Any]] = field(default_factory=list)
     progress: dict[str, Any] = field(default_factory=dict)
 

@@ -39,6 +39,8 @@ export interface Message {
   params: GenParams
   status: MessageStatus
   error: string | null
+  /** `memory`: the free-memory check refused the load; "Continue anyway" retries with `force_memory`. */
+  error_code: string | null
   created_at: number
   started_at: number | null
   finished_at: number | null
@@ -81,6 +83,8 @@ export interface SendMessageResponse {
 
 export interface RetryRequest {
   keep_seed?: boolean
+  /** The user confirmed going on after the free-memory check refused the load. */
+  force_memory?: boolean
   params?: GenParams
   model_id?: string
 }

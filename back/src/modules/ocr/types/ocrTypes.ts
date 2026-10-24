@@ -41,6 +41,8 @@ export interface OcrDocumentDto {
   prompt: string | null;
   status: OcrStatus;
   error: string | null;
+  /** `memory`: the free-memory check refused the load; retry with `force_memory` to go on anyway. */
+  error_code: string | null;
   /** Pages read so far, and how many will be read (0 until the engine has opened the document). */
   progress: { done: number; total: number };
   created_at: number;

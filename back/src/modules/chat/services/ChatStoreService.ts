@@ -35,6 +35,7 @@ export interface ChatMessageUpdate {
   generations?: StoredGeneration[] | null;
   status?: ChatStatus;
   error?: string | null;
+  errorCode?: string | null;
   stats?: ChatStats | null;
   modelId?: string | null;
 }
@@ -116,6 +117,7 @@ export class ChatStoreService {
         params: input.params ?? null,
         status: input.status ?? 'done',
         error: null,
+        errorCode: null,
         stats: null,
         createdAt: nextTimestamp(),
       }),

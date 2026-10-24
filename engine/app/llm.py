@@ -67,6 +67,10 @@ class LlmBusy(LlmError):
     status = 409
 
 
+class LlmMemoryRefused(LlmError):
+    """The free-memory check refused the load: the caller may offer to go on anyway (`force_memory`)."""
+
+
 # Requests ---------------------------------------------------------------------------------------------------------------
 
 def resolve_image(url: str) -> str:
@@ -471,7 +475,7 @@ class LlmManager:
 
     # Loading --------------------------------------------------------------------------------------------------------
 
-    async def ensure(self, spec: ModelSpec, ctx: int, emit: Callable[[dict[str, Any]], None]) -> Server:
+    async def ensure(self, spec: ModelSpec, ctx: int, emit: Callable[[dict[str, Any]], None], force: bool = False) -> Server:
         """The server loaded with `spec` at `ctx` tokens of context (loading it, and unloading what was there, if needed)."""
         async with self._lock:
             s = self.server
@@ -483,14 +487,17 @@ class LlmManager:
                 raise LlmBusy("Une génération de médias est en cours : attendez sa fin ou annulez-la avant de discuter.")
             await self._stop_locked()
             need = memory_need_gb(spec, ctx)
-            refused = await memory_budget.make_room(need, self.slot, spec.name) or self._preflight(spec, ctx)
+            refused = await memory_budget.make_room(need, self.slot, spec.name)
             if refused:
                 self.last_error = refused
                 raise LlmError(refused)
+            if not force and (refused := self._preflight(spec, ctx)):
+                self.last_error = refused
+                raise LlmMemoryRefused(refused)
             self._cancel_idle()
-            return await self._launch(spec, ctx, emit)
+            return await self._launch(spec, ctx, emit, force)
 
-    async def _launch(self, spec: ModelSpec, ctx: int, emit: Callable[[dict[str, Any]], None]) -> Server:
+    async def _launch(self, spec: ModelSpec, ctx: int, emit: Callable[[dict[str, Any]], None], force: bool = False) -> Server:
         from .system import get_system
 
         files, found = spec.options["files"], llamacpp.installed_binary()
@@ -507,7 +514,7 @@ class LlmManager:
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT, cwd=str(found[1].parent),
             env={**os.environ, "LLAMA_API_KEY": key, "NO_COLOR": "1"})
-        self.guard.begin_job()
+        self.guard.begin_job(relaxed=force)
         server = Server(proc, spec, port, key, ctx, bool(paths.get("mmproj")), memory_need_gb(spec, ctx))
         self.server = server
         try:
@@ -609,7 +616,7 @@ class LlmManager:
         holder: dict[str, Any] = {}
         load: asyncio.Task | None = None
         try:
-            load = asyncio.create_task(self.ensure(spec, ctx, lambda ev: out.put_nowait(ev)))
+            load = asyncio.create_task(self.ensure(spec, ctx, lambda ev: out.put_nowait(ev), bool(request.get("force_memory"))))
             while not load.done() or not out.empty():
                 try:
                     yield await asyncio.wait_for(out.get(), 0.25)
@@ -624,7 +631,7 @@ class LlmManager:
             async for event in self._events_of(server, out, events):
                 yield event
         except LlmError as exc:
-            yield {"type": "error", "code": "refused", "message": str(exc)}
+            yield {"type": "error", "code": "memory" if isinstance(exc, LlmMemoryRefused) else "refused", "message": str(exc)}
         finally:
             _abort(holder)
             if load is not None and not load.done():

@@ -35,6 +35,8 @@ export interface OcrDocument {
   prompt: string | null
   status: OcrStatus
   error: string | null
+  /** `memory`: the free-memory check refused the load; "Continue anyway" retries with `force_memory`. */
+  error_code?: string | null
   progress: { done: number; total: number }
   created_at: number
   updated_at: number
