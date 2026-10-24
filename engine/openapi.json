@@ -2226,7 +2226,7 @@
   },
   "info": {
     "title": "AI MediaLab engine",
-    "version": "0.1.1"
+    "version": "0.1.2"
   },
   "openapi": "3.1.0",
   "paths": {

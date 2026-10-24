@@ -6,22 +6,40 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-10-24
+
 ### Added
 
-- A generation refused for lack of free memory shows "Continue anyway" (with a confirmation): the job is retried without that check;
-  the memory watchdog still stops it at critical pressure or below 0.6 GB free. Image, audio and video generations, chat replies
-  (also in a private session) and OCR readings.
-- Memory protection under macOS: while the memory pressure is normal, only 1.5 GB (instead of 8 % of the RAM) has to stay free
-  next to a model being loaded, so a 9-10 GB model loads on a 36 GB Mac with ≈ 11 GB free + inactive.
-- A GGUF model that needs a newer stable-diffusion.cpp than the installed one (FLUX 3 Klein) is no longer a load error: the model
-  card, the picker and the setup prompt offer "Update the engine" and download it (`engine_outdated` in the model list).
 - OCR tab: read the text of an image or a PDF (multi-page) with a local OCR model (GLM-OCR, PaddleOCR-VL 1.6, LightOnOCR 2,
   DeepSeek-OCR, dots.ocr, Qianfan-OCR, Qwen3-VL 2B, or any OCR GGUF found on Hugging Face), with a card of strengths and limits per
   model, tasks (text, Markdown, table, formula, chart, free instruction), export as Markdown, text or JSON, and an
   "Extract the text" button in the viewer. Unverified with a real model.
-- Memory gauge in the left panel (share in use as Activity Monitor counts it on macOS, pressure, swap, models held) and an emergency stop button that kills the running jobs and models.
+- FLUX 3 Image Klein (GGUF, up to 4 references) in the image catalogue; stable-diffusion.cpp is now pinned to master-999 (only
+  Metal was run). A model may require a minimum build of the engine.
+- A GGUF model that needs a newer stable-diffusion.cpp than the installed one (FLUX 3 Klein) is no longer a load error: the model
+  card, the picker and the setup prompt offer "Update the engine" and download it (`engine_outdated` in the model list).
+- Memory gauge in the left panel (share in use as Activity Monitor counts it on macOS, pressure, swap, models held) and an emergency
+  stop button that kills the running jobs and models.
 - Setting "Memory ceiling for models" (Settings → General): several models can stay loaded together (generation, chat, OCR) under one
   ceiling, 80 % of the machine by default; the least recently used idle model is unloaded when a new one does not fit.
+- A generation refused for lack of free memory shows "Continue anyway" (with a confirmation): the job is retried without that check;
+  the memory watchdog still stops it at critical pressure or below 0.6 GB free. Image, audio and video generations, chat replies
+  (also in a private session) and OCR readings.
+
+### Changed
+
+- Memory protection under macOS: while the memory pressure is normal, only 1.5 GB (instead of 8 % of the RAM) has to stay free
+  next to a model being loaded, so a 9-10 GB model loads on a 36 GB Mac with ≈ 11 GB free + inactive.
+- The newest stable-diffusion.cpp build found wins over an older bundled one (an engine updated by the user was ignored in favour of
+  the copy shipped with the app).
+- Database: column `error_code` on `messages`, `chat_messages` and `ocr_documents` (new migration, existing rows unchanged), and
+  the OCR tables (`ocr_documents`, `ocr_pages`).
+
+### Fixed
+
+- The selected period (30 d, 180 d…) of the "What's new" window was unreadable.
+- Engine: English text of the diagram-model error; the OpenAPI version follows `engine/pyproject.toml`.
+- Release workflow: checksum files named like the GitHub assets, a stalled `apt-get` times out.
 
 ## [0.1.1] - 2026-10-23
 
