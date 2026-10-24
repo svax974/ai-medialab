@@ -43,6 +43,29 @@ VAE_TILING_FROM = 1024 * 1024
 PROGRESS = re.compile(r"(\d+)\s*/\s*(\d+)\s*-\s*([\d.]+)\s*(s/it|it/s)")
 
 
+class SamplingBars:
+    """Keeps only the sampler's bar among the `k/N - s/it` bars sd-cli draws.
+
+    The VAE (encoding of the references, tiled decoding of the result) draws the same bars, with its own tile count
+    (e.g. 49 after a 20-step sampling). Only a bar whose total is the step count is the sampler's; the one that reaches
+    its total ends the sampling, and whatever follows is the decode."""
+
+    def __init__(self, steps: int) -> None:
+        self.steps = steps
+        self.decoding = False
+
+    def feed(self, line: str) -> list[tuple]:
+        m = PROGRESS.search(line)
+        if self.decoding or not m or int(m.group(2)) != self.steps:
+            return []
+        step = int(m.group(1))
+        events: list[tuple] = [("step", step, self.steps)]
+        if step >= self.steps:
+            self.decoding = True
+            events.append(("phase", "decode"))
+        return events
+
+
 def effective_settings(spec, steps: int, guidance: float | None, editing: bool) -> tuple[int, float | None]:
     """Steps and guidance actually used, applied when the job is planned so the message records them.
 
@@ -117,6 +140,7 @@ class SdcppEngine(Engine):
             threading.Thread(target=_pump, args=(proc, lines), daemon=True).start()
 
             tail: list[str] = []
+            bars = SamplingBars(req.steps)
             last_preview = 0.0
             while True:
                 try:
@@ -127,9 +151,11 @@ class SdcppEngine(Engine):
                     break
                 if line:
                     tail = (tail + [line])[-25:]
-                    m = PROGRESS.search(line)
-                    if m:
-                        hooks.on_step(int(m.group(1)), int(m.group(2)))
+                    for event in bars.feed(line):
+                        if event[0] == "phase":
+                            hooks.on_phase(event[1])
+                        else:
+                            hooks.on_step(event[1], event[2])
                 if hooks.is_cancelled():
                     _kill(proc)
                     raise GenerationCancelled()

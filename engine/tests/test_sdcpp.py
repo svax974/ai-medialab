@@ -185,3 +185,15 @@ def test_the_newest_build_of_a_variant_wins_over_an_older_bundled_one(tmp_path, 
     monkeypatch.setenv("IMAGEGEN_ENGINES_DIR", str(tmp_path / "bundled"))
     monkeypatch.setattr(sdcpp, "ENGINES_DIR", tmp_path / "user")
     assert sdcpp.find_variants()["metal"] == tmp_path / "user" / "sdcpp" / "metal" / sdcpp.binary_name()
+
+
+def test_vae_tile_bars_after_the_sampling_are_not_counted_as_steps():
+    from app.engines.sdcpp_engine import SamplingBars
+
+    bars = SamplingBars(20)
+    events = []
+    for line in ["|==>   | 1/5 - 0.10it/s", *(f"| {k}/20 - 1.50s/it" for k in range(1, 21)), *(f"| {k}/49 - 12.00it/s" for k in range(1, 50))]:
+        events += bars.feed(line)
+    assert [e for e in events if e[0] == "step"] == [("step", k, 20) for k in range(1, 21)]
+    assert events[-1] == ("phase", "decode")
+    assert events.count(("phase", "decode")) == 1
