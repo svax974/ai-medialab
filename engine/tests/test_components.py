@@ -16,7 +16,7 @@ import pytest
 os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
 
 from app import audio_packs, components, media, setup_runner as sr  # noqa: E402
-from app.engines import get_spec  # noqa: E402
+from app.engines import MODELS, get_spec  # noqa: E402
 
 SYSTEM = {"os": "Windows", "arch": "AMD64", "engines": {"sdcpp": {"install_size_mb": 30}, "llamacpp": {"install_size_mb": 20}},
           "accelerators": [{"vendor": "nvidia", "backend": "vulkan", "memory_gb": 12.0, "unified": False}], "unusable_gpus": []}
@@ -86,6 +86,20 @@ class TestPlan:
         monkeypatch.setattr(downloads, "status", lambda spec: {"state": "installed", "size_gb": spec.download_size_gb or 0})
         plan = sr.plan_for_model("z-image-turbo-gguf", SYSTEM)
         assert plan["ready"] and plan["total_mb"] == 0
+
+    def test_an_engine_too_old_for_the_model_is_planned_as_an_update(self, monkeypatch, tmp_path):
+        from app.downloads import downloads
+
+        spec = next(s for s in MODELS.values() if s.options.get("min_build"))
+        (tmp_path / "VERSION.json").write_text(json.dumps({"tag": f"master-{spec.options['min_build'] - 12}-abc"}))
+        engine = {"available": True, "binary": str(tmp_path / "sd-cli"), "variant": "metal", "install_size_mb": 0}
+        system = {**SYSTEM, "engines": {"sdcpp": engine}}
+        monkeypatch.setattr(components, "is_installed", lambda cid: True)
+        monkeypatch.setattr(downloads, "status", lambda s: {"state": "installed", "size_gb": s.download_size_gb or 0})
+        plan = sr.plan_for_model(spec.id, system)
+        assert not plan["ready"] and [s["id"] for s in plan["steps"] if not s["installed"]] == ["sdcpp"]
+        (tmp_path / "VERSION.json").write_text(json.dumps({"tag": f"master-{spec.options['min_build']}-abc"}))
+        assert sr.plan_for_model(spec.id, system)["ready"]
 
     def test_a_machine_that_cannot_run_the_engine_is_blocked_with_the_reason(self, nothing_installed):
         plan = sr.plan_for_model("kiwi-edit-5b", NO_GPU)

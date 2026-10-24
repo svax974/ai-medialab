@@ -3,6 +3,7 @@
 
 """Effective GGUF engine settings (default steps and guidance when editing)."""
 
+import json
 import os
 
 os.environ.setdefault("IMAGEGEN_DATA_DIR", "/tmp/ai-medialab-tests")
@@ -171,3 +172,16 @@ class TestFlux3Klein:
             "available": True, "binary": str(tmp_path / "sd-cli"), "variant": "metal"}}})
         with pytest.raises(RuntimeError, match="trop ancien"):
             SdcppEngine(KLEIN, None).load()
+
+
+def test_the_newest_build_of_a_variant_wins_over_an_older_bundled_one(tmp_path, monkeypatch):
+    from app import sdcpp
+
+    for root, tag in (("bundled", "master-956-aaa"), ("user", "master-999-bbb")):
+        folder = tmp_path / root / "sdcpp" / "metal"
+        folder.mkdir(parents=True)
+        (folder / sdcpp.binary_name()).write_text("")
+        (folder / "VERSION.json").write_text(json.dumps({"tag": tag}))
+    monkeypatch.setenv("IMAGEGEN_ENGINES_DIR", str(tmp_path / "bundled"))
+    monkeypatch.setattr(sdcpp, "ENGINES_DIR", tmp_path / "user")
+    assert sdcpp.find_variants()["metal"] == tmp_path / "user" / "sdcpp" / "metal" / sdcpp.binary_name()

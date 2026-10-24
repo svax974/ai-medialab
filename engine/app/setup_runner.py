@@ -19,9 +19,15 @@ from typing import Any, Awaitable, Callable
 from . import audio_packs, components
 from .events import bus
 from .engines import get_spec
+from .system import get_system
 
 POLL_SECONDS = 0.5
 CANCEL_GRACE_SECONDS = 60
+
+
+def _sdcpp_outdated(spec: Any, system: dict[str, Any] | None) -> bool:
+    from . import sdcpp
+    return sdcpp.outdated_for(spec, (system or get_system())["engines"].get("sdcpp", {}))
 
 
 def plan_for_model(model_id: str, system: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -34,8 +40,15 @@ def plan_for_model(model_id: str, system: dict[str, Any] | None = None) -> dict[
     steps: list[dict[str, Any]] = []
     for cid in components.components_of(spec):
         installed = components.is_installed(cid)
+        if cid == components.SDCPP and installed and _sdcpp_outdated(spec, system):
+            installed = False  # present but too old for this model: the install step updates it
+        size = components.size_mb(cid, system)
+        if cid == components.SDCPP and not installed and not size:
+            from .engine_install import install_size_mb
+
+            size = install_size_mb((system or get_system())["engines"]["sdcpp"].get("variant", ""))
         steps.append({"id": cid, "kind": components.kind_of(cid), "name": components.name_and_contents(cid)[0],
-                      "installed": installed, "size_mb": 0 if installed else components.size_mb(cid, system),
+                      "installed": installed, "size_mb": 0 if installed else size,
                       "blocked": None if installed else components.blocked_reason(cid, system)})
     if spec.all_sources():
         status = downloads.status(spec)

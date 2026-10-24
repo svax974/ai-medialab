@@ -80,6 +80,8 @@ export interface ModelInfo {
   engine_available: boolean;
   engine_reason: string | null;
   needs_engine_install: boolean;
+  /** The engine is installed but too old for this model: `needs_engine_install` then means "update". */
+  engine_outdated: boolean;
   engine_install_size_mb: number | null;
   quantize_options: number[];
   quantize: number | null;

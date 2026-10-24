@@ -9,5 +9,6 @@
   "Programme autonome : {}": "Standalone program: {}",
   "environnement Python isolé avec {}": "isolated Python environment with {}",
   "Petit programme autonome qui exécute les modèles GGUF, sans Python{}. Il est téléchargé une seule fois et sert à tous les modèles GGUF.": "Small standalone program that runs GGUF models, without Python{}. It is downloaded once and serves all GGUF models.",
-  "Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python{}. Il est téléchargé une seule fois et sert à tous les modèles de chat.": "Small standalone program that runs conversation models (GGUF), without Python{}. It is downloaded once and serves all chat models."
+  "Petit programme autonome qui exécute les modèles de conversation (GGUF), sans Python{}. Il est téléchargé une seule fois et sert à tous les modèles de chat.": "Small standalone program that runs conversation models (GGUF), without Python{}. It is downloaded once and serves all chat models.",
+  "Le moteur GGUF installé (version {}) est trop ancien pour ce modèle : il faut la version {} ou plus récente. Il est mis à jour vers la version testée avec l'application ({}).": "The installed GGUF engine (version {}) is too old for this model: version {} or newer is required. It is updated to the version tested with the app ({})."
 }

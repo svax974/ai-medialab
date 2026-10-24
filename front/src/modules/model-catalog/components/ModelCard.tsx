@@ -83,7 +83,7 @@ function EngineMissing({ model: m }: { model: ModelInfo }) {
   return (
     <Notice framed tone="warn" icon={<CloudDownloadOutlined sx={{ fontSize: 14 }} />} sx={{ mt: 1.25, fontSize: 12 }}>
       <Box component="b" sx={{ fontWeight: 500, color: 'var(--ink)' }}>
-        {t('models.engine.toInstall', [m.engine_name ?? ''])}
+        {t(m.engine_outdated ? 'models.engine.toUpdate' : 'models.engine.toInstall', [m.engine_name ?? ''])}
       </Box>
       {m.engine_install_size_mb ? t('models.engine.size', [m.engine_install_size_mb]) : ''}. {m.engine_detail}
     </Notice>

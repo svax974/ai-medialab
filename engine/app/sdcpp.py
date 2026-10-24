@@ -102,12 +102,27 @@ def model_unsupported(binary: Path, min_build: int | None) -> str | None:
     return None
 
 
+def outdated_for(spec: Any, engine: dict[str, Any]) -> bool:
+    """True when the installed build is too old for this model (the engine can be updated by the app, see `catalog.py`)."""
+    if spec.backend != "sdcpp" or not engine.get("available") or not engine.get("binary"):
+        return False
+    binary = Path(engine["binary"])
+    too_old = model_unsupported(binary, spec.options.get("min_build"))
+    if spec.kind == "video":
+        too_old = too_old or video_unsupported(binary, str(engine.get("variant")))
+    return too_old is not None
+
+
 def find_variants() -> dict[str, Path]:
+    """One build per variant: the newest of the folders (a build the user installed or updated beats an older bundled one),
+    the first folder winning a tie or when versions are unknown."""
     found: dict[str, Path] = {}
     for root in engines_roots():
         for variant in VARIANTS:
             p = root / "sdcpp" / variant / binary_name()
-            if variant not in found and p.is_file():
+            if not p.is_file():
+                continue
+            if variant not in found or (build_number(p) or 0) > (build_number(found[variant]) or 0):
                 found[variant] = p
     return found
 

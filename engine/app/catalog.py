@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from . import audio_packs
+from . import audio_packs, engine_install, sdcpp
 from .downloads import downloads
 from .engines import MODELS, resolve, selected_variants
 from .engines.base import with_variant
@@ -107,6 +107,16 @@ def _engine_name(spec, engine: dict[str, Any]) -> str:
 
 
 
+def _outdated_detail(spec, engine: dict[str, Any]) -> str:
+    """Why an installed GGUF engine has to be updated for this model (UI text)."""
+    from pathlib import Path
+
+    installed = sdcpp.build_number(Path(engine["binary"]))
+    needed = spec.options.get("min_build") or sdcpp.METAL_VIDEO_MIN_BUILD
+    return (f"Le moteur GGUF installé (version {installed}) est trop ancien pour ce modèle : il faut la version {needed} ou plus "
+            f"récente. Il est mis à jour vers la version testée avec l'application ({engine_install.default_tag()}).")
+
+
 def _engine_detail(spec, engine: dict[str, Any]) -> str:
     """Plain-language description of what installing brings (UI text)."""
     if spec.backend in audio_packs.OVERLAY_BACKENDS:
@@ -190,6 +200,7 @@ def describe_models() -> dict[str, Any]:
         status = downloads.status(spec)
         job = downloads.job(spec.id)
         compatible = bool(usable_engine and plan["fits"])
+        outdated = sdcpp.outdated_for(spec, engine)
         quantize = settings["quantize"].get(spec.id, spec.default_quantize)
         m.update(
             variants=[_variant_info(base, v, spec.variant) for v in base.variants],
@@ -198,18 +209,19 @@ def describe_models() -> dict[str, Any]:
             precision=precision_of(spec, quantize),
             engine_available=engine["available"],
             engine_reason=engine.get("reason") if not engine.get("installable") else None,
-            needs_engine_install=bool(engine.get("installable") and not engine["available"]),
-            engine_install_size_mb=engine.get("install_size_mb"),
+            engine_outdated=outdated,
+            needs_engine_install=bool(engine.get("installable") and not engine["available"]) or outdated,
+            engine_install_size_mb=engine.get("install_size_mb") or (engine_install.install_size_mb(engine["variant"]) if outdated else None),
             engine_pack=audio_packs.pack_of(spec),
             engine_name=_engine_name(spec, engine),
-            engine_detail=_engine_detail(spec, engine),
+            engine_detail=_outdated_detail(spec, engine) if outdated else _engine_detail(spec, engine),
             compatible=compatible,
             plan=plan,
             install=status["state"],
             installed_gb=status["size_gb"],
             temp_download_gb=status.get("temp_gb", 0.0),
             download=job.public() if job and job.state in ("running", "error") else None,
-            ready=bool(compatible and engine["available"] and status["state"] == "installed"),
+            ready=bool(compatible and engine["available"] and not outdated and status["state"] == "installed"),
             # Kept for older UI code: "downloaded" means installed.
             downloaded=status["state"] == "installed",
         )

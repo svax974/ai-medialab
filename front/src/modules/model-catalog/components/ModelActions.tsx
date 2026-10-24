@@ -52,7 +52,7 @@ function MainActions({ model: m, freeGb, download, loaded, actions, onSetup, onU
     const engineText = t('models.engine.sizeApprox', [m.engine_install_size_mb ?? 0])
     return (
       <Button variant="contained" disabled={!m.compatible} startIcon={<CloudDownloadOutlined />} onClick={() => onSetup(m)}>
-        {t(m.install === 'installed' ? 'models.engine.install' : 'models.engine.installBoth')}
+        {t(m.install === 'installed' ? (m.engine_outdated ? 'models.engine.update' : 'models.engine.install') : (m.engine_outdated ? 'models.engine.updateBoth' : 'models.engine.installBoth'))}
         <Box component="span" sx={MONO_SMALL}>
           {engineText}
           {m.install !== 'installed' && need > 0 ? t('models.engine.plusModel', [formatGb(need, lang)]) : ''}

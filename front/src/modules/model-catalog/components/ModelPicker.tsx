@@ -38,7 +38,7 @@ function MissingBadges({ model: m }: { model: ModelInfo }) {
       {m.needs_engine_install && (
         <Tag tone="warn" title={m.engine_detail}>
           <CloudDownloadOutlined sx={{ fontSize: 12 }} />
-          {t('models.picker.engineToInstall', [(m.engine_name ?? '').replace(/\s*\(.*\)/, '')])}
+          {t(m.engine_outdated ? 'models.picker.engineToUpdate' : 'models.picker.engineToInstall', [(m.engine_name ?? '').replace(/\s*\(.*\)/, '')])}
           {m.engine_install_size_mb ? ` · ${t('models.engine.mb', [m.engine_install_size_mb])}` : ''}
         </Tag>
       )}
