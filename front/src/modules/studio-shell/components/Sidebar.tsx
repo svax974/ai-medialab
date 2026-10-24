@@ -26,7 +26,7 @@ import { NavItem } from './NavItem'
 import { SearchField } from './SearchField'
 import { SidebarFooter } from './SidebarFooter'
 
-export const SIDEBAR_WIDTH = 284
+export const SIDEBAR_WIDTH = 328
 
 interface NavEntry {
   route: StudioRouteName

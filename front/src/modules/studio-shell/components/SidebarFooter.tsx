@@ -54,7 +54,7 @@ export function SidebarFooter() {
   const isDark = mode === 'dark'
 
   return (
-    <Box sx={{ display: 'grid', gap: 1, borderTop: '1px solid var(--line)', p: 1.5 }}>
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 1, borderTop: '1px solid var(--line)', p: 1.5, '& > *': { overflowWrap: 'anywhere' } }}>
       <MemoryMeter />
       <EngineCard />
       <FooterButton icon={<ViewInArOutlined sx={{ fontSize: 16 }} />} label={t('studio.footer.models')} onClick={() => setModelsOpen(true)} />

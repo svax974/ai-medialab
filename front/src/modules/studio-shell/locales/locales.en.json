@@ -73,7 +73,7 @@
   "studio.conversation.delete.media.chat": "messages and attachments",
   "studio.conversation.delete.message.chat": "“{0}” and its {1} message(s) will be permanently deleted, attachments included.",
   "studio.page.chatHome.title": "New chat",
-  "studio.mode.diagram": "Diagrams",
+  "studio.mode.diagram": "Diag.",
   "studio.nav.newDiagram": "New diagram",
   "studio.list.empty.diagram": "Your diagrams will appear here.",
   "studio.conversation.meta.diagram": "{0} gen. · {1}",

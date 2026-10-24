@@ -97,7 +97,7 @@ The H4 composers only have to call `registerFocusTarget('composer', textarea)`.
 
 | Name | Description |
 |---|---|
-| `StudioShell` | Layout (284 px collapsible sidebar + page), shortcuts, mode tracking, event subscriptions (`engine.*`, `studio.*`), update runner (`useUpdateRunner`, module `updates`), dialogs, viewer (`StudioLightbox`), image drop on the window in image mode (`ImageDropLayer`), `ConfirmHost`, banner and guards of private generation (`PrivateBanner`, `PrivateHost`, module `private`; its button is in `SidebarFooter`). |
+| `StudioShell` | Layout (328 px collapsible sidebar + page), shortcuts, mode tracking, event subscriptions (`engine.*`, `studio.*`), update runner (`useUpdateRunner`, module `updates`), dialogs, viewer (`StudioLightbox`), image drop on the window in image mode (`ImageDropLayer`), `ConfirmHost`, banner and guards of private generation (`PrivateBanner`, `PrivateHost`, module `private`; its button is in `SidebarFooter`). |
 | `Sidebar` | Brand (`custom.app.name`), hiding, `ModeSwitch`, mode pages (`NavItem`; chat only has "Nouvelle conversation" (New conversation)), `SearchField`, `ConversationList` (in chat mode, the excerpts of the messages that contain the search, `chat/ChatSearchHits`), `SidebarFooter`. |
 | `ModeSwitch` | MUI `Tabs` as a segmented control (image, audio, video, chat), icon above the label and no minimum width (the four fit in the sidebar); returns to the last page of the mode. |
 | `NavItem` | Navigation entry (link), shortcut visible on hover. |

@@ -73,7 +73,7 @@
   "studio.conversation.delete.media.chat": "messages et pièces jointes",
   "studio.conversation.delete.message.chat": "« {0} » et ses {1} message(s) seront définitivement supprimés, pièces jointes comprises.",
   "studio.page.chatHome.title": "Nouvelle conversation",
-  "studio.mode.diagram": "Diagrammes",
+  "studio.mode.diagram": "Diag.",
   "studio.nav.newDiagram": "Nouveau diagramme",
   "studio.list.empty.diagram": "Vos diagrammes apparaîtront ici.",
   "studio.conversation.meta.diagram": "{0} gén. · {1}",
