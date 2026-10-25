@@ -185,7 +185,7 @@ describe('private generation: nothing is kept, nothing is told', () => {
     const created = await p.generations.create({ conversationId: null, prompt: 'p', modelId: 'demo', params: {}, referenceIds: [], count: 1 });
     await settle();
     await runToTheEnd(created.assistant_message.id);
-    const retried = await p.generations.retry(created.assistant_message.id, { keepSeed: false });
+    const retried = await p.generations.retry(created.assistant_message.id, { keepSeed: false, forceMemory: false });
     await settle();
     expect(retried.status).toBe('queued');
     expect(p.engine.submitted()).toHaveLength(2);

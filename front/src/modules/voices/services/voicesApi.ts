@@ -20,6 +20,13 @@ export const voicesApi = {
   fromAsset: (body: VoiceFromAssetBody) => studioRequest<Voice>('post', '/voices/from-asset', body),
   patch: (id: string, patch: VoicePatch) => studioRequest<Voice>('patch', path(id), patch),
   remove: (id: string) => studioRequest<{ ok: true }>('delete', path(id)),
+  /** A suggested text for a sample that is not saved yet (multipart: `file`, `language`); no voice is created. */
+  transcribeSample: (file: File, language?: string | null) => {
+    const form = new FormData()
+    form.append('file', file, file.name)
+    if (language) form.append('language', language)
+    return studioUpload<VoiceTranscription>('/voices/transcribe-sample', form)
+  },
   /** A suggested text for the sample (nothing is stored): the user corrects it, then saves with `patch`. */
   transcribe: (id: string, body: { language?: string | null; model_id?: string | null } = {}) => studioRequest<VoiceTranscription>('post', path(id, '/transcribe'), body),
 }

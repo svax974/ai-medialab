@@ -15,7 +15,7 @@ The module knows neither model nor composer: `Écrire avec cette voix` (Write wi
 voices/
   index.ts                         exports
   types.ts                         Voice, VoiceRef, VoiceKind, VoiceTranscription, VoicePatch, VoiceStudioTarget
-  services/voicesApi.ts            GET/POST /voices, POST /voices/from-asset, PATCH/DELETE /voices/:id, POST /voices/:id/transcribe (tested)
+  services/voicesApi.ts            GET/POST /voices, POST /voices/transcribe-sample, POST /voices/from-asset, PATCH/DELETE /voices/:id, POST /voices/:id/transcribe (tested)
   hooks/useVoices.ts               the list (staleTime 1 min) + useVoiceEvents (studio.voices.changed and resync: re-read)
   hooks/useVoiceStudio.ts          studio state: sample, preview, draft, recording, save / transcribe
   hooks/useVoiceActions.ts         deletion with confirmation
@@ -41,7 +41,7 @@ Mounting: `studio-shell/pages/VoicesPage.tsx` (thin page: `VoicesLibrary` + `use
 | Recording | level ring around the microphone, duration, hint (`continuez, 15 à 30 s c'est idéal` (keep going, 15 to 30 s is ideal) before 8 s, `c'est largement assez` (that's more than enough) after 30 s), `Terminer` (finish), **text to read** in the chosen language (French, otherwise English); the text to read pre-fills the transcription |
 | Preview | player on the shared player of the tab (play/pause, clickable waveform, clock); `Choisir un autre extrait` (choose another excerpt) as long as the voice is not created; warning beyond 30 s |
 | Name, language | name (80 characters), spoken language (11 languages) with help |
-| Transcription | **editable** field; `Transcrire automatiquement` (transcribe automatically) (the engine proposes a text, which is corrected; if no model is installed: a message and `l'installer (≈ 0.5 GB)` (install it (≈ 0.5 GB)) which launches Whisper Small and its engine); the voice is created on the first request (the engine reads the recorded clip), then only updated; the proposed text is saved with the voice, then whatever the field contains is saved on `Enregistrer` (save) |
+| Transcription | **editable** field; An imported file is transcribed as soon as it is read (`POST /voices/transcribe-sample`, quiet failure) when a transcription model is installed, and fills the field if it is empty; `Transcrire automatiquement` (transcribe automatically) (the engine proposes a text, which is corrected; if no model is installed: a message and `l'installer (≈ 0.5 GB)` (install it (≈ 0.5 GB)) which launches Whisper Small and its engine); the voice is created on the first request (the engine reads the recorded clip), then only updated; the proposed text is saved with the voice, then whatever the field contains is saved on `Enregistrer` (save) |
 | Save | `Ajouter à mes voix` (add to my voices) (new) / `Enregistrer` (save) (edit); message `Voix « X » enregistrée` (voice "X" saved); disabled without sample, without name, during an operation or with a sample known to last less than one second |
 
 ## Parity checklist (former `VoicesPage.tsx`, `VoiceStudio.tsx`, `VoicePicker.tsx` for the avatar, `Waveform.tsx`)

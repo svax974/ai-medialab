@@ -39,7 +39,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 
 ### `voices`
 - Voice library (`/audio/voix`): microphone recording with a reading text, file import, name, language,
-  **suggested transcription then editable**, preview, editing, deletion; creation of a voice from a description;
+  **transcription suggested automatically on import (prefills the field), then editable**, preview, editing, deletion; creation of a voice from a description;
   "keep as reference voice" from any take. Microphone and listening: **to be validated by the user**.
 
 ### `video-studio`

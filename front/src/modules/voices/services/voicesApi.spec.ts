@@ -29,6 +29,13 @@ describe('voicesApi', () => {
     expect(studioUpload.mock.calls).toEqual([['/voices', form]])
   })
 
+  it('transcribes a sample that is not saved yet: file and language, no voice', async () => {
+    await voicesApi.transcribeSample(new File(['x'], 'a.wav'), 'fr')
+    const [route, form] = studioUpload.mock.calls[0] as unknown as [string, FormData]
+    expect(route).toBe('/voices/transcribe-sample')
+    expect([(form.get('file') as File).name, form.get('language')]).toEqual(['a.wav', 'fr'])
+  })
+
   it('edits, deletes and transcribes by voice id, encoded', async () => {
     await voicesApi.patch('a/b', { transcript: 'texte' })
     await voicesApi.remove('v1')

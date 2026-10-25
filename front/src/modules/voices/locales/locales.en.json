@@ -63,5 +63,6 @@
   "voices.transcript.label": "Transcript of the clip",
   "voices.transcript.noModel": "No transcription model installed (see Models → Audio)",
   "voices.transcript.placeholder": "What the person says in the clip…",
+  "voices.transcript.transcribed": "Transcribed automatically from the sample: check it and correct it if needed.",
   "voices.transcript.prefilled": "Filled in with the suggested text: correct it if you read something else."
 }

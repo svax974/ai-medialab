@@ -13,7 +13,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
-import { AssetController, AssetFileService, AssetService, StudioEvents } from 'src/modules/media-library';
+import { AssetController, AssetExportService, AssetFileService, AssetService, AssetShareService, StudioEvents } from 'src/modules/media-library';
 import { EngineClient } from 'src/modules/engine';
 import { ENGINE_CONFIG } from 'src/modules/engine/engineConfig';
 import { startFakeEngine, testConfig, type FakeEngine } from 'src/modules/engine/testing/fakeEngine';
@@ -84,6 +84,8 @@ describe('studio routes: public forms identical to the legacy engine', () => {
         { provide: MessageService, useValue: studio.messages },
         { provide: AssetService, useValue: studio.assets },
         { provide: AssetFileService, useValue: studio.files },
+        { provide: AssetExportService, useValue: {} },
+        { provide: AssetShareService, useValue: {} },
         { provide: StudioEvents, useValue: studio.events },
         { provide: APP_INTERCEPTOR, useClass: FakeAuthInterceptor },
       ],

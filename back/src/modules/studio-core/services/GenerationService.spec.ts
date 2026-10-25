@@ -114,7 +114,7 @@ describe('GenerationService', () => {
 
     it('queues a sibling generation of the same prompt with new seeds, behind the others', async () => {
       const { assistant_message: original, user_message: user } = await first();
-      const again = await s.generations.retry(original.id, { keepSeed: false });
+      const again = await s.generations.retry(original.id, { keepSeed: false, forceMemory: false });
       expect(again).toMatchObject({ role: 'assistant', status: 'queued', parent_id: user.id, model_id: 'demo', prompt: 'Un chat roux' });
       expect(again.id).not.toBe(original.id);
       const params = again.params as Record<string, unknown>;
@@ -126,15 +126,15 @@ describe('GenerationService', () => {
 
     it('keeps the seeds when asked, and takes another model or parameters', async () => {
       const { assistant_message: original } = await first();
-      const again = await s.generations.retry(original.id, { keepSeed: true, modelId: 'other', params: { steps: 3 } });
+      const again = await s.generations.retry(original.id, { keepSeed: true, forceMemory: false, modelId: 'other', params: { steps: 3 } });
       expect(again.model_id).toBe('other');
       expect(again.params).toMatchObject({ steps: 3, seeds: [5, 6] });
     });
 
     it('answers 404 for a prompt or an unknown message', async () => {
       const { user_message: user } = await first();
-      await expect(s.generations.retry(user.id, { keepSeed: false })).rejects.toBeInstanceOf(NotFoundException);
-      await expect(s.generations.retry('ghost', { keepSeed: false })).rejects.toThrow('Génération introuvable.');
+      await expect(s.generations.retry(user.id, { keepSeed: false, forceMemory: false })).rejects.toBeInstanceOf(NotFoundException);
+      await expect(s.generations.retry('ghost', { keepSeed: false, forceMemory: false })).rejects.toThrow('Génération introuvable.');
     });
   });
 

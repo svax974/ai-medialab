@@ -53,6 +53,15 @@ export class VoiceController {
     return this.files.createFromAsset(parseVoiceFromAsset(body));
   }
 
+  /** A suggested transcript of a sample that is not saved yet (multipart: `file`, `language?`, `model_id?`); nothing is stored. */
+  @Post('transcribe-sample')
+  @HttpCode(200)
+  @UseInterceptors(FileInterceptor('file', { storage: uploadStorage, limits: { fileSize: MAX_VOICE_UPLOAD_BYTES } }))
+  transcribeSample(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: unknown): Promise<VoiceTranscriptionDto> {
+    if (!file) throw new UnprocessableEntityException(tr('audioStudio.error.noFileReceived'));
+    return this.files.transcribeUpload({ path: file.path, originalName: decodeUploadName(file.originalname), mimeType: file.mimetype }, parseTranscribeVoice(body));
+  }
+
   @Patch(':id')
   async patch(@Param('id') id: string, @Body() body: unknown): Promise<VoiceDto> {
     const voice = await this.files.update(id, parseUpdateVoice(body));

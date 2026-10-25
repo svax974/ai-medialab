@@ -37,6 +37,8 @@ export interface InstallPlanStep {
   installed: boolean
   size_mb: number
   blocked: string | null
+  /** Added along with the asked model (speech models bring a transcription model for the voice samples). */
+  purpose?: 'transcription' | null
 }
 
 /** What setting a model up downloads; installed steps cost nothing (`GET /api/engines/setup/plan/:modelId`). */
@@ -56,6 +58,7 @@ export interface SetupRunStep {
   name: string
   size_mb: number
   state: SetupStepState
+  purpose?: 'transcription' | null
 }
 
 /** The run that installs what a model lacks, also the payload of the `engine.setup.progress` event. */

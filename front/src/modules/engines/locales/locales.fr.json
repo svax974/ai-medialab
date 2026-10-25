@@ -62,6 +62,7 @@
   "engines.localAi.launch.settings.title": "Proposer l'IA locale au lancement",
   "engines.localAi.launch.settings.description": "Tant que le moteur de chat n'est pas installé, l'application propose de l'installer à chaque lancement.",
   "engines.localAi.launch.autoAdvice": "Analyser automatiquement les risques des mises à jour (désactivable dans la fenêtre des mises à jour)",
+  "engines.setup.purpose.transcription": "pour transcrire les voix",
   "engines.setup.kind.base": "Données de base",
   "engines.setup.kind.engine": "Moteur d'exécution",
   "engines.setup.kind.model": "Modèle",

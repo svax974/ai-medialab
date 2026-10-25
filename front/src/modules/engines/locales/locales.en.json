@@ -62,6 +62,7 @@
   "engines.localAi.launch.settings.title": "Offer the local AI at launch",
   "engines.localAi.launch.settings.description": "While the chat engine is not installed, the application offers to install it at every launch.",
   "engines.localAi.launch.autoAdvice": "Automatically analyse the risks of updates (can be turned off in the updates window)",
+  "engines.setup.purpose.transcription": "to transcribe voice samples",
   "engines.setup.kind.base": "Base data",
   "engines.setup.kind.engine": "Runtime engine",
   "engines.setup.kind.model": "Model",

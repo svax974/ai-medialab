@@ -110,11 +110,11 @@ describe('video generations', () => {
     await s.queue.idle();
     s.emit('job.done', { job_id: created.assistant_message.id, outputs: 0 });
     await s.queue.idle();
-    const same = await s.generations.retry(created.assistant_message.id, { keepSeed: true });
+    const same = await s.generations.retry(created.assistant_message.id, { keepSeed: true, forceMemory: false });
     expect(same.params).toMatchObject({ seeds: [7, 8] });
     const check = s.engine.calls.filter((c) => c.path === '/engine/v1/jobs/check').at(-1);
     expect(check?.options?.body).toEqual({ model_id: 'wan', reference_media: ['image', 'image', 'video'] });
-    const fresh = await s.generations.retry(created.assistant_message.id, { keepSeed: false });
+    const fresh = await s.generations.retry(created.assistant_message.id, { keepSeed: false, forceMemory: false });
     expect((fresh.params.seeds as number[]).length).toBe(2);
     expect(fresh.params.seeds).not.toEqual([7, 8]);
   });

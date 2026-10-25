@@ -63,5 +63,6 @@
   "voices.transcript.label": "Transcription de l'extrait",
   "voices.transcript.noModel": "Aucun modèle de transcription installé (voir Modèles → Audio)",
   "voices.transcript.placeholder": "Ce que dit la personne dans l'extrait…",
+  "voices.transcript.transcribed": "Transcrit automatiquement depuis l'échantillon : relisez et corrigez si besoin.",
   "voices.transcript.prefilled": "Pré-remplie avec le texte proposé : corrigez-la si vous avez lu autre chose."
 }

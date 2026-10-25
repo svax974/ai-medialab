@@ -1660,6 +1660,18 @@
             "title": "Name",
             "type": "string"
           },
+          "purpose": {
+            "anyOf": [
+              {
+                "const": "transcription",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
+          },
           "size_mb": {
             "title": "Size Mb",
             "type": "integer"
@@ -1719,6 +1731,18 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "const": "transcription",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
           },
           "size_mb": {
             "title": "Size Mb",

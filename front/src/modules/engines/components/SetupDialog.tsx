@@ -29,7 +29,7 @@ function StepIcon({ state }: { state: SetupRunStep['state'] | 'todo' }) {
 }
 
 /** One line per thing to download: what it is ("Données de base"…), its name, its size. */
-function StepRow({ kind, name, sizeMb, state }: { kind: SetupRunStep['kind']; name: string; sizeMb: number; state: SetupRunStep['state'] | 'todo' }) {
+function StepRow({ kind, name, sizeMb, state, purpose }: { kind: SetupRunStep['kind']; name: string; sizeMb: number; state: SetupRunStep['state'] | 'todo'; purpose?: SetupRunStep['purpose'] }) {
   const t = useT()
   const lang = useLang()
   return (
@@ -39,6 +39,7 @@ function StepRow({ kind, name, sizeMb, state }: { kind: SetupRunStep['kind']; na
         <Box component="span" sx={{ color: 'var(--muted)' }}>{t(stepKindKey(kind))}</Box>
         <Box component="span" sx={{ color: 'var(--faint)' }}> · </Box>
         <Box component="span" sx={{ color: 'var(--ink)' }}>{name}</Box>
+        {purpose && <Box component="span" sx={{ color: 'var(--faint)' }}> ({t(`engines.setup.purpose.${purpose}`)})</Box>}
       </Box>
       <Box component="span" sx={{ fontFamily: 'var(--font-mono, monospace)', fontSize: 12, color: 'var(--muted)' }}>{formatSize(sizeMb, lang)}</Box>
     </Box>
@@ -57,7 +58,7 @@ function Confirm({ plan, model, busy }: { plan: InstallPlan; model: ModelInfo; b
       <Box component="p" sx={{ m: 0, fontSize: 14, lineHeight: 1.6, color: 'var(--muted)' }}>{t('engines.setup.dialog.intro', [model.name])}</Box>
       {model.variants.length > 1 && <VariantPicker model={model} disabled={busy} />}
       <StepList>
-        {missingSteps(plan).map((step) => <StepRow key={step.id} kind={step.kind} name={step.name} sizeMb={step.size_mb} state="todo" />)}
+        {missingSteps(plan).map((step) => <StepRow key={step.id} kind={step.kind} name={step.name} sizeMb={step.size_mb} state="todo" purpose={step.purpose} />)}
       </StepList>
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'space-between', fontSize: 14, color: 'var(--ink)' }}>
         <Box component="strong" sx={{ fontWeight: 600 }}>{t('engines.setup.dialog.total')}</Box>
@@ -73,7 +74,7 @@ function Running({ run }: { run: SetupRun }) {
   return (
     <>
       <StepList>
-        {run.steps.map((step) => <StepRow key={step.id} kind={step.kind} name={step.name} sizeMb={step.size_mb} state={step.state} />)}
+        {run.steps.map((step) => <StepRow key={step.id} kind={step.kind} name={step.name} sizeMb={step.size_mb} state={step.state} purpose={step.purpose} />)}
       </StepList>
       {hasKnownTotal(run)
         ? <ProgressBar done={run.done} total={run.total} rate={run.rate} etaSeconds={run.eta} />

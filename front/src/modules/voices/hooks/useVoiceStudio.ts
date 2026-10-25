@@ -43,6 +43,7 @@ export function useVoiceStudio(target: VoiceStudioTarget, onClose: () => void) {
   const [savedId, setSavedId] = useState<string | undefined>(target.voiceId)
   const [draft, setDraft] = useState<VoiceDraft>({ name: '', language: DEFAULT_VOICE_LANGUAGE, transcript: '' })
   const [recorded, setRecorded] = useState(false)
+  const [prefilled, setPrefilled] = useState(false)
   const [busy, setBusy] = useState<StudioBusy>('')
   const patchDraft = (patch: Partial<VoiceDraft>) => setDraft((current) => ({ ...current, ...patch }))
 
@@ -82,6 +83,26 @@ export function useVoiceStudio(target: VoiceStudioTarget, onClose: () => void) {
     },
   })
 
+  // An imported sample is transcribed as soon as it is read, to prefill the field (a quiet failure: the button stays there).
+  useEffect(() => {
+    if (!file || recorded || savedId || !transcriberReady || draft.transcript) return
+    let cancelled = false
+    setBusy('transcribe')
+    voicesApi
+      .transcribeSample(file, draft.language)
+      .then((suggestion) => {
+        if (cancelled || !suggestion.text) return
+        setDraft((current) => (current.transcript ? current : { ...current, transcript: suggestion.text }))
+        setPrefilled(true)
+      })
+      .catch(() => undefined)
+      .finally(() => { if (!cancelled) setBusy('') })
+    return () => {
+      cancelled = true
+      setBusy((current) => (current === 'transcribe' ? '' : current))
+    }
+  }, [file, transcriberReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const ensureSaved = async (): Promise<Voice | null> => {
     if (savedId) return voicesApi.patch(savedId, buildVoicePatch(draft))
     if (!file) return null
@@ -113,6 +134,12 @@ export function useVoiceStudio(target: VoiceStudioTarget, onClose: () => void) {
 
   const transcribe = () =>
     run('transcribe', async () => {
+      if (!savedId && file) {
+        const suggestion = await voicesApi.transcribeSample(file, draft.language)
+        patchDraft({ transcript: suggestion.text })
+        setPrefilled(true)
+        return
+      }
       const voice = await ensureSaved()
       if (!voice) return
       const suggestion = await voicesApi.transcribe(voice.id, { language: draft.language })
@@ -125,12 +152,13 @@ export function useVoiceStudio(target: VoiceStudioTarget, onClose: () => void) {
     setFile(null)
     setPreview(null)
     setRecorded(false)
+    setPrefilled(false)
   }
 
   const hasAudio = !!file || !!existing
   const sampleUrl = preview?.url ?? (existing?.url ? resolveMediaUrl(existing.url) : null)
   return {
-    existing, draft, patchDraft, preview, recorder, recorded, busy, hasAudio, transcriberReady, savedId,
+    existing, draft, patchDraft, preview, recorder, recorded, prefilled, busy, hasAudio, transcriberReady, savedId,
     sample: { url: sampleUrl, peaks: preview?.peaks ?? existing?.peaks ?? [], duration: preview?.duration || existing?.duration || 0 },
     canSave: canSaveVoice({ hasAudio, name: draft.name, busy: !!busy, previewDuration: preview?.duration }),
     load, save, transcribe, discardSample,

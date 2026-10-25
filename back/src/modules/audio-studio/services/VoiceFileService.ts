@@ -96,6 +96,29 @@ export class VoiceFileService {
     }
   }
 
+  /**
+   * A suggested transcript of a sample **not yet in the library** (the studio fills the field while the user names the
+   * voice): the engine prepares the same reference clip a voice would keep, transcribes it, and the clip is removed.
+   * The raw upload is always removed. 409 when no transcription model is installed.
+   */
+  async transcribeUpload(file: UploadedFile, input: TranscribeVoiceInput): Promise<VoiceTranscriptionDto> {
+    const id = newId();
+    let filename: string | null = null;
+    try {
+      const prepared = await this.engine.post('/engine/v1/media/voice-reference', { body: { source_path: resolve(file.path), voice_id: id }, timeoutMs: 120_000 });
+      filename = prepared.filename;
+      return await this.engine.post('/engine/v1/media/transcribe', {
+        body: { path: resolve(join(uploadsDir(), prepared.filename)), language: input.language, model_id: input.modelId },
+        timeoutMs: 600_000,
+      });
+    } catch (error) {
+      throw engineErrorToHttp(error);
+    } finally {
+      await unlink(file.path).catch(() => undefined);
+      if (filename) await this.engine.post('/engine/v1/media/purge', { body: { files: [{ folder: 'uploads', filename }] } }).catch(() => undefined);
+    }
+  }
+
   private async store(sourcePath: string, input: UploadVoiceInput & { kind: UploadVoiceInput['kind'] }): Promise<VoiceDto> {
     const id = newId();
     let prepared: { filename: string; duration: number; peaks: number[] };

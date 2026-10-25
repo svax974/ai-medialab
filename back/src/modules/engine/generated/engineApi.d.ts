@@ -1587,6 +1587,8 @@ export interface components {
             kind: "base" | "engine" | "model";
             /** Name */
             name: string;
+            /** Purpose */
+            purpose?: "transcription" | null;
             /** Size Mb */
             size_mb: number;
             /**
@@ -1610,6 +1612,8 @@ export interface components {
             kind: "base" | "engine" | "model";
             /** Name */
             name: string;
+            /** Purpose */
+            purpose?: "transcription" | null;
             /** Size Mb */
             size_mb: number;
         };

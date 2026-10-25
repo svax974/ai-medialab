@@ -16,7 +16,7 @@ Status (task H4.5): routes, files, event `studio.voices.changed`, voices passed 
 | DTO | `dto/VoiceTranscriptionDto.ts` | Response of `transcribe`: `{ text, language?, duration?, model }`. |
 | Mapper | `mappers/voiceMapper.ts` | `toVoiceDto`. |
 | Service | `services/VoiceService.ts` | `list`, `get`, `findByIds`, `create` (forced id possible), `update`, `remove` (row only, returned). |
-| Service | `services/VoiceFileService.ts` | `createFromUpload`, `createFromAsset`, `update`, `remove` (row then file via `POST /engine/v1/media/purge`), `transcribe`; publishes `voices.changed`. |
+| Service | `services/VoiceFileService.ts` | `transcribeUpload` (transcript of a sample not yet saved), `createFromUpload`, `createFromAsset`, `update`, `remove` (row then file via `POST /engine/v1/media/purge`), `transcribe`; publishes `voices.changed`. |
 | Pure functions | `services/voiceParams.ts` | Body validation (422): `parseUploadVoice`, `parseVoiceFromAsset`, `parseUpdateVoice`, `parseTranscribeVoice`. |
 | Controller | `controllers/VoiceController.ts` | `/api/voices*`. |
 | Types | `types/voiceTypes.ts` | Service inputs, limits (name: 80 characters, transcription from a take: 600). |
@@ -44,6 +44,7 @@ All **administrator** (`local-trust` included), plain JSON, same URLs, shapes an
 | `PATCH` | `/api/voices/:id` `{ name?, transcript?, description?, language? }` | the voice; publishes `voices.changed` | 404 `Voix introuvable.` (voice not found), 422 |
 | `DELETE` | `/api/voices/:id` | `{ ok: true }`; the row then the file; publishes `voices.changed` | 404 |
 | `POST` | `/api/voices/:id/transcribe` `{ language?, model_id? }` | `{ text, language, duration, model }`: **a suggestion, nothing is saved** (the user corrects it, then saves through `PATCH`) | 404, 409 (no transcription model or engine absent), 500 |
+| `POST` | `/api/voices/transcribe-sample` (multipart: `file`, `language?`, `model_id?`) | `{ text, language, duration, model }`: the suggestion for a sample **not saved yet** (the engine prepares the same reference clip, transcribes it, then the clip and the upload are removed; no voice is created) | 409 (no transcription model or engine absent), 422 (no file, unreadable clip), 500 |
 
 Name of a sent voice: `name`, otherwise the file name without extension, otherwise `Ma voix` (My voice). The raw received file is written to `<données>/uploads/tmp_<aléa>` (multer, on disk, 100 MB at most) then **always deleted by Nest** once the clip is prepared.
 

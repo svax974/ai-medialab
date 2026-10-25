@@ -30,13 +30,10 @@ def _sdcpp_outdated(spec: Any, system: dict[str, Any] | None) -> bool:
     return sdcpp.outdated_for(spec, (system or get_system())["engines"].get("sdcpp", {}))
 
 
-def plan_for_model(model_id: str, system: dict[str, Any] | None = None) -> dict[str, Any]:
-    """Steps to make a model usable: its components (base first), then the model files; `installed` steps cost nothing.
-
-    Raises KeyError for an unknown model. `blocked`: why this machine cannot run it at all (French), or None."""
+def _steps_of(spec: Any, system: dict[str, Any] | None, purpose: str | None = None) -> list[dict[str, Any]]:
+    """Steps of one model: its components (base first), then its files. `purpose` tags a model added along the asked one."""
     from .downloads import downloads
 
-    spec = get_spec(model_id)
     steps: list[dict[str, Any]] = []
     for cid in components.components_of(spec):
         installed = components.is_installed(cid)
@@ -49,13 +46,47 @@ def plan_for_model(model_id: str, system: dict[str, Any] | None = None) -> dict[
             size = install_size_mb((system or get_system())["engines"]["sdcpp"].get("variant", ""))
         steps.append({"id": cid, "kind": components.kind_of(cid), "name": components.name_and_contents(cid)[0],
                       "installed": installed, "size_mb": 0 if installed else size,
-                      "blocked": None if installed else components.blocked_reason(cid, system)})
+                      "blocked": None if installed else components.blocked_reason(cid, system), "purpose": purpose})
     if spec.all_sources():
         status = downloads.status(spec)
         installed = status["state"] == "installed"
         remaining = max(0.0, (spec.download_size_gb or 0) - status["size_gb"]) * 1024
         steps.append({"id": spec.id, "kind": "model", "name": spec.name, "installed": installed,
-                      "size_mb": 0 if installed else int(remaining), "blocked": None})
+                      "size_mb": 0 if installed else int(remaining), "blocked": None, "purpose": purpose})
+    return steps
+
+
+def transcription_companion(spec: Any, system: dict[str, Any] | None = None) -> Any | None:
+    """The speech-to-text model to install along with a speech model, so that an imported voice sample is transcribed.
+
+    None when the model is not a speech synthesis one, or when a transcription model is already on the disk. Among the
+    transcription models, the first (in `transcription.PREFERRED` order) that needs no engine beyond those already installed
+    or required by `spec` wins, else the first one this machine can run."""
+    from . import transcription
+    from .downloads import downloads
+    from .engines import MODELS
+
+    if spec.kind != "audio" or not spec.audio or spec.audio.task != "tts":
+        return None
+    candidates = transcription.ordered(MODELS)
+    if any(downloads.status(m)["state"] == "installed" for m in candidates):
+        return None
+    covered = set(components.components_of(spec))
+    usable = [m for m in candidates if not any(components.blocked_reason(c, system) for c in components.components_of(m))]
+    cheap = [m for m in usable if all(c in covered or components.is_installed(c) for c in components.components_of(m))]
+    return (cheap or usable or [None])[0]
+
+
+def plan_for_model(model_id: str, system: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Steps to make a model usable: its components (base first), then the model files; `installed` steps cost nothing.
+    A speech model brings a transcription model too (`transcription_companion`), tagged `purpose: "transcription"`.
+
+    Raises KeyError for an unknown model. `blocked`: why this machine cannot run it at all (French), or None."""
+    spec = get_spec(model_id)
+    steps = _steps_of(spec, system)
+    if companion := transcription_companion(spec, system):
+        known = {s["id"] for s in steps}
+        steps += [s for s in _steps_of(companion, system, "transcription") if s["id"] not in known]
     missing = [s for s in steps if not s["installed"]]
     return {"model_id": model_id, "steps": steps, "ready": not missing,
             "total_mb": sum(s["size_mb"] for s in missing),
@@ -77,11 +108,13 @@ def _adapter(step: dict[str, Any], model_id: str) -> _Adapter:
 
     cid = step["id"]
     if step["kind"] == "model":
+        target = cid  # the asked model, or the transcription model added along with it
+
         def read() -> dict[str, Any]:
-            job = downloads.job(model_id)
+            job = downloads.job(target)
             return job.public() if job else {"state": "error", "error": "Téléchargement introuvable."}
 
-        return _Adapter(lambda: downloads.start(model_id), read, lambda: downloads.cancel(model_id))
+        return _Adapter(lambda: downloads.start(target), read, lambda: downloads.cancel(target))
     if cid == components.SDCPP:
         return _Adapter(sdcpp_installer.start, sdcpp_installer.public, sdcpp_installer.cancel)
     if cid == components.LLAMACPP:

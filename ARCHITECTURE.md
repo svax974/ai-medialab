@@ -178,7 +178,7 @@ at two levels: the *base data*, shared by several engines (the `torch` pack, the
 licence, see `docs/components/ffmpeg.md`), and the *runtime engines* (stable-diffusion.cpp, llama.cpp, audio.cpp, the Python packs).
 `components_of(spec)` gives those a model requires (FFmpeg for any video). `setup_runner.py` computes the plan (`GET /setup-plan`: only
 what is missing, so nothing is downloaded again) and runs it with the existing installers, one at a time, under a single state published by
-`setup.progress`; cancellation stops the current step, whose installer deletes the partial files. Deleting a component also deletes
+`setup.progress`; a speech synthesis model brings a transcription model along (`transcription_companion`: Whisper Small, or one that shares the engine already required), so that voice samples can be transcribed; cancellation stops the current step, whose installer deletes the partial files. Deleting a component also deletes
 the installed models that depend on it (`components.uninstall`). The server imports `av` only lazily, after having added the FFmpeg add-on
 to its `sys.path` (`media.load_av`); without it, sending a video answers 409 with the installation message.
 

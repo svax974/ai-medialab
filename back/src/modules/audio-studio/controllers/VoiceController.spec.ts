@@ -182,6 +182,18 @@ describe('voice routes', () => {
     expect((await http().post('/api/voices/ghost/transcribe').send({}).expect(404)).body.message).toBe('Voix introuvable.');
   });
 
+  it('POST /api/voices/transcribe-sample: prepares the clip, transcribes it, removes it, and stores no voice', async () => {
+    const before = (await services.voices.list()).length;
+    const res = await http().post('/api/voices/transcribe-sample').field('language', 'fr').attach('file', Buffer.from('RIFF'), 'sample.wav').expect(200);
+    expect(res.body).toEqual({ text: 'bonjour à tous', language: 'fr', duration: 4.5, model: 'whisper-small' });
+    const prepared = calls('/engine/v1/media/voice-reference').at(-1) as { voice_id: string };
+    expect(calls('/engine/v1/media/transcribe').at(-1)).toMatchObject({ path: join(dataDir, 'uploads', `voice_${prepared.voice_id}.wav`) });
+    expect(calls('/engine/v1/media/purge').at(-1)).toEqual({ files: [{ folder: 'uploads', filename: `voice_${prepared.voice_id}.wav` }] });
+    expect((await services.voices.list()).length).toBe(before);
+    await http().post('/api/voices/transcribe-sample').expect(422);
+    await http().post('/api/voices/transcribe-sample').field('model_id', 'none').attach('file', Buffer.from('RIFF'), 'sample.wav').expect(409);
+  });
+
   it('DELETE /api/voices/:id: removes the row then the sample through the engine; 404 when unknown', async () => {
     await services.voices.create({ id: 'dv', name: 'D', kind: 'clone', filename: 'voice_dv.wav' });
     published.length = 0;

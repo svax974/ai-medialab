@@ -49,6 +49,7 @@ class SetupStepPlan(BaseModel):
     installed: bool
     size_mb: int
     blocked: str | None = None
+    purpose: Literal["transcription"] | None = None
 
 
 class SetupPlan(BaseModel):
@@ -65,6 +66,7 @@ class SetupStep(BaseModel):
     name: str
     size_mb: int
     state: Literal["pending", "running", "done", "error", "cancelled"]
+    purpose: Literal["transcription"] | None = None
 
 
 class SetupState(BaseModel):

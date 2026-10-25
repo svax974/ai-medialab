@@ -64,7 +64,7 @@ function SourceStep({ studio }: { studio: ReturnType<typeof useVoiceStudio> }) {
 
 function TranscriptField({ studio }: { studio: ReturnType<typeof useVoiceStudio> }) {
   const t = useT()
-  const { draft, busy, recorded, transcriberReady } = studio
+  const { draft, busy, recorded, prefilled, transcriberReady } = studio
   const action = transcriberReady ? (
     <Box component="button" type="button" onClick={() => void studio.transcribe()} disabled={!!busy} sx={{ display: 'inline-flex', alignItems: 'center', gap: '6px', border: 0, background: 'none', p: 0, fontFamily: 'inherit', fontSize: 12, color: 'var(--safe)', '&:hover': { filter: 'brightness(1.25)' }, '&:disabled': { opacity: 0.5 } }}>
       {busy === 'transcribe' ? <CircularProgress size={12} color="inherit" /> : <AutoAwesomeRounded sx={{ fontSize: 14 }} />} {t('voices.transcript.auto')}
@@ -75,7 +75,7 @@ function TranscriptField({ studio }: { studio: ReturnType<typeof useVoiceStudio>
   return (
     <Field label={t('voices.transcript.label')} hint={t('voices.transcript.hint')} help={VOICE_HELP.transcript} action={action}>
       <Box component="textarea" value={draft.transcript} rows={4} placeholder={t('voices.transcript.placeholder')} aria-label={t('voices.transcript.label')} onChange={(event: React.ChangeEvent<HTMLTextAreaElement>) => studio.patchDraft({ transcript: event.target.value })} sx={{ ...inputSx, height: 'auto', resize: 'none', py: 1, lineHeight: 1.6 }} />
-      {recorded && draft.transcript && <Box component="p" sx={{ m: 0, mt: '4px', fontSize: 11.5, color: 'var(--faint)' }}>{t('voices.transcript.prefilled')}</Box>}
+      {(recorded || prefilled) && draft.transcript && <Box component="p" sx={{ m: 0, mt: '4px', fontSize: 11.5, color: 'var(--faint)' }}>{t(prefilled ? 'voices.transcript.transcribed' : 'voices.transcript.prefilled')}</Box>}
     </Field>
   )
 }

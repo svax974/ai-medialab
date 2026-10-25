@@ -109,6 +109,29 @@ class TestPlan:
         with pytest.raises(KeyError):
             sr.plan_for_model("nope", SYSTEM)
 
+    def test_a_speech_model_brings_a_transcription_model_that_shares_its_engine(self, nothing_installed):
+        plan = sr.plan_for_model("kokoro-82m", SYSTEM)
+        extra = [s for s in plan["steps"] if s["purpose"] == "transcription"]
+        assert [s["id"] for s in extra] == ["whisper-small"]  # the "speech" engine is already in the plan: no second one
+        assert [s["id"] for s in plan["steps"]] == ["speech", "kokoro-82m", "whisper-small"]
+        assert plan["total_mb"] == sum(s["size_mb"] for s in plan["steps"])
+
+    def test_no_transcription_model_is_added_when_one_is_installed_or_for_other_models(self, monkeypatch, nothing_installed):
+        from app.downloads import downloads
+
+        monkeypatch.setattr(downloads, "status", lambda spec: {"state": "installed" if spec.id == "whisper-small" else "missing", "size_gb": 0.0})
+        assert all(s["purpose"] is None for s in sr.plan_for_model("kokoro-82m", SYSTEM)["steps"])
+        monkeypatch.setattr(downloads, "status", lambda spec: {"state": "missing", "size_gb": 0.0})
+        assert all(s["purpose"] is None for s in sr.plan_for_model("z-image-turbo-gguf", SYSTEM)["steps"])
+
+    def test_the_transcription_model_downloads_under_its_own_id(self, monkeypatch):
+        seen = {}
+        from app.downloads import downloads
+
+        monkeypatch.setattr(downloads, "job", lambda mid: seen.setdefault("job", mid) and None)
+        sr._adapter({"id": "whisper-small", "kind": "model"}, "kokoro-82m").read()
+        assert seen["job"] == "whisper-small"
+
 
 class FakeInstaller:
     """Stands for an installer: running for `ticks` polls, then `final`."""
