@@ -21,7 +21,7 @@ image-studio/
   lib/uploadReferences.ts        import of references (image filter, previews, HttpService.upload) (tested)
   lib/sendRequest.ts             body of POST /api/messages (tested)
   lib/help.ts                    image-specific tooltips, starter prompts
-  components/                    ImageHome, ImageGallery (H4.4: `AssetGallery` of `media-library` + `ImageTile` of `studio-core`), Composer, ReferenceStrip, AspectPicker, CountPicker, DropOverlay (ImageDropLayer)
+  components/                    ImageHome, ImageGallery (H4.4: `AssetGallery` of `media-library` + `ImageTile` of `studio-core`), Composer, ReferenceStrip (also the empty start/reference slot of a model that takes images), AspectPicker, CountPicker, DropOverlay (ImageDropLayer)
   locales/                       locales.fr.json, locales.en.json (keys imageStudio.*)
 ```
 

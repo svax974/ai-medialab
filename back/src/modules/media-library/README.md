@@ -22,6 +22,7 @@ Status (task H4.3a): entities, DTOs, mapper and service (H2), plus the routes `/
 | Utilities | `utils/uploadStorage.ts` | `uploadStorage` (multer on disk, `uploads/tmp_<aléa>`) and `decodeUploadName`, shared with `audio-studio`. |
 | Controller | `controllers/AssetController.ts` | `/api/assets*`. |
 | Service | `services/AssetExportService.ts` | Light copy of a video (presets `light`, `tiny`). |
+| Service | `services/AssetShareService.ts`, `utils/shareCommands.ts` | Opens Mail, WhatsApp, Messages, X, Facebook or Instagram on this computer with an asset (or its light copy): macOS Mail with the file attached (AppleScript), the others with the file on the clipboard; text only elsewhere. Arguments are passed apart, never built into a command line. |
 | Utilities | `utils/dataDir.ts` | Data folder shared with the engine (`APP_DATA_DIR`, otherwise `IMAGEGEN_DATA_DIR`), `uploadsDir`, `outputsDir`, `assetFilePath`. |
 | Types | `types/assetTypes.ts` | `CreateAssetInput`, `ListAssetsQuery`. |
 | Utilities | `utils/ids.ts` | `newId()` (sortable id: 11 hex digits of the timestamp in ms + 10 random, format of the former `new_id`), `nowSeconds()` (seconds, float). |
@@ -48,6 +49,7 @@ Administrator (`local-trust` included), plain JSON, same URLs and shapes as the 
 | `GET` | `/api/assets?kind=&media=&favorites=&q=&before=&limit=` | `{ items, next_before }` (gallery, most recent first) | |
 | `PATCH` | `/api/assets/:id` `{ favorite }` | asset; publishes `asset.updated` | 404 `Image introuvable.` (image not found), 422 |
 | `POST` | `/api/assets/:id/export` `{ preset: 'light' \| 'tiny' \| 'gif' \| 'gif-tiny' }` | `{ url, width, height, fps, bytes }`: a light MP4 of a video (360p at 15 images/s, or 240p at 12) or a looping GIF of its first 150 images (320p at 12, or 200p at 10, no sound), made by the engine (`POST /engine/v1/media/video-export`) in its `exports` folder, served as `/media/exports/<file>` and reused while the video is unchanged | 404, 422 (not a video, unknown preset, FFmpeg missing) |
+| `POST` | `/api/assets/:id/share` `{ service: 'mail' \| 'whatsapp' \| 'messages' \| 'x' \| 'facebook' \| 'instagram', preset?, text?, subject? }` | `{ outcome: 'attached' \| 'clipboard' \| 'none' }`: opens the application of this computer with the file (or the light copy of the `preset`); `clipboard` = the file is copied, to paste in the message | 404, 422 (unknown service or preset), 502 (application does not open) |
 | `DELETE` | `/api/assets/:id` | `{ ok: true }`; row, file and thumbnail deleted; publishes `asset.deleted` `{ id, message_id, conversation_id }` | 404 |
 
 **Upload**: multer writes the raw file to `<données>/uploads/tmp_<aléa>` (no copy in memory: a video can weigh 500 MB), then the engine transforms it (`POST /engine/v1/media/ingest`: image re-encoded as PNG, EXIF orientation applied, transparency flattened, 4096 px at most; video kept, dimensions, duration and fps read; WebP thumbnail) and deletes the raw file; Nest records the row with the id and the rendered file names. The original name is re-read as UTF-8 (multer reads it as latin1).

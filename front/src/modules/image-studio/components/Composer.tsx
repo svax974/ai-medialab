@@ -96,7 +96,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
 
   return (
     <Box sx={{ position: 'relative', borderRadius: '22px', border: '1px solid var(--line)', backgroundColor: 'var(--surface)', transition: 'border-color 0.15s', '&:focus-within': { borderColor: 'var(--line-strong)' }, ...(hero ? { boxShadow: '0 30px 80px -30px var(--safe-glow)' } : {}) }}>
-      <ReferenceStrip model={model} sizeIndex={sizeIndex} references={draft.references} uploading={draft.uploading} onRemove={draft.removeReference} onMove={draft.moveReference} />
+      <ReferenceStrip model={model} sizeIndex={sizeIndex} references={draft.references} uploading={draft.uploading} onRemove={draft.removeReference} onMove={draft.moveReference} onBrowse={() => filePicker.current?.click()} />
       <Box
         component="textarea"
         ref={textarea}

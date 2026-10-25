@@ -3,20 +3,21 @@
  * SPDX-License-Identifier: MIT
  */
 
-export type ShareTargetId = 'mail' | 'whatsapp' | 'messages' | 'x'
+export type ShareTargetId = 'mail' | 'whatsapp' | 'messages' | 'x' | 'facebook' | 'instagram'
 
 export interface ShareTarget {
   id: ShareTargetId
-  /** Link that opens the service with the text prefilled (a web link cannot carry the file of a local app). */
-  href: (text: string, title: string) => string
   appleOnly?: boolean
 }
 
+/** Services of the menu; the server opens each one on this computer (`POST /api/assets/:id/share`). */
 export const SHARE_TARGETS: ShareTarget[] = [
-  { id: 'mail', href: (text, title) => `mailto:?subject=${encodeURIComponent(title)}&body=${encodeURIComponent(text)}` },
-  { id: 'whatsapp', href: (text) => `https://wa.me/?text=${encodeURIComponent(text)}` },
-  { id: 'messages', href: (text) => `sms:&body=${encodeURIComponent(text)}`, appleOnly: true },
-  { id: 'x', href: (text) => `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}` },
+  { id: 'mail' },
+  { id: 'whatsapp' },
+  { id: 'messages', appleOnly: true },
+  { id: 'x' },
+  { id: 'facebook' },
+  { id: 'instagram' },
 ]
 
 export function isApplePlatform(): boolean {
@@ -53,11 +54,4 @@ export async function shareWithSystem(file: File, text: string): Promise<boolean
     if (error instanceof DOMException && error.name === 'AbortError') return false
     throw error
   }
-}
-
-/** Opens a service with the text. `mailto:` and `sms:` go to the system, the web links to the browser. */
-export function openShareTarget(target: ShareTarget, text: string, title: string): void {
-  const href = target.href(text, title)
-  if (/^https?:/.test(href)) window.open(href, '_blank', 'noopener,noreferrer')
-  else window.location.href = href
 }

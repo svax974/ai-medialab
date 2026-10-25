@@ -15,6 +15,7 @@ import { AdminOnlyInterceptor } from 'src/modules_shared/common/interceptors/Adm
 import { AssetDto } from '../dto/AssetDto';
 import { AssetPageDto } from '../dto/AssetListItemDto';
 import { AssetExportService, type AssetExportDto } from '../services/AssetExportService';
+import { AssetShareService, type AssetShareBody, type AssetShareDto } from '../services/AssetShareService';
 import { AssetFileService } from '../services/AssetFileService';
 import { AssetService } from '../services/AssetService';
 import { StudioEvents } from '../services/StudioEvents';
@@ -34,6 +35,7 @@ export class AssetController {
     private readonly assets: AssetService,
     private readonly files: AssetFileService,
     private readonly exports: AssetExportService,
+    private readonly shares: AssetShareService,
     private readonly events: StudioEvents,
   ) {}
 
@@ -82,6 +84,13 @@ export class AssetController {
   @HttpCode(200)
   exportVideo(@Param('id') id: string, @Body() body: { preset?: unknown }): Promise<AssetExportDto> {
     return this.exports.exportVideo(id, body?.preset);
+  }
+
+  /** Opens Mail, WhatsApp, Messages, X, Facebook or Instagram on this computer with the file (or a light copy of a video). */
+  @Post(':id/share')
+  @HttpCode(200)
+  share(@Param('id') id: string, @Body() body: AssetShareBody): Promise<AssetShareDto> {
+    return this.shares.share(id, body);
   }
 
   @Delete(':id')

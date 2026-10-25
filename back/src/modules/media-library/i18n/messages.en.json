@@ -2,6 +2,8 @@
   "mediaLibrary.error.booleanExpected": "{0}: boolean expected.",
   "mediaLibrary.error.exportOnlyVideo": "Only a video can be exported in a lighter version.",
   "mediaLibrary.error.exportPreset": "preset: \"light\", \"tiny\", \"gif\" or \"gif-tiny\" expected.",
+  "mediaLibrary.error.shareFailed": "Could not open the sharing application: {0}",
+  "mediaLibrary.error.shareService": "service: \"mail\", \"whatsapp\", \"messages\", \"x\", \"facebook\" or \"instagram\" expected.",
   "mediaLibrary.error.imageNotFound": "Image not found.",
   "mediaLibrary.error.noFileReceivedMany": "No file received (field \"files\").",
   "mediaLibrary.error.textExpected": "{0}: text expected."

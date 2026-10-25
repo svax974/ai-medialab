@@ -8,6 +8,8 @@ import { Divider, ListItemIcon, ListItemText, Menu, MenuItem, type SxProps, type
 import IosShareRounded from '@mui/icons-material/IosShareRounded'
 import MailOutlineRounded from '@mui/icons-material/MailOutlineRounded'
 import SmsOutlined from '@mui/icons-material/SmsOutlined'
+import FacebookRounded from '@mui/icons-material/Facebook'
+import Instagram from '@mui/icons-material/Instagram'
 import WhatsApp from '@mui/icons-material/WhatsApp'
 import X from '@mui/icons-material/X'
 import { toast } from 'react-toastify'
@@ -15,7 +17,8 @@ import { resolveMediaUrl } from '@/modules/studio-shell/services/studioHttp'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
 import { useT } from '@/modules/studio-shell/hooks/useT'
 import { downloadName } from '../lib/messageState'
-import { hasSystemShare, loadShareFile, openShareTarget, shareTargets, shareWithSystem, type ShareTargetId } from '../lib/share'
+import { assetsApi } from '@/modules/media-library/services/assetsApi'
+import { hasSystemShare, loadShareFile, shareTargets, shareWithSystem, type ShareTargetId } from '../lib/share'
 import type { VideoPreset } from '@/modules/media-library/types'
 import { makeVideoCopy } from '../lib/videoCopy'
 import { assetPrompt } from '../lib/viewerDetails'
@@ -26,6 +29,8 @@ const ICONS: Record<ShareTargetId, ReactElement> = {
   whatsapp: <WhatsApp sx={{ fontSize: 16 }} />,
   messages: <SmsOutlined sx={{ fontSize: 16 }} />,
   x: <X sx={{ fontSize: 16 }} />,
+  facebook: <FacebookRounded sx={{ fontSize: 16 }} />,
+  instagram: <Instagram sx={{ fontSize: 16 }} />,
 }
 
 interface ShareButtonProps {
@@ -40,8 +45,8 @@ interface ShareButtonProps {
 
 /**
  * Share a produced image, sound, video or diagram. The system share sheet attaches the file itself (Mail, Messages,
- * WhatsApp, X, Facebook, Instagram... whatever is installed); the per-service entries open the service with the prompt
- * as text only, since a web link cannot carry the file of a local application.
+ * WhatsApp, X, Facebook, Instagram... whatever is installed); the per-service entries have the server open the service on
+ * this computer: Mail gets the file attached, the others open with the prompt and the file copied to the clipboard.
  */
 export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 16, sx }: ShareButtonProps) {
   const t = useT()
@@ -80,6 +85,17 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
     }
   }
 
+  const shareTo = async (target: ShareTargetId) => {
+    close()
+    try {
+      const { outcome } = await assetsApi.share(asset.id, { service: target, text, subject: t('thread.share.subject') })
+      if (outcome === 'clipboard') toast.info(t('thread.share.pasted'))
+      if (outcome === 'none') toast.info(t('thread.share.textOnlyDone'))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : t('thread.share.failed'))
+    }
+  }
+
   return (
     <>
       <TipIconButton labelId="thread.share" tone={tone} size={size} onClick={open} sx={sx}>
@@ -106,7 +122,7 @@ export function ShareButton({ asset, fileName, tone, size = 'small', iconSize = 
         )}
         {system && <Divider sx={{ my: '4px' }} />}
         {shareTargets().map((target) => (
-          <MenuItem key={target.id} onClick={() => { close(); openShareTarget(target, text, t('thread.share.subject')) }} sx={{ gap: 1.25 }}>
+          <MenuItem key={target.id} onClick={() => void shareTo(target.id)} sx={{ gap: 1.25 }}>
             <ListItemIcon sx={{ minWidth: 0 }}>{ICONS[target.id]}</ListItemIcon>
             {t(`thread.share.${target.id}`)}
           </MenuItem>

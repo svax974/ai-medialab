@@ -4,11 +4,11 @@
  */
 
 import { useEffect, useLayoutEffect, useRef } from 'react'
-import { Box, ButtonBase, CircularProgress, Tooltip } from '@mui/material'
+import { Box, ButtonBase, CircularProgress } from '@mui/material'
 import ArrowUpwardRounded from '@mui/icons-material/ArrowUpwardRounded'
 import InfoOutlined from '@mui/icons-material/InfoOutlined'
 import ReportProblemOutlined from '@mui/icons-material/ReportProblemOutlined'
-import { HelpBody, InfoTip, helpTooltipSlotProps } from '@/modules_shared/common/components/ui/help'
+import { InfoTip } from '@/modules_shared/common/components/ui/help'
 import { SetupPrompt } from '@/modules/engines'
 import { GatedNotice, LicenseWarning, useActiveModel, useModels, useWelcomeModel, type ModelInfo } from '@/modules/model-catalog'
 import { registerFocusTarget } from '@/modules/studio-shell/lib/focusRegistry'
@@ -112,11 +112,7 @@ function ComposerCard({ model, conversationId, hero }: { model: ModelInfo; conve
       {model.gated && <Box sx={{ mx: 2, mb: '6px' }}><GatedNotice model={model} /></Box>}
       <Notices notices={composer.notices} />
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px', px: 1.25, pb: 1.25, pt: '6px' }}>
-        <Tooltip title={<HelpBody {...VIDEO_HELP.attach} />} placement="top" enterDelay={350} slotProps={helpTooltipSlotProps}>
-          <Box component="span" sx={{ display: 'inline-flex' }}>
-            <AttachButton labelId="videoStudio.attach.aria" onBrowse={() => filePicker.current?.click()} onPickAssets={(assets) => assets.slice(0, 2).forEach(assignAsset)} />
-          </Box>
-        </Tooltip>
+        <AttachButton labelId="videoStudio.attach.aria" help={VIDEO_HELP.attach} onBrowse={() => filePicker.current?.click()} onPickAssets={(assets) => assets.slice(0, 2).forEach(assignAsset)} />
         <input
           ref={filePicker}
           type="file"

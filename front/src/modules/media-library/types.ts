@@ -47,6 +47,17 @@ export interface AssetListQuery {
 /** Weight of the copy of a video made to be sent. */
 export type VideoPreset = 'light' | 'tiny' | 'gif' | 'gif-tiny'
 
+/** What reaches the recipient of a share: the file attached, the file on the clipboard (to paste), or the text only. */
+export type ShareOutcome = 'attached' | 'clipboard' | 'none'
+
+export interface ShareRequest {
+  service: 'mail' | 'whatsapp' | 'messages' | 'x' | 'facebook' | 'instagram'
+  /** Light copy of a video to send instead of the original. */
+  preset?: VideoPreset
+  text: string
+  subject: string
+}
+
 export interface VideoCopy {
   url: string
   width: number

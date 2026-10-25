@@ -2,6 +2,8 @@
   "mediaLibrary.error.booleanExpected": "{0} : booléen attendu.",
   "mediaLibrary.error.exportOnlyVideo": "Seule une vidéo peut être exportée en version allégée.",
   "mediaLibrary.error.exportPreset": "preset : \"light\", \"tiny\", \"gif\" ou \"gif-tiny\" attendu.",
+  "mediaLibrary.error.shareFailed": "Impossible d'ouvrir l'application de partage : {0}",
+  "mediaLibrary.error.shareService": "service : \"mail\", \"whatsapp\", \"messages\", \"x\", \"facebook\" ou \"instagram\" attendu.",
   "mediaLibrary.error.imageNotFound": "Image introuvable.",
   "mediaLibrary.error.noFileReceivedMany": "Aucun fichier reçu (champ « files »).",
   "mediaLibrary.error.textExpected": "{0} : texte attendu."

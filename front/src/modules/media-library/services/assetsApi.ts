@@ -4,7 +4,7 @@
  */
 
 import { studioRequest, studioUpload, type StudioUploadOptions } from '@/modules/studio-shell/services/studioHttp'
-import type { Asset, AssetListQuery, AssetPage, VideoCopy, VideoPreset } from '../types'
+import type { Asset, AssetListQuery, AssetPage, ShareOutcome, ShareRequest, VideoCopy, VideoPreset } from '../types'
 
 /**
  * `/api/assets*` (Nest, module `media-library`): the gallery pages (generated assets, newest first, cursor `before`),
@@ -30,6 +30,10 @@ export const assetsApi = {
   /** A lighter MP4 of a video (`light` ≈ 360p, `tiny` ≈ 240p) or an animated GIF (`gif`, `gif-tiny`), made by the engine; `url` is served like an asset's. */
   exportVideo(id: string, preset: VideoPreset): Promise<VideoCopy> {
     return studioRequest<VideoCopy>('post', `/assets/${encodeURIComponent(id)}/export`, { preset })
+  },
+  /** Opens a service on this computer with the file (or a light copy of a video); `outcome` tells whether the file is in the message, on the clipboard or absent. */
+  share(id: string, body: ShareRequest): Promise<{ outcome: ShareOutcome }> {
+    return studioRequest<{ outcome: ShareOutcome }>('post', `/assets/${encodeURIComponent(id)}/share`, body)
   },
   remove(id: string): Promise<{ ok: true }> {
     return studioRequest<{ ok: true }>('delete', `/assets/${encodeURIComponent(id)}`)

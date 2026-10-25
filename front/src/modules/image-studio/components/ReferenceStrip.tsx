@@ -4,7 +4,8 @@
  */
 
 import { useState, type DragEvent } from 'react'
-import { Box, CircularProgress } from '@mui/material'
+import { Box, ButtonBase, CircularProgress } from '@mui/material'
+import AddPhotoAlternateOutlined from '@mui/icons-material/AddPhotoAlternateOutlined'
 import CloseRounded from '@mui/icons-material/CloseRounded'
 import FirstPageRounded from '@mui/icons-material/FirstPageRounded'
 import { TipIconButton } from '@/modules_shared/common/components/ui/iconbutton'
@@ -77,6 +78,22 @@ function PendingThumb({ upload }: { upload: PendingUpload }) {
   )
 }
 
+/** What the model does with a first image, offered as a dashed tile until one is attached (click: file picker). */
+function EmptyTile({ model, onBrowse }: { model: ModelInfo; onBrowse: () => void }) {
+  const t = useT()
+  const role = referenceRole(model, 0)
+  const required = model.requires_references
+  return (
+    <HelpTooltip help={{ body: t(role.helpKey, role.helpParams) }}>
+      <ButtonBase onClick={onBrowse} aria-label={t('imageStudio.attach.aria')} sx={{ display: 'flex', width: SIZE, height: SIZE, flexShrink: 0, flexDirection: 'column', gap: '4px', borderRadius: '12px', border: '1px dashed', transition: 'border-color 0.15s, color 0.15s', borderColor: required ? 'color-mix(in oklab, var(--warn) 60%, transparent)' : 'var(--line-strong)', color: required ? 'var(--warn)' : 'var(--muted)', '&:hover': { borderColor: 'color-mix(in oklab, var(--safe) 60%, transparent)', color: 'var(--ink)' } }}>
+        <AddPhotoAlternateOutlined sx={{ fontSize: 16 }} />
+        <Box component="span" sx={{ fontSize: 10, lineHeight: 1 }}>{t(role.noteKey, role.noteParams)}</Box>
+        <Box component="span" sx={{ fontFamily: 'var(--font-mono)', fontSize: 8.5, textTransform: 'uppercase', letterSpacing: '0.04em', lineHeight: 1, opacity: 0.7 }}>{t(required ? 'imageStudio.ref.required' : 'imageStudio.ref.optional')}</Box>
+      </ButtonBase>
+    </HelpTooltip>
+  )
+}
+
 interface ReferenceStripProps {
   model: ModelInfo
   /** Index of the image whose format and size "Reference" follows. */
@@ -85,6 +102,8 @@ interface ReferenceStripProps {
   uploading: readonly PendingUpload[]
   onRemove: (id: string) => void
   onMove: (id: string, index: number) => void
+  /** Opens the file picker of the composer. */
+  onBrowse: () => void
 }
 
 /**
@@ -92,12 +111,15 @@ interface ReferenceStripProps {
  * reorderable (drag onto another image, or "move first"): the first one gives the format and size of "Reference".
  * Imports in progress come after them.
  */
-export function ReferenceStrip({ model, sizeIndex, references, uploading, onRemove, onMove }: ReferenceStripProps) {
+export function ReferenceStrip({ model, sizeIndex, references, uploading, onRemove, onMove, onBrowse }: ReferenceStripProps) {
   const [over, setOver] = useState<number | null>(null)
-  if (references.length === 0 && uploading.length === 0) return null
+  const empty = references.length === 0 && uploading.length === 0
+  // A model that ignores the images gets no tile (nothing to offer); one that takes them shows the empty slot.
+  if (empty && model.reference_mode === 'none') return null
   const isReorder = (event: DragEvent) => event.dataTransfer.types.includes(REORDER_TYPE)
   return (
     <Box sx={{ display: 'flex', gap: 1.25, overflowX: 'auto', px: 1.75, pt: 1.75, pb: '6px' }}>
+      {empty && <EmptyTile model={model} onBrowse={onBrowse} />}
       {references.map((asset, index) => (
         <RefThumb
           key={asset.id}

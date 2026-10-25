@@ -10,6 +10,7 @@ import { AssetController } from './controllers/AssetController';
 import { AssetEntity } from './entities/AssetEntity';
 import { AssetExportService } from './services/AssetExportService';
 import { AssetFileService } from './services/AssetFileService';
+import { AssetShareService } from './services/AssetShareService';
 import { AssetService } from './services/AssetService';
 import { StudioEventLimitsModule } from './StudioEventLimitsModule';
 import { StudioEvents } from './services/StudioEvents';
@@ -18,7 +19,7 @@ import { StudioEvents } from './services/StudioEvents';
 @Module({
   imports: [CommonModule, StudioEventLimitsModule, TypeOrmModule.forFeature([AssetEntity])],
   controllers: [AssetController],
-  providers: [AssetService, AssetFileService, AssetExportService, StudioEvents],
+  providers: [AssetService, AssetFileService, AssetExportService, AssetShareService, StudioEvents],
   exports: [TypeOrmModule, AssetService, AssetFileService, StudioEvents],
 })
 export class MediaLibraryModule {}

@@ -11,6 +11,7 @@ of its GitHub release (`.github/workflows/release.yml`).
 - Generated images can be added from the paperclip of the image, video and chat composers (menu "from the generated images", a picker with search and favorites, several images at once) and from the OCR drop zone.
 - Light copy of a video to send: download (clip menu, viewer) or share it as a 360p or 240p MP4 with fewer images per second and a low
   bit rate, or as an animated GIF (320p or 200p, first 150 images, no sound), made by the engine from the original (generation sizes below 480p stay off: Wan only draws noise there).
+- Share services (Mail, WhatsApp, iMessage, X, Facebook, Instagram) now open on this computer through the server: Mail with the file attached, the others with the file copied to paste; the image composer shows its start/reference slot like the video one (hidden for a model without images); the paperclip tooltip closes with its menu.
 - Share button on images, diagrams, videos and sounds (tiles, viewer, audio takes): the system share sheet attaches the file itself
   (Mail, Messages, WhatsApp, X, Facebook, Instagram when installed); without it, Mail / WhatsApp / iMessage (Apple) / X open with the
   prompt as text.

@@ -74,6 +74,8 @@
   "imageStudio.ref.note.ignored": "ignorée",
   "imageStudio.ref.note.image": "image {0}",
   "imageStudio.ref.note.start": "départ",
+  "imageStudio.ref.required": "requis",
+  "imageStudio.ref.optional": "option",
   "imageStudio.ref.remove": "Retirer l'image",
   "imageStudio.send.aria": "Générer",
   "imageStudio.send.newline": "⇧↵ nouvelle ligne",
