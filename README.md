@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <img alt="Version 0.1.2" src="https://img.shields.io/badge/version-0.1.2-informational">
+  <img alt="Version 0.1.3" src="https://img.shields.io/badge/version-0.1.3-informational">
   <img alt="Platforms: macOS, Windows, Linux" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-lightgrey">
 </p>
 

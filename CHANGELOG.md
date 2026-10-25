@@ -6,6 +6,8 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-10-25
+
 ### Added
 
 - Generated images can be added from the paperclip of the image, video and chat composers (menu "from the generated images", a picker with search and favorites, several images at once) and from the OCR drop zone.
@@ -19,6 +21,8 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ### Fixed
 
+- Desktop app: `mailto:`, `sms:` and web links open in the system instead of doing nothing (shell `links.rs`).
+- The paperclip tooltip closes when its menu opens.
 - The end of a conversation is no longer hidden under the composer: the thread keeps the room of the composer's real height (video, with attachments or a negative prompt), in the generation studios and the chat.
 - Sidebar wider, footer content wraps; the disk-space error separates permanent and temporary space for locally quantized models.
 
