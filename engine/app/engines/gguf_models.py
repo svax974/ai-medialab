@@ -197,6 +197,88 @@ KLEIN_GGUF = ModelSpec(
     },
 )
 
+QT_GGUF = ("unsloth/Qwen-Image-2.1-Turbo-GGUF", "qwen-image-2.1-turbo-Q4_K_M.gguf")
+# Turbo's saved 8-step schedule (unsloth model card): the checkpoint carries its own sigmas, sd-cli needs them explicitly.
+QT_SIGMAS = "1.0,0.978453,0.95418,0.926626,0.89508,0.845148,0.704534,0.414568,0.0"
+
+QWEN21_TURBO_GGUF = ModelSpec(
+    id="qwen-image-2.1-turbo-gguf",
+    name="Qwen Image 2.1 Turbo",
+    family="Qwen",
+    description="Qwen Image 2.1 distillé pour 8 étapes, sans guidance : même architecture (7 milliards de paramètres), texte → "
+    "image et édition par instruction avec plusieurs références, en moins de la moitié du temps. Version quantifiée "
+    "(Q4_K_M) : ≈ 11 Go, sans PyTorch. Partage l'encodeur de texte et le VAE de Qwen Image 2.1.",
+    engine=ENGINE,
+    backend="sdcpp",
+    reference_mode="multi",
+    max_references=4,
+    params=[
+        ParamSpec("steps", "Étapes", "int", 8, 8, 8, 1, "Fixe : le modèle embarque son calendrier de 8 étapes."),
+        ParamSpec("guidance", "Guidance (CFG)", "float", 1.0, 1.0, 1.0, 0.5, "Fixe à 1 : modèle distillé.", advanced=True),
+    ],
+    size_multiple=32,  # same architecture as Qwen Image 2.1
+    min_side=256,
+    max_side=2048,
+    default_quantize=None,
+    quantize_options=[],
+    sources=[src(QT_GGUF, 4.2), src(Q_LLM, 5.03), src(Q_VISION, 1.16), src(Q_VAE, 0.68)],
+    download_size_gb=11.1,
+    license="Qwen Research License (recherche, usage non commercial)",
+    weights_gb=11.1,
+    largest_component_gb=5.0,
+    memory_hint="≈ 11 Go de poids (Q4_K_M) ; l'encodeur de texte reste en mémoire pendant le calcul. Non mesuré sur cette machine.",
+    tags=["texte→image", "rapide", "édition", "multi-références", "GGUF"],
+    options={
+        "files": {"diffusion-model": QT_GGUF, "llm": Q_LLM, "vae": Q_VAE, "llm_vision": Q_VISION},
+        "vision_for_refs": ["llm_vision"],
+        "cli_args": ["--sampling-method", "euler", "--sigmas", QT_SIGMAS],
+        "fa_variants": ["metal", "cuda", "rocm"],
+        "guidance_arg": "--cfg-scale",
+    },
+)
+
+M_GGUF = ("leejet/MOSS-Image-SFT-GGUF", "MOSS-Image-SFT-Q6_K.gguf")
+M_LLM = ("unsloth/Qwen3.5-9B-GGUF", "Qwen3.5-9B-Q4_K_M.gguf")
+M_VAE = ("Comfy-Org/MOSS-Image", "vae/flux2-vae.safetensors")
+M_TOKENIZER = ("OpenMOSS-Team/MOSS-Image-Base", "tokenizer/tokenizer.json")  # Qwen3.5 vocabulary, not the embedded Qwen one
+
+MOSS_GGUF = ModelSpec(
+    id="moss-image-gguf",
+    name="MOSS Image",
+    family="MOSS",
+    description="Texte → image (5 milliards de paramètres) d'OpenMOSS, avec un rendu du texte chinois et anglais et des mises "
+    "en page contrôlables (affiches, infographies). Version SFT quantifiée (Q6_K) : ≈ 11 Go, sans PyTorch. Licence Apache 2.0. "
+    "Décrivez la scène complète ; 50 étapes recommandées.",
+    engine=ENGINE,
+    backend="sdcpp",
+    reference_mode="none",
+    params=[
+        ParamSpec("steps", "Étapes", "int", 50, 10, 100, 1, "50 recommandées par OpenMOSS ; moins d'étapes = plus rapide, moins de détails."),
+        ParamSpec("guidance", "Guidance (CFG)", "float", 3.0, 1.0, 10.0, 0.5,
+                  "3 recommandé. La branche négative double le temps de calcul.", advanced=True),
+        ParamSpec("negative_prompt", "Prompt négatif", "text", "", help="Ce que l'image doit éviter.", advanced=True),
+    ],
+    size_multiple=16,
+    min_side=256,
+    max_side=2048,
+    default_quantize=None,
+    quantize_options=[],
+    sources=[src(M_GGUF, 4.55), src(M_LLM, 5.68), src(M_VAE, 0.34), src(M_TOKENIZER, 0.02)],
+    download_size_gb=10.59,
+    license="Apache 2.0",
+    weights_gb=10.59,
+    largest_component_gb=5.68,
+    memory_hint="≈ 10,6 Go de poids (Q6_K) ; l'encodeur de texte Qwen3.5 9B reste en mémoire pendant le calcul. Non mesuré sur cette machine.",
+    tags=["texte→image", "texte dans l'image", "GGUF", "Apache 2.0"],
+    options={
+        "files": {"diffusion-model": M_GGUF, "llm": M_LLM, "vae": M_VAE, "tokenizer": M_TOKENIZER},
+        "min_build": 975,  # first stable-diffusion.cpp release with MOSS-Image (docs/moss_image.md)
+        "cli_args": ["--sampling-method", "euler"],
+        "fa_variants": [],  # FlashAttention not measured on this architecture
+        "guidance_arg": "--cfg-scale",
+    },
+)
+
 # Offered quantizations (diffusion file sizes, in GB). Only the chosen one is downloaded; the text
 # encoder and VAE are shared by all of them.
 
@@ -233,5 +315,11 @@ _gguf_variants(QWEN_EDIT_GGUF, "unsloth/Qwen-Image-Edit-2511-GGUF", "qwen-image-
 
 _gguf_variants(KLEIN_GGUF, "AtomicChat/FLUX-3-Image-Klein-GGUF", "FLUX-3-Image-Klein-{}.gguf",
                [("AD-Q4_K", 3.65), ("AD-Q5_K", 4.44), ("Q8_0", 5.99)], "AD-Q5_K")
+_gguf_variants(QWEN21_TURBO_GGUF, "unsloth/Qwen-Image-2.1-Turbo-GGUF", "qwen-image-2.1-turbo-{}.gguf",
+               [("Q2_K", 2.47), ("Q3_K_M", 3.17), ("Q4_K_M", 4.2), ("Q5_K_M", 5.39), ("Q6_K", 6.27), ("Q8_0", 7.64)],
+               "Q4_K_M")
+_gguf_variants(MOSS_GGUF, "leejet/MOSS-Image-SFT-GGUF", "MOSS-Image-SFT-{}.gguf",
+               [("Q2_K", 2.21), ("Q3_K", 2.7), ("Q4_0", 3.33), ("Q4_K", 3.33), ("Q5_K", 3.92), ("Q6_K", 4.55), ("Q8_0", 5.71)],
+               "Q6_K")
 
-SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN_EDIT_GGUF, KLEIN_GGUF]
+SPECS = [Z_IMAGE_GGUF, QWEN21_GGUF, QWEN21_TURBO_GGUF, MOSS_GGUF, QWEN_EDIT_GGUF, KLEIN_GGUF]

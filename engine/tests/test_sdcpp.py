@@ -14,6 +14,8 @@ from app.engines.sdcpp_engine import effective_settings  # noqa: E402
 QWEN = MODELS["qwen-image-2.1-gguf"]
 ZIMG = MODELS["z-image-turbo-gguf"]
 KLEIN = MODELS["flux-3-image-klein-gguf"]
+TURBO = MODELS["qwen-image-2.1-turbo-gguf"]
+MOSS = MODELS["moss-image-gguf"]
 
 
 def req(steps, guidance):
@@ -172,6 +174,39 @@ class TestFlux3Klein:
             "available": True, "binary": str(tmp_path / "sd-cli"), "variant": "metal"}}})
         with pytest.raises(RuntimeError, match="trop ancien"):
             SdcppEngine(KLEIN, None).load()
+
+
+class TestQwenTurboAndMoss:
+    """Qwen Image 2.1 Turbo (fixed 8-step schedule) and MOSS Image (external tokenizer, newer build)."""
+
+    def test_turbo_is_fixed_to_its_distilled_schedule_and_shares_the_qwen_21_companions(self):
+        assert TURBO.default_params()["steps"] == 8 and TURBO.default_params()["guidance"] == 1.0
+        assert effective_settings(TURBO, 8, 1.0, editing=True) == (8, 1.0)  # no creation/editing split
+        assert "--sigmas" in TURBO.options["cli_args"] and TURBO.default_variant == "Q4_K_M"
+        for role in ("llm", "vae", "llm_vision"):
+            assert TURBO.options["files"][role] == QWEN.options["files"][role]  # one download for both models
+        assert TURBO.reference_mode == "multi" and TURBO.max_references == 4
+
+    def test_moss_defaults_files_and_variants(self):
+        assert MOSS.default_params()["steps"] == 50 and MOSS.default_params()["guidance"] == 3.0
+        assert MOSS.reference_mode == "none" and MOSS.size_multiple == 16 and MOSS.options["min_build"] == 975
+        assert MOSS.options["files"]["tokenizer"][1] == "tokenizer/tokenizer.json"  # passed as --tokenizer
+        assert MOSS.default_variant == "Q6_K"
+        assert [v.key for v in MOSS.variants] == ["Q2_K", "Q3_K", "Q4_0", "Q4_K", "Q5_K", "Q6_K", "Q8_0"]
+        q8 = next(v for v in MOSS.variants if v.key == "Q8_0")
+        assert q8.options["files"]["diffusion-model"][1] == "MOSS-Image-SFT-Q8_0.gguf"
+        assert q8.size_gb == round(MOSS.download_size_gb - 4.55 + 5.71, 2)
+        assert round(sum(x.size_gb or 0 for x in MOSS.sources), 2) == MOSS.download_size_gb
+
+    def test_moss_is_refused_on_a_build_older_than_975(self, tmp_path):
+        import json
+
+        from app.sdcpp import model_unsupported
+
+        for tag, refused in (("master-956-1b0ba10", True), ("master-974-abc", True), ("master-975-abc", False),
+                             ("master-999-e0ed724", False)):
+            (tmp_path / "VERSION.json").write_text(json.dumps({"tag": tag}))
+            assert bool(model_unsupported(tmp_path / "sd-cli", MOSS.options["min_build"])) is refused
 
 
 def test_the_newest_build_of_a_variant_wins_over_an_older_bundled_one(tmp_path, monkeypatch):

@@ -155,7 +155,9 @@ TypeORM migrations.
 
 - **Images**: MLX (Apple Silicon), PyTorch + diffusers (CUDA, ROCm, MPS; installed on demand by the "torch" pack, outside the
   installer), GGUF through stable-diffusion.cpp (Metal, CUDA, ROCm,
-  Vulkan); text to image, image to image, instruction-based editing (GGUF catalogue: Z-Image Turbo, Qwen Image 2.1, Qwen Image
+  Vulkan); text to image, image to image, instruction-based editing (GGUF catalogue: Z-Image Turbo, Qwen Image 2.1, Qwen Image 2.1 Turbo
+  (8 fixed steps, same companions as 2.1), MOSS Image (SFT, Apache 2.0, external Qwen3.5 tokenizer passed as `--tokenizer`,
+  `min_build` 975), Qwen Image
   Edit, FLUX 3 Image Klein: text to image and editing with up to 4 references, licence FLUX Kommunity, `min_build` 968 of
   stable-diffusion.cpp, refused with a reinstall hint on an older build); "Demo" model without GPU (`IMAGEGEN_DEMO=1`).
 - **Specialised SDXL**: LoRAs loaded on SDXL (adjustable strength, trigger words added to the prompt), including two pixel-art

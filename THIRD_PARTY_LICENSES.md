@@ -110,6 +110,8 @@ The scan runs again on each of them in CI and fails on a strong copyleft licence
 | OCR models: PaddleOCR-VL 1.6 (Baidu, official GGUF), LightOnOCR 2 1B (LightOn), Qianfan-OCR (Baidu), Qwen3-VL 2B (Qwen) | Apache-2.0 (same source and date) |
 | pypdfium2 (PDF page rendering of the OCR tab), with PDFium | BSD-3-Clause / Apache-2.0 |
 | FLUX 3 Image Klein (Black Forest Labs), GGUF conversion by AtomicChat | FLUX Kommunity License (text read in the `LICENSE.md` of the repository on 2026-10-24): non-commercial use, or commercial use of the outputs under US$5M of annual revenue with a content filter or a review of the outputs; the weights are downloaded by the user, not redistributed; its Qwen3-VL-4B-Instruct text encoder is Apache-2.0 |
+| MOSS Image SFT (OpenMOSS), GGUF conversion by leejet; Qwen3.5 9B text encoder (Qwen, GGUF by Unsloth); FLUX.2 VAE | Apache-2.0 (read on the Hugging Face model card of MOSS-Image-SFT on 2026-11-02; the Qwen3.5 and VAE licences were not re-read) |
+| Qwen Image 2.1 Turbo (Qwen), GGUF conversion by Unsloth | Qwen Research License Agreement (research, non-commercial), as Qwen Image 2.1; the weights are downloaded by the user, not redistributed |
 | Image models | variable: see the licence indicated per model (some are non-commercial, e.g. Qwen Image 2.1 "Research") |
 
 This document is informative and does not constitute legal advice.

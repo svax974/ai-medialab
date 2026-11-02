@@ -6,6 +6,10 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+### Added
+
+- Image catalogue (GGUF): MOSS Image (SFT, Apache 2.0, text rendering in Chinese and English, needs stable-diffusion.cpp master-975 or newer) and Qwen Image 2.1 Turbo (8 steps, shares its encoder and VAE with Qwen Image 2.1). Neither has been run on a machine yet.
+
 ## [0.1.3] - 2026-10-25
 
 ### Added

@@ -115,6 +115,8 @@ backend is chosen from the detected GPU — CUDA on NVIDIA, ROCm on AMD, Metal o
 | **Qwen Image 2.1** | MLX | Text → image, img2img | 1 starting image | 9.6 GB (4 bits) or 24 GB (8 bits) |
 | **Qwen Image 2.1** | **GGUF** | Text → image, **editing** by instruction | up to 4 images | **11 GB** |
 | **Qwen Image 2.1** | PyTorch | Text → image, **editing**, RGBA | up to 10 images | 33 GB (32 GB of bf16 weights) |
+| **Qwen Image 2.1 Turbo** | **GGUF** | Text → image (8 fixed steps, CFG 1), **editing** by instruction (not measured) | up to 4 images | **11 GB** (shares the encoder and VAE of Qwen Image 2.1) |
+| **MOSS Image** SFT (Apache 2.0) | **GGUF** | Text → image (50 steps, CFG 3), Chinese and English text rendering; needs stable-diffusion.cpp `master-975` or newer | — | **10.6 GB** (Q6_K + Qwen3.5 9B encoder), not measured |
 | **Z-Image Turbo** (Apache 2.0) | **GGUF** | Fast text → image (8 steps) | — | **6.7 GB** |
 | **Z-Image Turbo** (Apache 2.0) | PyTorch | same, full precision | — | 33 GB |
 | **FLUX 3 Image Klein** (FLUX Kommunity) | **GGUF** | Text → image (16 steps), editing by description | up to 4 images | **7.3 GB** |
