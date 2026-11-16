@@ -46,3 +46,9 @@ modules_shared
 /docs/migration/
 /CLAUDE.md
 /AGENTS.md
+
+# Logs (back-<day>.log, validation-<day>.jsonl): never committed
+logs/
+
+# Local copies and state of scripts/validation-report.mjs
+.validation-cache/
