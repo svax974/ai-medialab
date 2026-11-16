@@ -20,7 +20,7 @@ Application module (not a shared module); wired in `modules/app/AppModule.ts`, `
 | `EngineClient` | `services/EngineClient.ts` | Typed client (`get/post/put/patch/delete/request`, `openEventStream`, `buildUrl`, `authHeaders`). |
 | `EngineError`, `EngineUnavailableError` | `services/EngineError.ts` | Non-2xx response (`status`, FastAPI `detail`) / engine unreachable or timed out. |
 | `EngineEventRelay` | `services/EngineEventRelay.ts` | Subscription to `/engine/v1/events` with reconnection; relays to `EventStreamService`; server stream `events$`. |
-| `EmergencyStopService` | `services/EmergencyStopService.ts` | Lets the generation queue and the OCR queue register what they do on the emergency stop (empty their waiting line); `HardwareService.emergencyStop` announces it, then asks the engine. Exported; global module. |
+| `EmergencyStopService` | `services/EmergencyStopService.ts` | Lets the generation, OCR and transcription queues register what they do on the emergency stop (empty their waiting line); `HardwareService.emergencyStop` announces it, then asks the engine. Exported; global module. |
 | `SseParser` | `services/sseParser.ts` | Incremental parser of an SSE stream (`event:` / `data:` frames). Exported: the response client of the `chat` module (`EngineLlmClient`) reads the `POST /engine/v1/llm/chat` stream with it. |
 | `EngineHealthContributor` | `services/EngineHealthContributor.ts` | The `engine` contribution to `GET /api/v1/health`. |
 | `engineErrorToHttp` | `services/engineHttpError.ts` | Engine error to HTTP error of a Nest route (status and message relayed; unreachable: 502). |
@@ -200,3 +200,7 @@ Files: `engineConfig.spec.ts`, `services/{EngineClient,EngineEventRelay,EngineHe
 (local fake HTTP engine, `testing/fakeEngine.ts`), `generated/engineApi.contract.spec.ts` (types up to date).
 
 **Language.** The client sends `Accept-Language` to the engine, which writes its messages in that language; the back's "engine unavailable" text is in `i18n/messages.{fr,en}.json` (`tr()`).
+
+## Long-media transcription
+
+Internal `POST /engine/v1/transcripts/read` and `/stop` belong to the `transcription` module; see its README for stream events, shared engine gate, cancellation acknowledgement and memory isolation. `ENGINE_API_SEGMENTS` includes `transcripts`; the browser never calls it directly.

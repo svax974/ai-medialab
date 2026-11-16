@@ -150,6 +150,11 @@ def main() -> int:
         flag = "à jour" if rel["tag_name"] == pinned else "NOUVELLE VERSION"
         print(f"  {name:<22} épinglé {pinned:<22} dernière {rel['tag_name']:<22} {rel['published_at'][:10]}  {flag}")
 
+    print("== Extraction YouTube (moteur principal)")
+    manifest = (ROOT / "engine/pyproject.toml").read_text()
+    pinned = re.search(r'"(yt-dlp[^"\n]+)"', manifest)
+    print(f"  yt-dlp           épinglé {pinned.group(1) if pinned else '?'} dernière {latest_pypi('yt-dlp')}")
+
     print("== Bibliothèques Python des packs audio")
     for package, pack_id in PYPI.items():
         try:

@@ -18,11 +18,11 @@ const MODE_LABELS: Record<StudioMode, string> = {
   chat: 'studio.mode.chat',
   diagram: 'studio.mode.diagram',
   ocr: 'studio.mode.ocr',
+  transcription: 'transcription.tab',
 }
 
 /**
- * Six tabs share the sidebar (≈ 43 px each): icon above label, and no MUI `minWidth` (90 px), which pushed the last tab out of
- * the clipped row.
+ * Seven modes share a scrollable row; keep compact icon/label tabs usable in the narrow sidebar.
  */
 const TAB_SX = {
   minWidth: 0,
@@ -46,7 +46,7 @@ export function ModeSwitch() {
 
   return (
     <Box sx={{ px: 1.5, pb: 1.5, pt: '2px' }}>
-      <Tabs value={mode} onChange={(_event, value: StudioMode) => go(value)} aria-label={t('studio.mode.aria')}>
+      <Tabs value={mode} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile onChange={(_event, value: StudioMode) => go(value)} aria-label={t('studio.mode.aria')}>
         {STUDIO_MODES.map((id) => (
           <Tab key={id} value={id} icon={<ModeIcon mode={id} />} iconPosition="top" label={t(MODE_LABELS[id])} sx={TAB_SX} />
         ))}

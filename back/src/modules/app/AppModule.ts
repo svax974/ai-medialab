@@ -21,6 +21,7 @@ import { AudioStudioModule } from 'src/modules/audio-studio';
 import { ChatModule } from 'src/modules/chat';
 import { DiagramsModule } from 'src/modules/diagrams';
 import { OcrModule } from 'src/modules/ocr';
+import { TranscriptionModule } from 'src/modules/transcription/TranscriptionModule';
 import { LegacyImportModule } from 'src/modules/legacy-import';
 import { MediaLibraryModule } from 'src/modules/media-library';
 import { ModelCatalogModule } from 'src/modules/model-catalog';
@@ -59,6 +60,7 @@ if (authPlugins.length > 1) {
     ChatModule,
     DiagramsModule,
     OcrModule,
+    TranscriptionModule,
     PrivateModule,
     SettingsModule,
     HardwareModule,

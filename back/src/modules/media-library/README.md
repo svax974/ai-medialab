@@ -68,3 +68,5 @@ Public shape (`AssetDto`, snake_case fields as in the former API, never omitted:
 
 - H4.4 (done): the gallery front; H4.5 and H4.6 reuse the same route with `media=audio` / `media=video`. `StudioEvents` also publishes `studio.queue.updated` (generation queue, see `studio-core`).
 - `AssetService.remove` returns the deleted entity so that the caller removes the files; `AssetService.purge` is the equivalent of the engine's `purge_assets` (an asset still referenced by a message only loses its link to the message).
+
+`StudioEvents` also declares `studio.transcription.updated` (summary without full text) and `.deleted` (`{ id }`), owned by the `transcription` module. Its controller reuses disk-backed `uploadStorage` on the data volume.

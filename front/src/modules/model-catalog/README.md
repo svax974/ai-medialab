@@ -136,3 +136,5 @@ One file at a time, from `front/`: `../scripts-local/guarded_run.sh 3 npx vitest
 Pure logic and simulated services; component rendering is limited to a server rendering (without DOM) of the row and of the "New" button:
 the window (portal) is not rendered in tests. `locales.spec.ts` checks the fr/en parity, the `{n}` markers and
 that every `models.*` key written in the sources exists.
+
+The transcription studio reuses audio models with `audio.task === "stt"`; `modelKindOfMode("transcription")` opens the audio catalogue. No duplicate model kind or engine installation workflow.

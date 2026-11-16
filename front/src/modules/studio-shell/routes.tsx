@@ -13,6 +13,7 @@ import { GalleryPage } from './pages/GalleryPage'
 import { ConversationPage } from './pages/ConversationPage'
 import { HomePage } from './pages/HomePage'
 import { OcrHomePage } from './pages/OcrHomePage'
+import { TranscriptionHomePage } from './pages/TranscriptionHomePage'
 import { VideoHomePage } from './pages/VideoHomePage'
 import { VideoLibraryPage } from './pages/VideoLibraryPage'
 import { VoicesPage } from './pages/VoicesPage'
@@ -29,6 +30,7 @@ function pageOf(route: StudioRouteDef) {
   if (route.name === 'video-library') return <VideoLibraryPage />
   if (route.name === 'diagram-home') return <DiagramHomePage />
   if (route.name === 'ocr-home' || route.name === 'ocr-document') return <OcrHomePage />
+  if (route.name === 'transcription-home' || route.name === 'transcription-document') return <TranscriptionHomePage />
   return <ComingSoonPage titleKey={route.titleKey} />
 }
 

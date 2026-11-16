@@ -16,19 +16,19 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `CONTRIBUTING.md`, `SECURITY.md` | How to contribute; how to report a vulnerability |
 | `FEATURES.md` | Inventory of what is built, per module (and what is not) |
 | `ARCHITECTURE.md` (this file) | Processes, Nest ↔ engine contract, event flow, data and migrations, desktop, resting memory, engine plan |
-| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `ocr`, `private`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `ocr`, `transcription`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | TypeORM migrations of Nest's database: usage, generation, verification |
-| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `ocr-studio`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
+| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `ocr-studio`, `transcription`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |
 | `desktop/README.md` | Desktop shell (Tauri): configuration, launch, packaging, signing, CI |
 | `engine/openapi.json` | Contract of the engine's internal API (**generated**: `scripts-local/export_engine_openapi.py`) |
 | `back/tools/engine-types/README.md` | Isolated OpenAPI generator workspace and its TypeScript peer dependency |
 | `docs/plans/2026-11-16-transcription-design.md` | Validated design of the local video/audio transcription studio |
-| `docs/components/README.md` | Registry of the third-party components integrated and the review procedure; sheets `audiocpp.md`, `llamacpp.md` (chat engine: flags, installation, licences), `pytorch-gpu.md`, `ffmpeg.md` (FFmpeg build and licence), `audiocpp-tests-manuels.md` |
+| `docs/components/README.md` | Registry of the third-party components integrated and the review procedure; sheets `audiocpp.md`, `llamacpp.md` (chat engine: flags, installation, licences), `pytorch-gpu.md`, `ffmpeg.md`, `yt-dlp.md` (FFmpeg build and licence), `audiocpp-tests-manuels.md` |
 | `THIRD_PARTY_LICENSES.md` | Licences of the components and the models |
 | `front/.libs/apptemplate/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Template conventions and launcher (outside this repository: submodules) |
 
-*Last verified against source: 2026-10-24 (memory ceiling, OCR), 2026-10-16 (chat creation tools) and 2026-10-15 (Chat and Private generation modes, update advisor). The sections on chat and private mode describe code tested with fake servers: no real `llama-server` or browser.*
+*Last verified against source: 2026-11-16 (transcription studio and ownership), 2026-10-24 (memory ceiling, OCR), 2026-10-16 (chat creation tools) and 2026-10-15 (Chat and Private generation modes, update advisor). The sections on chat and private mode describe code tested with fake servers: no real `llama-server` or browser.*
 
 ## Overview: four processes
 
@@ -49,13 +49,13 @@ browser / Tauri window
 |---|---|---|---|
 | **Engine** (`engine/`, FastAPI) | Everything that runs models: machine detection, catalogue, downloads, engine installers, planning and execution of generations (image, audio, video), thumbnails and media probing | `127.0.0.1` only, token required | Media files (`uploads/`, `outputs/`, `thumbs/`, `previews/`), the model cache, `engine-state.json`, the installed engines (`engines/`) |
 | **Nest** (`back/`, vx-public) | The application: conversations, messages, assets, voices, settings, generation queue, import of the former database, events to the browser | `NODE_PORT` (3000), `LOCAL_TRUST` | The `app.db` database and all application data |
-| **Front** (`front/`, React + MUI) | The interface: three studios (image, audio, video), library, models, settings | Vite (5173) in development; served by Nest on desktop | The display state (TanStack Query cache, Zustand) |
+| **Front** (`front/`, React + MUI) | The interface: image/audio/video/chat/diagram/OCR/transcription studios, library, models, settings | Vite (5173) in development; served by Nest on desktop | The display state (TanStack Query cache, Zustand) |
 | **Shell** (`desktop/`, Tauri 2) | Starts and supervises the engine then Nest, opens the window, manages the data folder | none | The lifecycle of both processes, the shared token, the first-launch secrets |
 
 Ownership rules that structure everything else:
 
 - **The browser only talks to Nest.** Media go through `/api/media/…` (relay, `back/src/modules/engine/README.md`).
-- **The engine has no application state.** It knows neither conversation, nor message, nor voice, nor persistent setting: a job
+- **The engine has no application state.** It knows neither conversation, nor message, nor voice, transcript record, nor persistent setting: a job
   arrives with everything it needs, the output events describe what was produced, Nest records it.
 - **Nest never runs a model.** It delegates to the engine through a typed client.
 - **One generation at a time** (the GPU is shared). **Several models may stay loaded together** as long as they fit under one ceiling for the
@@ -81,7 +81,7 @@ refuses at compile time a route, a parameter or a body absent from the schema.
 - **API zones** (first segments; exact routes in `engine/openapi.json` and in the README of the Nest module that calls them):
   `models`, `hf` (catalogue, downloads, custom models, Hugging Face search: `model-catalog`), `engines`
   (installers: `engines`), `updates` (detection and launch of updates of the installed engines and models: `updates`), `system`, `status`, `engine` (hardware, state, unloading: `hardware`), `runtime` (settings pushed by Nest: `settings`), `jobs` and `media` (generations and files: `studio-core`, `audio-studio`, `media-library`),
-  `events` (engine SSE stream: `engine` module), `llm` (chat server, response SSE stream, unloading: `chat`). Private mode has no engine zone of its own: its jobs go through `jobs` with a `private_dir` field.
+  `events` (engine SSE stream: `engine` module), `llm` (chat server, response SSE stream, unloading: `chat`), `transcripts` (bounded local speech-to-text stream and acknowledged stop: `transcription`). Private mode has no engine zone of its own: its jobs go through `jobs` with a `private_dir` field.
 - **Jobs**: detailed contract (body, errors, events) in `back/src/modules/engine/README.md`, section "Job contract". Outside the data folder,
   the engine refuses any input, output or voice path.
 - **Studio settings**: owned by Nest (`settings` module, module configuration, encrypted Hugging Face token). Nest
@@ -115,6 +115,7 @@ engine: event bus ──SSE /engine/v1/events──► EngineEventRelay (Nest, e
 - **Nest → browser**: topics `engine.*` (names and payloads in `back/src/modules/engine/README.md`, section "Event flow")
   and `studio.*` (published by `StudioEvents`, list in `back/src/modules/media-library/services/StudioEvents.ts`).
   Audience: administrator (single-user application, the `local-trust` principal is one).
+- **Transcription**: a dedicated internal POST SSE stream feeds Nest’s persistent queue; browser events carry summaries only. `useLiveResource` reloads matching detail without putting full text on the event bus (`transcription` module READMEs).
 - **Size**: the size limit of an event of the template is raised to 256 KB for this application (`StudioEventLimitsModule`,
   `back/src/modules/media-library/README.md`), because of the waveforms of audio takes.
 - **Browser**: the front subscribes to the useful topics and turns each event into an invalidation or removal of the TanStack
@@ -130,6 +131,7 @@ development; on desktop the local folder of the OS for the identifier `app.aimed
 | Element | Owner | Note |
 |---|---|---|
 | `app.db` (SQLite) | Nest | conversations, messages, references, assets (metadata), voices, chat messages as a tree (`chat_messages`) and their settings, update advisor notices (`update_advisories`), module configuration (settings), import marker; schema versioned by migrations. **Nothing from private mode** |
+| `transcripts/<id>/` | Nest | retained uploaded source, temporary decoded/downloaded media; job history and text in `transcripts` table. Contract and cleanup: `back/src/modules/transcription/README.md` |
 | `private/<session>/` | engine (files) | folder of the private-mode session (inputs, outputs, previews, thumbnails, temporary files), 0700, erased at the end of the session, after 30 min of inactivity, at shutdown and at startup (leftovers) |
 | `video-memory.json` | engine | memory measurements of video passes (cache, not application data; not written in private session) |
 | `uploads/`, `outputs/`, `thumbs/`, `previews/` | engine (files) | asset rows only keep relative file names |
@@ -252,6 +254,7 @@ engine/app/
   engine_install.py, audio_packs.py, audiocpp.py, llamacpp.py   installers (GGUF engine, audio and video packs, audio.cpp, llama.cpp)
   llm.py             chat and OCR servers (`llama-server`: start, normalized SSE stream); engines/llm_models.py: chat catalogue; engines/ocr_models.py: OCR catalogue
   memory_budget.py   ceiling of the models loaded together and eviction of the least recently used idle one
+  transcript_job.py, transcript_worker.py, transcript_media.py   bounded local video/audio transcription, subprocess lifecycle, media preparation and YouTube extraction
   ocr.py             reading of an image or a PDF (tasks, prompts, page by page); api/ocr.py: routes
   update_advisor.py, hf_trending.py, private_session.py, video_memory.py   update advisor, Hugging Face novelties, private session, video pass length
   runtime_settings.py  settings pushed by Nest (memory only); engine_state.py  the engine's own state (JSON file)

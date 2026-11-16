@@ -27,9 +27,10 @@ def activity() -> dict[str, Any]:
     """What is running or loaded, for the button (enabled only when there is something to stop)."""
     from .jobs import jobs
     from .llm import managers
+    from .transcript_job import busy as transcribing
 
     chat, ocr = managers()
-    working = bool(jobs.current) or chat.generating or ocr.generating
+    working = bool(jobs.current) or chat.generating or ocr.generating or transcribing()
     held = memory_budget.residents()
     return {"working": working, "queued": len(jobs.pending), "loaded": len(held),
             "can_stop": working or bool(jobs.pending) or bool(held)}
@@ -43,6 +44,9 @@ async def stop_everything() -> dict[str, Any]:
     """Ends the queued jobs, kills every model process. Returns what was stopped."""
     from .jobs import _pid, jobs
     from .llm import managers
+    from .transcript_job import stop as stop_transcription
+
+    await stop_transcription()
 
     cancelled = 0
     for job_id in list(jobs.pending):  # first, so that nothing starts again once the worker is gone

@@ -332,6 +332,20 @@ Hugging Face on 2026-10-15, and any GGUF repository can be added from the "LLM" 
 - **Not verified**: no real `llama-server` or chat model has been launched; the described behavior was tested with fake servers.
   The first real test will confirm server startup, streaming and GPU detection.
 
+## Transcription: words from videos and audio
+
+Open **Transcription**, choose a video/audio file or paste the link of one public YouTube video, then choose an
+installed speech-to-text model (Whisper or Qwen3-ASR) and the source language, or automatic detection. The model and
+media-reader installation controls are available in the source form. Transcription happens locally; YouTube needs
+network access to retrieve its audio. Upload limits/formats and persistence are documented in
+`back/src/modules/transcription/README.md`; YouTube integration and restrictions in `docs/components/yt-dlp.md`.
+
+The job continues when changing tabs. Progress follows audio retrieval, preparation and recognition. The sidebar
+keeps searchable history. Open a result to copy, correct/save or download TXT. Cancel keeps text already extracted;
+retry asks before replacing it. Delete removes the record and its source. The private-mode banner explains that this
+studio keeps history: leave private mode before creating, editing or retrying a transcript. Existing work can still be stopped.
+No speaker identification, subtitles or translation are produced. Accuracy depends on the model and recording.
+
 ## OCR: reading the text of images and PDFs
 
 The **OCR** tab reads an image or a PDF with a vision model run by llama.cpp (same engine as the chat, installed from `Modèles`), in a

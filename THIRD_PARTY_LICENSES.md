@@ -32,6 +32,7 @@ the metadata of the packages in `engine/.venv` (installed version on 2026-10-13)
 | huggingface_hub | Apache-2.0 | model download and search |
 | psutil | BSD-3-Clause | memory, processes |
 | NumPy, SoundFile | BSD-3-Clause | audio, arrays |
+| yt-dlp, yt-dlp-ejs | Unlicense (EJS bundles MIT/ISC components) | PyPI wheel and JavaScript solver for public YouTube audio; existing Node with permissions; no PyInstaller bundle, see `docs/components/yt-dlp.md` |
 | PyAV (`av`) | BSD-3-Clause | video encoding and decoding; the PyPI wheel embeds an **FFmpeg linked to libx264 and libx265 (GPL)**: the installer does not contain it, it is downloaded on the user's machine at the first video model (`ffmpeg` pack), see `docs/components/ffmpeg.md` |
 | diffusers, transformers, accelerate, peft | Apache-2.0 | torch engine (`torch` extra); `peft` loads LoRAs |
 | PyTorch, torchvision | BSD-3-Clause (and licences of the embedded components, see the package) | `torch` extra |

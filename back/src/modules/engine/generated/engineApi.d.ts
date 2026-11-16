@@ -829,6 +829,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/engine/v1/transcripts/read": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Read
+         * @description SSE: progress, prepared, segment, done/error; disconnect kills the subprocess tree.
+         */
+        post: operations["read_engine_v1_transcripts_read_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/engine/v1/transcripts/stop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Stop
+         * @description Acknowledge that the subprocess tree has stopped before Nest releases the engine gate.
+         */
+        post: operations["stop_engine_v1_transcripts_stop_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/engine/v1/updates/advice": {
         parameters: {
             query?: never;
@@ -1648,6 +1688,22 @@ export interface components {
              * @description Audio file inside the data folder.
              */
             path: string;
+        };
+        /** TranscriptBody */
+        TranscriptBody: {
+            /**
+             * Folder
+             * @description Existing job folder inside the application data folder.
+             */
+            folder: string;
+            /** Language */
+            language?: string | null;
+            /** Model Id */
+            model_id: string;
+            /** Path */
+            path?: string | null;
+            /** Url */
+            url?: string | null;
         };
         /** Transcription */
         Transcription: {
@@ -3190,6 +3246,61 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_engine_v1_transcripts_read_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranscriptBody"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stop_engine_v1_transcripts_stop_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
                 };
             };
         };

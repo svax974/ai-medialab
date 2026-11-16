@@ -19,6 +19,7 @@ import { useT } from '../hooks/useT'
 import { useStudioStore } from '../state/studioStore'
 import type { StudioMode } from '../types'
 import { OcrSidebarList } from '@/modules/ocr-studio'
+import { TranscriptSidebarList } from '@/modules/transcription'
 import { ConversationList } from './ConversationList'
 import { Mark } from './Mark'
 import { ModeSwitch } from './ModeSwitch'
@@ -39,6 +40,9 @@ interface NavEntry {
 const icon = { fontSize: 16 }
 
 const NAV: Record<StudioMode, NavEntry[]> = {
+  transcription: [
+    { route: 'transcription-home', to: studioPaths.transcriptionHome, labelKey: 'transcription.new', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
+  ],
   image: [
     { route: 'home', to: studioPaths.home, labelKey: 'studio.nav.newImage', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
     { route: 'gallery', to: studioPaths.gallery, labelKey: 'studio.nav.gallery', icon: <CollectionsOutlined sx={icon} /> },
@@ -105,7 +109,7 @@ export function Sidebar() {
       </Box>
 
       <SearchField onSearch={setQuery} />
-      {mode === 'ocr' ? <OcrSidebarList query={query} /> : <ConversationList mode={mode} query={query} />}
+      {mode === 'ocr' ? <OcrSidebarList query={query} /> : mode === 'transcription' ? <TranscriptSidebarList query={query} /> : <ConversationList mode={mode} query={query} />}
       <SidebarFooter />
     </Box>
   )

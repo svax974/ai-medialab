@@ -15,7 +15,7 @@ const ROUTED = [
   /^\/chat\/(attachments|enhance-prompt)(?=[/?]|$)/,
 ]
 /** Routes that would keep something of a private session in the normal library or database: refused while it is on. */
-const PERSISTING = [/^\/voices(?=[/?]|$)/, /^\/chat\/conversations(?=[/?]|$)/]
+const PERSISTING = [/^\/voices(?=[/?]|$)/, /^\/chat\/conversations(?=[/?]|$)/, /^\/transcripts(?=[/?]|$)/]
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete'
 
@@ -26,6 +26,7 @@ export function privatePath(path: string, active: boolean = isPrivateMode()): st
 
 /** A request that would write into the voice library or the persistent chat (its conversations): refused in a private session. */
 export function isPersistingRequest(method: HttpMethod, path: string, active: boolean = isPrivateMode()): boolean {
+  if (method === 'post' && /^\/transcripts\/[^/]+\/cancel$/.test(path)) return false;
   return active && method !== 'get' && PERSISTING.some((re) => re.test(path))
 }
 

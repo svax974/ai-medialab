@@ -19,6 +19,8 @@ export type StudioRouteName =
   | 'diagram-home'
   | 'ocr-home'
   | 'ocr-document'
+  | 'transcription-home'
+  | 'transcription-document'
 
 export interface StudioRouteDef {
   name: StudioRouteName
@@ -43,6 +45,8 @@ export const STUDIO_ROUTES: readonly StudioRouteDef[] = [
   { name: 'diagram-home', path: '/diagrammes', mode: 'diagram', titleKey: 'studio.page.diagramHome.title' },
   { name: 'ocr-home', path: '/ocr', mode: 'ocr', titleKey: 'studio.page.ocrHome.title' },
   { name: 'ocr-document', path: '/ocr/:id', mode: 'ocr', titleKey: 'studio.page.ocrDocument.title' },
+  { name: 'transcription-home', path: '/transcriptions', mode: 'transcription', titleKey: 'transcription.heading' },
+  { name: 'transcription-document', path: '/transcriptions/:id', mode: 'transcription', titleKey: 'transcription.heading' },
 ]
 
 export const studioPaths = {
@@ -58,6 +62,8 @@ export const studioPaths = {
   diagramHome: '/diagrammes',
   ocrHome: '/ocr',
   ocrDocument: (id: string) => `/ocr/${id}`,
+  transcriptionHome: '/transcriptions',
+  transcriptionDocument: (id: string) => `/transcriptions/${encodeURIComponent(id)}`,
 } as const
 
 export interface StudioRouteMatch {
@@ -86,7 +92,8 @@ export function homePathForMode(mode: StudioMode): string {
   if (mode === 'chat') return studioPaths.chatHome
   if (mode === 'diagram') return studioPaths.diagramHome
   if (mode === 'ocr') return studioPaths.ocrHome
+  if (mode === 'transcription') return studioPaths.transcriptionHome
   return mode === 'audio' ? studioPaths.audioHome : mode === 'video' ? studioPaths.videoHome : studioPaths.home
 }
 
-export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr' }
+export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr', transcription: '/transcriptions' }

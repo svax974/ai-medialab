@@ -25,6 +25,7 @@ from .api.routes import router
 from .api.runtime import runtime_router
 from .api.setup import setup_router
 from .api.trending import trending_router
+from .api.transcripts import transcripts_router
 from .api.updates import updates_router
 from .api.voice_media import voice_media_router
 from .config import MEDIA_DIRS, PRIVATE_DIR, ensure_dirs
@@ -52,6 +53,9 @@ async def lifespan(app: FastAPI):
     await downloads.shutdown()
     await llm.shutdown()
     await ocr_llm.shutdown()
+    from .transcript_job import stop as stop_transcription
+
+    await stop_transcription()
     await jobs.shutdown()
 
 
@@ -59,7 +63,7 @@ app = FastAPI(title="AI MediaLab engine", lifespan=lifespan, default_response_cl
 app.add_middleware(LanguageMiddleware)
 app.add_exception_handler(HTTPException, localized_http_exception)
 for engine_router in (router, runtime_router, jobs_router, voice_media_router, media_export_router, updates_router, llm_router, llamacpp_router, ocr_router,
-               trending_router, setup_router):
+               trending_router, transcripts_router, setup_router):
     app.include_router(engine_router, prefix="/engine/v1", dependencies=[Depends(require_engine_token)])
 
 ensure_dirs()

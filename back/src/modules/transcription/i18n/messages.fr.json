@@ -1,0 +1,16 @@
+{
+  "transcription.youtube": "Vidéo YouTube",
+  "transcription.error.url": "Saisissez le lien d’une vidéo YouTube valide.",
+  "transcription.error.format": "Choisissez un fichier vidéo ou audio pris en charge.",
+  "transcription.error.source": "Choisissez un fichier ou un lien YouTube, pas les deux.",
+  "transcription.error.input": "Un champ de la demande est invalide.",
+  "transcription.error.language": "La langue demandée est invalide.",
+  "transcription.error.text": "Le texte est invalide ou trop long.",
+  "transcription.error.notFound": "Transcription introuvable.",
+  "transcription.error.busy": "Attendez la fin de la transcription ou annulez-la.",
+  "transcription.error.notRunning": "Cette transcription n’est plus en cours.",
+  "transcription.error.model": "Installez et choisissez un modèle de transcription audio (Whisper ou Qwen3-ASR).",
+  "transcription.error.interrupted": "La transcription a été interrompue. Le texte déjà extrait est conservé.",
+  "transcription.error.failed": "La transcription a échoué.",
+  "transcription.error.private": "Quittez le mode privé pour créer, modifier ou relancer une transcription conservée dans l’historique."
+}

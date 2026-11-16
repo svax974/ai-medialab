@@ -25,12 +25,15 @@ export type StudioEventName =
   | 'queue.updated'
   | 'voices.changed'
   | 'ocr.updated'
-  | 'ocr.deleted';
+  | 'ocr.deleted'
+  | 'transcription.updated'
+  | 'transcription.deleted';
+// Transcription summaries never contain the full text of a long media file.
 
 export const STUDIO_EVENT_NAMES: StudioEventName[] = [
   'job.progress', 'job.image', 'message.updated', 'message.deleted',
   'conversation.updated', 'conversation.deleted', 'asset.updated', 'asset.deleted', 'queue.updated',
-  'voices.changed', 'ocr.updated', 'ocr.deleted',
+  'voices.changed', 'ocr.updated', 'ocr.deleted', 'transcription.updated', 'transcription.deleted',
 ];
 
 /** Single-user app: every principal that can read the stream is an admin (`local-trust` included). */

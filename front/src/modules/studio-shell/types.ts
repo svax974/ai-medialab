@@ -3,13 +3,13 @@
  * SPDX-License-Identifier: MIT
  */
 
-/** Mode of the studio: the chat with language models, one per medium, diagrams (organization charts, flowcharts, schemas) and OCR (reading the text of images and PDFs). */
-export type StudioMode = 'chat' | 'image' | 'audio' | 'video' | 'diagram' | 'ocr'
+/** Mode of the studio: the chat with language models, one per medium, diagrams (organization charts, flowcharts, schemas) OCR (images/PDFs) and transcription (video/audio speech). */
+export type StudioMode = 'chat' | 'image' | 'audio' | 'video' | 'diagram' | 'ocr' | 'transcription'
 
-/** The modes whose pages are conversations (the OCR tab keeps its readings in its own list, not in conversations). */
-export type ConversationMode = Exclude<StudioMode, 'ocr'>
+/** The modes whose pages are conversations (OCR and transcription keep document histories of their own). */
+export type ConversationMode = Exclude<StudioMode, 'ocr' | 'transcription'>
 
-export const STUDIO_MODES: readonly StudioMode[] = ['chat', 'image', 'audio', 'video', 'diagram', 'ocr']
+export const STUDIO_MODES: readonly StudioMode[] = ['chat', 'image', 'audio', 'video', 'diagram', 'ocr', 'transcription']
 
 /** Cover of a conversation (subset of the engine's asset). */
 export interface ConversationCover {

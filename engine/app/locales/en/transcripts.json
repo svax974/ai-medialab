@@ -1,0 +1,17 @@
+{
+  "Lien YouTube invalide.": "Invalid YouTube video link.",
+  "Le moteur JavaScript nécessaire à YouTube est introuvable.": "The JavaScript runtime required for YouTube was not found.",
+  "Le média dépasse la taille maximale de 500 Mo.": "The media exceeds the 500 MB size limit.",
+  "Choisissez une vidéo YouTube, pas une liste de lecture.": "Choose one YouTube video, not a playlist.",
+  "Le média est absent ou dépasse la taille maximale de 500 Mo.": "The media is missing or exceeds the 500 MB size limit.",
+  "Les directs en cours ne peuvent pas être transcrits.": "Live broadcasts cannot be transcribed while running.",
+  "Le média dépasse la durée maximale de 12 heures.": "The media exceeds the 12-hour duration limit.",
+  "Ce fichier ne contient aucune piste audio.": "This file has no audio track.",
+  "La piste audio est vide.": "The audio track is empty.",
+  "Le modèle de transcription s'est arrêté.": "The transcription model stopped.",
+  "Une transcription est déjà en cours.": "A transcription is already running.",
+  "Le moteur de transcription s'est arrêté avant la fin.": "The transcription engine stopped before completion.",
+  "Choisissez un fichier ou un lien YouTube.": "Choose a file or a YouTube link.",
+  "Le moteur est occupé.": "The engine is busy.",
+  "Installez le composant FFmpeg dans Réglages → Moteurs pour lire ce média.": "Install the FFmpeg component in Settings → Engines to read this media."
+}

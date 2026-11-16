@@ -8,5 +8,5 @@ import type { ModelKind } from '../types'
 
 /** The models a mode of the studio uses: the chat runs language models (`llm`), the other modes their own kind. */
 export function modelKindOfMode(mode: StudioMode): ModelKind {
-  return mode === 'chat' ? 'llm' : mode
+  return mode === 'chat' ? 'llm' : mode === 'transcription' ? 'audio' : mode
 }

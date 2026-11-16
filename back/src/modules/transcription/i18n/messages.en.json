@@ -1,0 +1,16 @@
+{
+  "transcription.youtube": "YouTube video",
+  "transcription.error.url": "Enter a valid YouTube video link.",
+  "transcription.error.format": "Choose a supported video or audio file.",
+  "transcription.error.source": "Choose a file or a YouTube link, not both.",
+  "transcription.error.input": "A request field is invalid.",
+  "transcription.error.language": "The requested language is invalid.",
+  "transcription.error.text": "The text is invalid or too long.",
+  "transcription.error.notFound": "Transcript not found.",
+  "transcription.error.busy": "Wait for transcription to finish or cancel it.",
+  "transcription.error.notRunning": "This transcript is no longer processing.",
+  "transcription.error.model": "Install and select an audio transcription model (Whisper or Qwen3-ASR).",
+  "transcription.error.interrupted": "Transcription was interrupted. Text already extracted has been kept.",
+  "transcription.error.failed": "Transcription failed.",
+  "transcription.error.private": "Leave private mode to create, edit or retry a transcript kept in history."
+}

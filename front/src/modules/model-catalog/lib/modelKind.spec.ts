@@ -12,5 +12,6 @@ describe('modelKindOfMode', () => {
     expect(modelKindOfMode('image')).toBe('image')
     expect(modelKindOfMode('audio')).toBe('audio')
     expect(modelKindOfMode('video')).toBe('video')
+    expect(modelKindOfMode('transcription')).toBe('audio')
   })
 })

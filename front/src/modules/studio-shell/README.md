@@ -6,7 +6,7 @@ Shell of the studio in the new front: sidebar (image / audio / video / chat mode
 pinned conversations grouped by period, engine card, models, settings, light/dark theme; the language is changed in the Settings), layout, keyboard shortcuts, routes kept from the former interface, server data cache (TanStack Query), client state (Zustand) and
 subscriptions to the event stream (`engine.*` from the engine, `studio.*` from Nest). The screens themselves are **thin pages**: the home and the conversation
 are those of the image studio (modules `image-studio` and `studio-core`, H4.3b); the image gallery is that of `media-library` (H4.4); the audio home, the audio library and the voices are those of the modules `audio-studio` and `voices` (H4.5); the video remains "coming soon" until task H4.6;
-six modes (chat, image, audio, video, diagrams, OCR; `ocr` is not a conversation mode: `ConversationMode` excludes it and its sidebar list is the module `ocr-studio`'s, routes `/ocr` and `/ocr/:id`); the Settings dialog is that of the module `settings` (H4.1), the Models dialog that of the module `model-catalog` with the installers of the module `engines` (H4.2).
+seven scrollable modes (chat, image, audio, video, diagrams, OCR, transcription; `ConversationMode` excludes `ocr` and `transcription`, each with its own document history from `ocr-studio` / `transcription`); the Settings dialog is that of the module `settings` (H4.1), the Models dialog that of the module `model-catalog` with the installers of the module `engines` (H4.2).
 
 Application module (`front/src/modules/`), not a shared module. Theme: `front/src/themes/chambre-noire/README.md`.
 
@@ -37,6 +37,8 @@ Mounting: `App.tsx` (`AppMuiTheme` > ... > `StudioProviders`), `components/Route
 |---|---|---|---|
 | `/` | Image studio home (`ImageHome`) | image | H4.3b (done) |
 | `/c/:id` | Conversation (`ConversationView`, or `ChatConversationView` of the `chat` module for chat mode) | of the conversation | H4.3b (done), audio: H4.5 (done), video: H4.6 (done), chat (done) |
+| `/transcriptions` | Transcription source (`transcription/TranscriptPage`) | transcription | done |
+| `/transcriptions/:id` | Live/editable transcript | transcription | done |
 | `/galerie` | Gallery (`ImageGallery`) | image | H4.4 (done) |
 | `/audio` | Audio home (`AudioHome`) | audio | H4.5 (done) |
 | `/audio/voix` | My voices (`VoicesLibrary`) | audio | H4.5 (done) |

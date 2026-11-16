@@ -1840,6 +1840,60 @@
         "title": "TranscribeBody",
         "type": "object"
       },
+      "TranscriptBody": {
+        "properties": {
+          "folder": {
+            "description": "Existing job folder inside the application data folder.",
+            "title": "Folder",
+            "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "pattern": "^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "maxLength": 2048,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "model_id",
+          "folder"
+        ],
+        "title": "TranscriptBody",
+        "type": "object"
+      },
       "Transcription": {
         "properties": {
           "duration": {
@@ -3999,6 +4053,72 @@
           }
         },
         "summary": "System Info"
+      }
+    },
+    "/engine/v1/transcripts/read": {
+      "post": {
+        "description": "SSE: progress, prepared, segment, done/error; disconnect kills the subprocess tree.",
+        "operationId": "read_engine_v1_transcripts_read_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranscriptBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read",
+        "tags": [
+          "transcription"
+        ]
+      }
+    },
+    "/engine/v1/transcripts/stop": {
+      "post": {
+        "description": "Acknowledge that the subprocess tree has stopped before Nest releases the engine gate.",
+        "operationId": "stop_engine_v1_transcripts_stop_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Stop Engine V1 Transcripts Stop Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Stop",
+        "tags": [
+          "transcription"
+        ]
       }
     },
     "/engine/v1/updates/advice": {

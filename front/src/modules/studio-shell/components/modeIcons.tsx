@@ -9,11 +9,13 @@ import ImageOutlined from '@mui/icons-material/ImageOutlined'
 import MovieCreationOutlined from '@mui/icons-material/MovieCreationOutlined'
 import DocumentScannerOutlined from '@mui/icons-material/DocumentScannerOutlined'
 import SchemaOutlined from '@mui/icons-material/SchemaOutlined'
+import SubtitlesOutlined from '@mui/icons-material/SubtitlesOutlined'
 import type { StudioMode } from '../types'
 
 /** Icon of a mode (mode switch, conversation thumbnails). */
 export function ModeIcon({ mode, fontSize = 16 }: { mode: StudioMode; fontSize?: number }) {
   const sx = { fontSize }
+  if (mode === 'transcription') return <SubtitlesOutlined sx={sx} />
   if (mode === 'audio') return <GraphicEqRounded sx={sx} />
   if (mode === 'video') return <MovieCreationOutlined sx={sx} />
   if (mode === 'chat') return <ChatBubbleOutlineRounded sx={sx} />

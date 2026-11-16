@@ -21,7 +21,7 @@ function loadMigrations(): unknown[] {
     .flatMap((f) => Object.values(require(join(MIGRATIONS_DIR, f))));
 }
 
-const TABLES = ['conversations', 'messages', 'message_refs', 'assets', 'voices', 'import_markers', 'config'];
+const TABLES = ['conversations', 'messages', 'message_refs', 'assets', 'voices', 'import_markers', 'config', 'transcripts'];
 
 describe('TypeORM migrations on an empty in-memory SQLite database', () => {
   it('apply cleanly and leave exactly the schema of the entities', async () => {
@@ -79,6 +79,9 @@ describe('TypeORM migrations on an empty in-memory SQLite database', () => {
       await dataSource.runMigrations();
       const tableNames = async (): Promise<string[]> =>
         (await dataSource.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'")).map((r: { name: string }) => r.name);
+      await dataSource.undoLastMigration(); // transcription leaves the existing documents intact
+      expect(await tableNames()).not.toContain('transcripts');
+      expect(await tableNames()).toContain('ocr_documents');
       await dataSource.undoLastMigration(); // the latest one only: `messages.error_code` goes, the rest stays
       for (const table of ['messages', 'chat_messages', 'ocr_documents']) {
         const columns = (await dataSource.query(`PRAGMA table_info(${table})`)).map((r: { name: string }) => r.name);
@@ -98,7 +101,7 @@ describe('TypeORM migrations on an empty in-memory SQLite database', () => {
       expect(afterOne).toEqual(expect.arrayContaining(['conversations', 'messages', 'assets', 'chat_messages']));
       await dataSource.undoLastMigration(); // then the chat tables
       expect(await tableNames()).not.toContain('chat_messages');
-      for (let i = 4; i < loadMigrations().length; i++) await dataSource.undoLastMigration();
+      for (let i = 6; i < loadMigrations().length; i++) await dataSource.undoLastMigration();
       expect(await tableNames()).toEqual(['migrations']);
     } finally {
       await dataSource.destroy();

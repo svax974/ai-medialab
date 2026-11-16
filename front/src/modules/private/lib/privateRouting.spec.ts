@@ -34,6 +34,11 @@ describe('what a private session refuses or does not list', () => {
     expect(isPersistingRequest('get', '/voices', true)).toBe(false)
     expect(isPersistingRequest('get', '/chat/conversations/c', true)).toBe(false)
     expect(isPersistingRequest('post', '/voices', false)).toBe(false)
+    expect(isPersistingRequest('post', '/transcripts', true)).toBe(true)
+    expect(isPersistingRequest('patch', '/transcripts/t', true)).toBe(true)
+    expect(isPersistingRequest('post', '/transcripts/t/retry', true)).toBe(true)
+    expect(isPersistingRequest('get', '/transcripts/t', true)).toBe(false)
+    expect(isPersistingRequest('post', '/transcripts', false)).toBe(false)
   })
   it('lists nothing: the gallery is empty and is not even asked', () => {
     expect(isLibraryListing('get', '/assets?kind=generated&media=image', true)).toBe(true)

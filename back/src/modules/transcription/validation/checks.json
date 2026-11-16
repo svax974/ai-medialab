@@ -1,0 +1,154 @@
+{
+  "checks": [
+    {
+      "id": "transcription.created",
+      "module": "transcription",
+      "title": "Source accepted",
+      "description": "Source accepted without logging any media content.",
+      "scenario": "A supported file or canonical YouTube video is submitted.",
+      "expect": {
+        "traces": [
+          "transcription.created"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id",
+        "source": [
+          "file",
+          "youtube"
+        ]
+      }
+    },
+    {
+      "id": "transcription.started",
+      "module": "transcription",
+      "title": "Queue respects engine ownership",
+      "description": "Queue respects engine ownership without logging any media content.",
+      "scenario": "A waiting transcript acquires the engine gate after other work finishes.",
+      "expect": {
+        "traces": [
+          "transcription.started"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.completed",
+      "module": "transcription",
+      "title": "Transcription completed",
+      "description": "Transcription completed without logging any media content.",
+      "scenario": "A local model finishes the complete audio track.",
+      "expect": {
+        "traces": [
+          "transcription.completed"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.cancelled",
+      "module": "transcription",
+      "title": "Cancellation keeps partial text",
+      "description": "Cancellation keeps partial text without logging any media content.",
+      "scenario": "A running or queued transcript is cancelled.",
+      "expect": {
+        "traces": [
+          "transcription.cancelled"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.failed",
+      "module": "transcription",
+      "title": "Failure remains recoverable",
+      "description": "Failure remains recoverable without logging any media content.",
+      "scenario": "A source, model or memory failure leaves the partial result available.",
+      "expect": {
+        "traces": [
+          "transcription.failed"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.edited",
+      "module": "transcription",
+      "title": "Edited text saved",
+      "description": "Edited text saved without logging any media content.",
+      "scenario": "A completed transcript is edited and saved.",
+      "expect": {
+        "traces": [
+          "transcription.edited"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.deleted",
+      "module": "transcription",
+      "title": "History deletion cleans files",
+      "description": "History deletion cleans files without logging any media content.",
+      "scenario": "A transcript and its source are deleted after its worker stops.",
+      "expect": {
+        "traces": [
+          "transcription.deleted"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-16",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "transcription.private_refused",
+      "module": "transcription",
+      "title": "Private mode refuses persistent writes",
+      "description": "Server rejects content persistence in an active private session.",
+      "scenario": "A client attempts to create, edit or retry a persistent transcript during a private session.",
+      "expect": {
+        "traces": [
+          "transcription.private_refused"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "high",
+      "since": "2026-11-16",
+      "fields": {
+        "reason": [
+          "private"
+        ]
+      }
+    }
+  ]
+}

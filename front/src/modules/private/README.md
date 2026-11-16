@@ -88,3 +88,5 @@ the **memory** (`lib/privateChatMemory.ts`: conversations, sent files, ongoing s
 `dropStudioCaches` calls `forgetPrivateChats()` at each entry, exit, "erase everything" or local return, which abandons the streams, empties the memory and runs the cleanups.
 Deleting a conversation from the list calls `forgetPrivateChat(id)` (`studio-shell/hooks/useConversations.ts`). The entry confirmation texts say that the chat is private too, that the conversation
 stays on the page, that the chat's web search stays off until it is turned on, and that the text of a voice synthesis goes through the command line of the computation program.
+
+Persistent transcription creation/edit/retry is disabled during a private session, in the transport and on the server. Existing transcripts remain readable and their jobs can be cancelled; no private transcription store is created (`transcription` module README).

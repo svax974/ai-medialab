@@ -81,6 +81,14 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
   on demand like the others; Hugging Face search for other OCR models. **Unverified**: no real model, no browser. The `/ocr` command of the chat
   is not built.
 
+### `transcription`
+- **Transcription** tab: public YouTube video link or video/audio file, installed Whisper/Qwen3-ASR model and language selection.
+- Background queue shares the engine with other studios; download/preparation/recognition progress, cancellation, partial text on failure,
+  retry, searchable/sortable history, plain-text editing, copy and TXT download. Persistent writes refused during private mode.
+- Bounded audio decoding, isolated workers, memory budget/watchdog and emergency stop. No transcription cloud. Contracts and limits:
+  `back/src/modules/transcription/README.md`, `front/src/modules/transcription/README.md`.
+- Verified with synthetic media and fake model/download workers; **unverified** with real models, live YouTube extraction and packaged desktop.
+
 ### `private`: private generation
 - "Private generation" button (padlock, purple banner and frame): ephemeral session for image, audio, video **and chat** with no history, result or
   prompt kept (no database row, files in a session folder erased on exit, after 30 min of inactivity, on shutdown and on the startup sweep; media without cache; drafts and usage counters not written; logs without content; video measurements not recorded; `sd-cli` prompts passed by file when the binary allows it). Limits announced in the interface: OS memory and swap file,
@@ -142,6 +150,7 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 | `model-catalog` | Catalogue, downloads, custom models, Hugging Face search (delegated to the engine) |
 | `engines` | Engine and pack installers (delegated to the engine) |
 | `chat` | Message tree (`chat_messages`, settings per conversation), SSE response stream to the LLM engine, web tools (DuckDuckGo / Brave, guard against internal addresses), automatic title, prompt improvement, export, search, attachments, unloading and siblings of a message; occupancy gauge shared with the generation queue |
+| `transcription` | Persistent video/audio/YouTube transcripts, shared engine gate, partial text, edits/export, `studio.transcription.*` events; module README owns the contract |
 | `ocr` | Readings of images and PDFs by an OCR model: background queue (one at a time, engine gauge), `ocr_documents` and `ocr_pages`, files `<data>/ocr/<id>/`, export, search, `studio.ocr.*` events |
 | `diagrams` | Diagram generation by one-off LLM call (schema-constrained JSON → Mermaid, never a job), generic messages of `studio-core` (`diagram` mode), PNG render attached as a generated asset once received from the front |
 | `private` | In-memory private session (conversations and messages without database), session folder, shared queue, stateless private chat, cleanup (end of session, delay, startup) |

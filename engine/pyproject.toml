@@ -19,6 +19,8 @@ dependencies = [
     "soundfile>=0.12",  # read/write voice references and audio output
     "starlette>=0.39",  # HTTP Range on static files (video seeking)
     "pypdfium2>=4",  # rasterize the pages of a PDF for the OCR tab (PDFium binary in the wheel, BSD-3 / Apache-2.0)
+    "yt-dlp==2026.10.26",  # public YouTube audio; no metadata postprocessors or external FFmpeg binary
+    "yt-dlp-ejs==0.8.0",  # matching bundled JS solver (yt-dlp default-extra pin), existing Node with permissions
 ]
 
 [project.optional-dependencies]
