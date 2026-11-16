@@ -155,6 +155,7 @@ describe('the calls, as the server expects them', () => {
       temperature: [0, 2], top_p: [0, 1], top_k: [0, 1000], min_p: [0, 1], repeat_penalty: [0, 2], presence_penalty: [-2, 2], frequency_penalty: [-2, 2], max_tokens: [1, 262_144],
     }
     for (const field of PARAMS_SCHEMA) {
+      if (field.type !== 'int' && field.type !== 'float') throw new Error('Sampling parameters must be numeric')
       const [min, max] = server[field.key]
       // `max_tokens` 0 is "no limit": it is the default, never sent
       expect(field.max).toBeLessThanOrEqual(max)

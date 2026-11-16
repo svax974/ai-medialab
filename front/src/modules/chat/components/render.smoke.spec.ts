@@ -30,7 +30,7 @@ import { hardwareKeys } from '@/modules/hardware/lib/hardwareKeys'
 import { modelCatalogKeys } from '@/modules/model-catalog/lib/modelCatalogKeys'
 import { useModelSelectionStore } from '@/modules/model-catalog/state/modelSelectionStore'
 import { createChambreNoireTheme } from '@/themes/chambre-noire/muiTheme'
-import type { ModelInfo } from '@/modules/model-catalog'
+import type { LlmCaps, ModelInfo } from '@/modules/model-catalog'
 import { chatKeys } from '../lib/chatKeys'
 import { conversation, message } from '../lib/fixtures'
 import { useChatDefaultsStore, BASE_SETTINGS } from '../state/chatDefaultsStore'
@@ -57,7 +57,7 @@ const base = {
   size_multiple: 1, min_side: 0, max_side: 0, default_megapixels: 0, quantize_options: [], default_quantize: null, quantize: null, hf_repo: 'Qwen/Qwen3-8B-GGUF', download_size_gb: 4.7, license: 'Apache 2.0', gated: false, memory_hint: '', tags: [], backend: 'llamacpp',
   engine_available: true, engine_reason: null, compatible: true, plan: { fits: true, strategy: 'full', note: '' }, install: 'installed', installed_gb: 4.7, download: null, ready: true, needs_engine_install: false, engine_install_size_mb: null, precision: 'Q4_K_M', custom: false, variants: [], variant: 'Q4_K_M',
 }
-const caps = { context_default: 16384, context_max: 32768, vision: true, tools: true, reasoning: 'toggle', moe: false, params_b: 8, active_params_b: null }
+const caps: LlmCaps = { context_default: 16384, context_max: 32768, vision: true, tools: true, reasoning: 'toggle', moe: false, params_b: 8, active_params_b: null }
 const qwen = { ...base, id: 'qwen', name: 'Qwen3 8B', llm: caps } as unknown as ModelInfo
 const gemma = { ...base, id: 'gemma', name: 'Gemma 4 12B', llm: { ...caps, tools: false, vision: false } } as unknown as ModelInfo
 
@@ -82,7 +82,7 @@ const answer = message('a1', {
 const primeConversation = (data: ChatConversation) => (client: QueryClient) => client.setQueryData(chatKeys.conversation('c1'), data)
 
 beforeEach(() => {
-  useModelSelectionStore.setState({ selected: { image: null, audio: null, video: null, llm: null } })
+  useModelSelectionStore.setState({ selected: { image: null, audio: null, video: null, llm: null, diagram: null, ocr: null } })
   useChatDraftStore.setState({ texts: {}, attachments: {}, pending: null, seen: {} })
   useChatDefaultsStore.setState({ settings: BASE_SETTINGS })
   useChatLiveStore.setState({ streams: {}, status: null })
@@ -172,11 +172,11 @@ describe('chat screens render without error and without raw keys', () => {
   })
 
   it('shows the error of a failed answer with the action that helps', () => {
-    const html = render(createElement(ChatErrorNotice, { conversationId: 'c1', failure: { code: 'no_engine', message: 'llama-server introuvable' }, onRaiseContext: () => undefined }))
+    const html = render(createElement(ChatErrorNotice, { conversationId: 'c1', failure: { code: 'no_engine', message: 'llama-server introuvable' }, onRaiseContext: () => undefined, onContinueAnyway: () => undefined }))
     expect(html).toContain('Le moteur de chat (llama.cpp) n&#x27;est pas installé.')
     expect(html).toContain('llama-server introuvable')
     expect(html).toContain('Installer')
-    const full = render(createElement(ChatErrorNotice, { conversationId: 'c1', failure: { code: 'context_exceeded', message: '' }, onRaiseContext: () => undefined }))
+    const full = render(createElement(ChatErrorNotice, { conversationId: 'c1', failure: { code: 'context_exceeded', message: '' }, onRaiseContext: () => undefined, onContinueAnyway: () => undefined }))
     expect(full).toContain('Augmenter le contexte')
     noRawKeys(html + full)
   })

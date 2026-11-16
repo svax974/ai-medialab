@@ -32,6 +32,7 @@ npm-debug.log*
 !.env.example
 *.local
 !package.local.json
+!.env.example.local
 
 # SQLite database of the Nest back
 back/data/

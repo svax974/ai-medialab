@@ -40,7 +40,7 @@ file that holds them (the code does not lie, a copy always ends up lying). Model
 | **Kokoro, Pocket TTS, faster-whisper, mlx-whisper** | "speech" audio pack | `engine/app/audio_packs.py` (`speech` pack) | see `THIRD_PARTY_LICENSES.md` | to write | – |
 | **MUI, Emotion, TanStack Query, Zustand, Fontsource fonts** | interface (components and theme, data cache, state, embedded fonts) | `front/package.json` (ranges), `front/package.local.json` (deviations from the template) | MIT (MUI, Emotion, TanStack, Zustand), OFL-1.1 (fonts) | to write | – |
 | **NestJS, TypeORM, better-sqlite3** | application server, data access, SQLite database | `back/package.json` (ranges), `back/package.local.json` | MIT | to write | – |
-| **openapi-typescript** | types of the Nest ↔ engine contract (`engine/openapi.json`) | `back/package.json` (`devDependencies`) | MIT | to write | – |
+| **openapi-typescript** | types of the Nest ↔ engine contract (`engine/openapi.json`) | `back/tools/engine-types/package.json` (isolated generator workspace) | MIT | to write | – |
 | **Tauri 2** | desktop shell | `desktop/src-tauri/Cargo.toml`, `desktop/package.json` | Apache-2.0 OR MIT | to write | – |
 
 The "to write" lines do not have a detailed sheet yet: the review script already checks them (installed versions against the

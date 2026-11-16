@@ -1,0 +1,12 @@
+{
+  "name": "@ai-medialab/engine-types",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "generate": "openapi-typescript ../../../engine/openapi.json -o ../../src/modules/engine/generated/engineApi.d.ts"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "^5.9.3"
+  }
+}

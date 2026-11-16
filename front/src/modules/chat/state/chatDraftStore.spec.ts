@@ -25,7 +25,7 @@ describe('chat draft store', () => {
   it('clears the text and the attachments of a draft once sent', () => {
     const s = useChatDraftStore.getState()
     s.setText('c1', 'x')
-    s.setAttachments('c1', [{ kind: 'text', name: 'a.txt', mime: 'text/plain', size: 1 }])
+    s.setAttachments('c1', [{ kind: 'text', name: 'a.txt', original_name: 'a.txt', mime: 'text/plain', size: 1 }])
     useChatDraftStore.getState().clear('c1')
     expect(useChatDraftStore.getState().texts).toEqual({})
     expect(useChatDraftStore.getState().attachments).toEqual({})

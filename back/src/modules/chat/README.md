@@ -41,6 +41,7 @@ no conversation: Nest sends it the whole history on every reply. Application mod
 - `engine` (global): `EngineClient` (URL, token, `GET /engine/v1/llm/status`), `SseParser`, `EngineSchemas` (type of the body of `POST /engine/v1/llm/chat`, taken from the engine's OpenAPI).
 - `model-catalog`: `ModelCatalogService.catalog()` (`llm` capabilities: `tools`, `vision`…; `audio` and `video`: what each creation tool offers). `audio-studio`: `VoiceService` (named voices). `settings`: `SettingsService.braveApiKey()`, `chat_voice_id` (default voice). `media-library`: `uploadStorage`, `uploadsDir`, `newId`, `nowSeconds`.
 - `common`: `throttledFetchJson` (every outgoing call of the web tools: spacing per source, retry on 429/5xx, never throws), `AdminOnlyInterceptor`, `NoTransportCrypt`.
+- TypeORM comes from the vx-public baseline; partial reads use object-based `select` projections, compatible with SQLite and PostgreSQL.
 - The engine (`engine/app/llm.py`, `api/llm.py`): `POST /engine/v1/llm/chat` (stream), `GET /engine/v1/llm/status`. It refuses an image path outside the data folder.
 
 ## Exposed endpoints (exhaustive)

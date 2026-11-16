@@ -87,7 +87,7 @@ const noRawKeys = (html: string) => expect(html).not.toMatch(/(thread|videoStudi
 
 beforeEach(() => {
   useVideoDraftStore.setState({ prompt: '', start: null, end: null, source: null, uploads: [], paramsByModel: {}, count: 1, seed: null })
-  useModelSelectionStore.setState({ selected: { image: null, audio: null, video: null } })
+  useModelSelectionStore.setState({ selected: { image: null, audio: null, video: null, llm: null, diagram: null, ocr: null } })
 })
 
 describe('video screens render without error and without raw keys', () => {

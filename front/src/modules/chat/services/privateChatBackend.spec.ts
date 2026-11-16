@@ -238,8 +238,8 @@ describe('the private chat backend', () => {
     })
 
     it('refuses to delete while an answer is being written', async () => {
-      const chat = privateChats.set('c1', { settings: { model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false }, leaf_id: null }, messages: new Map() })
-      const m = (id: string, status: ChatMessage['status']): ChatMessage => ({ id, conversation_id: 'c1', parent_id: null, role: 'user', content: '', reasoning: null, tool_runs: [], attachments: [], model_id: null, params: null, status, error: null, stats: null, created_at: 1, sibling_ids: [], sibling_index: 0 })
+      const chat = privateChats.set('c1', { settings: { model_id: null, system_prompt: '', params: {}, context_size: null, reasoning: 'auto', tools: { web: false, creation: true }, leaf_id: null }, messages: new Map() })
+      const m = (id: string, status: ChatMessage['status']): ChatMessage => ({ id, conversation_id: 'c1', parent_id: null, role: 'user', content: '', reasoning: null, tool_runs: [], generations: [], attachments: [], model_id: null, params: null, status, error: null, stats: null, created_at: 1, sibling_ids: [], sibling_index: 0 })
       chat.messages.set('x', m('x', 'streaming'))
       await expect(privateChatApi.removeMessage('c1', 'x')).rejects.toMatchObject({ status: 409, code: 'busy' })
     })

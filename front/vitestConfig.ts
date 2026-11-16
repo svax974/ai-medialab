@@ -1,0 +1,1 @@
+.libs/apptemplate/front/vitestConfig.ts

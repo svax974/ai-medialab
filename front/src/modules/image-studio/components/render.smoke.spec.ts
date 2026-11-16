@@ -134,7 +134,7 @@ describe('screens render without error and without raw keys', () => {
   })
 
   it('shows the reference strip with the role of each image for an img2img model', () => {
-    const html = render(createElement(ReferenceStrip, { model: model as unknown as ModelInfo, references: [asset('r1', { kind: 'upload' }), asset('r2', { kind: 'upload' })], uploading: [{ tempId: 't', previewUrl: 'blob:x', name: 'x.png' }], onRemove: () => undefined }))
+    const html = render(createElement(ReferenceStrip, { model: model as unknown as ModelInfo, sizeIndex: 0, references: [asset('r1', { kind: 'upload' }), asset('r2', { kind: 'upload' })], uploading: [{ tempId: 't', previewUrl: 'blob:x', name: 'x.png' }], onRemove: () => undefined, onMove: () => undefined, onBrowse: () => undefined }))
     expect(html).toContain('départ')
     expect(html).toContain('ignorée')
     expect(html).toContain('blob:x')

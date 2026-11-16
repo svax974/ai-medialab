@@ -30,7 +30,8 @@ Application module (not a shared module); wired in `modules/app/AppModule.ts`, `
 ## Dependencies
 
 - `common`: `EventStreamService` (publishing), `HEALTH_CONTRIBUTORS`, `AdminOnlyInterceptor`, `NoTransportCrypt`.
-- Dev: `openapi-typescript` (added by `back/package.local.json`; justified because the contract is between two languages).
+- Dev: `openapi-typescript` in the [`back/tools/engine-types`](../../../tools/engine-types/README.md) workspace,
+  with its own TypeScript 5 peer dependency; the application uses TypeScript 6. Run `npm run engine:types` from `back/`.
 - No other dependency: native `fetch` for the client and the event relay, `http` for the media relay.
 
 **Why not `throttledFetch`.** This helper of `common` protects third-party APIs with quotas (spacing between calls, retries

@@ -11,7 +11,7 @@ import { SettingsController } from './SettingsController';
 describe('SettingsController', () => {
   const pub = { keep_alive_minutes: 10, previews: true, low_memory: true, quantize: {}, variant: {}, has_hf_token: false };
   const make = () => {
-    const service = { getPublic: jest.fn(async () => pub), update: jest.fn(async () => pub) };
+    const service = { getPublic: jest.fn(async () => pub), update: jest.fn(async (_patch: unknown) => pub) };
     return { service, controller: new SettingsController(service as unknown as SettingsService) };
   };
 

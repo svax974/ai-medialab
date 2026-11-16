@@ -6,15 +6,14 @@
 // Standalone Vitest config (not the Vite app config): pure unit tests of framework-agnostic logic, node environment,
 // no DOM, no app bootstrap. The shared modules (symlinked under src/modules_shared) have their own specs, run by the
 // owner repository, so they are excluded here. Run ONE file at a time under scripts-local/guarded_run.sh.
-import path from 'path'
-import { defineConfig } from 'vitest/config'
+import { createVitestConfig } from './vitestConfig'
 
-export default defineConfig({
-  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+const config = createVitestConfig()
+
+export default {
+  ...config,
   test: {
-    environment: 'node',
-    include: ['src/**/*.spec.ts'],
+    ...config.test,
     exclude: ['**/node_modules/**', 'src/modules_shared/**'],
-    globals: false,
   },
-})
+}

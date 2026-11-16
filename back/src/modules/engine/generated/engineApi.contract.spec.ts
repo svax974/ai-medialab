@@ -15,7 +15,7 @@ describe('engine contract', () => {
     const dir = mkdtempSync(join(tmpdir(), 'engine-types-'));
     const out = join(dir, 'engineApi.d.ts');
     try {
-      execFileSync(join(BACK, 'node_modules/.bin/openapi-typescript'), [join(BACK, '../engine/openapi.json'), '-o', out], {
+      execFileSync('npm', ['exec', '--workspace', '@ai-medialab/engine-types', '--', 'openapi-typescript', join(BACK, '../engine/openapi.json'), '-o', out], {
         cwd: BACK,
         stdio: 'pipe',
       });

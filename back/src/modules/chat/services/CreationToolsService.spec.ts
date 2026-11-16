@@ -22,9 +22,9 @@ const MARIE = { id: 'v1', name: 'Marie', kind: 'clone' };
 
 function make(opts: { models?: unknown[]; defaultVoice?: string; voices?: unknown[]; stored?: StoredGeneration[] } = {}) {
   let counter = 0;
-  const create = jest.fn(async () => ({ conversation_id: 'conv', user_message: {}, assistant_message: { id: `job${++counter}` } }));
-  const remove = jest.fn(async () => ({ ok: true, deleted: [] }));
-  const updateMessage = jest.fn(async () => undefined);
+  const create = jest.fn(async (_input: unknown) => ({ conversation_id: 'conv', user_message: {}, assistant_message: { id: `job${++counter}` } }));
+  const remove = jest.fn(async (_id: string) => ({ ok: true, deleted: [] }));
+  const updateMessage = jest.fn(async (_id: string, _patch: unknown) => undefined);
   const catalog = { catalog: async () => ({ models: opts.models ?? [image, video, cloner, presets, whisper, sleeping] }) };
   const voices = { list: async () => opts.voices ?? [MARIE], get: async (id: string) => (id === 'v1' ? MARIE : null) };
   const settings = { getPublic: async () => ({ chat_voice_id: opts.defaultVoice ?? '' }) };

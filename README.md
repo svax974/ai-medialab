@@ -71,7 +71,7 @@ Your data (conversations, library, voices, settings) lives in the OS per-user da
 
 ## Build from source
 
-Requirements: Node.js 22+, [uv](https://docs.astral.sh/uv/) and, for the desktop app, a Rust toolchain.
+Requirements: Node.js 24.22.1+ (24.x) or 26.12.1+, [uv](https://docs.astral.sh/uv/) and, for the desktop app, a Rust toolchain.
 
 ```sh
 git clone --recurse-submodules https://github.com/svax974/ai-medialab.git

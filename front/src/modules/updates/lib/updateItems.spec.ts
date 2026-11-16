@@ -10,7 +10,7 @@ import { outcomeOf, pendingItems, progressOf, toEngineItem, visibleRows, type In
 const engine = (id: string, state: EngineUpdate['state'], kinds: EngineUpdate['kinds'] = ['image']): EngineUpdate => ({
   id, name: id, kinds, state, installed: 'v1', target: 'v2', upstream: null, latest: null, rollback: false, variant: null, size_mb: 30, reason: 'pinned', advice: null,
 })
-const model = (id: string, state: ModelUpdate['state'], kind: ModelUpdate['kind'] = 'image'): ModelUpdate => ({ id, name: id, kind, state, files: state === 'update' ? 2 : 0, size_gb: 1, error: null })
+const model = (id: string, state: ModelUpdate['state'], kind: ModelUpdate['kind'] = 'image'): ModelUpdate => ({ id, name: id, kind, state, files: state === 'update' ? 2 : 0, size_gb: 1, error: null, revision: null, fingerprint: null, advice: null })
 const report: UpdatesReport = {
   engines: [engine('sdcpp', 'update', ['image', 'video']), engine('audiocpp', 'current', ['audio']), engine('kiwi', 'update', ['video'])],
   models: [model('a', 'current'), model('b', 'update'), model('c', 'update', 'audio'), model('d', 'error', 'video')],
@@ -46,13 +46,13 @@ describe('pendingItems', () => {
   })
 
   it('skips what is already waiting or running', () => {
-    const queue: UpdateItem[] = [{ key: 'engine:sdcpp', kind: 'engine', id: 'sdcpp', name: 'x', status: 'running', error: null }]
+    const queue: UpdateItem[] = [{ key: 'engine:sdcpp', kind: 'engine', id: 'sdcpp', name: 'x', status: 'running', error: null, target: 'pinned' }]
     expect(pendingItems(visibleRows(report, 'all'), queue, 'engines').map((i) => i.key)).toEqual(['engine:kiwi'])
   })
 })
 
 describe('engine items and the untested release', () => {
-  const withLatest: EngineUpdate = { ...engine('sdcpp', 'current'), latest: { tag: 'master-999-zzz', regressions: [] } }
+  const withLatest: EngineUpdate = { ...engine('sdcpp', 'current'), latest: { tag: 'master-999-zzz', regressions: [], advice: null } }
 
   it('asks for the tested release unless the user chose the latest one on that row', () => {
     expect(toEngineItem(withLatest).target).toBe('pinned')
@@ -60,7 +60,7 @@ describe('engine items and the untested release', () => {
   })
 
   it('never puts a latest release in the bulk buttons, whatever the engine offers', () => {
-    const rows = { engines: [{ ...withLatest, state: 'update' as const }, { ...engine('kiwi', 'update'), latest: { tag: 'x', regressions: [{ effect: 'e', source: 's' }] } }], models: [] }
+    const rows = { engines: [{ ...withLatest, state: 'update' as const }, { ...engine('kiwi', 'update'), latest: { tag: 'x', regressions: [{ effect: 'e', source: 's' }], advice: null } }], models: [] }
     expect(pendingItems(rows, []).map((i) => i.target)).toEqual(['pinned', 'pinned'])
   })
 

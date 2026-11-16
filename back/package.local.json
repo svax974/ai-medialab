@@ -3,15 +3,16 @@
   "version": "0.1.3",
   "license": "MIT",
   "scripts": {
-    "engine:types": "openapi-typescript ../engine/openapi.json -o src/modules/engine/generated/engineApi.d.ts",
+    "engine:types": "npm run generate --workspace @ai-medialab/engine-types",
     "desktop:dev": "npm --prefix ../desktop install && DESKTOP_RESOURCES=\"$(cd .. && pwd)\" npm --prefix ../desktop run dev",
     "desktop:build": "../scripts/app.sh --no-run"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1"
   },
+  "workspaces": ["tools/engine-types"],
   "devDependencies": {
-    "openapi-typescript": "^7.13.0"
+    "@ai-medialab/engine-types": "*"
   },
   "jest": {
     "setupFiles": [

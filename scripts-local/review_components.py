@@ -31,7 +31,8 @@ from app import audio_packs, audiocpp, engine_install  # noqa: E402
 NPM = {"front": ["@mui/material", "@mui/icons-material", "@emotion/react", "@emotion/styled", "@tanstack/react-query",
                  "zustand", "@fontsource-variable/hanken-grotesk", "@fontsource-variable/jetbrains-mono",
                  "@fontsource/instrument-serif", "react", "vite"],
-       "back": ["@nestjs/core", "@nestjs/typeorm", "typeorm", "better-sqlite3", "openapi-typescript"]}
+       "back": ["@nestjs/core", "@nestjs/typeorm", "typeorm", "better-sqlite3"],
+       "back/tools/engine-types": ["openapi-typescript"]}
 
 SNAPSHOT = ROOT / "docs" / "components" / "audiocpp-families.json"
 # PyPI libraries of the audio packs: the pin is read from the pack definitions, never copied here.

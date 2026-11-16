@@ -19,7 +19,7 @@ import { LegacyImportService } from './LegacyImportService';
 const fakeModuleConfig = () => ({
   getSchema: jest.fn(() => ({ moduleId: 'studio' })),
   register: jest.fn(),
-  updateModuleConfig: jest.fn(async () => null),
+  updateModuleConfig: jest.fn(async (_id: string, _values: Record<string, unknown>) => null),
 });
 
 describe('LegacyImportService', () => {

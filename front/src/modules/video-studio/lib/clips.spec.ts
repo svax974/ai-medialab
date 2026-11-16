@@ -8,7 +8,7 @@ import type { Asset, Message } from '@/modules/studio-core/types'
 import { assetRatio, clipFraction, clipLayout, clipRatio, clipSlots, isFreshClip, pendingLabel, reusedVideo, stageKey, videoStatus } from './clips'
 
 const asset = (id: string, extra: Partial<Asset> = {}) => ({ id, media: 'video', created_at: 100, ...extra }) as Asset
-const message = (extra: Partial<Message> = {}): Message => ({ id: 'm', conversation_id: 'c', parent_id: 'u', role: 'assistant', prompt: 'un chat', model_id: 'wan', params: {}, status: 'done', error: null, created_at: 1000, started_at: null, finished_at: null, references: [], outputs: [], ...extra })
+const message = (extra: Partial<Message> = {}): Message => ({ id: 'm', conversation_id: 'c', parent_id: 'u', role: 'assistant', prompt: 'un chat', model_id: 'wan', params: {}, status: 'done', error: null, error_code: null, created_at: 1000, started_at: null, finished_at: null, references: [], outputs: [], ...extra })
 
 describe('clipSlots', () => {
   it('draws one cell per requested clip: produced, the one being computed, the ones waiting', () => {

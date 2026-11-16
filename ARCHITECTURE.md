@@ -22,6 +22,7 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |
 | `desktop/README.md` | Desktop shell (Tauri): configuration, launch, packaging, signing, CI |
 | `engine/openapi.json` | Contract of the engine's internal API (**generated**: `scripts-local/export_engine_openapi.py`) |
+| `back/tools/engine-types/README.md` | Isolated OpenAPI generator workspace and its TypeScript peer dependency |
 | `docs/components/README.md` | Registry of the third-party components integrated and the review procedure; sheets `audiocpp.md`, `llamacpp.md` (chat engine: flags, installation, licences), `pytorch-gpu.md`, `ffmpeg.md` (FFmpeg build and licence), `audiocpp-tests-manuels.md` |
 | `THIRD_PARTY_LICENSES.md` | Licences of the components and the models |
 | `front/.libs/apptemplate/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Template conventions and launcher (outside this repository: submodules) |

@@ -27,7 +27,7 @@ function fakeConfig() {
   };
   const configuration = {
     getConfiguration: jest.fn(async () => []),
-    updateAll: jest.fn(async (dtos: { name: string; value: string }[]) => {
+    updateAll: jest.fn(async (dtos: { name: string; value: string; description?: string }[]) => {
       for (const d of dtos) if (isSecret(d.name)) secrets[d.name] = d.value;
       return [];
     }),

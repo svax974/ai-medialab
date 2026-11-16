@@ -22,7 +22,8 @@ git submodule update --init                # template submodules (once)
 ```
 
 Then http://localhost:5173. `scripts/` is the template link to `front/.libs/apptemplate/scripts`; the engine is started by the
-hook `scripts-local/dev-services.sh` (log: `logs/dev-services.log`). Prerequisites: Node.js ≥ 22, [uv](https://docs.astral.sh/uv/); the
+hook `scripts-local/dev-services.sh` (log: `logs/dev-services.log`). Prerequisites: Node.js 24.22.1+ (24.x) or 26.12.1+,
+[uv](https://docs.astral.sh/uv/); the
 first launch installs the Python dependencies in `engine/.venv` (MLX and PyTorch on Apple Silicon Mac). For a standalone application
 (no prerequisites), see "Desktop application" below.
 
@@ -41,6 +42,11 @@ Variables in `back/.env.dev` (not versioned; template: `back/.env.example`, sect
 
 Without the launcher: `cd back && npm run start:dev`, `cd front && npm run dev` and `ENGINE_TOKEN=… scripts-local/dev-services.sh`.
 Variables specific to the engine and to Nest are described in the README of their modules (`back/src/modules/engine/README.md`).
+Edit project-specific example variables in `back/.env.example.local`; `back/.env.example` is generated on install/build.
+
+The web stack follows vx-public's dependency baseline (Nest 12, TypeORM 1, MUI 9, Vite 8, TypeScript 6 and Vitest 5).
+The OpenAPI generator is isolated in `back/tools/engine-types` with TypeScript 5 because of its peer requirement;
+`cd back && npm run engine:types` remains the entry point. Both workspaces are installed by `cd back && npm install`.
 
 **Existing data.** An installation from before the migration (old database `ai-medialab.db`, old desktop folder) is picked up
 automatically on first start; nothing is deleted: see `ARCHITECTURE.md`, section "Data and migrations".
@@ -58,6 +64,9 @@ cd back   && npx tsc --noEmit -p tsconfig.json && npm run build                 
 cd front  && npx tsc -p tsconfig.app.json && npx vitest run <fichier.spec.ts>              # types, one Vitest file at a time
 cd front  && npm run i18n:check && npx eslint src                                          # fr/en locales, lint
 ```
+
+`npm run typecheck:specs` in each stack also checks the test fixtures. `cd front && npm run theme:check` rejects new
+color literals against the legacy counts in `.themecolors-baseline.json`; reduce that baseline as existing literals move to tokens.
 
 End-to-end without a model: `back/src/modules/studio-core/e2e/studioEngine.e2e.spec.ts` starts the engine as a subprocess in
 demonstration mode (`IMAGEGEN_DEMO=1`) and a full generation (recommended cap: 2 GB). Real image, audio and video models are
@@ -409,7 +418,8 @@ Runtime profiles (one installer = one profile; the PyTorch build depends on the 
 
 ### Building and running
 
-Prerequisites: [uv](https://docs.astral.sh/uv/), Node.js ≥ 22, Rust (`rustup`), Xcode Command Line Tools, network access (standalone
+Prerequisites: the Node.js and [uv](https://docs.astral.sh/uv/) versions required for development above, Rust (`rustup`),
+Xcode Command Line Tools, network access (standalone
 Python, wheels, official Node, better-sqlite3 and stable-diffusion.cpp binaries). Disk space: ~15 GB for the macOS target, the same
 per Windows or Linux target.
 

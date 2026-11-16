@@ -60,7 +60,7 @@
     }
   ],
   "packaging": {
-    "nodeVersion": null,
+    "nodeVersion": "24.22.1",
     "extraResources": [
       { "from": "desktop/build/engine-bundle/engine", "to": "engine" },
       { "from": "desktop/build/engine-bundle/engine-runtime", "to": "engine-runtime" },

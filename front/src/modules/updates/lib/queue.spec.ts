@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 import type { UpdateItem, UpdateItemStatus } from '../types'
 import { decideNext, enqueueItems, nextToStart, setItemStatus } from './queue'
 
-const item = (id: string, status: UpdateItemStatus = 'queued', kind: UpdateItem['kind'] = 'model'): UpdateItem => ({ key: `${kind}:${id}`, kind, id, name: id, status, error: null })
+const item = (id: string, status: UpdateItemStatus = 'queued', kind: UpdateItem['kind'] = 'model'): UpdateItem => ({ key: `${kind}:${id}`, kind, id, name: id, status, error: null, target: 'pinned' })
 const running = { phase: 'running', error: null } as const
 
 describe('enqueueItems', () => {

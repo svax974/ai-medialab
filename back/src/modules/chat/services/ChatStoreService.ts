@@ -211,7 +211,7 @@ export class ChatStoreService {
 
   /** At startup: a reply still `streaming` belongs to a run that stopped. Its text is kept, the state says what happened. */
   async failInterrupted(): Promise<number> {
-    const stuck = await this.messages.find({ where: { status: 'streaming' }, select: ['id'] });
+    const stuck = await this.messages.find({ where: { status: 'streaming' }, select: { id: true } });
     if (!stuck.length) return 0;
     await this.messages.update({ id: In(stuck.map((m) => m.id)) }, { status: 'error', error: tr('chat.error.interruptedByShutdown') });
     return stuck.length;
@@ -237,7 +237,7 @@ export class ChatStoreService {
 
   /** Names of every attachment some message still uses (the start-up sweep keeps those). */
   async referencedAttachments(): Promise<Set<string>> {
-    const rows = await this.messages.find({ select: ['id', 'attachments'] });
+    const rows = await this.messages.find({ select: { id: true, attachments: true } });
     return new Set(rows.flatMap((m) => (m.attachments ?? []).map((a) => a.name)));
   }
 
