@@ -26,4 +26,3 @@ export interface TranscriptDto {
   created_at: number;
   updated_at: number;
 }
-
