@@ -80,3 +80,23 @@ def test_memory_guard_preserves_child_exit_status(tmp_path, exit_code):
                             env={**os.environ, 'PATH': str(commands) + os.pathsep + os.defpath}, capture_output=True, text=True, timeout=10)
     assert result.returncode == exit_code, result.stdout + result.stderr
     assert f'exit={exit_code}' in result.stdout
+
+
+def test_desktop_stages_app_dictionaries_and_refreshes_stale_modules(tmp_path):
+    spec = importlib.util.spec_from_file_location('copy_app_locales', ROOT / 'scripts-local/copy_app_locales.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    source = tmp_path / 'source'
+    for relative in ['transcription/i18n/messages.fr.json', 'transcription/i18n/messages.en.json', 'module/locales/locales.fr.json']:
+        file = source / relative
+        file.parent.mkdir(parents=True, exist_ok=True)
+        file.write_text('{"key":"translated"}')
+    (source / 'transcription/settings.json').write_text('{"excluded":true}')
+    destination = tmp_path / 'staged'
+    assert module.stage_locales(source, destination) == 3
+    assert (destination / 'transcription/i18n/messages.fr.json').read_text() == '{"key":"translated"}'
+    assert not (destination / 'transcription/settings.json').exists()
+    (source / 'transcription/i18n/messages.en.json').unlink()
+    assert module.stage_locales(source, destination) == 2
+    assert not (destination / 'transcription/i18n/messages.en.json').exists()
+    assert (destination / 'module/locales/locales.fr.json').exists()

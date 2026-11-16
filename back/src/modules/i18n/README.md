@@ -10,7 +10,7 @@ Interface language on the Nest side: it retains it from `Accept-Language` and tr
 | File | Role |
 |---|---|
 | `uiLanguage.ts` | `parseAcceptLanguage`, `noteUiLanguage`, `uiLanguage()` (last language seen, `en` by default), `resetUiLanguage` (tests) |
-| `tr.ts` | `tr(key, values?, language?)`: message in the current language (`{0}`, `{1}`), unknown key returned as is; `loadDictionaries` merges `src/modules/*/i18n/*.<lang>.json` |
+| `tr.ts` | `tr(key, values?, language?)`: message in the current language (`{0}`, `{1}`), unknown key returned as is; `loadDictionaries` merges module `i18n/*.<lang>.json`; `resolveModulesRoot` chooses source dictionaries or the desktop's `app-locales/` resources |
 | `UiLanguageMiddleware.ts`, `I18nModule.ts` | Middleware on all routes, registered by `I18nModule` (imported by `AppModule`) |
 | `messages.spec.ts` | fr/en parity, same variables, every key of `tr('…')` defined |
 

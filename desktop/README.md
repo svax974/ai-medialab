@@ -9,6 +9,7 @@ this project, and nothing else:
   profile) and `../scripts-local/build_runtime.py`: the packaging of the sidecar (Python runtime per GPU profile, `engine/`,
   `engines/sdcpp`) writing `build/engine-bundle/`, copied by `packaging.extraResources`.
   PyAV (FFmpeg) is not bundled (its PyPI wheel is a GPL build): the `ffmpeg` pack downloads it on the user's machine, see `docs/components/ffmpeg.md`. The build still warns if a profile re-embeds it.
+- `../scripts-local/copy_app_locales.py`: stages app-owned Nest `i18n/*.json` and `locales/*.json` under `engine-bundle/app-locales`; `packaging.extraResources` ships them as `app-locales/`, beside `back/`, where `tr()` reads them. Runs on full builds and app refreshes; shared/common locales still come from the template.
 - `splash/`: the template's waiting page restyled with the `chambre noire` (darkroom) theme (fonts, glow); texts in `splash/messages.json`
   plus the overrides of `desktop.config.json`.
 - Migration of the old `app.chambrenoire.studio` data folder: done by the engine (`engine/app/legacy_data.py`), not by the shell.

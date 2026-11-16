@@ -65,7 +65,8 @@
       { "from": "desktop/build/engine-bundle/engine", "to": "engine" },
       { "from": "desktop/build/engine-bundle/engine-runtime", "to": "engine-runtime" },
       { "from": "desktop/build/engine-bundle/engines", "to": "engines" },
-      { "from": "desktop/build/engine-bundle/licenses", "to": "licenses" }
+      { "from": "desktop/build/engine-bundle/licenses", "to": "licenses" },
+      { "from": "desktop/build/engine-bundle/app-locales", "to": "app-locales" }
     ]
   },
   "splash": {

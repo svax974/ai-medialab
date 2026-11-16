@@ -27,6 +27,7 @@ of its GitHub release (`.github/workflows/release.yml`).
 - Release packaging handles development-only npm workspaces without treating them as redistributed packages; production workspace licences remain checked.
 - The memory guard preserves child-process failures, preventing a failed packaging step from being reported as successful.
 - macOS release builds use the supported Apple Silicon macOS 15 runner.
+- Desktop packages include the application server dictionaries, preserving translated validation and processing errors.
 
 ### Verification notes
 

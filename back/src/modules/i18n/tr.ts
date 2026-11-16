@@ -11,15 +11,16 @@ type Dictionary = Record<string, string>;
 
 let dictionaries: Record<UiLanguage, Dictionary> | null = null;
 
-/** `src/modules`, found from the source tree or from `dist/` (the JSON files are read where they live, in `src`). */
-function modulesRoot(): string {
-  const inSource = path.resolve(__dirname, '..');
-  if (!__dirname.includes(`${path.sep}dist${path.sep}`)) return inSource;
-  return path.resolve(__dirname, '../../../src/modules');
+/** App dictionaries: source tree in development, staged resources on desktop, source fallback in other builds. */
+export function resolveModulesRoot(moduleDir: string): string {
+  const inSource = path.resolve(moduleDir, '..');
+  if (!moduleDir.includes(`${path.sep}dist${path.sep}`)) return inSource;
+  const packaged = path.resolve(moduleDir, '../../../../app-locales');
+  return fs.existsSync(packaged) ? packaged : path.resolve(moduleDir, '../../../src/modules');
 }
 
 /** Every `src/modules/<module>/i18n/*.<lang>.json` merged per language (flat key maps, keys `<module>.…`). */
-export function loadDictionaries(root: string = modulesRoot()): Record<UiLanguage, Dictionary> {
+export function loadDictionaries(root: string = resolveModulesRoot(__dirname)): Record<UiLanguage, Dictionary> {
   const merged = Object.fromEntries(UI_LANGUAGES.map((lang) => [lang, {} as Dictionary])) as Record<UiLanguage, Dictionary>;
   if (!fs.existsSync(root)) return merged;
   for (const dir of fs.readdirSync(root, { withFileTypes: true })) {

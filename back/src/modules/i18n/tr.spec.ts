@@ -7,7 +7,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from '@jest/glob
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { clearTranslations, loadDictionaries, tr } from './tr';
+import { clearTranslations, loadDictionaries, resolveModulesRoot, tr } from './tr';
 import { parseAcceptLanguage, resetUiLanguage, noteUiLanguage, uiLanguage } from './uiLanguage';
 
 describe('parseAcceptLanguage', () => {
@@ -51,5 +51,16 @@ describe('tr', () => {
   it('returns an unknown key as itself', () => {
     clearTranslations();
     expect(tr('nope.missing')).toBe('nope.missing');
+  });
+  it('finds source dictionaries and desktop resources, with a source fallback for compiled non-desktop apps', () => {
+    const source = path.join(root, 'back/src/modules/i18n');
+    const compiled = path.join(root, 'back/dist/modules/i18n');
+    expect(resolveModulesRoot(source)).toBe(path.join(root, 'back/src/modules'));
+    expect(resolveModulesRoot(compiled)).toBe(path.join(root, 'back/src/modules'));
+    const packaged = path.join(root, 'app-locales');
+    fs.mkdirSync(packaged);
+    fs.cpSync(path.join(root, 'demo'), path.join(packaged, 'demo'), { recursive: true });
+    expect(resolveModulesRoot(compiled)).toBe(packaged);
+    expect(loadDictionaries(resolveModulesRoot(compiled)).en['demo.size']).toBe('Too large ({0} MB)');
   });
 });

@@ -35,4 +35,5 @@ fi
 # Licence texts shipped in the app (licenses/ of the resources) + build gate on strong copyleft.
 NODE_VERSION="$(sed -n "s/^export const NODE_VERSION = '\(.*\)';/\1/p" scripts/desktop/lib.mjs)"
 "${PYTHON}" scripts-local/collect_licenses.py --bundle "${OUT}" --node-version "${NODE_VERSION}"
+"${PYTHON}" scripts-local/copy_app_locales.py
 echo "${KEY}" > "${STAMP}"
