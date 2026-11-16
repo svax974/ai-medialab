@@ -6,9 +6,27 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-11-16
+
 ### Added
 
+- Transcript studio: transcribe a public YouTube video or a video/audio file with local Whisper or Qwen3-ASR models,
+  automatic or selected language, background progress and cancellation. Searchable/sortable history, editable text,
+  copy and TXT export; interrupted jobs preserve partial results. Persistent writes are refused during private mode.
+- Bounded audio decoding and isolated transcription workers, integrated with the engine memory budget, watchdog,
+  emergency stop and shared processing queue. Temporary media is cleaned after processing and at restart.
 - Image catalogue (GGUF): MOSS Image (SFT, Apache 2.0, text rendering in Chinese and English, needs stable-diffusion.cpp master-975 or newer) and Qwen Image 2.1 Turbo (8 steps, shares its encoder and VAE with Qwen Image 2.1). Neither has been run on a machine yet.
+
+### Changed
+
+- Updated application baseline: NestJS 12, TypeORM 1, MUI 9, Vite 8 and TypeScript 6; packaged Node.js 24.22.1.
+- Added a portable database migration for transcription history; existing tables are unchanged.
+
+### Verification notes
+
+- Transcription is covered by targeted tests using fake download/model workers and real synthetic audio decoding.
+  Real YouTube extraction and speech recognition have not yet been verified; model accuracy depends on the recording.
+- Desktop packages remain unsigned. Windows and Linux runtime behavior remains unverified on physical hardware.
 
 ## [0.1.3] - 2026-10-25
 
@@ -102,3 +120,5 @@ First public release.
 
 [0.1.1]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.0
+
+[0.1.4]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.4
