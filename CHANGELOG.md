@@ -6,7 +6,7 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
-## [0.1.4] - 2026-11-16
+## [0.1.5] - 2026-11-16
 
 ### Added
 
@@ -21,6 +21,12 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 - Updated application baseline: NestJS 12, TypeORM 1, MUI 9, Vite 8 and TypeScript 6; packaged Node.js 24.22.1.
 - Added a portable database migration for transcription history; existing tables are unchanged.
+
+### Fixed
+
+- Release packaging handles development-only npm workspaces without treating them as redistributed packages; production workspace licences remain checked.
+- The memory guard preserves child-process failures, preventing a failed packaging step from being reported as successful.
+- macOS release builds use the supported Apple Silicon macOS 15 runner.
 
 ### Verification notes
 
@@ -121,4 +127,4 @@ First public release.
 [0.1.1]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.1
 [0.1.0]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.0
 
-[0.1.4]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.4
+[0.1.5]: https://github.com/svax974/ai-medialab/releases/tag/v0.1.5

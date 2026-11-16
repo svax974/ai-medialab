@@ -55,7 +55,7 @@ automatically on first start; nothing is deleted: see `ARCHITECTURE.md`, section
 
 Critical rule: **one test file at a time**, never the full suite, never a real model (an overflow of unified memory has already
 restarted the Mac: on macOS an overflow does not slow the machine down, it crashes it, and `ulimit -v` does not protect). Every heavy command goes through the memory guard
-`scripts-local/guarded_run.sh <cap_GB> <command>` (recommended cap: 3 GB, 5 GB for a build).
+`scripts-local/guarded_run.sh <cap_GB> <command>` (recommended cap: 3 GB, 5 GB for a build). The guard preserves the command’s exit status, so a failed build stops packaging.
 
 ```sh
 cd engine && .venv/bin/python -m pytest -q -x -p no:cacheprovider tests/test_core.py      # one file at a time (none loads a model)
@@ -466,8 +466,8 @@ their generated `package.json`, `desktop/package.json`, the root entry of the th
 `desktop/src-tauri/tauri.conf.json`, `desktop/src-tauri/Cargo.toml` and `Cargo.lock`, `engine/pyproject.toml` and `uv.lock`,
 `engine/openapi.json`, the `README.md` badge), add the `CHANGELOG.md` entry (it becomes the release notes), commit,
 push, then `git tag v0.1.0 && git push origin v0.1.0`. `.github/workflows/release.yml` builds the macOS `.dmg`, the Windows portable
-`.zip` (cross-built from Linux with mingw-w64) and the Linux `.AppImage` + `.deb`, collects the third-party licences into the app (`licenses/`, see
-`scripts-local/collect_licenses.py`; the build fails on GPL/AGPL/SSPL dependencies) and attaches everything, with `.sha256` files, to a
+`.zip` (cross-built from Linux with mingw-w64) and the Linux `.AppImage` + `.deb` (macOS uses the Apple Silicon `macos-15` runner), collects the third-party licences into the app (`licenses/`, see
+`scripts-local/collect_licenses.py`; root-dev-only npm workspaces are excluded, production workspaces remain checked, and the build fails on GPL/AGPL/SSPL dependencies) and attaches everything, with `.sha256` files, to a
 **draft** release (pre-release while the version is 0.x). Review the draft, test the packages, then publish it by hand
 (`gh release edit v<version> --draft=false`). Used for v0.1.0 and v0.1.1. A job stuck on `apt-get` (Ubuntu mirror) times out
 after 15 min: re-run it with `gh run rerun <run id> --failed`, the jobs that succeeded are kept.

@@ -65,18 +65,36 @@ def python_packages(site: Path) -> list[dict]:
     return rows
 
 
+def _development_workspaces(packages: dict) -> set[str]:
+    """npm does not flag workspace links as dev, even when only a root devDependency uses them."""
+    root = packages.get("", {})
+    production = set(root.get("dependencies", {})) | set(root.get("optionalDependencies", {}))
+    for entry in packages.values():
+        if not entry.get("dev") and not entry.get("devOptional"):
+            production.update(entry.get("dependencies", {}))
+            production.update(entry.get("optionalDependencies", {}))
+    development = set(root.get("devDependencies", {})) - production
+    return {entry["resolved"] for entry in packages.values() if entry.get("link")
+            and packages.get(entry["resolved"], {}).get("name") in development}
+
+
 def npm_packages(back: Path) -> list[dict]:
-    """Production dependencies of back/ according to package-lock.json (entries not flagged dev)."""
+    """Runtime dependencies only, excluding root-dev-only workspaces and optional packages not installed."""
     lock = json.loads((back / "package-lock.json").read_text(encoding="utf8"))
+    development = _development_workspaces(lock.get("packages", {}))
     rows = []
+    seen: set[Path] = set()
     for key, entry in lock.get("packages", {}).items():
-        if not key or entry.get("dev") or entry.get("devOptional"):
+        if not key or entry.get("dev") or entry.get("devOptional") or key in development or (entry.get("link") and entry["resolved"] in development):
             continue
         folder = back / key
         pkg = folder / "package.json"
-        if not pkg.is_file():
+        if not pkg.is_file() or folder.resolve() in seen:
             continue  # optional platform package not installed on this machine
+        seen.add(folder.resolve())
         data = json.loads(pkg.read_text(encoding="utf8"))
+        if not data.get("version"):
+            raise ValueError(f"Production npm package {key!r} has no version")
         declared = data.get("license") or entry.get("license") or ""
         if isinstance(declared, dict):
             declared = declared.get("type", "")

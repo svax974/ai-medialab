@@ -15,4 +15,7 @@ while kill -0 $PID 2>/dev/null; do
   if (( a < 4.0 )) || (( r > MAX )); then pkill -KILL -P $PID 2>/dev/null; kill -KILL $PID 2>/dev/null; echo "ABORT memory: available ${a} GB, tree RSS ${r} GB"; exit 99; fi
   sleep 0.3
 done
-wait $PID; echo "exit=$? duration=$((SECONDS-t0))s peak RSS=${peak} GB available at end=$(avail_gb) GB"
+wait $PID
+result=$?
+echo "exit=${result} duration=$((SECONDS-t0))s peak RSS=${peak} GB available at end=$(avail_gb) GB"
+exit ${result}
