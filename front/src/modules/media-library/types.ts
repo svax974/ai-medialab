@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-export type AssetMedia = 'image' | 'audio' | 'video'
+export type AssetMedia = 'image' | 'audio' | 'video' | 'mesh'
 
 /** Public shape of an asset (`/api/assets`, same as the legacy API). */
 export interface Asset {

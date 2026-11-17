@@ -230,8 +230,9 @@ class JobManager:
         if self.current == job_id:
             if self.worker:
                 self.worker.cancel_event.set()
-                if self.state == "loading":
-                    # Cancelling during load: just kill the worker.
+                if self.state == "loading" or get_spec(self.jobs[job_id].model_id).kind == "mesh":
+                    # Mesh pipelines may not expose step callbacks; kill the worker immediately.
+                    self._cancel_requested.add(job_id)
                     await self.unload()
             else:
                 self._cancel_requested.add(job_id)  # still preparing: stops before the worker starts
@@ -355,9 +356,15 @@ class JobManager:
         prog.update(phase="running", count=count)
         self._publish_progress(job)
         item_started = time.time()
+        worker = self.worker
         while True:
-            evt = await self.worker.events.get()
+            evt = await worker.events.get()
             kind = evt["type"]
+            if plan["kind"] == "mesh" and job.job_id in self._cancel_requested:
+                if kind in ("done", "cancelled", "error", "exit"):
+                    self._finish(job, "cancelled")
+                    return
+                continue
             if kind == "item_start":
                 item_started = evt["t"]
                 prog.update(index=evt["index"], step=0, preview_url=None, stage=None)
@@ -386,8 +393,13 @@ class JobManager:
                 prog["preview_url"] = base + f"?t={time.time():.0f}"
                 self._emit(job, "job.preview", {"index": evt["index"], "path": evt["path"], "filename": name,
                                                 "url": prog["preview_url"]})
-            elif kind in ("image", "audio", "video"):
-                output = await asyncio.to_thread(describe_output, plan, evt)
+            elif kind in ("image", "audio", "video", "mesh"):
+                try:
+                    output = await asyncio.to_thread(describe_output, plan, evt)
+                except (ValueError, OSError) as exc:
+                    await self.unload()
+                    self._finish(job, "failed", f"Fichier produit invalide : {exc}")
+                    return
                 job.outputs.append(output)
                 self._emit(job, "job.output", output)
             elif kind == "done":
@@ -401,6 +413,9 @@ class JobManager:
                 self._finish(job, "failed", self._model_error(job, evt["error"]))
                 return
             elif kind == "exit":
+                if job.job_id in self._cancel_requested:
+                    self._finish(job, "cancelled")
+                    return
                 pid = _pid(self.worker)
                 self.worker = None
                 self.state = "idle"
@@ -451,7 +466,7 @@ class JobManager:
             # Audio and video packs share the worker handle; the pack's family picks the worker script.
             token = runtime_settings.get_settings().get("hf_token")
             options = {**spec.options, "language": plan["params"].get("language"),
-                       "sources": [{"repo": src.repo, "patterns": src.patterns} for src in spec.all_sources()]}
+                       "sources": [{"repo": src.repo, "patterns": src.patterns, "revision": src.revision} for src in spec.all_sources()]}
             self.worker = AudioWorkerHandle(
                 model_id, spec.options["pack"], spec.engine, options,
                 asyncio.get_running_loop(), env={"HF_TOKEN": token} if token else None,

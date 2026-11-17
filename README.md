@@ -8,13 +8,13 @@
 <h1 align="center">AI MediaLab</h1>
 
 <p align="center">
-  A local studio for images, speech and video, driven like a chat. Open models run on your machine,<br>
+  A local studio for images, speech, video and 3D objects, driven like a chat. Open models run on your machine,<br>
   with no account, no cloud service and no data leaving your computer.
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
-  <img alt="Version 0.1.5" src="https://img.shields.io/badge/version-0.1.5-informational">
+  <img alt="Version 0.2.0" src="https://img.shields.io/badge/version-0.2.0-informational">
   <img alt="Platforms: macOS, Windows, Linux" src="https://img.shields.io/badge/platforms-macOS%20%C2%B7%20Windows%20%C2%B7%20Linux-lightgrey">
 </p>
 
@@ -29,6 +29,8 @@
 - **Audio**: speech synthesis, voice cloning, voice design from a description, multi-speaker dialogue and transcription
   (Kokoro, Pocket TTS, Qwen3-TTS, Chatterbox, Whisper).
 - **Video**: text to video, image to video and video editing (Wan 2.2, LTX, HunyuanVideo, CogVideoX and others).
+- **3D**: text or image to GLB objects, with interactive preview and download (Shap-E, TripoSR, TripoSG,
+  TRELLIS, TRELLIS.2 and Stable Fast 3D); hardware and licence restrictions apply, real inference remains unverified.
 - **Chat**: local language models (GGUF through llama.cpp) that can also call the creation tools above, search the web
   (optional) and render Markdown, code and formulas.
 - **Diagrams**: organization charts, flowcharts, sequences and schemas.

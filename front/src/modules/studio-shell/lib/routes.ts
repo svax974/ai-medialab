@@ -13,6 +13,7 @@ export type StudioRouteName =
   | 'audio-home'
   | 'voices'
   | 'audio-library'
+  | 'mesh-home'
   | 'video-home'
   | 'video-library'
   | 'chat-home'
@@ -39,6 +40,7 @@ export const STUDIO_ROUTES: readonly StudioRouteDef[] = [
   { name: 'audio-home', path: '/audio', mode: 'audio', titleKey: 'studio.page.audioHome.title' },
   { name: 'voices', path: '/audio/voix', mode: 'audio', titleKey: 'studio.page.voices.title' },
   { name: 'audio-library', path: '/audio/bibliotheque', mode: 'audio', titleKey: 'studio.page.audioLibrary.title' },
+  { name: 'mesh-home', path: '/3d', mode: 'mesh', titleKey: 'studio.mode.mesh' },
   { name: 'video-home', path: '/video', mode: 'video', titleKey: 'studio.page.videoHome.title' },
   { name: 'video-library', path: '/video/bibliotheque', mode: 'video', titleKey: 'studio.page.videoLibrary.title' },
   { name: 'chat-home', path: '/chat', mode: 'chat', titleKey: 'studio.page.chatHome.title' },
@@ -57,6 +59,7 @@ export const studioPaths = {
   voices: '/audio/voix',
   audioLibrary: '/audio/bibliotheque',
   videoHome: '/video',
+  meshHome: '/3d',
   videoLibrary: '/video/bibliotheque',
   chatHome: '/chat',
   diagramHome: '/diagrammes',
@@ -89,6 +92,7 @@ export function modeOfRoute(match: StudioRouteMatch | null, conversationMode: St
 
 /** Start page of a mode (target of "new creation" and of the mode switch before any page was visited). */
 export function homePathForMode(mode: StudioMode): string {
+  if (mode === 'mesh') return studioPaths.meshHome
   if (mode === 'chat') return studioPaths.chatHome
   if (mode === 'diagram') return studioPaths.diagramHome
   if (mode === 'ocr') return studioPaths.ocrHome
@@ -96,4 +100,4 @@ export function homePathForMode(mode: StudioMode): string {
   return mode === 'audio' ? studioPaths.audioHome : mode === 'video' ? studioPaths.videoHome : studioPaths.home
 }
 
-export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr', transcription: '/transcriptions' }
+export const DEFAULT_LAST_PATHS: Record<StudioMode, string> = { mesh: '/3d', image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr', transcription: '/transcriptions' }

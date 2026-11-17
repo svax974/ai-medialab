@@ -96,3 +96,5 @@ One file at a time, from `front/`, under the memory guard:
 
 `lib/{assetCache,gallery,dropRules}.spec.ts`, `services/assetsApi.spec.ts`, `state/lightboxStore.spec.ts`, `locales/locales.spec.ts`, `components/render.smoke.spec.ts` (server-side rendering: full and empty image gallery, video library
 with `VideoPosterTile`, empty audio library, overlay; no DOM: interactions are not exercised).
+
+Mesh assets have `media: mesh`; their GLB preview and download are owned by the mesh studio rather than the image lightbox.

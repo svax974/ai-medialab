@@ -8,6 +8,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy, Optional }
 import { Observable, Subject, Subscription, filter } from 'rxjs';
 import { EmergencyStopService, EngineClient, EngineError, EngineEvent, EngineEventRelay, EngineUnavailableError } from 'src/modules/engine';
 import { AssetEntity, AssetFileService, AssetService, StudioEvents, nowSeconds } from 'src/modules/media-library';
+import { vtrace } from 'src/modules_shared/common/validation';
 import { MessageEntity, MessageStatus } from '../entities/MessageEntity';
 import { mergeProgress, outputToAssetInput, previewToProgress, toBrowserProgress, type ProgressState } from '../mappers/jobEventMapper';
 import {
@@ -235,7 +236,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       case 'job.output':
         return this.registerOutput(entry, data as unknown as EngineJobOutput);
       case 'job.done':
-        return this.endCurrent('done', null);
+        return entry.invalidOutput ? this.endCurrent('error', tr('studioCore.job.generationFailed')) : this.endCurrent('done', null);
       case 'job.cancelled':
         return this.endCurrent('cancelled', null);
       case 'job.failed':
@@ -266,12 +267,19 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
 
   /** Stores the file a job produced; the file of a message deleted in the meantime is removed instead. */
   private async registerOutput(entry: QueueEntry, output: EngineJobOutput): Promise<void> {
+    if (entry.kind === 'mesh' && (output.media !== 'mesh' || !/^[a-zA-Z0-9_-]+\.glb$/i.test(output.filename) || output.thumb)) {
+      this.logger.error(`Invalid mesh output for generation ${entry.messageId}`);
+      entry.invalidOutput = true;
+      vtrace('studio.mesh_output', 'violation', { id: entry.messageId });
+      return;
+    }
     if (!(await this.messages.get(entry.messageId))) {
       await this.files.removeFiles([{ kind: 'generated', filename: output.filename, thumb: output.thumb ?? null } as AssetEntity]);
       return;
     }
     const existing = await this.assets.get(output.asset_id);
     const asset = existing ?? (await this.assets.create(outputToAssetInput(output, entry.conversationId, entry.messageId)));
+    if (!existing && entry.kind === 'mesh') vtrace('studio.mesh_output', 'ok', { id: entry.messageId });
     if (!existing) this.events.publish('job.image', { message_id: entry.messageId, conversation_id: entry.conversationId, asset });
   }
 
@@ -325,6 +333,7 @@ export class GenerationQueueService implements OnApplicationBootstrap, OnModuleD
       .catch((error: unknown) => (error instanceof EngineError && error.status === 404 ? null : Promise.reject(error)));
     if (!record) return this.endCurrent('error', interruptedByEngine());
     for (const output of record.outputs) await this.registerOutput(entry, output);
+    if (entry.invalidOutput) return this.endCurrent('error', tr('studioCore.job.generationFailed'));
     const ended = this.endOf(record);
     if (ended) await this.endCurrent(ended.status, ended.error, ended.errorCode);
   }

@@ -120,6 +120,7 @@ class Recorder(Hooks):
 
 def engine(model_id, quant=None):
     eng = SdcppVideoEngine(with_variant(MODELS[model_id], quant), None)
+    eng.read_available = lambda: 24.0  # tests use the fake machine, never the host's current memory pressure
     eng.load()
     return eng
 

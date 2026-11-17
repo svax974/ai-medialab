@@ -19,11 +19,11 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 - "Camera darkroom" theme (`front/src/themes/chambre-noire/`): dark "warm black / inactinic red" by default, light
   "paper", thin borders, film grain, embedded fonts. Visual parity with the former interface: **to be checked by eye**.
 
-### `studio-core`: conversation thread (shared by the three studios)
+### `studio-core`: conversation thread (shared by media studios)
 - Open conversation: editable title, counter, scrolling; user messages and assistant generations.
 - Live progress (model loading, steps, remaining time, queue position, intermediate previews), retry,
   "vary", reuse of settings, cancellation, deletion, thumbnails, full-screen viewer, engine status card.
-- Model settings and seed (`GenerationParams`), shared by the three composers.
+- Model settings and seed (`GenerationParams`), shared by media composers.
 
 ### `image-studio`
 - Home (first launch, "hero" composer, starter prompts, latest prints); composer: prompt, reference images
@@ -41,6 +41,16 @@ same commit as the feature. The detail of a module (files, endpoints, tests) is 
 - Voice library (`/audio/voix`): microphone recording with a reading text, file import, name, language,
   **transcription suggested automatically on import (prefills the field), then editable**, preview, editing, deletion; creation of a voice from a description;
   "keep as reference voice" from any take. Microphone and listening: **to be validated by the user**.
+
+### `mesh-studio`
+- **3D** tab (`/3d`): text description or one reference image, model selection/installation, settings and seed;
+  jobs use the shared generation queue with progress, cancellation, retry and conversation history.
+- Generated assets are self-contained GLB files, with an interactive preview and download. Preview validation refuses
+  external resources and compressed formats requiring remote decoders. Persistent creation is unavailable in private mode.
+- The catalogue and actual runtime requirements are defined in `engine/app/engines/mesh_specs.py`; official model sources,
+  licences and review requirements are in `docs/components/mesh-generation.md`.
+- Automated contract, adapter, queue, interface and installation-command checks pass with simulated runtimes.
+  Real model installation, inference, browser rendering and packaged desktop execution are **unverified**.
 
 ### `video-studio`
 - Composer with three slots (source video, start image, end image), duration (up to 20 s on GGUF

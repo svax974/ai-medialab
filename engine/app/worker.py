@@ -103,7 +103,7 @@ def run_worker(model_id: str, quantize: int | None, options: dict, commands, eve
                 else:
                     engine.save(result, output)
                     emit(
-                        "image",
+                        "mesh" if spec.kind == "mesh" else "image",
                         job_id=job_id,
                         index=index,
                         path=str(output),

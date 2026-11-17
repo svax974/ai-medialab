@@ -35,7 +35,7 @@ OCR_STARTER_ORDER = ["ocr-glm-ocr", "ocr-paddleocr-vl-1.6", "ocr-lightonocr-2-1b
 
 def _pack_plan(spec, system: dict[str, Any]) -> dict[str, Any]:
     """Audio models run on CPU or GPU, so only memory decides feasibility; video packs also need enough video memory."""
-    if spec.kind == "video":
+    if spec.kind == "video" or (spec.kind == "mesh" and spec.options.get("min_vram_gb")):
         return _video_pack_plan(spec, system)
     ram = system["ram_gb"]
     need = (spec.weights_gb or 0) * 1.6 + 1.5
@@ -243,7 +243,8 @@ def describe_models() -> dict[str, Any]:
     image = pick("image", STARTER_ORDER)
     audio = pick("audio", AUDIO_STARTER_ORDER)
     video = pick("video", VIDEO_STARTER_ORDER)
+    mesh = pick("mesh", ["shap-e-text", "shap-e-image"])
     llm = pick("llm", LLM_STARTER_ORDER)
     diagram = pick("diagram", DIAGRAM_STARTER_ORDER)
     ocr = pick("ocr", OCR_STARTER_ORDER)
-    return {"models": models, **image, "audio": audio, "video": video, "llm": llm, "diagram": diagram, "ocr": ocr}
+    return {"models": models, **image, "audio": audio, "video": video, "mesh": mesh, "llm": llm, "diagram": diagram, "ocr": ocr}

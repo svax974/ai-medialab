@@ -62,7 +62,7 @@ def build_plan(job: JobRequest) -> dict[str, Any]:
         spec = get_spec(job.model_id)
     except KeyError as exc:
         raise ValueError(str(exc)) from None
-    plan = _audio_plan(job, spec) if spec.kind == "audio" else _video_plan(job, spec) if spec.kind == "video" \
+    plan = _mesh_plan(job, spec) if spec.kind == "mesh" else _audio_plan(job, spec) if spec.kind == "audio" else _video_plan(job, spec) if spec.kind == "video" \
         else _image_plan(job, spec)
     plan["private_dir"] = job.private_dir
     if job.private_dir:  # engines that keep measures or caches by request read this flag: nothing of a private run is kept
@@ -77,6 +77,32 @@ def _output(job: JobRequest, index: int, ext: str) -> str:
 
 def _existing(job: JobRequest) -> list[Path]:
     return [p for p in (Path(i) for i in job.inputs) if p.is_file()]
+
+
+
+def _mesh_plan(job: JobRequest, spec) -> dict[str, Any]:
+    refs = _existing(job)
+    if len(job.inputs) != len(refs) or len(refs) > 1 or any(is_video_path(p) for p in refs):
+        raise ValueError("Une seule image de référence existante est acceptée.")
+    if spec.requires_references and not refs:
+        raise ValueError(f"{spec.name} a besoin d’une image de référence.")
+    if not spec.requires_references and refs:
+        raise ValueError(f"{spec.name} accepte uniquement du texte.")
+    if not refs and not job.prompt.strip():
+        raise ValueError("Le prompt est vide.")
+    params = dict(job.params)
+    defaults = spec.default_params()
+    if len(params.get("seeds") or []) > 1:
+        raise ValueError("Un seul objet 3D est accepté par génération.")
+    steps = max(1, min(128, int(params.get("steps") or defaults.get("steps") or 64)))
+    seed = int((params.get("seeds") or [new_seed()])[0])
+    guidance = float(params.get("guidance", defaults.get("guidance", 3.0)))
+    task = "i2m" if refs else "t2m"
+    params.update(steps=steps, guidance=guidance, seeds=[seed], task=task)
+    request = GenerationRequest(prompt=job.prompt, width=256, height=256, steps=steps, seed=seed,
+                                guidance=guidance, references=[str(p) for p in refs])
+    return {"kind": "mesh", "model_id": spec.id, "params": params, "prompt": job.prompt,
+            "items": [{"request": asdict(request), "output": _output(job, 0, "glb")}]}
 
 
 def _image_plan(job: JobRequest, spec) -> dict[str, Any]:

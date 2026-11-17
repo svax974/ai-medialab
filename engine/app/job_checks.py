@@ -14,7 +14,7 @@ MAX_COUNT = 4
 MAX_VIDEO_COUNT = 2  # a video takes minutes to hours, so batches stay small
 
 
-def check_generation(model_id: str, reference_media: list[str]) -> dict[str, Any]:
+def check_generation(model_id: str, reference_media: list[str], prompt: str | None = None) -> dict[str, Any]:
     """`reference_media`: the media (`image`, `video`, `audio`) of each attached asset, in order.
 
     Returns `{kind, name, max_count, default_params}`; ValueError carries the message of a refusal."""
@@ -34,11 +34,20 @@ def check_generation(model_id: str, reference_media: list[str]) -> dict[str, Any
         raise ValueError(f"{spec.name} a besoin d'au moins une image de référence.")
     if spec.kind == "audio" and spec.audio.task != "tts":
         raise ValueError(f"{spec.name} ne synthétise pas de voix.")
+    if spec.kind == "mesh":
+        if any(m != "image" for m in reference_media) or len(reference_media) > 1:
+            raise ValueError("Une seule image de référence est acceptée.")
+        if spec.requires_references and not reference_media:
+            raise ValueError(f"{spec.name} a besoin d’une image de référence.")
+        if not spec.requires_references and reference_media:
+            raise ValueError(f"{spec.name} accepte uniquement du texte.")
+        if not spec.requires_references and prompt is not None and not prompt.strip():
+            raise ValueError("Le prompt est vide.")
     if spec.kind == "video":
         caps = spec.video
         if caps.image_input == "required" and "image" not in reference_media:
             raise ValueError(f"{spec.name} a besoin d'une image de départ.")
         if caps.video_input == "required" and "video" not in reference_media:
             raise ValueError(f"{spec.name} a besoin d'une vidéo source.")
-    return {"kind": spec.kind, "name": spec.name, "max_count": MAX_VIDEO_COUNT if spec.kind == "video" else MAX_COUNT,
+    return {"kind": spec.kind, "name": spec.name, "max_count": 1 if spec.kind == "mesh" else MAX_VIDEO_COUNT if spec.kind == "video" else MAX_COUNT,
             "default_params": spec.default_params()}

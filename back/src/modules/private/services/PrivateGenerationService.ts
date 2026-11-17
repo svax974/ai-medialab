@@ -363,9 +363,11 @@ export class PrivateGenerationService implements OnModuleInit, OnModuleDestroy {
 
   private async check(modelId: string, referenceMedia: string[]): Promise<EngineJobCheck> {
     try {
-      return await this.engine.post('/engine/v1/jobs/check', {
+      const result = await this.engine.post('/engine/v1/jobs/check', {
         body: { model_id: modelId, reference_media: referenceMedia as ('image' | 'audio' | 'video')[] },
       });
+      if (result.kind === 'mesh') throw new UnprocessableEntityException(tr('private.error.meshUnsupported'));
+      return result;
     } catch (error) {
       throw engineErrorToHttp(error);
     }

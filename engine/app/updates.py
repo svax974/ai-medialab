@@ -33,7 +33,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from . import audio_packs, audiocpp, config, engine_install, runtime_settings, sdcpp
-from .engines import MODELS, resolve, selected_variants
+from .engines import MODELS, all_specs, resolve, selected_variants
 from .engines.base import HfSource, _matches, hf_hub_dir, installation_status, repo_cache_dir
 
 GIB = 1024**3
@@ -192,6 +192,8 @@ def check_model(spec: Any, remotes: dict[str, RemoteFiles | Exception]) -> dict[
                            "size_gb": 0.0, "error": None, "fingerprint": None, "revision": None}
     changed: dict[str, str] = {}
     for src in spec.all_sources():
+        if src.revision:
+            continue  # immutable sources are updated by changing the catalog pin
         got = remotes[src.repo]
         if isinstance(got, Exception):
             return {**row, "state": "error", "error": _describe(got)}
@@ -209,7 +211,7 @@ def check_model(spec: Any, remotes: dict[str, RemoteFiles | Exception]) -> dict[
 
 def check_models(remote: Callable[[str], RemoteFiles] = remote_files, only: str | None = None) -> list[dict[str, Any]]:
     specs = [s for s in installed_models() if only in (None, s.id)]
-    remotes = _fetch({src.repo for s in specs for src in s.all_sources()}, remote)
+    remotes = _fetch({src.repo for s in specs for src in s.all_sources() if not src.revision}, remote)
     return [check_model(s, remotes) for s in specs]
 
 
@@ -221,6 +223,8 @@ def prune_replaced(repo: str) -> int:
     `downloads._delete_source`)."""
     from .downloads import _repo_links
 
+    if any(s.repo == repo and s.revision for m in all_specs() for s in m.all_sources()):
+        return 0
     root = repo_cache_dir(repo)
     main = root / "refs" / "main"
     snapshots = root / "snapshots"

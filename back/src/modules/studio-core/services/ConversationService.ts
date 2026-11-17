@@ -70,7 +70,7 @@ export class ConversationService {
         id: newId(),
         title: input.title?.trim() || (input.mode === 'chat' ? defaultChatTitle() : defaultConversationTitle()),
         pinned: false,
-        mode: input.mode === 'audio' || input.mode === 'video' || input.mode === 'chat' || input.mode === 'diagram' ? (input.mode as ConversationMode) : 'image',
+        mode: input.mode === 'audio' || input.mode === 'video' || input.mode === 'mesh' || input.mode === 'chat' || input.mode === 'diagram' ? (input.mode as ConversationMode) : 'image',
         createdAt: now,
         updatedAt: now,
       }),

@@ -191,7 +191,7 @@ class DownloadManager:
                 done_before += st["size"]
                 continue
             module, argv = ("app.quantize_worker", [spec.id]) if src.kind == "derived" else \
-                ("app.download_worker", [src.repo, json.dumps(src.patterns)])
+                ("app.download_worker", [src.repo, json.dumps(src.patterns), src.revision or ""])
             proc = await asyncio.create_subprocess_exec(
                 sys.executable, "-m", module, *argv,
                 cwd=str(BACKEND_DIR), env=env,
@@ -238,7 +238,7 @@ class DownloadManager:
                 if src.kind == "derived":
                     continue  # produced by an atomic rename: no .incomplete markers, no HF revisions to prune
                 self._clean_incomplete(src.repo)
-                if refresh:  # the replaced files of the old revision are dead weight now
+                if refresh:
                     from .updates import prune_replaced
 
                     await asyncio.to_thread(prune_replaced, src.repo)

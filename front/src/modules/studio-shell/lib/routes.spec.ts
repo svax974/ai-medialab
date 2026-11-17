@@ -62,6 +62,6 @@ describe('homePathForMode', () => {
     expect(homePathForMode('diagram')).toBe('/diagrammes')
     expect(homePathForMode('ocr')).toBe('/ocr')
     expect(homePathForMode('transcription')).toBe('/transcriptions')
-    expect(DEFAULT_LAST_PATHS).toEqual({ image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr', transcription: '/transcriptions' })
+    expect(DEFAULT_LAST_PATHS).toEqual({ mesh: '/3d', image: '/', audio: '/audio', video: '/video', chat: '/chat', diagram: '/diagrammes', ocr: '/ocr', transcription: '/transcriptions' })
   })
 })

@@ -8,7 +8,7 @@
   "studioCore.error.messageNotFound": "Message introuvable.",
   "studioCore.error.objectExpected": "{0} : objet attendu.",
   "studioCore.error.promptEmpty": "Le prompt est vide.",
-  "studioCore.error.promptLength": "prompt : texte de 1 à {0} caractères attendu.",
+  "studioCore.error.promptLength": "prompt : texte de {0} caractères maximum attendu.",
   "studioCore.error.referenceIdsList": "reference_ids : liste de textes attendue.",
   "studioCore.error.referenceImageNotFound": "Image de référence introuvable : {0}",
   "studioCore.error.seedInteger": "seed : entier attendu.",

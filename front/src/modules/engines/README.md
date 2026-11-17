@@ -122,3 +122,5 @@ the sizes (engine, recommended model, free space), a checkbox `télécharger aus
 `LocalAiProgress`) then `Ouvrir le Chat` (open Chat). `Plus tard` (later) or Escape closes it until the next launch; the checkbox `Ne plus me le proposer` (don't offer it again) (`optOut`) is
 stored in the browser (`cn-local-ai`) and is found in Settings (switch `IA locale au lancement` (local AI at launch)). Held back during a private session
 (`suppressed`) and when disk space is insufficient (message, installation disabled). Mounted once by `StudioShell`.
+
+Mesh models use the standard model setup action; their compatibility and engine requirements are supplied by the catalog.

@@ -6,6 +6,35 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-17
+
+### Added
+
+- Local **3D studio** (`/3d`) with text-to-3D and image-to-3D generation, model installation and selection,
+  settings and seeds, shared background queue, progress, cancellation, retries and conversation history.
+- Predefined Hugging Face models: Shap-E text/image, TripoSR, TripoSG, TRELLIS text/image, TRELLIS.2 and
+  Stable Fast 3D. Model cards show hardware restrictions, licence warnings and links to separately gated dependencies.
+- Interactive self-contained GLB preview and download. Generated files are checked for external resources;
+  compressed formats requiring remote decoders are refused by the viewer. French and English interface text.
+- Isolated 3D runtime packs, fixed upstream source revisions and offline auxiliary-model staging, integrated
+  with the existing memory budget and emergency stop. Private sessions refuse persistent 3D generation.
+
+### Fixed
+
+- Preserve alpha channels in TRELLIS preprocessing and install its text pipeline's Open3D dependency.
+- Pin executable BRIA RMBG 2.0 model code to an immutable revision, preserve that snapshot during cache pruning,
+  and exclude immutable sources from automatic upstream update checks.
+
+### Verification notes
+
+- Contract, adapter, queue, installation-command and interface tests use simulated runtimes and small GLB files.
+  Native runtime installation, real 3D inference and interactive browser preview remain unverified.
+- TRELLIS, TRELLIS.2 and TripoSG require compatible Linux/NVIDIA setups and native CUDA build tools.
+  Stable Fast 3D on Apple Silicon remains experimental; some auxiliary weights require separate access and licences.
+- TRELLIS.2's pinned BRIA code could not be inspected without gated access. FlexGEMM's upstream installer writes
+  an autotuning cache under `~/.flex_gemm`. See `docs/components/mesh-generation.md` for runtime details.
+- Desktop packages remain unsigned; Windows and Linux runtime behavior remains unverified on physical hardware.
+
 ## [0.1.5] - 2026-11-16
 
 ### Added

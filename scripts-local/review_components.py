@@ -30,7 +30,7 @@ from app import audio_packs, audiocpp, engine_install  # noqa: E402
 # Web stack tracked by the review: package.json of the workspace -> packages (the range is read from the file, never copied).
 NPM = {"front": ["@mui/material", "@mui/icons-material", "@emotion/react", "@emotion/styled", "@tanstack/react-query",
                  "zustand", "@fontsource-variable/hanken-grotesk", "@fontsource-variable/jetbrains-mono",
-                 "@fontsource/instrument-serif", "react", "vite"],
+                 "@fontsource/instrument-serif", "react", "vite", "@google/model-viewer"],
        "back": ["@nestjs/core", "@nestjs/typeorm", "typeorm", "better-sqlite3"],
        "back/tools/engine-types": ["openapi-typescript"]}
 
@@ -58,6 +58,30 @@ def latest_pypi(package: str) -> str:
 
 def latest_release(repo: str) -> dict[str, Any]:
     return get_json(f"https://api.github.com/repos/{repo}/releases/latest")
+
+
+def review_mesh_sources() -> None:
+    """Compare pinned executable mesh sources with each publisher's default branch."""
+    print("== Sources des moteurs 3D (révisions fixes des packs)")
+    seen: set[str] = set()
+    for pack in audio_packs.PACKS.values():
+        if pack.family != "mesh":
+            continue
+        for archive in pack.archives:
+            if archive.url in seen:
+                continue
+            seen.add(archive.url)
+            match = re.fullmatch(r"https://github.com/([^/]+/[^/]+)/archive/([a-f0-9]{40})\.tar\.gz", archive.url)
+            if not match:
+                print(f"  {pack.id}: source à vérifier {archive.url}")
+                continue
+            repo, pinned = match.groups()
+            try:
+                info = get_json(f"https://api.github.com/repos/{repo}")
+                head = get_json(f"https://api.github.com/repos/{repo}/commits/{info['default_branch']}")["sha"]
+                print(f"  {repo}: épinglé {pinned}; amont {head}; " + ("à jour" if pinned == head else "RÉVISION À REVOIR"))
+            except Exception as exc:  # noqa: BLE001
+                print(f"  {repo}: {exc}")
 
 
 def audiocpp_families(tag: str) -> dict[str, dict[str, Any]]:
@@ -161,6 +185,8 @@ def main() -> int:
             print(f"  {package:<16} épinglé {pinned_requirement(package, pack_id):<22} dernière {latest_pypi(package)}")
         except Exception as exc:  # noqa: BLE001
             print(f"  {package:<16} {exc}")
+
+    review_mesh_sources()
 
     print("== Pile web (package.json de front/ et back/, Cargo.toml du bureau)")
     for workspace, packages in NPM.items():

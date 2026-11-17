@@ -172,7 +172,7 @@ export const HubSearch = forwardRef<HTMLInputElement, { kind: ModelKind }>(funct
   const search = useHubSearch(kind, query)
   // "diagram" models are the same GGUF chat checkpoints under another catalog entry (engine/app/engines/diagram_models.py):
   // no Hugging Face family of their own to search (scoped out of v1, see back/src/modules/diagrams/README.md).
-  if (kind === 'diagram') return null
+  if (kind === 'diagram' || kind === 'mesh') return null
   return (
     <Section title={t('models.hub.title')} hint={`${t(HUB_HELP_KEY[kind])} ${t('models.hub.onlyCompatible')}`}>
       <TextField

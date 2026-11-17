@@ -100,3 +100,15 @@ def test_desktop_stages_app_dictionaries_and_refreshes_stale_modules(tmp_path):
     assert module.stage_locales(source, destination) == 2
     assert not (destination / 'transcription/i18n/messages.en.json').exists()
     assert (destination / 'module/locales/locales.fr.json').exists()
+
+
+def test_mesh_worker_is_staged_in_desktop_engine(tmp_path, monkeypatch):
+    spec = importlib.util.spec_from_file_location('build_runtime', ROOT / 'scripts-local/build_runtime.py')
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    source = tmp_path / 'source' / 'engine' / 'mesh_runtime' / 'engines'
+    source.mkdir(parents=True)
+    (source / 'triposr.py').write_text('# worker')
+    monkeypatch.setattr(module, 'ROOT', tmp_path / 'source')
+    module.copy_backend(tmp_path / 'staged')
+    assert (tmp_path / 'staged' / 'engine' / 'mesh_runtime' / 'engines' / 'triposr.py').is_file()

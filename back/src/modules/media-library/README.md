@@ -70,3 +70,5 @@ Public shape (`AssetDto`, snake_case fields as in the former API, never omitted:
 - `AssetService.remove` returns the deleted entity so that the caller removes the files; `AssetService.purge` is the equivalent of the engine's `purge_assets` (an asset still referenced by a message only loses its link to the message).
 
 `StudioEvents` also declares `studio.transcription.updated` (summary without full text) and `.deleted` (`{ id }`), owned by the `transcription` module. Its controller reuses disk-backed `uploadStorage` on the data volume.
+
+Generated 3D assets use `media=mesh`, are listed with that filter, and their GLB files are served through the authenticated media proxy.

@@ -15,7 +15,7 @@ import { ConversationMode } from '../entities/ConversationEntity';
 import { ConversationService } from '../services/ConversationService';
 import { GenerationService } from '../services/GenerationService';
 
-const MODES: string[] = ['image', 'audio', 'video', 'chat', 'diagram'];
+const MODES: string[] = ['image', 'audio', 'video', 'mesh', 'chat', 'diagram'];
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 
 /** `/api/conversations*`: same URLs and shapes as the engine's legacy routes. Admin only. */

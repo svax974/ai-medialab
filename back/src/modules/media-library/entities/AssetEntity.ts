@@ -7,7 +7,7 @@ import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typ
 import { jsonColumnType } from 'src/modules_shared/common/utils/dbEngine';
 
 export type AssetKind = 'upload' | 'generated';
-export type AssetMedia = 'image' | 'audio' | 'video';
+export type AssetMedia = 'image' | 'audio' | 'video' | 'mesh';
 
 /**
  * A file known to the app: an upload (reference image, sample, source clip) or a generated output.

@@ -13,7 +13,7 @@ export const AUDIO_ACCEPT = 'audio/*,.wav,.mp3,.m4a,.flac,.ogg,.opus,.aac,.webm,
 export const VIDEO_ACCEPT = 'video/*,image/*,.mp4,.mov,.webm,.mkv,.m4v,.png,.jpg,.jpeg,.webp,.gif,.bmp,.heic,.avif'
 
 /** Accept list of the audio and video modes (the image mode's is `IMAGE_ACCEPT` of `image-studio`). */
-export const DROP_ACCEPT: Record<Exclude<AssetMedia, 'image'>, string> = { audio: AUDIO_ACCEPT, video: VIDEO_ACCEPT }
+export const DROP_ACCEPT: Record<Exclude<AssetMedia, 'image' | 'mesh'>, string> = { audio: AUDIO_ACCEPT, video: VIDEO_ACCEPT }
 
 export interface DropSplit<T> {
   accepted: T[]
@@ -26,7 +26,7 @@ export interface DropSplit<T> {
  * sample), video keeps every image and video. A warning key is set when nothing usable was dropped (as before: the
  * warning only appears when no file fits).
  */
-export function classifyDrop<T extends { name: string; type: string; size: number }>(mode: Exclude<AssetMedia, 'image'>, files: readonly T[]): DropSplit<T> {
+export function classifyDrop<T extends { name: string; type: string; size: number }>(mode: Exclude<AssetMedia, 'image' | 'mesh'>, files: readonly T[]): DropSplit<T> {
   const { accepted } = filterFiles(files, { accept: DROP_ACCEPT[mode], multiple: mode === 'video' })
   const warningKey = accepted.length === 0 && files.length > 0 ? `library.drop.${mode}.ignored` : null
   return { accepted, warningKey }

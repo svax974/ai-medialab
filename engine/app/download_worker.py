@@ -24,6 +24,7 @@ def emit(**event) -> None:
 def main() -> int:
     repo = sys.argv[1]
     patterns = json.loads(sys.argv[2]) or None
+    revision = sys.argv[3] or None if len(sys.argv) > 3 else None
 
     from huggingface_hub import snapshot_download
     from tqdm.auto import tqdm
@@ -73,7 +74,7 @@ def main() -> int:
     threading.Thread(target=watch_parent, daemon=True).start()
     try:
         emit(type="start")
-        path = snapshot_download(repo_id=repo, allow_patterns=patterns, tqdm_class=ByteBars)
+        path = snapshot_download(repo_id=repo, allow_patterns=patterns, revision=revision, tqdm_class=ByteBars)
     except KeyboardInterrupt:
         return 130
     except BaseException as exc:  # noqa: BLE001

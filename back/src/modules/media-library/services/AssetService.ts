@@ -12,7 +12,7 @@ import { AssetEntity } from '../entities/AssetEntity';
 import { toAssetDto, toAssetListItemDto } from '../mappers/assetMapper';
 import { CreateAssetInput, ListAssetsQuery } from '../types/assetTypes';
 
-const MEDIA_FILTERS = ['image', 'audio', 'video'];
+const MEDIA_FILTERS = ['image', 'audio', 'video', 'mesh'];
 const DEFAULT_PAGE = 60;
 const MAX_PAGE = 200;
 

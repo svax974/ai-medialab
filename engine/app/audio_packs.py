@@ -35,8 +35,8 @@ from .events import bus
 
 PYTHON_VERSION = "3.12"  # default; kokoro needs < 3.13, qwen-tts, pocket-tts and chatterbox are fine on 3.12
 
-FAMILY_DIRS = {"audio": AUDIO_PACKS_DIR, "video": VIDEO_PACKS_DIR, "runtime": RUNTIME_PACKS_DIR}
-FAMILY_RUNTIMES = {"audio": AUDIO_RUNTIME_DIR, "video": VIDEO_RUNTIME_DIR}
+FAMILY_DIRS = {"audio": AUDIO_PACKS_DIR, "video": VIDEO_PACKS_DIR, "mesh": VIDEO_PACKS_DIR.parent / "mesh", "runtime": RUNTIME_PACKS_DIR}
+FAMILY_RUNTIMES = {"audio": AUDIO_RUNTIME_DIR, "video": VIDEO_RUNTIME_DIR, "mesh": VIDEO_RUNTIME_DIR.parent / "mesh_runtime"}
 
 
 @dataclass(frozen=True)
@@ -71,12 +71,19 @@ class PackDef:
     # Python version of the environment (empty = PYTHON_VERSION).
     python: str = ""
     archives: tuple[PackArchive, ...] = ()
+    # Fixed, trusted build sources installed after PyTorch and archive extraction.
+    source_paths: tuple[str, ...] = ()
+    local_packages: tuple[str, ...] = ()
+    build_requirements: tuple[str, ...] = ()
+    # (URL, relative filename, upstream MD5); fixed auxiliary weights used offline.
+    auxiliary_files: tuple[tuple[str, str, str], ...] = ()
     # Hardware the pack needs: "" (any) or "cuda" (NVIDIA, or AMD on Linux through ROCm).
     gpu: str = ""
     # French sentence shown when the machine does not have that hardware.
     gpu_reason: str = ""
     # AMD/Linux PyTorch wheel index; the default one only carries recent PyTorch versions, pinned packs name an older one.
     rocm: str = "rocm6.4"
+    cuda: str = "cu128"
     # Folders of `<runtime>/shims/` put on the worker's import path (stand-ins for optional compiled libraries).
     shims: tuple[str, ...] = ()
     # Name of the prebuilt native runtime this pack installs instead of a Python environment ("" = Python pack).
@@ -101,7 +108,7 @@ PACKS: dict[str, PackDef] = {
         reprobe=True,
         torch_packages=("torch>=2.4,<3", "torchvision"),
         requirements=("diffusers>=0.41", "gguf>=0.10", "transformers>=5.17", "accelerate>=1.0", "peft>=0.17",
-                      "sentencepiece", "protobuf", "safetensors"),
+                      "sentencepiece", "protobuf", "safetensors", "trimesh"),
         apple_requirements=("mflux==0.20.0",),
         imports=("torch", "torchvision", "diffusers", "transformers", "gguf"),
         size_mb=4500,
@@ -223,6 +230,28 @@ def size_of(pack: PackDef) -> int:
     return pack.size_mb_apple if pack.size_mb_apple and is_apple_silicon() else pack.size_mb
 
 
+from .mesh_runtime_sources import reconstruction_packs
+
+PACKS.update(reconstruction_packs(PackDef, PackArchive))
+from .trellis_packs import trellis_pack, trellis2_pack
+PACKS["trellis"] = trellis_pack(PackDef, PackArchive)
+PACKS["trellis2"] = trellis2_pack(PackDef, PackArchive)
+PACKS["triposg"] = PackDef(
+    id="triposg", name="TripoSG (image vers 3D)", family="mesh", python="3.10",
+    gpu="nvidia-linux-x86", gpu_reason="TripoSG utilise une extension CUDA Linux x86-64 ; NVIDIA requis.",
+    cuda="cu124", torch_packages=("torch==2.5.1", "torchvision==0.20.1"),
+    requirements=("diffusers==0.32.2", "transformers==4.49.0", "einops", "huggingface_hub",
+                  "opencv-python-headless", "trimesh==4.5.3", "omegaconf", "scikit-image", "numpy<2",
+                  "peft", "scipy==1.11.4", "jaxtyping", "typeguard", "safetensors",
+                  "https://huggingface.co/spaces/VAST-AI/TripoSG/resolve/d51c5f2f4d5182f925a403b286d1e9faf519aaa2/diso-0.1.4-cp310-cp310-linux_x86_64.whl"),
+    archives=(PackArchive("https://github.com/VAST-AI-Research/TripoSG/archive/fc5c40990181e2a756c4e0b1c2f4d6b5202faf8c.tar.gz", ("triposg", "scripts")),),
+    source_paths=("scripts",), imports=("torch", "diso", "triposg.pipelines.pipeline_triposg", "briarmbg", "image_process"),
+    size_mb=4500, engine="PyTorch + TripoSG",
+    contents="PyTorch 2.5, TripoSG et extension CUDA officielle Linux x86-64.",
+)
+
+
+
 # Model backend -> pack whose installation it needs (add-ons of the main runtime).
 OVERLAY_BACKENDS = {"torch": "torch", "mlx": "torch"}
 
@@ -240,6 +269,10 @@ def requirements_for(pack: PackDef) -> tuple[str, ...]:
 
 def _requirements_hash(pack: PackDef) -> str:
     parts = [python_of(pack), *requirements_for(pack), *pack.torch_packages]
+    if pack.cuda != "cu128":
+        parts.append(pack.cuda)
+    parts += [*pack.source_paths, *pack.local_packages, *pack.build_requirements]
+    parts += ["|".join(item) for item in pack.auxiliary_files]
     parts += [f"{a.url}|{','.join(a.folders)}" for a in pack.archives]  # absent for audio packs: their hash is unchanged
     return hashlib.sha256(json.dumps(parts).encode()).hexdigest()[:16]
 
@@ -261,6 +294,7 @@ def pack_env(pack_id: str) -> dict[str, str]:
     pack = PACKS.get(pack_id)
     paths = [str(code_dir(pack_id))] if code_dir(pack_id).is_dir() else []
     if pack:
+        paths += [str(code_dir(pack_id) / name) for name in pack.source_paths]
         paths += [str(runtime_dir(pack_id) / "shims" / name) for name in pack.shims]
     env = {"PYTHONPATH": os.pathsep.join(paths)} if paths else {}
     if pack and pack.overlay:  # the server's own packages must not shadow the venv's
@@ -270,8 +304,11 @@ def pack_env(pack_id: str) -> dict[str, str]:
 
         if found := audiocpp.installed_binary():
             env.update(AUDIOCPP_VARIANT=found[0], AUDIOCPP_BIN=str(found[1]))
-    if pack and pack.family == "video":
+    if pack and pack.family in ("video", "mesh"):
         env["HF_HUB_OFFLINE"] = "1"
+    if pack and pack.auxiliary_files:
+        env["U2NET_HOME"] = str(pack_dir(pack_id) / "u2net")
+        env["MESH_PACK_DIR"] = str(pack_dir(pack_id))
     return env
 
 
@@ -346,6 +383,8 @@ def is_installed(pack_id: str) -> bool:
     marker = pack_dir(pack_id) / "ready.json"
     if not pack or not venv_python(pack_id).is_file() or not marker.is_file():
         return False
+    if any(not (pack_dir(pack_id) / name).is_file() for _, name, _ in pack.auxiliary_files):
+        return False
     try:
         return json.loads(marker.read_text()).get("hash") == _requirements_hash(pack)
     except (OSError, ValueError):
@@ -383,6 +422,10 @@ def unsupported_reason(pack: PackDef, system: dict[str, Any]) -> str | None:
     """Why this machine cannot run the pack at all (French), or None."""
     if pack.overlay and pack.torch_packages:
         return None if torch_acceleration(system) else "Aucun GPU exploitable par PyTorch (NVIDIA, AMD sous Linux ou Apple Silicon)."
+    if pack.gpu == "nvidia-linux-x86":
+        if system.get("os") == "Linux" and system.get("arch") in ("x86_64", "AMD64") and "nvidia" in _gpu_vendors(system):
+            return None
+        return pack.gpu_reason
     if pack.gpu != "cuda":
         return None
     vendors = _gpu_vendors(system)
@@ -416,13 +459,13 @@ def engine_info(pack_id: str, system: dict[str, Any] | None = None) -> dict[str,
     return info
 
 
-def _torch_index(accelerators: list[dict[str, Any]], rocm: str = "rocm6.4") -> str | None:
+def _torch_index(accelerators: list[dict[str, Any]], rocm: str = "rocm6.4", cuda: str = "cu128") -> str | None:
     """PyTorch index matching the GPU (macOS: PyPI wheels, which include Metal)."""
     if sys.platform == "darwin":
         return None
     vendors = {a["vendor"] for a in accelerators}
     if "nvidia" in vendors:
-        return "https://download.pytorch.org/whl/cu128"
+        return f"https://download.pytorch.org/whl/{cuda}"
     if "amd" in vendors and sys.platform.startswith("linux"):
         return f"https://download.pytorch.org/whl/{rocm}"
     if sys.platform == "win32":
@@ -545,6 +588,21 @@ class PackInstaller:
         if not kept:
             raise RuntimeError("Le code officiel téléchargé ne contient pas les dossiers attendus.")
 
+    def _fetch_auxiliary(self, url: str, target: Path, checksum: str) -> None:
+        """Download an upstream auxiliary file and verify its published checksum."""
+        self._set(message="Téléchargement des données auxiliaires…", detail=target.name)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        digest = hashlib.sha256() if len(checksum) == 64 else hashlib.md5(usedforsecurity=False)
+        with urllib.request.urlopen(url, timeout=60) as response, target.open("wb") as out:
+            while chunk := response.read(1024 * 1024):
+                if self._cancel.is_set():
+                    raise PackInstallCancelled()
+                digest.update(chunk)
+                out.write(chunk)
+        if digest.hexdigest() != checksum:
+            target.unlink(missing_ok=True)
+            raise RuntimeError("Somme de contrôle des données auxiliaires incorrecte.")
+
     def _run_native(self, pack: PackDef, accelerators: list[dict[str, Any]], tag: str | None = None) -> None:
         from . import audiocpp
         from .engine_install import InstallCancelled
@@ -580,7 +638,7 @@ class PackInstaller:
                 self._exec([sys.executable, "-m", "venv", str(venv)], "Création de l'environnement Python…")
                 install = [str(venv_python(pack.id)), "-m", "pip", "install", "--disable-pip-version-check"]
 
-            index = _torch_index(accelerators, pack.rocm)
+            index = _torch_index(accelerators, pack.rocm, pack.cuda)
             if pack.torch_packages:
                 # No GPU-specific index (macOS, or Linux/Windows without a supported accelerator): plain PyPI wheels
                 # still work (Metal on macOS, CPU elsewhere) — only the `--index-url` flag is conditional, never the
@@ -592,6 +650,14 @@ class PackInstaller:
                 shutil.rmtree(code_dir(pack.id), ignore_errors=True)
                 for archive in pack.archives:
                     self._fetch_archive(archive, code_dir(pack.id))
+
+            for url, filename, checksum in pack.auxiliary_files:
+                self._fetch_auxiliary(url, target / filename, checksum)
+            builds = [*pack.build_requirements, *(str(code_dir(pack.id) / p) for p in pack.local_packages)]
+            for source in builds:
+                build_env = {**pack_env(pack.id), "MAX_JOBS": "2", "CMAKE_BUILD_PARALLEL_LEVEL": "2"}
+                self._exec([*install, "--no-build-isolation", source], "Compilation du moteur natif…",
+                           env=build_env)
 
             self._set(message="Vérification…", detail="")
             check = "import " + ", ".join(pack.imports)
@@ -616,6 +682,8 @@ class PackInstaller:
         """Removes what a cancelled or failed install left: the environment and the extracted source code."""
         shutil.rmtree(pack_dir(pack.id) / "venv", ignore_errors=True)
         shutil.rmtree(code_dir(pack.id), ignore_errors=True)
+        for _, name, _ in pack.auxiliary_files:
+            (pack_dir(pack.id) / name).unlink(missing_ok=True)
 
     def uninstall(self, pack_id: str) -> None:
         if self.running and self.state.get("pack") == pack_id:

@@ -309,6 +309,27 @@ HunyuanVideo's I2V is not documented on the `sd-cli` side; the effect of `--offl
 **To try for real, from smallest to largest** (watch memory pressure at each step): Wan 5B image → video (text → video is done);
 Wan 5B at 720p; HunyuanVideo 480p; LTX-2.3 Q3_K_M; on 48 GB or more only, Wan 14B and LTX-2.5.
 
+## 3D: text and image to mesh
+
+Open **3D** (`/3d`), select a model and describe an object or attach one image, according to that model's input
+requirements. The same model selector and setup confirmation install the required runtime and weights. Settings,
+seed, progress, cancellation and retry follow the media studios. Results remain in conversation history and can
+be rotated in the interactive viewer or downloaded as GLB. The viewer rejects external resources; download remains
+available if the preview cannot display a file. Creation and retry are disabled during private sessions.
+
+Shap-E and TRELLIS have separate text and image checkpoints; TripoSR, TripoSG, TRELLIS.2 and Stable Fast 3D take an
+image. The catalogue is predefined: arbitrary Hugging Face 3D repositories are not automatically executable.
+An image-only selection does not automatically generate an intermediate image from the prompt.
+
+Native 3D runtimes require build tools beyond Python packages. TRELLIS, TRELLIS.2 and TripoSG target NVIDIA/Linux;
+Stable Fast 3D's Mac path is experimental and needs OpenMP. Model compatibility and memory refusals appear in the
+selector. Gated weights require accepting the relevant publisher's terms on Hugging Face and supplying a read token
+in Settings; some auxiliary checkpoints have licences different from the main model. Exact ownership, sources and
+review requirements: `docs/components/mesh-generation.md`.
+
+The automated checks use fake model runtimes and small GLBs. Native installation, real inference, browser preview
+and packaged desktop execution have not been exercised for these models.
+
 ## Chat: local language models
 
 The Chat runs on **llama.cpp** (`llama-server`, GGUF models), installed on demand from the `Moteurs` (Engines) screen: an

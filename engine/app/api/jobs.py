@@ -34,12 +34,13 @@ jobs_router = APIRouter(tags=["jobs"])
 
 class JobCheckBody(BaseModel):
     model_id: str
+    prompt: str | None = None
     reference_media: list[Literal["image", "audio", "video"]] = Field(
         default_factory=list, description="Media of each attached asset, in order.")
 
 
 class JobCheck(BaseModel):
-    kind: Literal["image", "audio", "video"]
+    kind: Literal["image", "audio", "video", "mesh"]
     name: str
     max_count: int = Field(description="Most results one generation may ask for.")
     default_params: dict[str, Any] = Field(description="Defaults of the model's parameters, to merge under the user's.")
@@ -55,7 +56,7 @@ class LibraryVoice(BaseModel):
 
 class JobSubmit(BaseModel):
     job_id: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
-    kind: Literal["image", "audio", "video"]
+    kind: Literal["image", "audio", "video", "mesh"]
     model_id: str
     prompt: str = ""
     params: dict[str, Any] = Field(default_factory=dict)
@@ -71,7 +72,7 @@ class JobOutput(BaseModel):
     """A produced file, with what the caller needs to register it as an asset."""
 
     index: int
-    media: Literal["image", "audio", "video"]
+    media: Literal["image", "audio", "video", "mesh"]
     asset_id: str
     path: str
     filename: str
@@ -125,7 +126,7 @@ def _private_session(raw: str | None, out_dir: Path) -> Path | None:
 def check_job(body: JobCheckBody) -> dict[str, Any]:
     """Refuses (422, with the message to show) a generation the model cannot do, before anything is stored."""
     try:
-        return check_generation(body.model_id, list(body.reference_media))
+        return check_generation(body.model_id, list(body.reference_media), body.prompt)
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from None
 

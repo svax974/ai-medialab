@@ -77,3 +77,5 @@ engine unreachable (502), "New" (default values, parameters relayed, 11 values r
 required, engine refusal relayed).
 
 **Language.** Parameter validation errors follow the interface language: `i18n/messages.{fr,en}.json`, read by `tr()`.
+
+The model catalog includes a `mesh` summary and model kind for 3D generation.

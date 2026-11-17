@@ -40,6 +40,7 @@ interface NavEntry {
 const icon = { fontSize: 16 }
 
 const NAV: Record<StudioMode, NavEntry[]> = {
+  mesh: [{ route: 'mesh-home', to: studioPaths.meshHome, labelKey: 'studio.nav.newMesh', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation }],
   transcription: [
     { route: 'transcription-home', to: studioPaths.transcriptionHome, labelKey: 'transcription.new', icon: <EditNoteRounded sx={icon} />, kbd: SHORTCUT_LABELS.newCreation },
   ],

@@ -80,6 +80,12 @@ def fake_model(*sources, model_id="m", name="Modèle", kind="image"):
 
 
 class TestModels:
+    def test_pinned_source_does_not_query_or_offer_hub_updates(self, monkeypatch):
+        monkeypatch.setattr(updates, "installed_models", lambda: [fake_model(HfSource("u/pinned", revision="fixed"))])
+        calls = []
+        rows = updates.check_models(remote=lambda repo: calls.append(repo) or {})
+        assert calls == [] and rows[0]["state"] == "current"
+
     def test_a_model_is_an_update_when_a_file_it_has_changed(self, hub, monkeypatch):
         make_snapshot(hub, "u/m", "r1", {"w.safetensors": ("aaa", b"x" * 10)})
         make_snapshot(hub, "u/t", "r1", {"t.safetensors": ("ttt", b"y")})
@@ -133,6 +139,13 @@ class TestModels:
 
 
 class TestPrune:
+    def test_pinned_snapshot_is_not_pruned_when_main_moves(self, hub, monkeypatch):
+        root = make_snapshot(hub, "u/pinned", "fixed", {"w.safetensors": ("w1", b"old")}, main=False)
+        make_snapshot(hub, "u/pinned", "new", {"w.safetensors": ("w2", b"new")}, main=True)
+        monkeypatch.setattr(updates, "all_specs", lambda: [fake_model(HfSource("u/pinned", revision="fixed"))])
+        assert updates.prune_replaced("u/pinned") == 0
+        assert (root / "snapshots" / "fixed" / "w.safetensors").read_bytes() == b"old"
+
     def test_replaced_files_of_old_revisions_are_removed_and_the_others_kept(self, hub):
         root = make_snapshot(hub, "u/m", "old", {"w.safetensors": ("w1", b"x" * 100), "extra.safetensors": ("e1", b"e" * 7),
                                                   "same.json": ("s1", b"{}")}, main=False)
@@ -239,7 +252,7 @@ class TestEngines:
         assert (row["id"], row["state"], row["target"]) == ("audiocpp", "update", audiocpp.PINNED_TAG)
 
     def python_pack(self, tmp_path, monkeypatch, pack_hash):
-        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path})
+        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path, "mesh": tmp_path})
         folder = tmp_path / "qwen3"
         python = audio_packs.venv_python("qwen3")
         python.parent.mkdir(parents=True)
@@ -256,7 +269,7 @@ class TestEngines:
         assert next(r for r in updates._pack_rows() if r["id"] == "qwen3")["state"] == "current"
 
     def test_a_pack_that_is_not_installed_is_not_listed(self, tmp_path, monkeypatch):
-        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path})
+        monkeypatch.setattr(audio_packs, "FAMILY_DIRS", {"audio": tmp_path, "video": tmp_path, "runtime": tmp_path, "mesh": tmp_path})
         assert updates._pack_rows() == []
 
     def test_engines_serve_the_kinds_of_their_models(self):

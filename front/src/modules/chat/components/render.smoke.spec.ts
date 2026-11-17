@@ -82,7 +82,7 @@ const answer = message('a1', {
 const primeConversation = (data: ChatConversation) => (client: QueryClient) => client.setQueryData(chatKeys.conversation('c1'), data)
 
 beforeEach(() => {
-  useModelSelectionStore.setState({ selected: { image: null, audio: null, video: null, llm: null, diagram: null, ocr: null } })
+  useModelSelectionStore.setState({ selected: { mesh: null, image: null, audio: null, video: null, llm: null, diagram: null, ocr: null } })
   useChatDraftStore.setState({ texts: {}, attachments: {}, pending: null, seen: {} })
   useChatDefaultsStore.setState({ settings: BASE_SETTINGS })
   useChatLiveStore.setState({ streams: {}, status: null })

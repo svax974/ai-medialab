@@ -47,6 +47,7 @@ export function emptyKey(media: AssetMedia, favorites: boolean, search: string):
 
 /** Number of masonry columns by breakpoint (MUI `xs`, `sm`, `md`, `lg`, `xl`; the former Tailwind `md`, `xl` and `2xl` map to `md`, `lg` and `xl`) of each gallery; the video gallery is wider per tile. */
 export const GALLERY_COLUMNS: Record<AssetMedia, { xs: number; sm: number; md: number; lg: number; xl: number }> = {
+  mesh: { xs: 1, sm: 2, md: 2, lg: 3, xl: 4 },
   image: { xs: 2, sm: 2, md: 3, lg: 4, xl: 5 },
   video: { xs: 1, sm: 2, md: 2, lg: 3, xl: 4 },
   audio: { xs: 1, sm: 1, md: 1, lg: 1, xl: 1 },

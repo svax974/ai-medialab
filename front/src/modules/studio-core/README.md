@@ -153,3 +153,5 @@ One file at a time, from `front/`, under the memory guard:
 
 `lib/{messageState,studioEvents,engineState,viewerDetails,paramHelp,draftActions,scroll,format,assetDrag}.spec.ts`, `services/services.spec.ts`, `state/stores.spec.ts` (live, queue, draft),
 `locales/locales.spec.ts`; the server-side rendering of the screen is checked by `image-studio/components/render.smoke.spec.ts` (no DOM: see the README of `image-studio`).
+
+The `mesh` conversation adapter renders GLB results and uses the shared queue and message actions; its composer and renderer are documented in `mesh-studio/README.md`.

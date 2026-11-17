@@ -15,7 +15,7 @@ describe('studio-core messages follow the interface language', () => {
     expect(() => parseCreateMessage(null)).toThrow('Corps JSON attendu.');
     resetUiLanguage('en');
     expect(() => parseCreateMessage(null)).toThrow('JSON body expected.');
-    expect(() => parseCreateMessage({ prompt: '' })).toThrow('prompt: text of 1 to 8000 characters expected.');
+    expect(() => parseCreateMessage({ prompt: 'x'.repeat(8001), model_id: 'm' })).toThrow('prompt: text of at most 8000 characters expected.');
   });
 
   it('recognises a default title written in either language', () => {

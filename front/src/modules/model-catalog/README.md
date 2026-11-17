@@ -138,3 +138,5 @@ the window (portal) is not rendered in tests. `locales.spec.ts` checks the fr/en
 that every `models.*` key written in the sources exists.
 
 The transcription studio reuses audio models with `audio.task === "stt"`; `modelKindOfMode("transcription")` opens the audio catalogue. No duplicate model kind or engine installation workflow.
+
+The `mesh` kind has a dedicated catalog tab and model settings group. Compatibility, input requirements and installation state are supplied by the engine catalog; arbitrary Hub search and trending are not offered for this kind.

@@ -8,13 +8,14 @@ import { useParams } from 'react-router-dom'
 import { Box, CircularProgress } from '@mui/material'
 import { audioStudioAdapter } from '@/modules/audio-studio'
 import { diagramStudioAdapter } from '@/modules/diagram-studio'
+import { meshStudioAdapter } from '@/modules/mesh-studio'
 import { imageStudioAdapter } from '@/modules/image-studio'
 import { videoStudioAdapter } from '@/modules/video-studio'
 import { ConversationView, type ModeAdapters } from '@/modules/studio-core'
 import { useConversation } from '../hooks/useConversations'
 
 /** Adapters of the creation modes: image (H4.3), audio (H4.5), video (H4.6), diagrams. The chat draws its own thread (`modules/chat`). */
-const ADAPTERS: ModeAdapters = { image: imageStudioAdapter, audio: audioStudioAdapter, video: videoStudioAdapter, diagram: diagramStudioAdapter }
+const ADAPTERS: ModeAdapters = { mesh: meshStudioAdapter, image: imageStudioAdapter, audio: audioStudioAdapter, video: videoStudioAdapter, diagram: diagramStudioAdapter }
 
 /** The chat thread is code-split: it brings the Markdown renderer. */
 const ChatConversationView = lazy(() => import('@/modules/chat/components/ChatConversationView').then((m) => ({ default: m.ChatConversationView })))

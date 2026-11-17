@@ -14,6 +14,7 @@ import { ConversationPage } from './pages/ConversationPage'
 import { HomePage } from './pages/HomePage'
 import { OcrHomePage } from './pages/OcrHomePage'
 import { TranscriptionHomePage } from './pages/TranscriptionHomePage'
+import { MeshHome } from '@/modules/mesh-studio'
 import { VideoHomePage } from './pages/VideoHomePage'
 import { VideoLibraryPage } from './pages/VideoLibraryPage'
 import { VoicesPage } from './pages/VoicesPage'
@@ -26,6 +27,7 @@ function pageOf(route: StudioRouteDef) {
   if (route.name === 'audio-home') return <AudioHomePage />
   if (route.name === 'voices') return <VoicesPage />
   if (route.name === 'audio-library') return <AudioLibraryPage />
+  if (route.name === 'mesh-home') return <MeshHome />
   if (route.name === 'video-home') return <VideoHomePage />
   if (route.name === 'video-library') return <VideoLibraryPage />
   if (route.name === 'diagram-home') return <DiagramHomePage />

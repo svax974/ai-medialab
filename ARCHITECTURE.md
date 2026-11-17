@@ -18,12 +18,14 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `ARCHITECTURE.md` (this file) | Processes, Nest ↔ engine contract, event flow, data and migrations, desktop, resting memory, engine plan |
 | `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `ocr`, `transcription`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | TypeORM migrations of Nest's database: usage, generation, verification |
-| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `chat`, `diagram-studio`, `ocr-studio`, `transcription`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
+| `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `mesh-studio`, `chat`, `diagram-studio`, `ocr-studio`, `transcription`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |
 | `desktop/README.md` | Desktop shell (Tauri): configuration, launch, packaging, signing, CI |
 | `engine/openapi.json` | Contract of the engine's internal API (**generated**: `scripts-local/export_engine_openapi.py`) |
 | `back/tools/engine-types/README.md` | Isolated OpenAPI generator workspace and its TypeScript peer dependency |
 | `docs/plans/2026-11-16-transcription-design.md` | Validated design of the local video/audio transcription studio |
+| `docs/plans/2026-11-17-mesh-generation-design.md` | Approved scope, contracts and implementation workstreams for the local 3D studio |
+| `docs/components/mesh-generation.md` | Official 3D model/runtime sources, licence and platform review requirements |
 | `docs/components/README.md` | Registry of the third-party components integrated and the review procedure; sheets `audiocpp.md`, `llamacpp.md` (chat engine: flags, installation, licences), `pytorch-gpu.md`, `ffmpeg.md`, `yt-dlp.md` (FFmpeg build and licence), `audiocpp-tests-manuels.md` |
 | `THIRD_PARTY_LICENSES.md` | Licences of the components and the models |
 | `front/.libs/apptemplate/CLAUDE.md`, `front/.libs/apptemplate/README.md` | Template conventions and launcher (outside this repository: submodules) |
@@ -49,7 +51,7 @@ browser / Tauri window
 |---|---|---|---|
 | **Engine** (`engine/`, FastAPI) | Everything that runs models: machine detection, catalogue, downloads, engine installers, planning and execution of generations (image, audio, video), thumbnails and media probing | `127.0.0.1` only, token required | Media files (`uploads/`, `outputs/`, `thumbs/`, `previews/`), the model cache, `engine-state.json`, the installed engines (`engines/`) |
 | **Nest** (`back/`, vx-public) | The application: conversations, messages, assets, voices, settings, generation queue, import of the former database, events to the browser | `NODE_PORT` (3000), `LOCAL_TRUST` | The `app.db` database and all application data |
-| **Front** (`front/`, React + MUI) | The interface: image/audio/video/chat/diagram/OCR/transcription studios, library, models, settings | Vite (5173) in development; served by Nest on desktop | The display state (TanStack Query cache, Zustand) |
+| **Front** (`front/`, React + MUI) | The interface: image/audio/video/3D/chat/diagram/OCR/transcription studios, library, models, settings | Vite (5173) in development; served by Nest on desktop | The display state (TanStack Query cache, Zustand) |
 | **Shell** (`desktop/`, Tauri 2) | Starts and supervises the engine then Nest, opens the window, manages the data folder | none | The lifecycle of both processes, the shared token, the first-launch secrets |
 
 Ownership rules that structure everything else:
@@ -90,6 +92,15 @@ refuses at compile time a route, a parameter or a body absent from the schema.
 - **Errors**: a non-2xx response becomes an `EngineError`, an unreachable engine an `EngineUnavailableError` (502 on the Nest route);
   Nest's health probe switches to `degraded` (HTTP 200) when the engine does not answer: the interface stays usable, only
   generations no longer are.
+
+## 3D generation
+
+The `mesh` model kind and conversation mode reuse the media generation queue and assets (`media="mesh"`).
+The engine exports self-contained GLB files, validates their container and external-resource references before
+publishing an output, and applies the existing worker memory budget and emergency stop. Nest keeps conversation
+history and relays files; the browser validates a GLB again before rendering a local blob in its viewer. Runtime
+requirements differ by model and platform; source ownership and review are in `docs/components/mesh-generation.md`.
+Private generation does not accept this mode. Frontend contract: `front/src/modules/mesh-studio/README.md`.
 
 ## Event flow
 

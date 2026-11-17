@@ -6,7 +6,7 @@
 import type { ModelInfo, ModelKind } from '../types'
 
 /** Categories of the management list, in display order. */
-export const MANAGE_KINDS: readonly ModelKind[] = ['llm', 'audio', 'image', 'video']
+export const MANAGE_KINDS: readonly ModelKind[] = ['llm', 'audio', 'image', 'video', 'mesh']
 
 export interface ModelGroup {
   kind: ModelKind

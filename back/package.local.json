@@ -1,6 +1,6 @@
 {
   "name": "ai-medialab-back",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "license": "MIT",
   "scripts": {
     "engine:types": "npm run generate --workspace @ai-medialab/engine-types",
@@ -10,7 +10,9 @@
   "dependencies": {
     "better-sqlite3": "^12.11.1"
   },
-  "workspaces": ["tools/engine-types"],
+  "workspaces": [
+    "tools/engine-types"
+  ],
   "devDependencies": {
     "@ai-medialab/engine-types": "*"
   },

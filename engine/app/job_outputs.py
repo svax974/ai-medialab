@@ -38,6 +38,12 @@ def describe_output(plan: dict[str, Any], evt: dict[str, Any]) -> dict[str, Any]
             "model_id": plan["model_id"], "prompt": plan["prompt"], "steps": params["steps"],
             "guidance": params.get("guidance"), "strength": params.get("strength"), "seconds": evt.get("seconds"),
         }
+    elif media == "mesh":
+        from .mesh_validation import validate_glb
+
+        validate_glb(path)
+        out["meta"] = {"model_id": plan["model_id"], "prompt": plan["prompt"],
+                       "task": params.get("task"), "format": "glb", "seconds": evt.get("seconds")}
     elif media == "video":
         out["thumb"] = video_thumb(path, asset_id, thumbs)
         out.update(width=evt.get("width"), height=evt.get("height"), duration=evt.get("duration"))

@@ -283,3 +283,25 @@ class TestCatalog:
         assert message and "PyTorch" in message and "Modèles" in message
         monkeypatch.setattr("app.jobs._runtime_has", lambda backend: True)
         assert "PyTorch" not in (jobs._availability_error(mlx_id) or "")
+
+
+def test_mesh_native_builds_use_staged_sources_and_bounded_jobs(tmp_path, monkeypatch):
+    pack = audio_packs.PackDef(id="fixture", name="fixture", family="mesh", python="3.10",
+        requirements=("wheel",), imports=("builtins",), size_mb=1,
+        archives=(audio_packs.PackArchive("https://github.com/example/project/archive/0123456789012345678901234567890123456789.tar.gz", ("native",)),),
+        local_packages=("native",), build_requirements=("fixed-build-source",))
+    monkeypatch.setitem(audio_packs.PACKS, "fixture", pack)
+    monkeypatch.setitem(audio_packs.FAMILY_DIRS, "mesh", tmp_path)
+    monkeypatch.setattr(audio_packs, "find_uv", lambda: "/usr/bin/uv")
+    monkeypatch.setattr(audio_packs, "bus", types.SimpleNamespace(publish=lambda *a, **k: None))
+    installer = audio_packs.PackInstaller()
+    commands = []
+    monkeypatch.setattr(installer, "_exec", lambda cmd, message, env=None: commands.append((cmd, env)))
+    monkeypatch.setattr(installer, "_fetch_archive", lambda archive, dest: (dest / "native").mkdir(parents=True))
+    installer._run(pack, [])
+    builds = [(cmd, env) for cmd, env in commands if "--no-build-isolation" in cmd]
+    assert len(builds) == 2
+    assert builds[0][0][-1] == "fixed-build-source"
+    assert builds[1][0][-1] == str(tmp_path / "fixture" / "src" / "native")
+    assert all(env["MAX_JOBS"] == "2" and env["CMAKE_BUILD_PARALLEL_LEVEL"] == "2" for _, env in builds)
+    assert installer.state["state"] == "done"

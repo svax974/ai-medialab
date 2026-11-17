@@ -12,6 +12,7 @@ import { STUDIO_MODES, type StudioMode } from '../types'
 import { ModeIcon } from './modeIcons'
 
 const MODE_LABELS: Record<StudioMode, string> = {
+  mesh: 'studio.mode.mesh',
   image: 'studio.mode.image',
   audio: 'studio.mode.audio',
   video: 'studio.mode.video',

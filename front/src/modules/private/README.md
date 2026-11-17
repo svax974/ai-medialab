@@ -90,3 +90,5 @@ Deleting a conversation from the list calls `forgetPrivateChat(id)` (`studio-she
 stays on the page, that the chat's web search stays off until it is turned on, and that the text of a voice synthesis goes through the command line of the computation program.
 
 Persistent transcription creation/edit/retry is disabled during a private session, in the transport and on the server. Existing transcripts remain readable and their jobs can be cancelled; no private transcription store is created (`transcription` module README).
+
+The mesh composer and retries are disabled during private sessions. Its in-memory draft is erased at private transitions.

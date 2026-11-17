@@ -7,6 +7,9 @@ Installers of the inference engines, **delegated to the Python engine**: audio a
 (same URL and same shape as the former API); the installation runs in the engine and its progress is **pushed** by events.
 Application module. Task H4.2.
 
+The component management list also includes the isolated 3D packs (TripoSR, Stable Fast 3D, TripoSG,
+TRELLIS and TRELLIS.2), with the same installation and dependent-model removal contracts.
+
 ## Architecture
 
 | Type | File | Description |

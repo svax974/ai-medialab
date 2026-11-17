@@ -8,7 +8,7 @@
   "studioCore.error.messageNotFound": "Message not found.",
   "studioCore.error.objectExpected": "{0}: object expected.",
   "studioCore.error.promptEmpty": "The prompt is empty.",
-  "studioCore.error.promptLength": "prompt: text of 1 to {0} characters expected.",
+  "studioCore.error.promptLength": "prompt: text of at most {0} characters expected.",
   "studioCore.error.referenceIdsList": "reference_ids: list of texts expected.",
   "studioCore.error.referenceImageNotFound": "Reference image not found: {0}",
   "studioCore.error.seedInteger": "seed: integer expected.",

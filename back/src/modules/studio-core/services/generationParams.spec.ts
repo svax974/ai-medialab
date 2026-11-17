@@ -18,7 +18,7 @@ describe('parseCreateMessage', () => {
   });
 
   it.each([
-    [null], [[]], [{ model_id: 'm' }], [{ prompt: '', model_id: 'm' }], [{ prompt: 'x'.repeat(8001), model_id: 'm' }],
+    [null], [[]], [{ model_id: 'm' }], [{ prompt: 'x'.repeat(8001), model_id: 'm' }],
     [{ prompt: 'x' }], [{ prompt: 'x', model_id: 'm', count: 0 }], [{ prompt: 'x', model_id: 'm', count: 5 }],
     [{ prompt: 'x', model_id: 'm', count: 1.5 }], [{ prompt: 'x', model_id: 'm', params: [] }],
     [{ prompt: 'x', model_id: 'm', reference_ids: 'a' }], [{ prompt: 'x', model_id: 'm', reference_ids: [1] }],

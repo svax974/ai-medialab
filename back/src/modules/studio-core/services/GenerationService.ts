@@ -7,6 +7,7 @@ import { tr } from 'src/modules/i18n';
 import { ConflictException, Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { EngineClient, engineErrorToHttp } from 'src/modules/engine';
 import { AssetFileService, AssetService, StudioEvents, newId, nowSeconds } from 'src/modules/media-library';
+import { vtrace } from 'src/modules_shared/common/validation';
 import { MessageDto } from '../dto/MessageDto';
 import type { CreateGenerationInput, EngineJobCheck, RetryInput } from '../types/jobTypes';
 import { isDefaultConversationTitle } from '../types/studioTypes';
@@ -41,12 +42,12 @@ export class GenerationService {
    */
   async create(input: CreateGenerationInput): Promise<CreatedGeneration> {
     const prompt = input.prompt.trim();
-    if (!prompt) throw new UnprocessableEntityException(tr('studioCore.error.promptEmpty'));
     if (input.conversationId && !(await this.conversations.getSummary(input.conversationId))) {
       throw new NotFoundException(tr('studioCore.error.conversationNotFound'));
     }
     const media = await this.referenceMedia(input.referenceIds);
-    const check = await this.check(input.modelId, media);
+    const check = await this.check(input.modelId, media, prompt);
+    if (!prompt && check.kind !== 'mesh') throw new UnprocessableEntityException(tr('studioCore.error.promptEmpty'));
     const count = Math.min(input.count, check.max_count);
     const params: Record<string, unknown> = { ...check.default_params, ...input.params, count };
     params.seeds = seedsFor(params, count);
@@ -63,6 +64,7 @@ export class GenerationService {
     });
     await this.conversations.touch(conversationId);
     this.queue.enqueue({ id: assistant.id, conversationId }, check.kind);
+    if (check.kind === 'mesh') vtrace('studio.mesh_queued', 'ok', { id: assistant.id });
     await this.publishConversation(conversationId);
     return { conversation_id: conversationId, user_message: user, assistant_message: assistant };
   }
@@ -79,7 +81,10 @@ export class GenerationService {
     params.seeds = input.keepSeed ? (original.params.seeds ?? null) : seedsFor(params, count);
     const modelId = input.modelId ?? original.model_id ?? '';
     const media = original.parent_id ? (await this.messages.referencesOf(original.parent_id)).map((a) => a.media) : [];
-    const check = await this.check(modelId, media);
+    const check = await this.check(modelId, media, original.prompt);
+    if (!original.prompt.trim() && check.kind !== 'mesh') throw new UnprocessableEntityException(tr('studioCore.error.promptEmpty'));
+    params.count = Math.min(count, check.max_count);
+    if (Array.isArray(params.seeds)) params.seeds = params.seeds.slice(0, params.count as number);
     const created = await this.messages.create({
       id: newId(), conversationId: original.conversation_id, parentId: original.parent_id, role: 'assistant',
       prompt: original.prompt, modelId, params, status: 'queued',
@@ -147,10 +152,10 @@ export class GenerationService {
     return media;
   }
 
-  private async check(modelId: string, referenceMedia: string[]): Promise<EngineJobCheck> {
+  private async check(modelId: string, referenceMedia: string[], prompt: string): Promise<EngineJobCheck> {
     try {
       return await this.engine.post('/engine/v1/jobs/check', {
-        body: { model_id: modelId, reference_media: referenceMedia as ('image' | 'audio' | 'video')[] },
+        body: { model_id: modelId, reference_media: referenceMedia as ('image' | 'audio' | 'video')[], prompt },
       });
     } catch (error) {
       throw engineErrorToHttp(error);

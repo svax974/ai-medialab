@@ -26,6 +26,7 @@ const META_KEYS: Record<ConversationMode, string> = {
   video: 'studio.conversation.meta.video',
   chat: 'studio.conversation.meta.chat',
   diagram: 'studio.conversation.meta.diagram',
+  mesh: 'studio.conversation.meta.mesh',
 }
 const DELETE_MEDIA_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.delete.media.image',
@@ -33,6 +34,7 @@ const DELETE_MEDIA_KEYS: Record<ConversationMode, string> = {
   video: 'studio.conversation.delete.media.video',
   chat: 'studio.conversation.delete.media.chat',
   diagram: 'studio.conversation.delete.media.diagram',
+  mesh: 'studio.conversation.delete.media.mesh',
 }
 const DELETE_MESSAGE_KEYS: Record<ConversationMode, string> = {
   image: 'studio.conversation.delete.message',
@@ -40,6 +42,7 @@ const DELETE_MESSAGE_KEYS: Record<ConversationMode, string> = {
   video: 'studio.conversation.delete.message',
   chat: 'studio.conversation.delete.message.chat',
   diagram: 'studio.conversation.delete.message',
+  mesh: 'studio.conversation.delete.message',
 }
 
 /** Thumbnail: the cover, else the mode's icon on the tray gradient; a breathing dot while a job is running. */
@@ -57,7 +60,7 @@ function Thumbnail({ conversation }: { conversation: ConversationSummary }) {
         boxShadow: 'inset 0 0 0 1px var(--line)',
       }}
     >
-      {conversation.cover ? (
+      {conversation.cover && conversation.mode !== 'mesh' ? (
         <Box component="img" src={resolveMediaUrl(conversation.cover.thumb_url)} alt="" loading="lazy" sx={{ width: '100%', height: '100%', objectFit: 'cover' }} />
       ) : (
         <Box className="cn-tray" sx={{ display: 'grid', placeItems: 'center', width: '100%', height: '100%', color: 'color-mix(in oklab, var(--safe) 80%, transparent)' }}>

@@ -4,7 +4,7 @@
  */
 
 /** What a model produces: pictures, speech/transcription, clips, or text (chat, run by llama.cpp). */
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram' | 'ocr'
+export type ModelKind = 'image' | 'audio' | 'video' | 'mesh' | 'llm' | 'diagram' | 'ocr'
 export type InstallState = 'installed' | 'partial' | 'missing'
 export type ReferenceMode = 'none' | 'init' | 'multi' | 'face'
 
@@ -138,6 +138,9 @@ export interface ModelInfo {
   hf_repo: string | null
   download_size_gb: number | null
   license: string
+  license_warning?: string
+  /** Gated Hugging Face repositories whose licenses must be accepted. */
+  gated_repos?: string[]
   /** Hugging Face files that need an account: licence accepted on the hub and a token saved in the settings. */
   gated: boolean
   memory_hint: string
@@ -201,6 +204,7 @@ export interface ModelCatalog extends KindSummary {
   audio: KindSummary
   video: KindSummary
   llm?: KindSummary
+  mesh?: KindSummary
   diagram?: KindSummary
   ocr?: KindSummary
 }

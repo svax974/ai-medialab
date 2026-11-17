@@ -68,6 +68,14 @@ describe('private generation: nothing is kept, nothing is told', () => {
     await emit('job.done', { job_id: jobId, outputs: 1 });
   }
 
+  it('refuses a mesh model before storing a private generation', async () => {
+    p.session.start();
+    p.engine.on('POST /engine/v1/jobs/check', () => ({ kind: 'mesh', name: '3D', max_count: 1, default_params: {} }));
+    await expect(p.generations.create({ conversationId: null, prompt: 'objet', modelId: 'mesh', params: {}, referenceIds: [], count: 1 })).rejects.toMatchObject({ status: 422 });
+    expect(p.engine.calls.filter((c) => c.path === '/engine/v1/jobs')).toEqual([]);
+    expect(await rows()).toEqual({ conversations: 0, messages: 0, message_refs: 0, assets: 0 });
+  });
+
   it('a whole private generation leaves no row, no file outside the session and no word in any log or event', async () => {
     const before = await rows();
     p.session.start();

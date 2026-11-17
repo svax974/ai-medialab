@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "id": "studio.mesh_output",
+      "module": "studio-core",
+      "title": "3D output registration",
+      "description": "A mesh generation registers a GLB asset for its message.",
+      "scenario": "A 3D generation completes with a GLB output.",
+      "expect": {
+        "traces": [
+          "studio.mesh_output"
+        ],
+        "outcome": "ok"
+      },
+      "mustNotHappen": [
+        "studio.mesh_output:violation"
+      ],
+      "severity": "medium",
+      "since": "2026-11-17",
+      "fields": {
+        "id": "id"
+      }
+    },
+    {
+      "id": "studio.mesh_queued",
+      "module": "studio-core",
+      "title": "3D generation queued",
+      "description": "A validated 3D request is queued.",
+      "scenario": "A 3D generation request is accepted.",
+      "expect": {
+        "traces": [
+          "studio.mesh_queued"
+        ],
+        "outcome": "ok"
+      },
+      "severity": "medium",
+      "since": "2026-11-17",
+      "fields": {
+        "id": "id"
+      }
+    }
+  ]
+}

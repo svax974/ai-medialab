@@ -21,10 +21,10 @@ import type { ModelInfo, ModelKind } from '../types'
 import { HubSearch } from './HubSearch'
 import { ModelCard } from './ModelCard'
 
-const KINDS: ModelKind[] = ['image', 'audio', 'video', 'llm', 'diagram', 'ocr']
+const KINDS: ModelKind[] = ['image', 'audio', 'video', 'llm', 'diagram', 'ocr', 'mesh']
 const HOME_PATH: Record<ModelKind, string> = {
   image: studioPaths.home, audio: studioPaths.audioHome, video: studioPaths.videoHome, llm: studioPaths.chatHome,
-  diagram: studioPaths.diagramHome, ocr: studioPaths.ocrHome,
+  mesh: studioPaths.meshHome, diagram: studioPaths.diagramHome, ocr: studioPaths.ocrHome,
 }
 
 interface ModelsDialogProps {

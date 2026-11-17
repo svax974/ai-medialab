@@ -1260,7 +1260,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "image" | "audio" | "video";
+            kind: "image" | "audio" | "video" | "mesh";
             /**
              * Max Count
              * @description Most results one generation may ask for.
@@ -1273,6 +1273,8 @@ export interface components {
         JobCheckBody: {
             /** Model Id */
             model_id: string;
+            /** Prompt */
+            prompt?: string | null;
             /**
              * Reference Media
              * @description Media of each attached asset, in order.
@@ -1303,7 +1305,7 @@ export interface components {
              * Media
              * @enum {string}
              */
-            media: "image" | "audio" | "video";
+            media: "image" | "audio" | "video" | "mesh";
             /** Meta */
             meta?: {
                 [key: string]: unknown;
@@ -1355,7 +1357,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "image" | "audio" | "video";
+            kind: "image" | "audio" | "video" | "mesh";
             /** Model Id */
             model_id: string;
             /**

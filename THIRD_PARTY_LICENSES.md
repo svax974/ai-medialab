@@ -18,6 +18,9 @@ which the application displays in the model selector. Check it before any commer
 | pocket-tts | MIT (code) | see model below |
 | qwen-tts | Apache-2.0 | "qwen3" audio pack |
 | faster-whisper | MIT | transcription of reference voices |
+| TripoSR runtime, rembg | MIT | isolated image-to-3D runtime and background removal; source pins and checkpoint details: `docs/components/mesh-generation.md` |
+| torchmcubes | MPL-2.0 | TripoSR native mesh extraction, installed on demand |
+| Stable Fast 3D runtime and native extensions | Stability AI Community licence | installed on demand; gated weights and platform prerequisites: `docs/components/mesh-generation.md` |
 
 ## Embedded Python engine (`engine/pyproject.toml`)
 
@@ -47,6 +50,7 @@ installed and, for the server, packaged into the desktop application).
 | Component | Licence | Role in ai-medialab |
 |---|---|---|
 | React, React DOM | MIT | interface |
+| `@google/model-viewer` | Apache-2.0 | Interactive self-contained GLB preview, loaded on demand by `mesh-studio` |
 | **MUI** (`@mui/material`, `@mui/icons-material`) | MIT | components and the "darkroom" theme |
 | **Emotion** (`@emotion/react`, `@emotion/styled`) | MIT | style engine of MUI |
 | **TanStack Query** | MIT | data cache fed by the event stream |
@@ -86,7 +90,7 @@ Result on the macOS bundle: 36 Python packages and 525 npm packages, all permiss
 | Fontsource fonts, KaTeX fonts | OFL-1.1 | embedded; the licence texts accompany the packages |
 
 **Not redistributed** (installed on the user's machine on demand, so outside the installers): PyTorch, MLX, diffusers, the audio packs,
-**eSpeak-ng (GPL-3.0)**, the PyAV wheel with its **GPL FFmpeg**, llama.cpp, audio.cpp and every model. The app never links to them
+**eSpeak-ng (GPL-3.0)**, the mesh packs and their auxiliary checkpoint, the PyAV wheel with its **GPL FFmpeg**, llama.cpp, audio.cpp and every model. The app never links to them
 at build time; the user's machine downloads them from their own publishers.
 
 The Windows and Linux installers are assembled by the same chain; their npm and Python sets differ only by platform binaries.
@@ -96,6 +100,8 @@ The scan runs again on each of them in CI and fails on a strong copyleft licence
 
 | Model | Licence |
 |---|---|
+| Shap-E, TripoSR, TripoSG, TRELLIS, TRELLIS.2 (3D model candidates) | MIT; official sources and runtime review in `docs/components/mesh-generation.md` |
+| Stable Fast 3D (3D model candidate) | Stability AI Community licence; gated Hugging Face access, commercial-use conditions; see official source in `docs/components/mesh-generation.md` |
 | Kokoro 82M | Apache-2.0 |
 | Pocket TTS (Kyutai) | CC-BY-4.0 (attribution required) |
 | Qwen3-TTS (0.6B / 1.7B), including the GGUF conversions of audio.cpp | Apache-2.0 |

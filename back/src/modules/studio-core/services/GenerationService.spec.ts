@@ -68,7 +68,7 @@ describe('GenerationService', () => {
       await s.assets.create({ id: 'r2', kind: 'upload', filename: 'r2.mp4', media: 'video' });
       await s.generations.create(input({ referenceIds: ['r1', 'r2'] }));
       const check = s.engine.calls.find((c) => c.path === '/engine/v1/jobs/check');
-      expect(check?.options?.body).toEqual({ model_id: 'demo', reference_media: ['image', 'video'] });
+      expect(check?.options?.body).toEqual({ model_id: 'demo', reference_media: ['image', 'video'], prompt: 'Un chat roux' });
     });
 
     it('links the references to the prompt, in order, and gives orphan uploads to the conversation', async () => {

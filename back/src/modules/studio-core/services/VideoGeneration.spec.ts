@@ -48,7 +48,7 @@ describe('video generations', () => {
       conversationId: null, prompt: 'un chat qui court', modelId: 'wan', params: { seed: 40, seconds: 3, aspect: '9:16', resolution: '720p', fast_decode: false }, referenceIds: await attach(), count: 4,
     });
     const check = s.engine.calls.find((c) => c.path === '/engine/v1/jobs/check');
-    expect(check?.options?.body).toEqual({ model_id: 'wan', reference_media: ['image', 'image', 'video'] });
+    expect(check?.options?.body).toEqual({ model_id: 'wan', reference_media: ['image', 'image', 'video'], prompt: 'un chat qui court' });
     expect((await s.conversations.getSummary(result.conversation_id))?.mode).toBe('video');
     // The model's defaults, then the composer's values; one seed per clip, counting up from the fixed one.
     expect(result.assistant_message.params).toMatchObject({ steps: 40, seconds: 3, aspect: '9:16', resolution: '720p', fast_decode: false, count: 2, seeds: [40, 41] });
@@ -113,7 +113,7 @@ describe('video generations', () => {
     const same = await s.generations.retry(created.assistant_message.id, { keepSeed: true, forceMemory: false });
     expect(same.params).toMatchObject({ seeds: [7, 8] });
     const check = s.engine.calls.filter((c) => c.path === '/engine/v1/jobs/check').at(-1);
-    expect(check?.options?.body).toEqual({ model_id: 'wan', reference_media: ['image', 'image', 'video'] });
+    expect(check?.options?.body).toEqual({ model_id: 'wan', reference_media: ['image', 'image', 'video'], prompt: 'p' });
     const fresh = await s.generations.retry(created.assistant_message.id, { keepSeed: false, forceMemory: false });
     expect((fresh.params.seeds as number[]).length).toBe(2);
     expect(fresh.params.seeds).not.toEqual([7, 8]);

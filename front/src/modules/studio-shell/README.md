@@ -174,3 +174,5 @@ One file at a time, from `front/`, under memory guard:
 - Replace a page: `routes.tsx` (`pageOf`); a mode adds its adapter in `pages/ConversationPage.tsx`. Add a route: `STUDIO_ROUTES` (+ title key in the locales).
 - New event topics: `ENGINE_TOPICS` and `effectOfEvent` (`lib/eventEffects.ts`, with test).
 - Client state: slices added to `useStudioStore`.
+
+The 3D mode (`/3d`, `mesh`) has its own composer and conversation adapter in `mesh-studio`; history uses the same conversation list and event stream as other generation modes.

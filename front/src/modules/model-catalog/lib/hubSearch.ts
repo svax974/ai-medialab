@@ -49,6 +49,7 @@ export const sharedDownloadGb = (o: Pick<HubOption, 'size_gb' | 'download_gb'>):
   Math.max(0, Math.round((optionDownloadGb(o) - o.size_gb) * 100) / 100)
 
 export const HUB_PLACEHOLDER_KEY: Record<ModelKind, string> = {
+  mesh: 'models.hub.placeholder.image',
   image: 'models.hub.placeholder.image',
   audio: 'models.hub.placeholder.audio',
   video: 'models.hub.placeholder.video',
@@ -59,6 +60,7 @@ export const HUB_PLACEHOLDER_KEY: Record<ModelKind, string> = {
   ocr: 'models.hub.placeholder.ocr',
 }
 export const HUB_HELP_KEY: Record<ModelKind, string> = {
+  mesh: 'models.hub.help.image',
   image: 'models.hub.help.image',
   audio: 'models.hub.help.audio',
   video: 'models.hub.help.video',

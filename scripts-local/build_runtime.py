@@ -11,7 +11,7 @@ the resources folder by `scripts/desktop/build-desktop.mjs` (`packaging.extraRes
 Node are assembled by that script, not here. Output layout (what engine/app/config.py and the sidecar command expect;
 `ROOT_DIR` of the engine is the folder that holds `engine/` and `engines/`):
 
-    <out>/engine/app/...                 engine code (+ audio_runtime/, video_runtime/)
+    <out>/engine/app/...                 engine code (+ audio_runtime/, video_runtime/, mesh_runtime/)
     <out>/engine-runtime/python/...      python-build-standalone interpreter (relocatable)
     <out>/engine-runtime/site-packages/...  profile dependencies (uv pip install --target)
     <out>/engines/sdcpp/<variant>/...    stable-diffusion.cpp binaries (fetch_sdcpp.py)
@@ -107,7 +107,7 @@ def py_rel(target_os: str) -> str:
 
 def copy_backend(out: Path) -> None:
     log("Copie du moteur…")
-    # The whole engine/ folder: app/ plus the audio and video runtimes that config.py resolves next to it.
+    # The whole engine/ folder includes the isolated audio, video and mesh worker sources.
     shutil.copytree(
         ROOT / "engine",
         out / "engine",

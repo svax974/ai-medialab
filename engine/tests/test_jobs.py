@@ -538,3 +538,21 @@ class TestVideoPlans:
             check_generation("kiwi-edit-5b", ["image"])
         ok = check_generation("kiwi-edit-5b", ["image", "video"])
         assert ok["kind"] == "video" and ok["max_count"] == 2 and "seeds" not in ok["default_params"]
+
+
+def test_mesh_cancellation_discards_worker_output_after_cancel():
+    manager, job = JobManager(), make_job()
+
+    async def scenario():
+        manager.jobs[job.job_id] = job
+        manager._cancel_requested.add(job.job_id)
+        worker = type("LateWorker", (), {"events": asyncio.Queue()})()
+        manager.worker = worker
+        worker.events.put_nowait({"type": "mesh", "index": 0, "path": "/unused.glb"})
+        worker.events.put_nowait({"type": "done"})
+        await manager._consume(job, {"kind": "mesh", "items": [{}]})
+
+    asyncio.run(scenario())
+    assert job.state == "cancelled"
+    assert "job.output" not in names(job)
+    assert names(job)[-1] == "job.cancelled"

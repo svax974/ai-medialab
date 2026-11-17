@@ -207,3 +207,5 @@ npx jest --runInBand src/modules/studio-core/e2e/studioEngine.e2e.spec.ts       
   queues, cancellation while queued and while running, retry, deletion (files removed by the engine), sending a reference.
   Skipped if `engine/.venv` is absent. Measured peak: 0.75 GB (Jest, engine and worker).
 - Parity of the public shapes with the engine: also `legacy-import/publicShapes.spec.ts`.
+
+Mesh generations use the same messages and queue with conversation mode `mesh`. The model check receives the prompt and reference media before any rows are written; an image-to-mesh model may accept an empty prompt. One GLB output is registered as generated media `mesh`; malformed mesh output names or types are refused.

@@ -4,12 +4,12 @@
  */
 
 /** Mode of the studio: the chat with language models, one per medium, diagrams (organization charts, flowcharts, schemas) OCR (images/PDFs) and transcription (video/audio speech). */
-export type StudioMode = 'chat' | 'image' | 'audio' | 'video' | 'diagram' | 'ocr' | 'transcription'
+export type StudioMode = 'chat' | 'image' | 'audio' | 'video' | 'mesh' | 'diagram' | 'ocr' | 'transcription'
 
 /** The modes whose pages are conversations (OCR and transcription keep document histories of their own). */
 export type ConversationMode = Exclude<StudioMode, 'ocr' | 'transcription'>
 
-export const STUDIO_MODES: readonly StudioMode[] = ['chat', 'image', 'audio', 'video', 'diagram', 'ocr', 'transcription']
+export const STUDIO_MODES: readonly StudioMode[] = ['chat', 'image', 'audio', 'video', 'mesh', 'diagram', 'ocr', 'transcription']
 
 /** Cover of a conversation (subset of the engine's asset). */
 export interface ConversationCover {

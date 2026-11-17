@@ -82,3 +82,12 @@ def test_multi_source_model_needs_every_source(hub):
     assert installation_status(spec_of(a, b))["state"] == "partial"
     make_repo(hub, "b/two", {"v.safetensors": b"1"})
     assert installation_status(spec_of(a, b))["state"] == "installed"
+
+
+def test_pinned_source_requires_its_exact_snapshot(hub):
+    make_repo(hub, "a/one", {"model.safetensors": b"weights"})
+    pinned = HfSource("a/one", check_files=["model.safetensors"], revision="fixed")
+    assert installation_status(spec_of(pinned))["state"] == "missing"
+    snapshots = hub / "models--a--one" / "snapshots"
+    (snapshots / "rev").rename(snapshots / "fixed")
+    assert installation_status(spec_of(pinned))["state"] == "installed"

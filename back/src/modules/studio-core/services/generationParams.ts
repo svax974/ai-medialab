@@ -22,7 +22,7 @@ function fail(message: string): never {
 export function parseCreateMessage(body: unknown): CreateGenerationInput {
   if (!isRecord(body)) return fail(tr('studioCore.error.jsonBodyExpected'));
   const { conversation_id: conversationId, prompt, model_id: modelId, params, reference_ids: refs, count } = body;
-  if (typeof prompt !== 'string' || prompt.length < 1 || prompt.length > MAX_PROMPT_LENGTH) {
+  if (typeof prompt !== 'string' || prompt.length > MAX_PROMPT_LENGTH) {
     fail(tr('studioCore.error.promptLength', [MAX_PROMPT_LENGTH]));
   }
   if (typeof modelId !== 'string' || !modelId) fail(tr('studioCore.error.textExpected', ['model_id']));

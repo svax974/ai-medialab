@@ -27,6 +27,8 @@ file that holds them (the code does not lie, a copy always ends up lying). Model
 
 | Component | Role | Where the pin is | License | Sheet | Last review |
 |---|---|---|---|---|---|
+| **3D model runtimes** | text/image to GLB meshes; implementation status follows the feature inventory | `engine/app/engines/mesh_specs.py` and its runtime installers | MIT / Stability AI Community; dependencies retain their licences | [mesh-generation.md](mesh-generation.md) | 2026-11-17 |
+| **model-viewer** | interactive GLB preview | `front/src/modules/mesh-studio/package.fragment.json` | Apache-2.0 | [mesh-generation.md](mesh-generation.md) | 2026-11-17 |
 | **audio.cpp** (ggml) | GGUF speech synthesis on Metal, CUDA, Vulkan or CPU (then transcription, see sheet) | `engine/app/audiocpp.py` (`PINNED_TAG`) | Apache-2.0 | [audiocpp.md](audiocpp.md); manual tests to run by hand: [audiocpp-tests-manuels.md](audiocpp-tests-manuels.md) | 2026-10-13 |
 | **llama.cpp** (`llama-server`) | GGUF chat models (Metal, CUDA, ROCm, Vulkan, CPU) | `engine/app/llamacpp.py` (`PINNED_TAG`) | MIT | [llamacpp.md](llamacpp.md) | 2026-10-15 |
 | **yt-dlp / EJS** | public YouTube audio for local transcription | `engine/pyproject.toml`, `engine/uv.lock` | Unlicense; EJS MIT/ISC components, see licence inventory | [yt-dlp.md](yt-dlp.md) | 2026-11-16 |

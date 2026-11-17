@@ -23,6 +23,7 @@ export interface QueueEntry {
   submitted: boolean;
   /** Cancellation asked before the engine had the job: applied right after the submission. */
   cancelRequested: boolean;
+  invalidOutput?: boolean;
 }
 
 /** Events of a job as the engine publishes them (`job.<name>`), all carrying `job_id`. */

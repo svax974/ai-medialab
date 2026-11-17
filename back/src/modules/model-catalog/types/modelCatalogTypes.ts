@@ -5,7 +5,7 @@
 
 /** Shapes relayed from the engine (`engine/app/catalog.py`, `downloads.py`, `hf_search.py`). The engine owns them. */
 
-export type ModelKind = 'image' | 'audio' | 'video' | 'llm' | 'diagram' | 'ocr';
+export type ModelKind = 'image' | 'audio' | 'video' | 'mesh' | 'llm' | 'diagram' | 'ocr';
 /** Kinds `GET /api/hf/search` accepts (the kinds of the catalog: nothing else reaches the engine). */
 export const HUB_SEARCH_KINDS: readonly ModelKind[] = ['image', 'audio', 'video', 'llm', 'ocr'];
 export type InstallState = 'installed' | 'partial' | 'missing';
@@ -88,7 +88,10 @@ export interface ModelInfo {
   precision: string;
   download_size_gb: number | null;
   license: string;
+  license_warning?: string;
   gated: boolean;
+  /** Auxiliary gated checkpoints whose terms must be accepted separately. */
+  gated_repos?: string[];
   memory_hint: string;
   tags: string[];
   compatible: boolean;
@@ -122,6 +125,7 @@ export interface ModelCatalog extends KindSummary {
   models: ModelInfo[];
   audio: KindSummary;
   video: KindSummary;
+  mesh: KindSummary;
   llm: KindSummary;
   diagram: KindSummary;
   ocr: KindSummary;

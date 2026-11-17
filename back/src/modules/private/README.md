@@ -59,7 +59,7 @@ All **administrator** (the `local-trust` principal is one), plain JSON, `no-stor
 | `GET` | `/api/private/conversations?q=&mode=` | Conversations of the session (same summaries as `/api/conversations`). |
 | `POST` | `/api/private/conversations` | `{ title?, mode? }`; mode `image`, `audio`, `video` or `chat` (a chat conversation shell: generic title `Conversation privée` (Private conversation), never built from a message; the content is that of the browser). |
 | `GET`, `PATCH`, `DELETE` | `/api/private/conversations/:id` | Detail, title and pin, deletion (files erased). `PATCH` also accepts `message_count` (integer 0 to 100000, chat conversation: the number displayed in the list; a number, never a content). |
-| `POST` | `/api/private/messages` | Same as `POST /api/messages` (same validations); the engine is consulted (`jobs/check`) first. |
+| `POST` | `/api/private/messages` | Same as `POST /api/messages` (same validations); the engine is consulted (`jobs/check`) first; mesh models are refused before creating a generation. |
 | `POST` | `/api/private/messages/:id/retry`, `/cancel` | Same as the normal routes. |
 | `DELETE` | `/api/private/messages/:id` | Deletes the message and its results (files erased). |
 | `GET` | `/api/private/queue` | `{ current, queue }` of the session. |

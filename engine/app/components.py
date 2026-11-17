@@ -33,7 +33,8 @@ BASE_IDS = ("torch", "ffmpeg")
 SDCPP = "sdcpp"
 LLAMACPP = "llamacpp"
 # Order of the lists shown to the user.
-ORDER = ("torch", "ffmpeg", SDCPP, LLAMACPP, "audiocpp", "speech", "qwen3", "kiwi", "bernini")
+ORDER = ("torch", "ffmpeg", SDCPP, LLAMACPP, "audiocpp", "speech", "qwen3", "kiwi", "bernini",
+         "triposr", "sf3d", "triposg", "trellis", "trellis2")
 
 
 def kind_of(component_id: str) -> str:

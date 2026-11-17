@@ -703,7 +703,8 @@
             "enum": [
               "image",
               "audio",
-              "video"
+              "video",
+              "mesh"
             ],
             "title": "Kind",
             "type": "string"
@@ -732,6 +733,17 @@
           "model_id": {
             "title": "Model Id",
             "type": "string"
+          },
+          "prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt"
           },
           "reference_media": {
             "description": "Media of each attached asset, in order.",
@@ -810,7 +822,8 @@
             "enum": [
               "image",
               "audio",
-              "video"
+              "video",
+              "mesh"
             ],
             "title": "Media",
             "type": "string"
@@ -968,7 +981,8 @@
             "enum": [
               "image",
               "audio",
-              "video"
+              "video",
+              "mesh"
             ],
             "title": "Kind",
             "type": "string"
@@ -2378,7 +2392,7 @@
   },
   "info": {
     "title": "AI MediaLab engine",
-    "version": "0.1.5"
+    "version": "0.2.0"
   },
   "openapi": "3.1.0",
   "paths": {

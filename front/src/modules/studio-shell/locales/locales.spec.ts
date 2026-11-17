@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { periodLabelKey, type PeriodKey } from '../lib/periods'
@@ -28,7 +28,13 @@ describe('studio-shell locales', () => {
   })
 
   it('defines the title key of every route and the label key of every period', () => {
-    for (const route of STUDIO_ROUTES) expect(fr[route.titleKey], route.titleKey).toBeDefined()
+    // Route titles may belong to the routed feature; the application registers every module's locales.
+    const modules = resolve(__dirname, '../..')
+    const routeLocales = Object.assign({}, ...readdirSync(modules).map((name) => {
+      const path = resolve(modules, name, 'locales/locales.fr.json')
+      return existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) as Record<string, string> : {}
+    })) as Record<string, string>
+    for (const route of STUDIO_ROUTES) expect(routeLocales[route.titleKey], route.titleKey).toBeDefined()
     const periods: PeriodKey[] = [{ kind: 'pinned' }, { kind: 'today' }, { kind: 'yesterday' }, { kind: 'last7' }, { kind: 'last30' }]
     for (const period of periods) expect(fr[periodLabelKey(period) as string]).toBeDefined()
   })

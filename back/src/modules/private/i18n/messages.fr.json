@@ -18,6 +18,7 @@
   "private.error.jsonBodyExpected": "Corps JSON attendu.",
   "private.error.lastMessageUser": "messages : le dernier message doit être celui de l'utilisateur.",
   "private.error.messageCountRange": "message_count : entier de 0 à 100000 attendu.",
+  "private.error.meshUnsupported": "La génération 3D est indisponible en session privée.",
   "private.error.messageNotFound": "Message introuvable.",
   "private.error.messagesCount": "messages : de 1 à {0} messages attendus.",
   "private.error.modeExpected": "mode : image, audio, video ou chat attendu.",

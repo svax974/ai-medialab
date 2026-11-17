@@ -43,7 +43,7 @@ class ParamSpec:
 
 
 Backend = Literal["mlx", "torch", "sdcpp", "llamacpp", "pack", "demo"]
-Kind = Literal["image", "audio", "video", "llm", "diagram", "ocr"]
+Kind = Literal["image", "audio", "video", "mesh", "llm", "diagram", "ocr"]
 
 
 @dataclass
@@ -166,6 +166,7 @@ class HfSource:
     size_gb: float | None = None  # approximate size, for overall progress
     kind: Literal["hf", "derived"] = "hf"
     local_dir: str = ""  # kind="derived": path under DERIVED_DIR holding the produced checkpoint
+    revision: str | None = None  # immutable Hugging Face commit, when executable model code is required
 
 
 @dataclass
@@ -214,7 +215,9 @@ class ModelSpec:
     check_files: list[str] = field(default_factory=list)
     download_size_gb: float | None = None
     license: str = ""
+    license_warning: str = ""
     gated: bool = False
+    gated_repos: list[str] = field(default_factory=list)
     # Memory
     weights_gb: float | None = None  # weights loaded at full precision
     largest_component_gb: float | None = None
@@ -335,6 +338,8 @@ def _source_status(src: HfSource) -> dict[str, Any]:
     best: tuple[int, Path] | None = None
     if snapshots.is_dir():
         for snap in snapshots.iterdir():
+            if src.revision and snap.name != src.revision:
+                continue
             if not snap.is_dir():
                 continue
             scan = _scan_dir(snap, None, src.check_files)

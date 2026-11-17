@@ -18,6 +18,7 @@
   "private.error.jsonBodyExpected": "JSON body expected.",
   "private.error.lastMessageUser": "messages: the last message must be the user's.",
   "private.error.messageCountRange": "message_count: integer from 0 to 100000 expected.",
+  "private.error.meshUnsupported": "3D generation is not available in private sessions.",
   "private.error.messageNotFound": "Message not found.",
   "private.error.messagesCount": "messages: 1 to {0} messages expected.",
   "private.error.modeExpected": "mode: image, audio, video or chat expected.",
