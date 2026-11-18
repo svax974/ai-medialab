@@ -6,6 +6,10 @@ of its GitHub release (`.github/workflows/release.yml`).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-11-18
+
+Bug/UI fixes
+
 ## [0.2.0] - 2026-11-17
 
 ### Added

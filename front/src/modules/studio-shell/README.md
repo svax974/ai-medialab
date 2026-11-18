@@ -106,10 +106,15 @@ The H4 composers only have to call `registerFocusTarget('composer', textarea)`.
 | `SearchField` | Search field, 200 ms wait, Esc clears, ⌘K focuses. |
 | `ConversationList` / `ConversationItem` | Groups by period (pinned, today, yesterday, 7 and 30 days, months), thumbnail or icon, "busy" dot, menu (pin, rename, delete), renaming by double click. `SelectionBar` (`Sélectionner` (Select)) switches the list to selection mode: checkboxes, counter, select/deselect all, grouped deletion after confirmation; only the conversations still listed count (search or mode change deletes nothing out of sight). States: loading, empty (per mode), no result, error with `Réessayer` (Retry). |
 | `StudioShell` (mounts) | Adds `SetupDialog` (module `engines`): the confirmation and progress modal of a model installation, opened by `startSetup`. |
-| `SidebarFooter` | Engine card (`EngineCard`, module `studio-core`), Models (`ModelsDialog`), `Vérifier les mises à jour` (Check for updates) (`UpdatesDialog`, module `updates`), `Réglages` (Settings) (`SettingsDialog`), light/dark switch. |
+| `SidebarFooter` | Engine card (`EngineCard`, module `studio-core`), Models (`ModelsDialog`), `Vérifier les mises à jour` (Check for updates) (`UpdatesDialog`, module `updates`), `Réglages` (Settings) (`SettingsDialog`), light/dark switch and the shared `DonateButton`. |
 | `ComingSoonPage` | Temporary page (the `ComingSoonDialog` disappeared with H4.2: no temporary dialog left). |
 
 The generic components come from the template (work package I): `TipIconButton`, `Kbd`, `confirm`/`ConfirmHost`.
+
+`StudioDonateButton` reads `GET /api/studio/desktop-donations` once through the studio query cache. When the desktop configuration is
+available, it opens `DesktopDonationDialog` with network-labelled addresses, QR codes, address copy and a link to the hosted Stripe
+page in the system browser. The donor chooses the amount in the wallet or on Stripe. When the endpoint returns no desktop
+configuration, the button opens the shared donation dialog. Its per-installation settings are under **Studio Shell** at `/admin/page`.
 
 ## Main types
 

@@ -25,6 +25,7 @@ Mounted by `StudioShell` (`settingsOpen` of the Zustand store); opened by the "S
 
 ## Behaviour
 
+- The title and tab bar keep their height while the active panel scrolls when it exceeds the available height.
 - Loaded only when the dialog opens (`enabled`). States: loading (indicator), error with "Retry", content.
 - Each change is saved immediately; the server response (complete public state) replaces the `['settings']` cache
   and the `['models']` catalogue is invalidated (the quantization changes what it displays). A refusal (422 unknown quantization,

@@ -19,7 +19,11 @@
     "args": ["dist/main.js"],
     "cwd": "{resources}/back",
     "env": {
-      "ENGINE_URL": "http://127.0.0.1:{port:engine}"
+      "ENGINE_URL": "http://127.0.0.1:{port:engine}",
+      "AI_MEDIALAB_DONATION_BTC": "bc1qhj4jr9ay2tzfzxtpl5ywuxqvjwe9twwltew4td",
+      "AI_MEDIALAB_DONATION_ETH": "0xbDA28BEaf004B6A41B61E1ac57a23866E3Fee1fa",
+      "AI_MEDIALAB_DONATION_SOL": "92Zyva6w8x24hWtnXZvedasxZ2p8WJh1j4tpnUqyX8wz",
+      "AI_MEDIALAB_DONATION_STRIPE_URL": "https://buy.stripe.com/00w5kw6A65L56I38Ll9Zm00"
     },
     "healthPath": "/api/v1/health",
     "readyTimeoutSec": 120,

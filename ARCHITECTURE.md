@@ -16,7 +16,7 @@ exist; a new annex is added here with its path (rule "one fact, one place").
 | `CONTRIBUTING.md`, `SECURITY.md` | How to contribute; how to report a vulnerability |
 | `FEATURES.md` | Inventory of what is built, per module (and what is not) |
 | `ARCHITECTURE.md` (this file) | Processes, Nest ↔ engine contract, event flow, data and migrations, desktop, resting memory, engine plan |
-| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `chat`, `diagrams`, `ocr`, `transcription`, `private`, `media-library`, `audio-studio`, `legacy-import` |
+| `back/src/modules/<module>/README.md` | Contract of a server module: role, files, exhaustive endpoints, entities, tests. Modules: `i18n`, `engine`, `settings`, `hardware`, `model-catalog`, `engines`, `updates`, `studio-core`, `studio-shell`, `chat`, `diagrams`, `ocr`, `transcription`, `private`, `media-library`, `audio-studio`, `legacy-import` |
 | `back/src/migrations/README.md` | TypeORM migrations of Nest's database: usage, generation, verification |
 | `front/src/modules/<module>/README.md` | Contract of an interface module: components, hooks, locales, parity with the former interface. Modules: `studio-shell`, `studio-core`, `image-studio`, `audio-studio`, `voices`, `video-studio`, `mesh-studio`, `chat`, `diagram-studio`, `ocr-studio`, `transcription`, `private`, `media-library`, `model-catalog`, `engines`, `updates`, `settings`, `hardware` |
 | `front/src/themes/chambre-noire/README.md` | "Chambre noire" theme: tokens, MUI overrides |

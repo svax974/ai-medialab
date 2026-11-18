@@ -1,0 +1,43 @@
+{
+  "checks": [
+    {
+      "id": "studio.donation_button_activated",
+      "module": "studio-shell",
+      "title": "Studio donation button activated",
+      "description": "The studio sidebar donation button is activated.",
+      "scenario": "A user selects Donate from the studio sidebar.",
+      "expect": {
+        "traces": ["studio.donation_button_activated"],
+        "outcome": "ok"
+      },
+      "severity": "low",
+      "since": "2026-11-18",
+      "sources": ["front"],
+      "fields": {}
+    },
+    {
+      "id": "studio.desktop_donation_config",
+      "module": "studio-shell",
+      "title": "Desktop donation destinations available",
+      "description": "The desktop backend serves the four public destinations from the shell configuration.",
+      "scenario": "The studio requests donation options from a backend started by the desktop shell.",
+      "expect": { "traces": ["studio.desktop_donation_config"], "outcome": "ok" },
+      "mustNotHappen": ["studio.desktop_donation_config:violation"],
+      "severity": "high",
+      "since": "2026-11-18",
+      "fields": {}
+    },
+    {
+      "id": "studio.desktop_donation_stripe_selected",
+      "module": "studio-shell",
+      "title": "Hosted Stripe option selected",
+      "description": "The donor follows the hosted Stripe link from the desktop dialog.",
+      "scenario": "A donor selects Continue to Stripe in the donation dialog.",
+      "expect": { "traces": ["studio.desktop_donation_stripe_selected"], "outcome": "ok" },
+      "severity": "low",
+      "since": "2026-11-18",
+      "sources": ["front"],
+      "fields": {}
+    }
+  ]
+}

@@ -17,6 +17,7 @@ import { PrivateToggle } from '@/modules/private'
 import { useUpdatesStore } from '@/modules/updates'
 import { useStudioStore } from '../state/studioStore'
 import { useT } from '../hooks/useT'
+import { StudioDonateButton } from './StudioDonateButton'
 
 function FooterButton({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
   return (
@@ -44,7 +45,7 @@ function FooterButton({ icon, label, onClick }: { icon: React.ReactNode; label: 
   )
 }
 
-/** The engine card, models, updates and settings buttons, language and light/dark switch. */
+/** The engine card and shortcuts for models, updates, settings, donations and the theme. */
 export function SidebarFooter() {
   const t = useT()
   const { mode, toggleMode } = useThemeMode()
@@ -72,6 +73,7 @@ export function SidebarFooter() {
           {isDark ? <LightModeOutlined sx={{ fontSize: 16 }} /> : <DarkModeOutlined sx={{ fontSize: 16 }} />}
         </TipIconButton>
       </Box>
+      <StudioDonateButton />
     </Box>
   )
 }

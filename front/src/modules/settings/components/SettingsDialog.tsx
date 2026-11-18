@@ -26,13 +26,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
   return (
     <Dialog open={open} onClose={onClose} fullWidth aria-labelledby="settings-title" slotProps={{ paper: { sx: { maxWidth: 680 } } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 3 }}>
+      <Box sx={{ display: 'flex', flexShrink: 0, alignItems: 'center', justifyContent: 'space-between', pr: 3 }}>
         <DialogTitle id="settings-title">{t('settings.title')}</DialogTitle>
         <TipIconButton labelId="settings.close" onClick={onClose} sx={{ borderRadius: '8px' }}>
           <CloseRounded sx={{ fontSize: 16 }} />
         </TipIconButton>
       </Box>
-      <Tabs value={tab} onChange={(_event, value: SettingsTab) => setTab(value)} sx={{ px: 3, borderBottom: '1px solid var(--line)' }}>
+      <Tabs value={tab} onChange={(_event, value: SettingsTab) => setTab(value)} sx={{ flexShrink: 0, px: 3, borderBottom: '1px solid var(--line)' }}>
         {TABS.map((id) => <Tab key={id} value={id} label={t(`settings.tabs.${id}`)} id={`settings-tab-${id}`} aria-controls="settings-panel" />)}
       </Tabs>
       <DialogContent id="settings-panel" role="tabpanel" aria-labelledby={`settings-tab-${tab}`} sx={{ pt: 3 }}>
